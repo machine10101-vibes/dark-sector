@@ -1,0 +1,20 @@
+{
+  "vellum_compact": {
+    "id": "vellum_compact",
+    "name": "Vellum Compact",
+    "kind": "pdo",
+    "temper": "charter-absolute",
+    "color": "#8aa896",
+    "blurb": "Corporate charter wearing a patrol pennant. They scan, they hail, they fire when the slate says so.",
+    "heat_to_engage": 40
+  },
+  "red_keel": {
+    "id": "red_keel",
+    "name": "Red Keel",
+    "kind": "pirate",
+    "temper": "tribute-or-blood",
+    "color": "#8d2f2a",
+    "blurb": "A pack in the Slat. They hunt amber space and they remember a killed skiff.",
+    "heat_to_engage": 10
+  }
+}

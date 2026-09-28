@@ -1,0 +1,47 @@
+{
+  "sensor_mast": {
+    "id": "sensor_mast",
+    "name": "Survey Mast",
+    "family": "hull",
+    "slot": "Utility",
+    "shape": "mast",
+    "blurb": "A spine ahead of the keel. You are longer, a little louder, and you see farther.",
+    "effects": {
+      "mass": 7,
+      "power_draw": 5,
+      "sensor": 520,
+      "signature": 0.08,
+      "radius": 2
+    }
+  },
+  "cargo_blister": {
+    "id": "cargo_blister",
+    "name": "Cargo Blister",
+    "family": "hull",
+    "slot": "Utility",
+    "shape": "blister",
+    "blurb": "A swollen hold on each flank. She carries a real haul and turns like a loaded barge.",
+    "effects": {
+      "mass": 22,
+      "power_draw": 2,
+      "cargo": 18,
+      "signature": 0.16,
+      "radius": 10
+    }
+  },
+  "gun_sponson": {
+    "id": "gun_sponson",
+    "name": "Keel Sponson",
+    "family": "offense",
+    "slot": "S",
+    "shape": "sponson",
+    "blurb": "An angular gun cheek. Heavier to yaw. Meaner at the range you already reach.",
+    "effects": {
+      "mass": 11,
+      "power_draw": 8,
+      "gun_damage": 6,
+      "signature": 0.14,
+      "radius": 6
+    }
+  }
+}
