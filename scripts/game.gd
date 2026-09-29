@@ -4,9 +4,16 @@ var defs: Dictionary = {}
 var sim: SectorSim
 var link: ListenLink
 var verbs: Dictionary = {}
+var flight := {
+	"thrust": 0.0,
+	"retro": 0.0,
+	"rot": 0.0,
+	"strafe": 0.0,
+	"fire": false,
+}
 var mode := "menu"
 var paused := false
-var zoom := 0.9
+var zoom := 0.58
 
 
 func _ready() -> void:
@@ -30,7 +37,7 @@ func begin_new(class_id: String) -> void:
 	sim = SectorSim.new(defs)
 	sim.new_game(class_id)
 	Catalog.arm_yards(sim)
-	zoom = 0.9
+	zoom = 0.58
 	paused = false
 	mode = "sector"
 
@@ -42,7 +49,7 @@ func begin_host(class_id: String) -> String:
 	if not resumed:
 		sim.new_game(class_id)
 	Catalog.arm_yards(sim)
-	zoom = 0.9
+	zoom = 0.58
 	paused = false
 	mode = "sector"
 	link = ListenLink.new()
@@ -80,11 +87,22 @@ func take_verbs() -> Dictionary:
 	return out
 
 
+func clear_flight() -> void:
+	flight = {
+		"thrust": 0.0,
+		"retro": 0.0,
+		"rot": 0.0,
+		"strafe": 0.0,
+		"fire": false,
+	}
+
+
 func _drop_link() -> void:
 	if link != null:
 		link.close()
 	link = null
 	verbs = {}
+	clear_flight()
 
 
 func write_host_log(quiet: bool = true) -> String:
@@ -152,7 +170,7 @@ func try_load() -> String:
 		return "That log is from another keel."
 	sim = SectorSim.new(defs)
 	sim.from_dict(data)
-	zoom = clampf(float(data.get("camera_zoom", 0.9)), 0.05, 1.55)
+	zoom = clampf(float(data.get("camera_zoom", 0.58)), 0.05, 1.55)
 	paused = false
 	mode = "sector"
 	return ""

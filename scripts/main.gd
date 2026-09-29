@@ -1,6 +1,7 @@
 extends Node
 
 var menu: CanvasLayer
+var helm: Node
 var sector: Node2D
 var hud: CanvasLayer
 var desk: CanvasLayer
@@ -29,7 +30,7 @@ func _process(_delta: float) -> void:
 	if Game.sim == null or Game.mode != "sector":
 		return
 	if tones != null and tones.has_method("play"):
-		var thrusting: bool = Input.is_key_pressed(KEY_W) and bool(Game.sim.player.alive) and not Game.paused
+		var thrusting: bool = (Input.is_key_pressed(KEY_W) or float(Game.flight.get("thrust", 0.0)) > 0.2) and bool(Game.sim.player.alive) and not Game.paused
 		if thrusting and not bool(get_meta("was_thrust", false)):
 			tones.play("thrust")
 		set_meta("was_thrust", thrusting)
@@ -66,23 +67,33 @@ func _on_continue() -> void:
 	_enter_sector()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if helm == null or Game.mode != "sector":
+		return
+	var board = helm.get("world_vp")
+	if board is SubViewport:
+		board.push_unhandled_input(event)
+
+
 func _enter_sector() -> void:
 	menu.hide()
-	if sector == null:
-		sector = preload("res://world/sector_view.gd").new()
-		sector.name = "Sector"
-		add_child(sector)
+	if helm == null:
+		helm = preload("res://world/overhead.gd").new()
+		helm.name = "Helm"
+		add_child(helm)
+		sector = helm.get("sector")
 		hud = preload("res://ui/hud.gd").new()
 		hud.name = "Hud"
 		add_child(hud)
 		desk = preload("res://ui/debug_pane.gd").new()
 		desk.name = "DataDesk"
 		add_child(desk)
-	sector.show()
+	if helm.has_method("set_live"):
+		helm.set_live(true)
 	hud.show()
 	if hud.has_method("reset_overlays"):
 		hud.reset_overlays()
-	if sector.has_method("snap"):
+	if sector != null and sector.has_method("snap"):
 		sector.snap()
 
 
@@ -95,8 +106,8 @@ func _on_quit() -> void:
 
 
 func show_menu() -> void:
-	if sector != null:
-		sector.hide()
+	if helm != null and helm.has_method("set_live"):
+		helm.set_live(false)
 	if hud != null:
 		hud.hide()
 	menu.show_root()

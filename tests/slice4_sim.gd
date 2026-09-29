@@ -126,9 +126,10 @@ func _hunt_and_break() -> void:
 		if str(actor.team) == "red_keel" and str(actor.ai.role) == "interceptor":
 			chaser = actor
 	var aegis = flee.planet("aegis_prime")
-	flee.player.pos = aegis.pos + Vector2(200, 0)
+	var lane := float(aegis.radius) + 80.0
+	flee.player.pos = aegis.pos + Vector2(lane, 0)
 	flee.player.fight_cd = 0.0
-	chaser.pos = aegis.pos + Vector2(200, 320)
+	chaser.pos = aegis.pos + Vector2(lane, 320)
 	chaser.rot = (chaser.home - chaser.pos).angle()
 	var leave: float = chaser.pos.distance_to(flee.player.pos)
 	flee.tick(0.55, {})
@@ -139,9 +140,10 @@ func _hunt_and_break() -> void:
 	for actor in press.actors:
 		if str(actor.team) == "red_keel" and str(actor.ai.role) == "interceptor":
 			hunter = actor
-	press.player.pos = aegis.pos + Vector2(200, 0)
+	var press_lane := float(aegis.radius) + 80.0
+	press.player.pos = aegis.pos + Vector2(press_lane, 0)
 	press.player.fight_cd = 3.0
-	hunter.pos = aegis.pos + Vector2(200, 320)
+	hunter.pos = aegis.pos + Vector2(press_lane, 320)
 	hunter.rot = (press.player.pos - hunter.pos).angle()
 	var closing: float = hunter.pos.distance_to(press.player.pos)
 	press.tick(0.6, {})
@@ -264,7 +266,7 @@ func _death_and_save() -> void:
 	sim.player.cargo["raw_mass"] = 4
 	sim.player.hp = 1.0
 	var dock = sim.planet("aegis_prime")
-	var spawn: Vector2 = dock.pos + Vector2(float(dock.radius) + 560.0, 40.0)
+	var spawn: Vector2 = dock.pos + Vector2(float(dock.radius) + SectorSim.DOCK_GAP, 40.0)
 	sim.player.pos = sim.pack_pos
 	sim.damage_unit(sim.player, 80.0, "agent:red_keel:0")
 	check(bool(sim.player.alive), "the captain wakes")

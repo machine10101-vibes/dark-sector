@@ -28,6 +28,16 @@ var dossier_timer := 0.0
 var hold_button: Button
 var chat_line: LineEdit
 var chat_open := false
+var helm_box: VBoxContainer
+var hint_label: Label
+var action_scroll: ScrollContainer
+var action_row: HBoxContainer
+var pad: Control
+var stick_button: Button
+var touch_on := false
+var touch_chosen := false
+var compact := false
+var panel_inner: VBoxContainer
 
 
 func _ready() -> void:
@@ -36,19 +46,27 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.theme = ThemeKit.build()
 	add_child(root)
+	touch_on = DisplayServer.is_touchscreen_available() or OS.has_feature("mobile")
 	_build_helm()
 	_build_panel()
+	_build_actions()
 	_build_pause()
 	_build_dead()
-	var hint := ThemeKit.label(
-		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   R repair   L lane   C core   V crack   X hail   Z flag   K claim     1 probe   2 harvest   B bay   H hangar   D dossier   F heat   J quests   Y mark   O contract   Enter chat",
+	pad = preload("res://ui/flight_pad.gd").new()
+	pad.visible = touch_on
+	root.add_child(pad)
+	hint_label = ThemeKit.label(
+		"W thrust   S retro   A/D yaw   Q/E strafe   Space gun. The row below does the rest.",
 		12,
 		Color("8d826c")
 	)
-	hint.position = Vector2(16, 692)
-	hint.size = Vector2(1240, 22)
-	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(hint)
+	hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(hint_label)
+	stick_button = ThemeKit.button("Stick")
+	stick_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	stick_button.custom_minimum_size = Vector2(88, 44)
+	stick_button.pressed.connect(_toggle_stick)
+	root.add_child(stick_button)
 	chat_line = LineEdit.new()
 	chat_line.placeholder_text = "Local channel"
 	chat_line.visible = false
@@ -65,26 +83,78 @@ func _ready() -> void:
 
 func _fit() -> void:
 	var screen := get_viewport().get_visible_rect().size
+	if screen.x < 64.0:
+		screen = Vector2(1280, 720)
+	compact = screen.x < 820.0 or screen.y > screen.x
+	if not touch_chosen and (compact or DisplayServer.is_touchscreen_available()):
+		touch_on = true
 	root.position = Vector2.ZERO
 	root.size = screen
+	var bar_h := 64.0
 	if panel != null:
-		panel.position = Vector2(screen.x - 472, 12)
-		panel.size = Vector2(460, screen.y - 48)
+		if compact:
+			panel.position = Vector2(8, screen.y * 0.34)
+			panel.size = Vector2(screen.x - 16.0, screen.y * 0.62)
+		else:
+			panel.position = Vector2(screen.x - 472, 12)
+			panel.size = Vector2(460, screen.y - 48)
+	if panel_inner != null:
+		panel_inner.custom_minimum_size = Vector2(minf(420.0, screen.x - 48.0), 0)
+	var card_w := minf(440.0, screen.x - 24.0)
+	var card_h := minf(360.0, screen.y - 24.0)
 	if pause_box != null:
-		pause_box.position = screen * 0.5 - Vector2(220, 160)
-		pause_box.size = Vector2(440, 330)
+		pause_box.position = Vector2((screen.x - card_w) * 0.5, maxf(8.0, (screen.y - card_h) * 0.5))
+		pause_box.size = Vector2(card_w, card_h)
 	if dead_box != null:
-		dead_box.position = screen * 0.5 - Vector2(220, 160)
-		dead_box.size = Vector2(440, 330)
+		dead_box.position = Vector2((screen.x - card_w) * 0.5, maxf(8.0, (screen.y - card_h) * 0.5))
+		dead_box.size = Vector2(card_w, card_h)
 	if hold_button != null:
-		hold_button.position = Vector2(screen.x - 188, 12)
-		hold_button.size = Vector2(172, 40)
-	if log_label != null:
-		log_label.position = Vector2(16, screen.y - 168)
-		log_label.size = Vector2(700, 120)
-	if banner != null:
-		banner.position = Vector2(16, 156)
-		banner.size = Vector2(860, 48)
+		if compact:
+			hold_button.position = Vector2(screen.x - 92, 8)
+			hold_button.size = Vector2(80, 44)
+		else:
+			hold_button.position = Vector2(screen.x - 188, 12)
+			hold_button.size = Vector2(88, 44)
+	if stick_button != null:
+		if compact:
+			stick_button.position = Vector2(screen.x - 92, 56)
+			stick_button.size = Vector2(80, 44)
+		else:
+			stick_button.position = Vector2(screen.x - 96, 12)
+			stick_button.size = Vector2(84, 44)
+		stick_button.text = "Keys" if touch_on else "Stick"
+	if helm_box != null:
+		var helm_w := screen.x - 108.0 if compact else screen.x - 210.0
+		if not compact and panel != null and panel.visible:
+			helm_w = minf(760.0, screen.x - 500.0)
+		helm_box.size = Vector2(maxf(160.0, helm_w), 160)
+	if compact:
+		if log_label != null:
+			log_label.position = Vector2(16, 168)
+			log_label.size = Vector2(maxf(140.0, screen.x - 32.0), 40)
+		if banner != null:
+			banner.position = Vector2(16, 212)
+			banner.size = Vector2(maxf(140.0, screen.x - 32.0), 36)
+	else:
+		if log_label != null:
+			log_label.position = Vector2(16, screen.y - bar_h - 132.0)
+			log_label.size = Vector2(minf(760.0, screen.x - 32.0), 96)
+		if banner != null:
+			banner.position = Vector2(16, 156)
+			banner.size = Vector2(minf(860.0, screen.x - 32.0), 48)
+	if hint_label != null:
+		hint_label.visible = not touch_on
+		hint_label.position = Vector2(16, screen.y - bar_h - 22.0)
+		hint_label.size = Vector2(maxf(120.0, screen.x - 32.0), 20)
+	if action_scroll != null:
+		action_scroll.position = Vector2(8, screen.y - bar_h - 4.0)
+		action_scroll.size = Vector2(screen.x - 16.0, bar_h)
+	if pad != null:
+		pad.visible = touch_on
+		if touch_on and pad.has_method("place"):
+			pad.place(screen)
+		elif not touch_on:
+			Game.clear_flight()
 
 
 func _process(_delta: float) -> void:
@@ -197,11 +267,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _build_helm() -> void:
-	var box := VBoxContainer.new()
-	box.position = Vector2(16, 12)
-	box.custom_minimum_size = Vector2(760, 0)
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(box)
+	helm_box = VBoxContainer.new()
+	helm_box.position = Vector2(16, 12)
+	helm_box.custom_minimum_size = Vector2(280, 0)
+	helm_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(helm_box)
+	var box := helm_box
 	helm_name = ThemeKit.label("DARK SECTOR", 13, Color("8a7344"))
 	helm_flight = ThemeKit.label("", 16, Color("e6d7bf"))
 	helm_zone = ThemeKit.label("", 14, Color("cbb892"))
@@ -217,6 +288,7 @@ func _build_helm() -> void:
 	root.add_child(banner)
 	log_label = ThemeKit.label("", 14, Color("b7ab96"))
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	log_label.clip_text = true
 	root.add_child(log_label)
 
 
@@ -245,8 +317,9 @@ func _build_panel() -> void:
 	box.add_child(scroll)
 	var inner := VBoxContainer.new()
 	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	inner.custom_minimum_size = Vector2(420, 0)
+	inner.custom_minimum_size = Vector2(280, 0)
 	scroll.add_child(inner)
+	panel_inner = inner
 	panel_body = ThemeKit.label("", 14)
 	panel_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	inner.add_child(panel_body)
@@ -294,9 +367,76 @@ func _build_dead() -> void:
 	box.add_child(menu)
 
 
+func _build_actions() -> void:
+	action_scroll = ScrollContainer.new()
+	action_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	action_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	action_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	action_scroll.gui_input.connect(_scroll_actions)
+	root.add_child(action_scroll)
+	action_row = HBoxContainer.new()
+	action_row.add_theme_constant_override("separation", 6)
+	action_scroll.add_child(action_row)
+	_action("Lane", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Game.sim.try_lane())
+	)
+	_action("Weld", _repair)
+	_action("Hail", func() -> void: Game.tap("hail", true))
+	_action("Flag", func() -> void: Game.tap("flag", true))
+	_action("Bay", func() -> void: _toggle("bay"))
+	_action("Quests", func() -> void: _toggle("quest"))
+	_action("Claim", func() -> void: _toggle("claim"))
+	_action("Probe", func() -> void: _launch("survey_probe"))
+	_action("Harvest", func() -> void: _launch("harvest_drone"))
+	_action("Boat", func() -> void: _launch(_boat_id()))
+	_action("Heat", func() -> void: _toggle("heat"))
+	_action("Hangar", func() -> void: _toggle("hangar"))
+	_action("Scan", func() -> void: _toggle("dossier"))
+	_action("Crack", func() -> void: Game.tap("crack", true))
+	_action("Mark", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(QuestBoard.mark(Game.sim))
+	)
+	_action("Take", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(QuestBoard.accept(Game.sim))
+	)
+	_action("Chat", _toggle_chat)
+
+
+func _action(text: String, call: Callable) -> void:
+	var node := ThemeKit.button(text)
+	node.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	node.custom_minimum_size = Vector2(84, 44)
+	node.pressed.connect(call)
+	action_row.add_child(node)
+
+
+func _scroll_actions(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton) or not event.pressed:
+		return
+	var button := event as InputEventMouseButton
+	if button.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+		action_scroll.scroll_horizontal += 96
+	elif button.button_index == MOUSE_BUTTON_WHEEL_UP:
+		action_scroll.scroll_horizontal -= 96
+
+
+func _toggle_stick() -> void:
+	touch_chosen = true
+	touch_on = not touch_on
+	if not touch_on:
+		Game.clear_flight()
+	_fit()
+
+
 func _center_card(title: String) -> PanelContainer:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(440, 300)
+	card.custom_minimum_size = Vector2(280, 220)
 	root.add_child(card)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
@@ -315,18 +455,27 @@ func _refresh_helm() -> void:
 		zoom_word = "Sector"
 	elif Game.zoom < 0.7:
 		zoom_word = "Local"
-	helm_name.text = "%s    %s    %s" % [str(sim.defs.system.name).to_upper(), hull.class_name, hull.callsign]
 	var keel := "Keel complaining." if stats.keel_warn else "Keel within tolerance."
-	helm_flight.text = "hull %d/%d    %d m/s    yaw %.0f°/s    %s    sig %s    %s    %s" % [
-		int(sim.player.hp),
-		int(sim.player.max_hp),
-		int(sim.player.vel.length()),
-		stats.yaw_deg,
-		_mass_line(stats),
-		stats.signature_word,
-		keel,
-		zoom_word,
-	]
+	if compact:
+		helm_name.text = "%s    %s" % [str(sim.defs.system.name).to_upper(), hull.callsign]
+		helm_flight.text = "hull %d/%d    %d m/s    %s" % [
+			int(sim.player.hp),
+			int(sim.player.max_hp),
+			int(sim.player.vel.length()),
+			zoom_word,
+		]
+	else:
+		helm_name.text = "%s    %s    %s" % [str(sim.defs.system.name).to_upper(), hull.class_name, hull.callsign]
+		helm_flight.text = "hull %d/%d    %d m/s    yaw %.0f°/s    %s    sig %s    %s    %s" % [
+			int(sim.player.hp),
+			int(sim.player.max_hp),
+			int(sim.player.vel.length()),
+			stats.yaw_deg,
+			_mass_line(stats),
+			stats.signature_word,
+			keel,
+			zoom_word,
+		]
 	var law_name := Law.at(sim, sim.player.pos)
 	helm_zone.add_theme_color_override("font_color", Law.color_of(law_name))
 	var link_word := ""
@@ -343,19 +492,25 @@ func _refresh_helm() -> void:
 		stage_word = " — fined"
 	elif stage == "guns":
 		stage_word = " — guns"
-	helm_zone.text = "%s%s    %s heat %s (%.0f)%s" % [Law.hud_line(sim, sim.player.pos), link_word, sim._pdo_name(), HeatWords.word(heat), heat, stage_word]
+	if compact:
+		helm_zone.text = "%s%s    heat %.0f%s" % [law_name.to_upper(), link_word, heat, stage_word]
+	else:
+		helm_zone.text = "%s%s    %s heat %s (%.0f)%s" % [Law.hud_line(sim, sim.player.pos), link_word, sim._pdo_name(), HeatWords.word(heat), heat, stage_word]
 	var repair := ""
 	if sim.player.pos.distance_to(sim.beacon_pos) <= 170.0:
-		repair = "    R welds at the dock beacon"
+		repair = "    Weld is live at the beacon"
 	var gate := sim.nearby_gate()
 	if not gate.is_empty():
-		repair += "    L %s" % str(gate.name)
+		repair += "    Lane %s" % str(gate.name)
 	helm_cargo.text = _cargo_line(sim, stats) + repair
 	helm_craft.text = _craft_line(sim)
 	var bits: Array = []
 	for line in sim.lines:
 		bits.append(str(line.text))
+	if compact and bits.size() > 2:
+		bits = bits.slice(bits.size() - 2, bits.size())
 	log_label.text = "\n".join(bits)
+	log_label.max_lines_visible = 2 if compact else 5
 
 
 func _mass_line(stats: Dictionary) -> String:
@@ -749,7 +904,7 @@ func _quest_text() -> String:
 				giver_name = "homestead notice"
 			giver = "\nGiver: %s." % giver_name
 		blocks.append("%s  [%s / %s]%s%s\n%s" % [entry.title, entry.kind, entry.state, giver, where, entry.summary])
-	blocks.append("Y marks the next place. O takes an offered contract. The keel does not move.")
+	blocks.append("Mark sets the next place. Take accepts an offered contract. The keel does not move.")
 	if blocks.is_empty():
 		return "The log is blank."
 	return "\n\n".join(blocks)

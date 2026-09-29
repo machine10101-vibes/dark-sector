@@ -12,6 +12,7 @@ var continue_button: Button
 var address_line: LineEdit
 var note: Label
 var intent := "offline"
+var keel_row: GridContainer
 
 
 var backdrop: Control
@@ -71,12 +72,19 @@ func _ready() -> void:
 	select_box.visible = false
 	root.add_child(select_box)
 	select_box.add_child(ThemeKit.label("Choose the keel. The other two stay in someone else's yard.", 16, Color("cbb892")))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	select_box.add_child(row)
+	var keel_scroll := ScrollContainer.new()
+	keel_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	keel_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	keel_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	select_box.add_child(keel_scroll)
+	keel_row = GridContainer.new()
+	keel_row.columns = 3
+	keel_row.add_theme_constant_override("h_separation", 12)
+	keel_row.add_theme_constant_override("v_separation", 12)
+	keel_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	keel_scroll.add_child(keel_row)
 	for class_id in ["vesper", "anvil", "kestrel"]:
-		row.add_child(_card(class_id))
+		keel_row.add_child(_card(class_id))
 	var back := ThemeKit.button("Back")
 	back.pressed.connect(func(): _show_root())
 	select_box.add_child(back)
@@ -93,10 +101,21 @@ func _fit() -> void:
 	backdrop.size = screen
 	root.position = Vector2.ZERO
 	root.size = screen
-	root_box.position = Vector2((screen.x - 520.0) * 0.5, (screen.y - 520.0) * 0.5)
-	root_box.size = Vector2(520, 520)
-	select_box.position = Vector2(28, 18)
-	select_box.size = screen - Vector2(56, 32)
+	var wide := minf(520.0, screen.x - 24.0)
+	var tall := minf(560.0, screen.y - 24.0)
+	root_box.position = Vector2((screen.x - wide) * 0.5, maxf(8.0, (screen.y - tall) * 0.5))
+	root_box.size = Vector2(wide, tall)
+	if address_line != null:
+		address_line.custom_minimum_size = Vector2(minf(480.0, wide - 8.0), 40)
+	select_box.position = Vector2(12, 12)
+	select_box.size = screen - Vector2(24, 24)
+	if keel_row != null:
+		var stacked := screen.x < 860.0
+		keel_row.columns = 1 if stacked else 3
+		for card in keel_row.get_children():
+			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var card_w := screen.x - 36.0 if stacked else 240.0
+			card.custom_minimum_size = Vector2(card_w, 0)
 	backdrop.queue_redraw()
 
 
@@ -190,8 +209,27 @@ class Backdrop extends Control:
 
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color("07080c"), true)
+		var globe := size * 0.3
+		var gr := size.x * 0.2
+		var lit := Vector2(-0.62, -0.42).normalized()
+		draw_circle(globe, gr * 1.18, Color(0.35, 0.48, 0.52, 0.08))
+		draw_circle(globe, gr, Color(0.07, 0.09, 0.11))
+		draw_circle(globe + lit * gr * 0.2, gr * 0.7, Color(0.16, 0.2, 0.22))
+		draw_circle(globe + lit * gr * 0.38, gr * 0.38, Color(0.32, 0.38, 0.4))
+		draw_arc(globe, gr * 0.96, lit.angle() - 1.05, lit.angle() + 1.05, 18, Color(0.72, 0.84, 0.88, 0.4), 2.4, true)
+		var ember := size * 0.78
+		draw_circle(ember, size.x * 0.16, Color(0.22, 0.1, 0.05, 0.22))
+		draw_circle(ember + Vector2(-18, -10), size.x * 0.06, Color(0.55, 0.32, 0.14, 0.18))
+		draw_line(size * Vector2(0.02, 0.46), size * Vector2(0.7, 0.3), Color(0.02, 0.025, 0.03, 0.55), 14.0)
+		draw_line(size * Vector2(0.12, 0.74), size * Vector2(0.92, 0.58), Color(0.07, 0.08, 0.11, 0.4), 7.0)
+		for cluster in 6:
+			var cx: float = 0.16 + float(cluster) * 0.035
+			var cy: float = 0.2 + float(cluster % 2) * 0.028
+			draw_circle(Vector2(cx * size.x, cy * size.y), 1.55, Color(0.9, 0.93, 0.96, 0.75))
 		for star in stars:
-			draw_circle(Vector2(star.x * size.x, star.y * size.y), 1.15, Color(0.90, 0.84, 0.72, 0.25 + star.y * 0.45))
+			var temp: float = float(star.y)
+			var tint := Color(0.75, 0.82, 0.95, 0.35) if temp < 0.35 else Color(0.95, 0.88, 0.72, 0.28 + temp * 0.4)
+			draw_circle(Vector2(star.x * size.x, star.y * size.y), 1.15, tint)
 		draw_line(Vector2(40, 22), Vector2(size.x - 40, 22), Color("8a7344"), 1.0)
 		draw_line(Vector2(40, size.y - 22), Vector2(size.x - 40, size.y - 22), Color("8a7344"), 1.0)
 
