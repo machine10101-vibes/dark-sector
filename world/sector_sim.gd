@@ -42,6 +42,9 @@ func _init(defs_in: Dictionary = {}) -> void:
 
 
 func new_game(class_id: String) -> void:
+	var chart: Dictionary = defs.get("systems", {})
+	if chart.has("HC-V1-R1-S1"):
+		defs.system = chart["HC-V1-R1-S1"]
 	seed_value = int(defs.system.seed)
 	time = 0.0
 	scans = {}

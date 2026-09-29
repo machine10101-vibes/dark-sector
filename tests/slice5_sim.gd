@@ -179,8 +179,9 @@ func _save() -> void:
 	sim.claim.pen.hunger = 2.0
 	sim.claim.turret = true
 	var data := sim.to_dict()
+	var parsed = JSON.parse_string(JSON.stringify(data))
 	var copy := SectorSim.new(defs)
-	copy.from_dict(data)
+	copy.from_dict(parsed)
 	check(str(copy.defs.system.id) == "HC-V1-R5-S1", "reload returns to First Soil")
 	check(bool(copy.claim.owned) and str(copy.claim.pocket_name) == "Quiet Hollow", "reload keeps the claim")
 	check(absf(float(copy.claim.plot.age) - 4.5) < 0.05, "reload keeps the crop timer")
