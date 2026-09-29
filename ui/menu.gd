@@ -194,6 +194,11 @@ class Backdrop extends Control:
 		draw_circle(size * 0.7, size.x * 0.22, Color(0.18, 0.12, 0.08, 0.28))
 		draw_circle(size * 0.5, size.x * 0.12, Color(0.14, 0.1, 0.08, 0.2))
 		draw_line(size * Vector2(0.02, 0.46), size * Vector2(0.7, 0.3), Color(0.02, 0.025, 0.03, 0.55), 14.0)
+		draw_line(size * Vector2(0.12, 0.74), size * Vector2(0.92, 0.58), Color(0.07, 0.08, 0.11, 0.4), 7.0)
+		for cluster in 6:
+			var cx: float = 0.16 + float(cluster) * 0.035
+			var cy: float = 0.2 + float(cluster % 2) * 0.028
+			draw_circle(Vector2(cx * size.x, cy * size.y), 1.55, Color(0.9, 0.93, 0.96, 0.75))
 		for star in stars:
 			var temp: float = float(star.y)
 			var tint := Color(0.75, 0.82, 0.95, 0.35) if temp < 0.35 else Color(0.95, 0.88, 0.72, 0.28 + temp * 0.4)

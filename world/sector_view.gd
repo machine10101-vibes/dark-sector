@@ -176,6 +176,8 @@ func _draw_nebula() -> void:
 	draw_circle(Vector2(2800, 500), 1600.0, Color(0.18, 0.1, 0.07, 0.18))
 	draw_circle(Vector2(-500, 3000), 1300.0, Color(0.07, 0.12, 0.13, 0.16))
 	draw_circle(Vector2(1100, -2400), 800.0, Color(0.16, 0.13, 0.08, 0.1))
+	draw_line(Vector2(-2000, -200), Vector2(1800, 1100), Color(0.14, 0.11, 0.09, 0.1), 36.0)
+	draw_line(Vector2(-800, 1200), Vector2(600, -1600), Color(0.07, 0.1, 0.14, 0.12), 22.0)
 
 
 func _draw_grid(view: Rect2, zoom: float) -> void:
@@ -251,7 +253,10 @@ func _draw_belt(sim) -> void:
 		for point in verts:
 			span = maxf(span, point.distance_to(center))
 		if span > 6.0:
+			var ridge := Vector2(-lit.y, lit.x)
 			draw_circle(center - lit * span * 0.28, span * 0.22, tint.darkened(0.4))
+			draw_circle(center + ridge * span * 0.22, span * 0.1, tint.darkened(0.32))
+			draw_line(center - ridge * span * 0.45, center + ridge * span * 0.3, tint.darkened(0.22), 1.2, true)
 			draw_circle(center + lit * span * 0.35, span * 0.12, tint.lightened(0.22))
 
 
@@ -297,6 +302,8 @@ func _draw_trash(sim) -> void:
 		var pit := Silhouette._centroid(world)
 		draw_circle(pit - lit * (1.8 * scale), 1.5 * scale, Color("241c16"))
 		draw_circle(pit + lit * (2.2 * scale), 0.8 * scale, Color(0.85, 0.78, 0.64, 0.45))
+		draw_line(xf * (Vector2(-6, 1) * scale), xf * (Vector2(-16, 6) * scale), Color("5a4034"), 1.5, true)
+		draw_line(xf * (Vector2(4, -2) * scale), xf * (Vector2(2, 3) * scale), Color("2a221c"), 1.2, true)
 		Silhouette._rim(self, world, lit, Color("d7cbb4"), 1.0)
 
 
@@ -319,6 +326,11 @@ func _draw_star(sim) -> void:
 		var spot := Vector2.from_angle(float(grain) * 0.85 + 0.4) * radius * (0.22 + float(grain % 3) * 0.08)
 		var fleck := core.lightened(0.06) if grain % 2 == 0 else core.darkened(0.16)
 		draw_circle(spot, radius * 0.09, fleck)
+	for ray in 4:
+		var spike_dir := Vector2.from_angle(float(ray) * TAU / 4.0 + 0.35)
+		var spike := core
+		spike.a = 0.16
+		draw_line(-spike_dir * radius * 1.7, spike_dir * radius * 1.7, spike, maxf(1.0, radius * 0.035), true)
 	draw_arc(Vector2.ZERO, radius * 0.94, 0.0, TAU, 72, core.darkened(0.35), radius * 0.1, true)
 
 
@@ -348,7 +360,17 @@ func _draw_planet(sim, body: Dictionary) -> void:
 	var spin := float(body.get("spin", 0.1))
 	for i in 4:
 		var a0: float = float(sim.time) * spin + float(i) * 1.35
-		draw_arc(pos, radius * (0.38 + float(i) * 0.13), a0, a0 + 1.35, 18, Color(colors[1]), 4.0, true)
+		draw_arc(pos, radius * (0.38 + float(i) * 0.13), a0, a0 + 1.35, 18, Color(colors[1]), 3.2 + float(i), true)
+	var land := Color(colors[1])
+	var spin_mark := float(body.get("angle", 0.4))
+	for patch in 3:
+		var spot := pos + Vector2.from_angle(spin_mark + float(patch) * 2.05) * radius * 0.34
+		draw_circle(spot, radius * (0.14 + float(patch) * 0.035), land.darkened(0.08 + float(patch) * 0.06))
+	draw_circle(pos + Vector2(0, -radius * 0.52), radius * 0.2, Color(0.92, 0.94, 0.96, 0.28))
+	var cloud := Color(1, 1, 1, 0.14)
+	for wisp in 3:
+		var w0 := float(sim.time) * spin * 0.45 + float(wisp) * 1.7
+		draw_arc(pos + lit * radius * 0.12, radius * (0.42 + float(wisp) * 0.1), w0, w0 + 0.85, 8, cloud, 2.0, true)
 	for veil in 3:
 		var back := float(veil)
 		var shade := Color(0.012, 0.016, 0.024, 0.2 + back * 0.1)
@@ -366,8 +388,9 @@ func _draw_planet(sim, body: Dictionary) -> void:
 			var facing := clampf(Vector2.from_angle(a0 + 0.13).dot(lit) * 0.5 + 0.5, 0.12, 1.0)
 			var band := ice.darkened(0.5).lerp(ice.lightened(0.2), facing)
 			band.a = 0.45 + facing * 0.5
-			draw_arc(pos, radius + 36.0, a0, a0 + 0.22, 4, band, 2.4 + facing * 1.2, true)
-			draw_arc(pos, radius + 48.0, a0 + 0.04, a0 + 0.2, 3, band.darkened(0.15), 1.0, true)
+			draw_arc(pos, radius + 34.0, a0, a0 + 0.2, 4, band, 2.0 + facing, true)
+			draw_arc(pos, radius + 50.0, a0 + 0.05, a0 + 0.18, 3, band.darkened(0.18), 0.9, true)
+		draw_arc(pos, radius + 42.0, 0.0, TAU, 48, Color(0.02, 0.025, 0.03, 0.55), 2.2, true)
 		draw_arc(pos, radius + 54.0, 0.0, TAU, 64, Color("9eb4c4"), 0.8, true)
 	if bool(body.moon):
 		var moon: Vector2 = pos + Vector2.from_angle(sim.time * 0.35 + 0.6) * (radius + 42.0)
@@ -394,6 +417,11 @@ func _draw_pocket(sim) -> void:
 		draw_line(p + Vector2(0, -10), p + Vector2(0, 10), Color("cbb892"), 2.0, true)
 	draw_line(sim.pocket_pos + Vector2(-14, 0), sim.pocket_pos + Vector2(14, 0), Color("cbb892"), 1.2, true)
 	draw_line(sim.pocket_pos + Vector2(0, -14), sim.pocket_pos + Vector2(0, 14), Color("cbb892"), 1.2, true)
+	for tick in 12:
+		var tick_a := float(tick) * TAU / 12.0
+		var inner_p: Vector2 = sim.pocket_pos + Vector2.from_angle(tick_a) * radius * 0.7
+		var outer_p: Vector2 = sim.pocket_pos + Vector2.from_angle(tick_a) * radius * 0.82
+		draw_line(inner_p, outer_p, Color("9aaf8c"), 1.3, true)
 
 
 func _draw_gates(sim) -> void:
@@ -417,6 +445,10 @@ func _draw_gates(sim) -> void:
 		draw_arc(pos, radius, 0.0, TAU, 48, buoy, 1.8, true)
 		draw_arc(pos, radius * 0.72, 0.0, TAU, 36, buoy.lightened(0.15), 1.0, true)
 		draw_arc(pos, radius * 0.55, 0.0, TAU, 32, Color("f0e2b0"), 1.2, true)
+		for cardinal in 4:
+			var buoy_pos := pos + Vector2.from_angle(float(cardinal) * TAU / 4.0) * radius
+			draw_circle(buoy_pos, 3.4, buoy.darkened(0.25))
+			draw_circle(buoy_pos, 1.6, buoy.lightened(0.35))
 		draw_circle(pos, 3.2, Color("fff6e0"))
 
 
@@ -451,10 +483,15 @@ func _draw_homestead(sim) -> void:
 	draw_line(plot + Vector2(-12, 3), plot + Vector2(12, 3), Color("4a5c30"), 1.2, true)
 	for speck in 4:
 		draw_circle(plot + Vector2(-8.0 + float(speck) * 5.0, 0.5), 0.9, Color("2e3c1c"))
+	draw_line(plot + Vector2(-14, -8), plot + Vector2(-14, 8), Color("cbb892"), 1.1, true)
+	draw_line(plot + Vector2(14, -8), plot + Vector2(14, 8), Color("cbb892"), 1.1, true)
+	draw_line(origin + Vector2(16, 6), plot + Vector2(-16, 0), Color("6a5a40"), 2.0, true)
 	var pen := origin + Vector2(-62, 36)
 	draw_rect(Rect2(pen - Vector2(14, 12), Vector2(28, 24)), Color("5c4630"))
 	draw_rect(Rect2(pen - Vector2(12, 10), Vector2(24, 20)), Color("8a7048"))
 	draw_line(pen + Vector2(-12, -5), pen + Vector2(12, -5), Color("3a2a1c"), 1.5, true)
+	for post in 3:
+		draw_circle(pen + Vector2(-10.0 + float(post) * 10.0, -10.0), 1.5, Color("2c2016"))
 	var crate := origin + Vector2(18, -64)
 	draw_rect(Rect2(crate - Vector2(9, 9), Vector2(18, 18)), Color("7a6a56"))
 	draw_rect(Rect2(crate - Vector2(7, 8), Vector2(14, 14)), Color("c4b49a"))
@@ -561,6 +598,8 @@ func _draw_craft(sim, item: Dictionary) -> void:
 	Silhouette._rim(self, hull_pts, lit, col.lightened(0.35), 1.0)
 	draw_circle(pos + dir * 3.2, 1.35, Color(0.12, 0.16, 0.18))
 	draw_circle(pos + dir * 3.5 + lit * 0.5, 0.45, Color(1, 1, 1, 0.45))
+	draw_line(pos - dir * 2.0, pos + dir * 5.0, col.lightened(0.28), 1.0, true)
+	draw_circle(pos - dir * 4.0, 1.1, Color("e7b15a"))
 	if str(item.state) == "lost":
 		draw_line(pos + Vector2(-6, -6), pos + Vector2(6, 6), Color("c4512c"), 1.4, true)
 	if str(item.def_id) == "survey_probe" and str(item.state) == "working":
@@ -586,6 +625,10 @@ func _draw_wreck(wreck: Dictionary) -> void:
 	draw_line(pos + Vector2(-2, 6), pos + Vector2(6, -4), Color("2a1814"), 1.0, true)
 	draw_line(pos + Vector2(-5, 1), pos + Vector2(3, -2), Color("8a3a22"), 1.7, true)
 	draw_circle(pos + Vector2(-2, 1), 2.1, Color(0.32, 0.1, 0.05, 0.7))
+	draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(13, -3), pos + Vector2(6, 0), pos + Vector2(10, 4)
+	]), col.lightened(0.08))
+	draw_line(pos + Vector2(8, -6), pos + Vector2(14, -2), Color("3a3532"), 1.2, true)
 	draw_circle(pos + lit * 3.0, 1.5, Color(0.85, 0.7, 0.5, 0.35))
 
 

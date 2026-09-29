@@ -135,6 +135,7 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 		_paint_beak(ci, xf, scale, worn, accent)
 	elif class_id == "cutter" or class_id == "skiff":
 		_paint_small(ci, xf, scale, worn, accent)
+	_paint_lights(ci, xf, scale, class_id)
 	_rim(ci, pts, lit, accent.lightened(0.2), 1.35)
 	for extra in geom.extras:
 		var extra_pts := PackedVector2Array()
@@ -144,6 +145,8 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 			ci.draw_colored_polygon(extra_pts, accent.darkened(0.38))
 			ci.draw_colored_polygon(_inset_world(extra_pts, 1.1 * scale, lit * (0.8 * scale)), accent.darkened(0.08))
 			ci.draw_colored_polygon(_inset_world(extra_pts, 2.2 * scale, lit * (1.8 * scale)), accent.lightened(0.18))
+			var mid_i := int(extra_pts.size() / 2)
+			ci.draw_line(extra_pts[0], extra_pts[mid_i], accent.darkened(0.5), 1.0, true)
 			_rim(ci, extra_pts, lit, accent.lightened(0.35), 1.0)
 	for circle in geom.circles:
 		var center := xf * (Vector2(float(circle.x), float(circle.y)) * scale)
@@ -245,7 +248,10 @@ static func _paint_needle(ci: CanvasItem, xf: Transform2D, scale: float, plate: 
 	var seam := plate.darkened(0.42)
 	var weight := maxf(1.0, 0.55 * scale)
 	ci.draw_line(xf * (Vector2(36, 0) * scale), xf * (Vector2(-32, 0) * scale), seam, weight, true)
-	for station in [24.0, 2.0, -16.0]:
+	ci.draw_line(xf * (Vector2(32, 1.55) * scale), xf * (Vector2(-26, 1.15) * scale), seam, maxf(1.0, weight * 0.65), true)
+	ci.draw_line(xf * (Vector2(32, -1.55) * scale), xf * (Vector2(-26, -1.15) * scale), seam, maxf(1.0, weight * 0.65), true)
+	ci.draw_circle(xf * (Vector2(-28, 0) * scale), 1.7 * scale, Color(0.42, 0.2, 0.1, 0.5))
+	for station in [24.0, 12.0, 2.0, -8.0, -16.0]:
 		var half := 1.35
 		ci.draw_line(
 			xf * (Vector2(station, half) * scale),
@@ -323,6 +329,16 @@ static func _paint_barn(ci: CanvasItem, xf: Transform2D, scale: float, plate: Co
 	for stud in [2.0, -6.0, -16.0]:
 		ci.draw_circle(xf * (Vector2(stud, 7.2) * scale), 0.6 * scale, seam)
 		ci.draw_circle(xf * (Vector2(stud, -7.2) * scale), 0.6 * scale, seam)
+	for vent in [4.0, -6.0]:
+		ci.draw_line(xf * (Vector2(vent, 15.5) * scale), xf * (Vector2(vent - 5.0, 15.5) * scale), seam, 1.3, true)
+		ci.draw_line(xf * (Vector2(vent, -15.5) * scale), xf * (Vector2(vent - 5.0, -15.5) * scale), seam, 1.3, true)
+	var hatch := PackedVector2Array([
+		xf * (Vector2(20, 2.2) * scale),
+		xf * (Vector2(12, 2.2) * scale),
+		xf * (Vector2(12, -2.2) * scale),
+		xf * (Vector2(20, -2.2) * scale),
+	])
+	ci.draw_colored_polygon(hatch, plate.darkened(0.22))
 	ci.draw_circle(xf * (Vector2(18, 0) * scale), 1.4 * scale, accent.lightened(0.25))
 
 
@@ -339,11 +355,50 @@ static func _paint_beak(ci: CanvasItem, xf: Transform2D, scale: float, plate: Co
 	ci.draw_line(xf * (Vector2(18, -1.5) * scale), xf * (Vector2(8, 0.7) * scale), Color(0.78, 0.88, 0.92, 0.62), 1.0, true)
 	for y in [9.0, -9.0]:
 		ci.draw_line(xf * (Vector2(6, y) * scale), xf * (Vector2(-18, y * 0.7) * scale), accent.darkened(0.15), 1.1, true)
+		ci.draw_line(xf * (Vector2(-2, y * 0.85) * scale), xf * (Vector2(-14, y * 0.55) * scale), plate.darkened(0.55), 1.5, true)
+	ci.draw_circle(xf * (Vector2(-16, 2.6) * scale), 1.15 * scale, plate.darkened(0.72))
+	ci.draw_circle(xf * (Vector2(-16, -2.6) * scale), 1.15 * scale, plate.darkened(0.72))
 	ci.draw_circle(xf * (Vector2(34, 0) * scale), 1.2 * scale, accent)
 
 
 static func _paint_small(ci: CanvasItem, xf: Transform2D, scale: float, plate: Color, accent: Color) -> void:
 	ci.draw_line(xf * (Vector2(10, 0) * scale), xf * (Vector2(-8, 0) * scale), plate.darkened(0.45), 1.0, true)
 	ci.draw_line(xf * (Vector2(8, 1.7) * scale), xf * (Vector2(-5, 1.7) * scale), plate.darkened(0.28), 1.0, true)
+	ci.draw_line(xf * (Vector2(8, -1.7) * scale), xf * (Vector2(-5, -1.7) * scale), plate.darkened(0.28), 1.0, true)
+	ci.draw_line(xf * (Vector2(1.5, 2.6) * scale), xf * (Vector2(1.5, -2.6) * scale), plate.darkened(0.4), 1.0, true)
 	ci.draw_circle(xf * (Vector2(6, 0) * scale), 1.3 * scale, accent.darkened(0.1))
 	ci.draw_circle(xf * (Vector2(2.2, -0.4) * scale), 0.55 * scale, Color(0.85, 0.92, 0.88, 0.5))
+
+
+static func _paint_lights(ci: CanvasItem, xf: Transform2D, scale: float, class_id: String) -> void:
+	var nose_x := 12.0
+	var nose_y := 3.0
+	var tail_x := -12.0
+	match class_id:
+		"vesper":
+			nose_x = 26.0
+			nose_y = 2.2
+			tail_x = -24.0
+		"anvil":
+			nose_x = 8.0
+			nose_y = 9.0
+			tail_x = -22.0
+		"kestrel":
+			nose_x = 14.0
+			nose_y = 4.2
+			tail_x = -12.0
+		"skiff":
+			nose_x = 6.0
+			nose_y = 2.4
+			tail_x = -8.0
+		"cutter":
+			nose_x = 8.0
+			nose_y = 3.6
+			tail_x = -10.0
+	var port := Color("c4512c")
+	var starboard := Color("7d9a86")
+	ci.draw_circle(xf * (Vector2(nose_x, nose_y) * scale), 1.5 * scale, Color(port.r, port.g, port.b, 0.28))
+	ci.draw_circle(xf * (Vector2(nose_x, -nose_y) * scale), 1.5 * scale, Color(starboard.r, starboard.g, starboard.b, 0.28))
+	ci.draw_circle(xf * (Vector2(nose_x, nose_y) * scale), 0.75 * scale, port)
+	ci.draw_circle(xf * (Vector2(nose_x, -nose_y) * scale), 0.75 * scale, starboard)
+	ci.draw_circle(xf * (Vector2(tail_x, 0.0) * scale), 0.65 * scale, Color("e7b15a"))
