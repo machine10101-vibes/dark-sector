@@ -307,7 +307,7 @@ func _draw_mark(sim) -> void:
 	var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
 	draw_arc(pos, 54.0, 0.0, TAU, 40, Color("e7b15a"), 1.6, true)
 	draw_line(sim.player.pos, pos, Color(0.91, 0.7, 0.35, 0.45), 1.2, true)
-	draw_string(font, pos + Vector2(12, -16), str(mark.get("label", "mark")), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("e7b15a"))
+	draw_string(font, pos + Vector2(62, -22), str(mark.get("label", "mark")), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("e7b15a"))
 
 
 func _draw_beacon(sim) -> void:

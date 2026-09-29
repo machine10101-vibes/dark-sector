@@ -685,7 +685,13 @@ func _quest_text() -> String:
 			where = "\nWhere: %s (%s)." % [str(entry.where), str(entry.get("link", ""))]
 		var giver := ""
 		if str(entry.get("giver", "")) != "":
-			giver = "\nGiver: %s." % str(entry.giver)
+			var giver_id := str(entry.giver)
+			var giver_name := giver_id
+			if Game.sim.defs.factions.has(giver_id):
+				giver_name = str(Game.sim.defs.factions[giver_id].name)
+			elif giver_id == "homestead":
+				giver_name = "homestead notice"
+			giver = "\nGiver: %s." % giver_name
 		blocks.append("%s  [%s / %s]%s%s\n%s" % [entry.title, entry.kind, entry.state, giver, where, entry.summary])
 	blocks.append("Y marks the next place. O takes an offered contract. The keel does not move.")
 	if blocks.is_empty():
