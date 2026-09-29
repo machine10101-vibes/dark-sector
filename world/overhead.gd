@@ -45,6 +45,14 @@ func _ready() -> void:
 	env.ambient_light_color = Color(0.62, 0.68, 0.78)
 	env.ambient_light_energy = 0.42
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.glow_enabled = true
+	env.glow_intensity = 0.35
+	env.glow_strength = 0.7
+	env.glow_bloom = 0.08
+	env.fog_enabled = true
+	env.fog_light_color = Color("07080c")
+	env.fog_density = 0.000045
+	env.fog_aerial_perspective = 0.35
 	world.environment = env
 	rig.add_child(world)
 	board = MeshInstance3D.new()
@@ -84,7 +92,7 @@ func _aim() -> void:
 	var zoom := maxf(Game.zoom, 0.12)
 	var chase: Vector2 = sector._chase_pos()
 	var height := 920.0 / zoom
-	var back := height * 0.48
+	var back := height * 0.62
 	var target := Vector3(chase.x, 0.0, -chase.y)
 	cam3.fov = 50.0
 	cam3.position = target + Vector3(0.0, height, -back)
