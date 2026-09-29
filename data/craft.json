@@ -13,7 +13,7 @@
   "harvest_drone": {
     "id": "harvest_drone",
     "name": "Harvest Drone",
-    "job": "Pulls one crate from a surveyed seam. Bring the keel within the neighborhood; it will not cross the Reach alone.",
+    "job": "Spends time on a scanned node, then brings raw mass back to the hold.",
     "speed": 230,
     "battery": 100,
     "drain": 4.5,
