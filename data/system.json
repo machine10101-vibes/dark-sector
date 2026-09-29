@@ -1,112 +1,92 @@
 {
-  "id": "ashen_reach",
-  "name": "Ashen Reach",
+  "id": "HC-V1-R1-S1",
+  "name": "Helion Dock",
   "seed": 48291,
   "star": {
-    "id": "ash_lamp",
-    "name": "Ash Lamp",
-    "radius": 170,
-    "color": "#f0c27a"
+    "id": "helion",
+    "name": "Helion",
+    "class": "G-warm",
+    "radius": 180,
+    "color": "#f4d7a1"
   },
   "planets": [
     {
-      "id": "cinder",
-      "name": "Cinder",
-      "angle": 0.35,
-      "distance": 1550,
-      "radius": 108,
-      "spin": 0.22,
-      "ring": false,
-      "moon": false,
-      "junk": true,
-      "colors": ["#6a2e22", "#d4724a", "#2a1410"],
-      "legal": "unclaimed",
-      "protected": false,
-      "resource": { "id": "cinder_ore", "name": "Cinder-ore", "amount": 4 },
-      "layers": {
-        "orbit": "Low scrap ring. No traffic beacons. A quiet place to hold station.",
-        "atmosphere": "Thin, hot, and only breathable as a boast.",
-        "surface": "Glass plains and ash dunes. The keel would scrape, not land.",
-        "crust": "Cinder-ore in shallow seams a drone can cut.",
-        "biosign": "Nothing the probe will swear to.",
-        "ruins": "A burned landing spine, decades cold.",
-        "legal": "Unclaimed. No charter on file."
-      }
-    },
-    {
-      "id": "mire",
-      "name": "Mire",
-      "angle": 2.45,
-      "distance": 2780,
-      "radius": 136,
-      "spin": 0.11,
-      "ring": false,
-      "moon": true,
-      "junk": false,
-      "colors": ["#3e5a32", "#a3b56a", "#1c2418"],
-      "legal": "leased",
-      "protected": false,
-      "resource": { "id": "mire_peat", "name": "Mire peat", "amount": 3 },
-      "layers": {
-        "orbit": "A wet moon and a band of spore dust. Science traffic, irregular.",
-        "atmosphere": "Thick, sour, and storm-banded. Skim only.",
-        "surface": "Peat shelves and black water under a low sun.",
-        "crust": "Mire peat in the shelves. It spoils if you dawdle.",
-        "biosign": "Mats, not minds. The probe flags a living crust.",
-        "ruins": "A collapsed greenhouse ring on the night side.",
-        "legal": "Leased to an independent survey desk. Extraction is tolerated and written down."
-      }
-    },
-    {
-      "id": "vellum",
-      "name": "Vellum",
-      "angle": 4.25,
-      "distance": 4720,
-      "radius": 154,
-      "spin": 0.07,
+      "id": "aegis_prime",
+      "name": "Aegis Prime",
+      "angle": 0.4,
+      "distance": 1680,
+      "radius": 150,
+      "spin": 0.08,
       "ring": true,
+      "ring_kind": "ice",
       "moon": false,
-      "junk": true,
-      "colors": ["#d5e2e8", "#7f9eab", "#eef3f5"],
-      "legal": "pdo_protected",
+      "junk": false,
+      "colors": ["#b7c4c0", "#8aa4a0", "#e7f2ef"],
+      "legal": "pdo_capital",
       "protected": true,
-      "resource": { "id": "vellum_rime", "name": "Vellum rime", "amount": 3 },
+      "resource": { "id": "aegis_quiet", "name": "nothing the drone can cut", "amount": 0 },
       "layers": {
-        "orbit": "Highport lights and a Compact beacon. You are being read.",
-        "atmosphere": "Cold, clean, and patrolled. Aerobrake vanes would matter here later.",
-        "surface": "Rime plains and charter markers. Not a place for the keel.",
-        "crust": "Vellum rime, valuable and explicitly protected.",
-        "biosign": "Cultured lichen under the rime. Compact property.",
-        "ruins": "A pre-charter shrine the Compact fenced and did not explain.",
-        "legal": "Planetary Defense Organization: Vellum Compact. Cutting the crust writes heat."
+        "orbit": "Inspection lane. Traffic is counted. You are already on a slate.",
+        "atmosphere": "City air inside the orbital. The keel stays outside.",
+        "surface": "Dock rings and lamp rows. Not a landing for this hull.",
+        "crust": "Closed. The Guard does not sell seams here.",
+        "biosign": "People, livestock in bond, nothing wild the probe should chase.",
+        "ruins": "The first dock spine, still in use.",
+        "legal": "Helion Compact Guard. City-orbital. Not a claim."
       }
     }
   ],
   "belt": {
-    "id": "the_slat",
-    "name": "The Slat",
-    "radius": 3680,
-    "width": 420,
-    "count": 54
+    "id": "none",
+    "name": "",
+    "radius": 1,
+    "width": 0,
+    "count": 0
+  },
+  "trash": {
+    "id": "seized_hold",
+    "name": "Seized Hold",
+    "origin": "Hulls confiscated at Helion inspection, parked until a tow to Writ.",
+    "anchor": "aegis_prime",
+    "angle": 2.2,
+    "distance": 560,
+    "count": 11,
+    "spread": 150
   },
   "pocket": {
-    "id": "hollow_latch",
-    "name": "Hollow Latch",
-    "anchor": "cinder",
-    "angle": 2.35,
+    "id": "the_unlet",
+    "name": "The Unlet",
+    "anchor": "aegis_prime",
+    "angle": -1.15,
     "distance": 700,
-    "radius": 320
+    "radius": 260,
+    "plantable": false,
+    "why": "Marked on the chart. Compact law keeps it empty."
   },
   "nest": {
-    "id": "red_keel_nest",
-    "name": "Red Keel nest",
-    "angle": 1.15,
-    "distance": 3680
+    "id": "none",
+    "name": "",
+    "angle": 0.0,
+    "distance": 9000
   },
   "zones": {
-    "green": { "anchor": "vellum", "radius": 1120 },
-    "amber": { "anchor": "nest", "radius": 860 }
+    "green": { "anchor": "aegis_prime", "radius": 980 },
+    "amber": { "anchor": "nest", "radius": 0 }
   },
-  "pdo": { "count": 2, "radius": 760 },
-  "pirates": { "count": 3 }
+  "pdo": {
+    "faction": "helion_compact",
+    "count": 2,
+    "radius": 620,
+    "home": "aegis_prime"
+  },
+  "pirates": { "count": 0 },
+  "haulers": [
+    {
+      "id": "hauler_holt",
+      "name": "Hauler Holt",
+      "class_id": "anvil",
+      "home": "aegis_prime",
+      "radius": 880
+    }
+  ]
 }

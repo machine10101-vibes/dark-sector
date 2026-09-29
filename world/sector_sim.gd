@@ -6,6 +6,7 @@ var seed_value = 0
 var time = 0.0
 var planets: Array = []
 var asteroids: Array = []
+var trash: Array = []
 var stars: Array = []
 var pocket_pos = Vector2.ZERO
 var nest_pos = Vector2.ZERO
@@ -48,13 +49,17 @@ func new_game(class_id: String) -> void:
 	hailed = false
 	sfx_queue = []
 	hold_npc = false
-	heat = {"vellum_compact": 0.0, "red_keel": 0.0}
-	memory = {"vellum_compact": [], "red_keel": []}
+	heat = {}
+	memory = {}
+	for faction_id in defs.factions.keys():
+		heat[str(faction_id)] = 0.0
+		memory[str(faction_id)] = []
 	_build_static()
 	var hull: Dictionary = defs.ships[class_id]
 	var fresh = _blank_ship(class_id, hull.callsign, "agent:captain", "human", "captain")
-	fresh.pos = pocket_pos + Vector2(40, 170)
-	fresh.rot = (planet("cinder").pos - fresh.pos).angle()
+	var dock = planet(str(defs.system.pdo.home))
+	fresh.pos = dock.pos + Vector2(float(dock.radius) + 560.0, 40.0)
+	fresh.rot = (fresh.pos - dock.pos).angle()
 	fresh.yard = hull.yard.duplicate()
 	fresh.slots = hull.slots.duplicate()
 	fresh.crew = hull.crew.duplicate(true)
@@ -70,16 +75,18 @@ func new_game(class_id: String) -> void:
 	actors = []
 	_spawn_factions()
 	quest_flags = {"origin_%s" % class_id: "dormant"}
+	var pocket: Dictionary = defs.system.pocket
 	claim = {
-		"pocket_id": "hollow_latch",
+		"pocket_id": str(pocket.id),
 		"owned": false,
 		"frozen": false,
 		"core": false,
 		"agent_id": "",
 		"surveyed": false,
+		"plantable": bool(pocket.get("plantable", false)),
 	}
 	say("You have the %s, callsign %s." % [hull.class_name, hull.callsign])
-	say("Hollow Latch is under the keel. Cinder is the near rust world. Red Keel hunts the Slat. Vellum Compact owns the pale world — the green lane remembers guns.")
+	say("%s. %s is the city-orbital. The ice ring is lit. %s holds confiscated hulls. %s is marked and not a homestead." % [defs.system.name, planet(str(defs.system.pdo.home)).name, defs.system.trash.name, pocket.name])
 
 
 func tick(dt: float, cmd: Dictionary) -> void:
@@ -98,11 +105,21 @@ func install(module_id: String) -> Dictionary:
 	return result
 
 
+func _pdo_id() -> String:
+	return str(defs.system.pdo.get("faction", "vellum_compact"))
+
+
+func _pdo_name() -> String:
+	var faction: Dictionary = defs.factions.get(_pdo_id(), {})
+	return str(faction.get("name", "Compact"))
+
+
 func zone_at(pos: Vector2) -> String:
-	var vellum = planet("vellum")
-	if vellum != null and pos.distance_to(vellum.pos) <= float(defs.system.zones.green.radius):
+	var green_body = planet(str(defs.system.zones.green.anchor))
+	if green_body != null and pos.distance_to(green_body.pos) <= float(defs.system.zones.green.radius):
 		return "green"
-	if pos.distance_to(nest_pos) <= float(defs.system.zones.amber.radius):
+	var amber_r := float(defs.system.zones.amber.radius)
+	if amber_r > 1.0 and pos.distance_to(nest_pos) <= amber_r:
 		return "amber"
 	if pos.distance_to(pocket_pos) <= float(defs.system.pocket.radius):
 		return "pocket"
@@ -112,11 +129,13 @@ func zone_at(pos: Vector2) -> String:
 func zone_label(zone: String) -> String:
 	match zone:
 		"green":
-			return "Green lane — Vellum Compact. A shot here goes on the slate."
+			return "Green lane — %s. A shot here goes on the slate." % _pdo_name()
 		"amber":
 			return "Amber — Red Keel ground. Finish a hull and the wreck is rights."
 		"pocket":
-			return "Hollow Latch — calm pocket. A Claim Core could sit here."
+			if bool(defs.system.pocket.get("plantable", false)):
+				return "%s — calm pocket. A Claim Core could sit here." % defs.system.pocket.name
+			return "%s — marked pocket. Compact law. Not a homestead." % defs.system.pocket.name
 		_:
 			return "Unpatrolled dark."
 
@@ -170,9 +189,9 @@ func try_extract(planet_id: String) -> String:
 	say("%s aboard from %s. %d left in the seam." % [res.name, body.name, int(deposits[planet_id])])
 	sfx("extract")
 	if bool(body.protected):
-		Ownership.add_heat(self, "vellum_compact", 28.0, "harvested_protected", player.agent_id)
+		Ownership.add_heat(self, _pdo_id(), 28.0, "harvested_protected", player.agent_id)
 		pdo_alert = true
-		banner = "Vellum Compact: \"You cut a protected crust.\""
+		banner = "%s: \"You cut a protected crust.\"" % _pdo_name()
 		banner_t = 0.0
 		say("The Compact has the extraction. Heat is on the slate.")
 		sfx("hail")
@@ -438,12 +457,18 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 		else:
 			var ang = time * 0.22 + float(actor.ai.phase)
 			dest = actor.home + Vector2.from_angle(ang) * 170.0
-	elif str(actor.team) == "vellum_compact":
-		var engage = pdo_alert or float(heat.get("vellum_compact", 0.0)) >= 40.0
-		var blooded = memory.get("vellum_compact", []).has("killed_patrol")
+	elif str(actor.team) == "civilian":
+		var coast = time * 0.07 + float(actor.ai.phase)
+		dest = actor.home + Vector2.from_angle(coast) * float(actor.ai.radius)
+		_fly_ship(actor, dest, dt, false)
+		return
+	elif str(actor.team) == _pdo_id():
+		var engage = pdo_alert or float(heat.get(_pdo_id(), 0.0)) >= 40.0
+		var blooded = memory.get(_pdo_id(), []).has("killed_patrol")
 		if engage and player.alive:
 			var leash = 1700.0 if blooded else 1200.0
-			var near_lane = player.pos.distance_to(planet("vellum").pos) < float(defs.system.zones.green.radius) + 280.0
+			var lane_body = planet(str(defs.system.zones.green.anchor))
+			var near_lane = lane_body != null and player.pos.distance_to(lane_body.pos) < float(defs.system.zones.green.radius) + 280.0
 			if near_lane or player.pos.distance_to(actor.pos) < leash:
 				target = player
 		if target == null:
@@ -455,11 +480,11 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 		var stats = Fit.stats(defs, actor)
 		var gun: Dictionary = stats.gun
 		var aligned = absf(wrapf((target.pos - actor.pos).angle() - actor.rot, -PI, PI)) < 0.42
-		var heat_v = float(heat.get("vellum_compact", 0.0))
-		var hailing = str(actor.team) == "vellum_compact" and heat_v < 40.0 and not memory.get("vellum_compact", []).has("killed_patrol")
+		var heat_v = float(heat.get(_pdo_id(), 0.0))
+		var hailing = str(actor.team) == _pdo_id() and heat_v < 40.0 and not memory.get(_pdo_id(), []).has("killed_patrol")
 		if hailing and dist < 780.0 and not bool(actor.ai.get("said_hail", false)):
 			actor.ai.said_hail = true
-			banner = "Vellum Compact cutter: \"You are in the green. Stow the guns.\""
+			banner = "%s cutter: \"You are in the green. Stow the guns.\"" % _pdo_name()
 			banner_t = 0.0
 			sfx("hail")
 		if dist < float(gun.range) and aligned and not hailing:
@@ -574,14 +599,14 @@ func _kill(unit: Dictionary, attacker: String) -> void:
 			if str(actor.team) == "red_keel" and bool(actor.alive):
 				actor.ai.enraged = true
 		say("Red Keel will remember %s." % unit.name)
-	elif str(unit.team) == "vellum_compact":
-		Ownership.add_heat(self, "vellum_compact", 36.0, "killed_patrol", attacker)
+	elif str(unit.team) == _pdo_id():
+		Ownership.add_heat(self, _pdo_id(), 36.0, "killed_patrol", attacker)
 		pdo_alert = true
-		banner = "Vellum Compact: \"Patrol blood. The lane is closed to you.\""
+		banner = "%s: \"Patrol blood. The lane is closed to you.\"" % _pdo_name()
 		banner_t = 0.0
 		say("A Compact cutter is gone. The slate does not forget.")
 	elif str(unit.agent_id) == "agent:captain":
-		banner = "Hull lost. The wreck keeps your name. Load the log, or leave the Reach."
+		banner = "Hull lost. The wreck keeps your name. Load the log, or leave the dock."
 		banner_t = 0.0
 		say("The keel is broken. What is left is a wreck with your agent id on it.")
 
@@ -605,6 +630,22 @@ func _build_static() -> void:
 	pocket_pos = anchor.pos + Vector2.from_angle(float(defs.system.pocket.angle)) * float(defs.system.pocket.distance)
 	nest_pos = Vector2.from_angle(float(defs.system.nest.angle)) * float(defs.system.nest.distance)
 	asteroids = []
+	trash = []
+	var field: Dictionary = defs.system.get("trash", {})
+	if int(field.get("count", 0)) > 0:
+		var anchor_body = planet(str(field.get("anchor", "")))
+		var origin := Vector2.ZERO
+		if anchor_body != null:
+			origin = anchor_body.pos + Vector2.from_angle(float(field.angle)) * float(field.distance)
+		var spread := float(field.get("spread", 120.0))
+		for i in int(field.count):
+			var jitter := Vector2(rng.randf_range(-spread, spread), rng.randf_range(-spread * 0.55, spread * 0.55))
+			trash.append({
+				"pos": origin + jitter,
+				"rot": rng.randf() * TAU,
+				"kind": i % 3,
+				"scale": rng.randf_range(0.85, 1.55),
+			})
 	var belt: Dictionary = defs.system.belt
 	for _i in int(belt.count):
 		var ang = rng.randf() * TAU
@@ -631,15 +672,32 @@ func _build_static() -> void:
 
 
 func _spawn_factions() -> void:
+	var faction_id := _pdo_id()
+	var home_body = planet(str(defs.system.pdo.get("home", "")))
+	var home := Vector2.ZERO
+	if home_body != null:
+		home = home_body.pos
 	for i in int(defs.system.pdo.count):
-		var actor = _blank_ship("cutter", "Vellum Cutter %d" % (i + 1), "agent:vellum_compact:%d" % i, "npc", "vellum_compact")
+		var actor = _blank_ship("cutter", "%s Cutter %d" % [_pdo_name(), i + 1], "agent:%s:%d" % [faction_id, i], "npc", faction_id)
 		var ang = float(i) * PI
-		actor.home = planet("vellum").pos
+		actor.home = home
 		actor.pos = actor.home + Vector2.from_angle(ang) * float(defs.system.pdo.radius)
 		actor.rot = ang + PI * 0.5
 		actor.ai = {"phase": ang, "radius": float(defs.system.pdo.radius), "enraged": false}
 		actor.cargo = {"scrap": 1}
 		actors.append(actor)
+	for entry in defs.system.get("haulers", []):
+		var hauler = _blank_ship(str(entry.class_id), str(entry.name), "agent:civilian:%s" % entry.id, "npc", "civilian")
+		var orbit = float(entry.radius)
+		var phase = 0.9
+		var yard = planet(str(entry.home))
+		hauler.home = Vector2.ZERO
+		if yard != null:
+			hauler.home = yard.pos
+		hauler.pos = hauler.home + Vector2.from_angle(phase) * orbit
+		hauler.rot = phase + PI * 0.5
+		hauler.ai = {"phase": phase, "radius": orbit, "enraged": false}
+		actors.append(hauler)
 	for i in int(defs.system.pirates.count):
 		var actor = _blank_ship("skiff", "Red Keel %d" % (i + 1), "agent:red_keel:%d" % i, "npc", "red_keel")
 		var ang = float(i) / float(defs.system.pirates.count) * TAU

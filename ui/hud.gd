@@ -223,7 +223,7 @@ func _build_pause() -> void:
 	save.pressed.connect(_save)
 	var load := ThemeKit.button("Read the log")
 	load.pressed.connect(_load)
-	var menu := ThemeKit.button("Leave the Reach")
+	var menu := ThemeKit.button("Leave the dock")
 	menu.pressed.connect(_menu)
 	var box := pause_box.get_child(0)
 	box.add_child(resume)
@@ -235,11 +235,11 @@ func _build_pause() -> void:
 func _build_dead() -> void:
 	dead_box = _center_card("The keel is a wreck")
 	dead_box.visible = false
-	var note := ThemeKit.label("Your agent id is still on the wreck. Load an earlier log, or leave and take a new keel. The Reach keeps the wreck either way.", 14)
+	var note := ThemeKit.label("Your agent id is still on the wreck. Load an earlier log, or leave and take a new keel. The dock keeps the wreck either way.", 14)
 	note.custom_minimum_size = Vector2(360, 0)
 	var load := ThemeKit.button("Read the log")
 	load.pressed.connect(_load)
-	var menu := ThemeKit.button("Leave the Reach")
+	var menu := ThemeKit.button("Leave the dock")
 	menu.pressed.connect(_menu)
 	var box := dead_box.get_child(0)
 	box.add_child(note)
@@ -268,7 +268,7 @@ func _refresh_helm() -> void:
 		zoom_word = "Sector"
 	elif Game.zoom < 0.7:
 		zoom_word = "Local"
-	helm_name.text = "ASHEN REACH    %s    %s" % [hull.class_name, hull.callsign]
+	helm_name.text = "%s    %s    %s" % [str(sim.defs.system.name).to_upper(), hull.class_name, hull.callsign]
 	var keel := "Keel complaining." if stats.keel_warn else "Keel within tolerance."
 	helm_flight.text = "%d m/s    yaw %.0f°/s    %s    sig %s    %s    %s" % [
 		int(sim.player.vel.length()),

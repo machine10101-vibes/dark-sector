@@ -98,6 +98,7 @@ func _draw() -> void:
 			draw_circle(pos, float(star.r), Color(0.90, 0.86, 0.75, float(star.a)))
 	_draw_zones(sim)
 	_draw_belt(sim)
+	_draw_trash(sim)
 	_draw_star(sim)
 	for body in sim.planets:
 		_draw_planet(sim, body)
@@ -107,7 +108,8 @@ func _draw() -> void:
 	for shot in sim.projectiles:
 		var tail: Vector2 = shot.pos - shot.vel.normalized() * 14.0
 		var col := Color("e7b15a") if str(shot.team) == "captain" else Color("d27a6a")
-		if str(shot.team) == "vellum_compact":
+		var shot_faction: Dictionary = sim.defs.factions.get(str(shot.team), {})
+		if str(shot_faction.get("kind", "")) == "pdo":
 			col = Color("c9d7c4")
 		draw_line(tail, shot.pos, col, 2.0, true)
 	for item in sim.craft:
@@ -144,13 +146,15 @@ func _draw_grid(view: Rect2, zoom: float) -> void:
 
 
 func _draw_zones(sim) -> void:
-	var vellum = sim.planet("vellum")
+	var green_body = sim.planet(str(sim.defs.system.zones.green.anchor))
 	var green_r := float(sim.defs.system.zones.green.radius)
-	draw_circle(vellum.pos, green_r, Color(0.43, 0.66, 0.48, 0.07))
-	draw_arc(vellum.pos, green_r, 0.0, TAU, 96, Color("8aa896"), 1.6, true)
+	if green_body != null and green_r > 1.0:
+		draw_circle(green_body.pos, green_r, Color(0.43, 0.66, 0.48, 0.07))
+		draw_arc(green_body.pos, green_r, 0.0, TAU, 96, Color("8aa896"), 1.6, true)
 	var amber_r := float(sim.defs.system.zones.amber.radius)
-	draw_circle(sim.nest_pos, amber_r, Color(0.77, 0.57, 0.23, 0.06))
-	draw_arc(sim.nest_pos, amber_r, 0.0, TAU, 80, Color("c4923a"), 1.6, true)
+	if amber_r > 1.0:
+		draw_circle(sim.nest_pos, amber_r, Color(0.77, 0.57, 0.23, 0.06))
+		draw_arc(sim.nest_pos, amber_r, 0.0, TAU, 80, Color("c4923a"), 1.6, true)
 
 
 func _draw_belt(sim) -> void:
@@ -163,11 +167,38 @@ func _draw_belt(sim) -> void:
 			draw_polyline(outline, Color("6a5c4a"), 1.0, true)
 
 
+func _draw_trash(sim) -> void:
+	for hull in sim.trash:
+		var pos: Vector2 = hull.pos
+		var rot := float(hull.rot)
+		var scale := float(hull.scale)
+		var xf := Transform2D(rot, pos)
+		var pts := PackedVector2Array()
+		match int(hull.kind):
+			0:
+				pts = PackedVector2Array([Vector2(18, 0), Vector2(-10, 4), Vector2(-14, 0), Vector2(-10, -4)])
+			1:
+				pts = PackedVector2Array([Vector2(12, 0), Vector2(8, 9), Vector2(-12, 8), Vector2(-14, -7), Vector2(6, -9)])
+			_:
+				pts = PackedVector2Array([Vector2(8, 6), Vector2(-16, 3), Vector2(-6, -2), Vector2(10, -7)])
+		var world := PackedVector2Array()
+		for point in pts:
+			world.append(xf * (point * scale))
+		draw_colored_polygon(world, Color("6e675c"))
+		world.append(world[0])
+		draw_polyline(world, Color("c2b49a"), 1.1, true)
+
+
 func _draw_star(sim) -> void:
 	var radius := float(sim.defs.system.star.radius)
-	draw_circle(Vector2.ZERO, radius * 2.1, Color(0.91, 0.70, 0.36, 0.08))
-	draw_circle(Vector2.ZERO, radius * 1.35, Color(0.91, 0.62, 0.28, 0.18))
-	draw_circle(Vector2.ZERO, radius, Color("f2d7a2"))
+	var core := Color(str(sim.defs.system.star.color))
+	var glow := core
+	glow.a = 0.08
+	var mid := core
+	mid.a = 0.18
+	draw_circle(Vector2.ZERO, radius * 2.1, glow)
+	draw_circle(Vector2.ZERO, radius * 1.35, mid)
+	draw_circle(Vector2.ZERO, radius, core)
 	draw_circle(Vector2.ZERO, radius * 0.42, Color("fff6e4"))
 
 
@@ -182,7 +213,9 @@ func _draw_planet(sim, body: Dictionary) -> void:
 		var a0: float = float(sim.time) * spin + float(i) * 1.35
 		draw_arc(pos, radius * (0.38 + float(i) * 0.13), a0, a0 + 1.35, 18, Color(colors[1]), 5.0, true)
 	if bool(body.ring):
-		draw_arc(pos, radius + 22.0, -0.4, PI + 0.4, 48, Color(colors[2]), 3.0, true)
+		var ice := Color("d5e4ee") if str(body.get("ring_kind", "")) == "ice" else Color(colors[2])
+		draw_arc(pos, radius + 36.0, 0.0, TAU, 72, ice, 2.4, true)
+		draw_arc(pos, radius + 50.0, 0.0, TAU, 72, Color("9eb4c4"), 1.3, true)
 	if bool(body.moon):
 		var moon: Vector2 = pos + Vector2.from_angle(sim.time * 0.35 + 0.6) * (radius + 42.0)
 		draw_circle(moon, 9.0, Color(colors[1]))
@@ -292,9 +325,15 @@ func _draw_names(sim, zoom: float) -> void:
 	_text(sim.defs.system.star.radius * Vector2(0, -1) + Vector2(-40, -28), str(sim.defs.system.star.name), 16, Color("f0c27a"))
 	for body in sim.planets:
 		_text(body.pos + Vector2(body.radius * 0.2, -body.radius - 18.0), str(body.name), 16, Color("e6d7bf"))
-	_text(sim.pocket_pos + Vector2(-70, -float(sim.defs.system.pocket.radius) - 16.0), "Hollow Latch", 15, Color("c5d2b4"))
-	if zoom < 0.4:
+	var pocket_name := str(sim.defs.system.pocket.name)
+	if not bool(sim.defs.system.pocket.get("plantable", false)):
+		pocket_name = "%s — closed" % pocket_name
+	_text(sim.pocket_pos + Vector2(-70, -float(sim.defs.system.pocket.radius) - 16.0), pocket_name, 15, Color("c5d2b4"))
+	if zoom < 0.4 and float(sim.defs.system.zones.amber.radius) > 1.0:
 		_text(sim.nest_pos + Vector2(-40, -float(sim.defs.system.zones.amber.radius) - 12.0), "The Slat — amber", 14, Color("c4923a"))
+	if zoom < 0.55 and sim.trash.size() > 0:
+		var pile: Vector2 = sim.trash[0].pos
+		_text(pile + Vector2(-30, -28), str(sim.defs.system.trash.name), 14, Color("c2b49a"))
 	var player_name := str(sim.defs.ships[sim.player.class_id].callsign)
 	_text(sim.player.pos + Vector2(18, 18), player_name, 14, Color("e6d7bf"))
 	if zoom > 0.22:
