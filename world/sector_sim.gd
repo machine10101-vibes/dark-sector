@@ -977,7 +977,7 @@ func _respawn_captain(unit: Dictionary) -> void:
 	if dock != null:
 		unit.pos = dock.pos + Vector2(float(dock.radius) + 560.0, 40.0)
 		unit.rot = (unit.pos - dock.pos).angle()
-	banner = "You wake at Helion Dock. The wreck still has your name, and some of the hold."
+	banner = "You wake at %s. The wreck still has your name, and some of the hold." % str(defs.system.name)
 	banner_t = 0.0
 	say("The keel broke. Layout kept. You are back on the dock.")
 

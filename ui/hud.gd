@@ -256,7 +256,7 @@ func _build_pause() -> void:
 func _build_dead() -> void:
 	dead_box = _center_card("The keel is a wreck")
 	dead_box.visible = false
-	var note := ThemeKit.label("The wreck keeps your name and some of the hold. The layout stays. You wake at Helion Dock.", 14)
+	var note := ThemeKit.label("The wreck keeps your name and some of the hold. The layout stays. You wake at the dock.", 14)
 	note.custom_minimum_size = Vector2(360, 0)
 	var load := ThemeKit.button("Read the log")
 	load.pressed.connect(_load)

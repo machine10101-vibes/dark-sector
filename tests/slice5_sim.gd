@@ -170,6 +170,15 @@ func _raid() -> void:
 	check(Homestead.resolve_raid(sim) == "core", "losing the core freezes the homestead")
 	check(bool(sim.claim.frozen) and not bool(sim.claim.core), "the core is gone and the claim is frozen")
 	check(bool(sim.player.alive) and str(sim.player.class_id) == "vesper", "the frozen claim still has its ship")
+	var broken := _planted("vesper")
+	broken.player.hp = 1.0
+	broken.damage_unit(broken.player, 80.0, "world")
+	var wound = broken.planet("green_wound")
+	check(bool(broken.player.alive) and str(broken.player.class_id) == "vesper", "a broken keel in First Soil is still the same ship")
+	check(bool(broken.claim.owned) and bool(broken.claim.core), "breaking the keel does not pack the claim")
+	check(broken.wrecks.size() == 1, "the break still leaves a wreck")
+	check("First Soil" in str(broken.banner), "the wake names the system you are in")
+	check(broken.player.pos.distance_to(wound.pos) > float(wound.radius), "you wake off the shard, not inside it")
 
 
 func _save() -> void:
