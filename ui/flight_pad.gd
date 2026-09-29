@@ -64,9 +64,10 @@ func _process(_delta: float) -> void:
 	var thrust := 0.0
 	var retro := 0.0
 	var rot := 0.0
-	if knob.length() > radius * 0.18:
+	if knob.length() > radius * 0.1:
 		var aim := knob / radius
-		rot = clampf(aim.x, -1.0, 1.0)
+		var x := clampf(aim.x, -1.0, 1.0)
+		rot = signf(x) * pow(absf(x), 1.4)
 		if aim.y < 0.0:
 			thrust = clampf(-aim.y, 0.0, 1.0)
 		else:

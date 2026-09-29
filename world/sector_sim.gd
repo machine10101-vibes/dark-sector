@@ -678,6 +678,12 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 	unit.thrusting = thrust > 0.0
 	if thrust > 0.0:
 		unit.vel += forward * float(stats.accel) * dt
+		var speed := float(unit.vel.length())
+		if speed > 12.0:
+			var slip := wrapf(forward.angle() - unit.vel.angle(), -PI, PI)
+			var grip := clampf(float(stats.turn) * 0.9, 0.45, 3.4)
+			var step := clampf(slip, -grip * dt, grip * dt)
+			unit.vel = Vector2.from_angle(unit.vel.angle() + step) * speed
 	if retro > 0.0:
 		unit.vel -= forward * float(stats.accel) * 0.62 * dt
 	if absf(strafe) > 0.0:

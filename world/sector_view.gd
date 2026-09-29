@@ -3,6 +3,7 @@ extends Node2D
 var cam: Camera2D
 var font: Font
 var snapped := false
+var helm_yaw := 0.0
 
 
 func _ready() -> void:
@@ -46,11 +47,11 @@ func _process(delta: float) -> void:
 		var link = Game.link
 		if link != null and str(link.role) == "client":
 			link.take_client(Game.sim)
-			link.send_cmd(str(Game.sim.player.get("player_id", "")), _cmd())
+			link.send_cmd(str(Game.sim.player.get("player_id", "")), _cmd(delta))
 		else:
 			if link != null and str(link.role) == "host":
 				link.take_host(Game.sim)
-			Game.sim.tick(delta, _cmd())
+			Game.sim.tick(delta, _cmd(delta))
 			if link != null and str(link.role) == "host":
 				link.broadcast(Game.sim)
 	var target: Vector2 = _chase_pos()
@@ -102,8 +103,9 @@ func _zoom(direction: float) -> void:
 	Game.zoom = clampf(z, 0.05, 1.55)
 
 
-func _cmd() -> Dictionary:
+func _cmd(delta: float) -> Dictionary:
 	if not Game.sim.player.alive:
+		helm_yaw = 0.0
 		return {}
 	var stick: Dictionary = Game.flight
 	var rot := 0.0
@@ -113,6 +115,8 @@ func _cmd() -> Dictionary:
 		rot += 1.0
 	if rot == 0.0:
 		rot = float(stick.get("rot", 0.0))
+	helm_yaw = move_toward(helm_yaw, rot, 8.5 * delta)
+	rot = helm_yaw
 	var strafe := 0.0
 	if Input.is_key_pressed(KEY_Q):
 		strafe -= 1.0

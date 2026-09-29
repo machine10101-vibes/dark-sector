@@ -339,6 +339,19 @@ void fragment() {
 }
 "
 
+const WAKE_SHADER := "shader_type spatial;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled;
+uniform vec4 albedo : source_color = vec4(0.62, 0.78, 0.9, 0.42);
+void fragment() {
+	float along = clamp(UV.x, 0.0, 1.0);
+	float across = 1.0 - abs(UV.y * 2.0 - 1.0);
+	float fade = (1.0 - along) * across;
+	ALBEDO = albedo.rgb * (0.55 + 0.45 * fade);
+	EMISSION = albedo.rgb * fade * 0.55;
+	ALPHA = albedo.a * fade;
+}
+"
+
 var _bodies: Dictionary = {}
 var _ships: Dictionary = {}
 var _craft: Dictionary = {}
@@ -364,7 +377,10 @@ var _ring_shader: Shader
 var _nebula_shader: Shader
 var _gate_shader: Shader
 var _rock_shader: Shader
+var _wake_shader: Shader
 var _fill: DirectionalLight3D
+var _beacon_light: OmniLight3D
+var _frame_delta := 0.016
 var _used: Dictionary = {}
 
 
@@ -381,6 +397,7 @@ func _ready() -> void:
 	_nebula_shader = _compile(NEBULA_SHADER)
 	_gate_shader = _compile(GATE_SHADER)
 	_rock_shader = _compile(ROCK_SHADER)
+	_wake_shader = _compile(WAKE_SHADER)
 	_build_grid()
 	_sun = DirectionalLight3D.new()
 	_sun.name = "Sun"
@@ -403,7 +420,8 @@ func _compile(code: String) -> Shader:
 	return shader
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_frame_delta = maxf(delta, 0.001)
 	if Game.sim == null or Game.mode != "sector":
 		return
 	_used.clear()
@@ -560,6 +578,15 @@ func _sync_props(sim) -> void:
 		lamp.material_override = glow
 		lamp.set_meta("built", "yes")
 	lamp.position = chart(sim.beacon_pos, 40.0)
+	if _beacon_light == null:
+		_beacon_light = OmniLight3D.new()
+		_beacon_light.name = "BeaconLight"
+		_beacon_light.light_color = Color(0.78, 0.92, 0.74)
+		_beacon_light.light_energy = 1.15
+		_beacon_light.omni_range = 90.0
+		_beacon_light.shadow_enabled = false
+		add_child(_beacon_light)
+	_beacon_light.position = chart(sim.beacon_pos, 38.0)
 	_tag("Dock beacon", chart(sim.beacon_pos, 52.0), Color("8aa896"), 13)
 	_sync_pocket(sim)
 	_sync_nebula()
@@ -1039,7 +1066,7 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 			elif part.begins_with("Trim"):
 				paint = accent
 			_paint_hull(child, paint)
-	holder.transform = _flat_xform(ship.pos, float(ship.rot), 2.0)
+	_banked(holder, ship.pos, float(ship.rot), 2.0)
 	var thrusting := bool(ship.get("thrusting", false))
 	var exhaust := holder.get_node_or_null("Exhaust") as MeshInstance3D
 	if exhaust != null:
@@ -1047,6 +1074,8 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 	var core := holder.get_node_or_null("ExhaustCore") as MeshInstance3D
 	if core != null:
 		core.visible = thrusting
+	_place_wake(holder, ship)
+	_place_jet_light(holder, thrusting)
 	var call := str(ship.get("name", hull.get("callsign", class_id)))
 	if key == "player":
 		call = str(hull.get("callsign", call))
@@ -1220,7 +1249,7 @@ func _sync_craft(sim) -> void:
 		index += 1
 		var kind := str(row.get("def_id", "fighter"))
 		var holder := _craft_holder(key, kind)
-		holder.transform = _flat_xform(pos, rot, 1.5)
+		_banked(holder, pos, rot, 1.5)
 		if Game.zoom > 0.9 and str(row.get("state", "")) != "docked":
 			_tag(str(row.get("name", kind)), chart(pos + Vector2(14.0, 10.0), 8.0), Color("d7e6c8"), 12)
 
@@ -1352,6 +1381,91 @@ func _hide_stale(pool: Dictionary) -> void:
 			kind = "prop"
 		if _used.has(kind + ":" + str(key)) == false:
 			(pool[key] as Node3D).visible = false
+
+
+func _banked(holder: Node3D, pos: Vector2, rot: float, height: float) -> void:
+	var prev := float(holder.get_meta("prev_rot", rot))
+	var dyaw := wrapf(rot - prev, -PI, PI)
+	holder.set_meta("prev_rot", rot)
+	var rate := dyaw / _frame_delta
+	var want := clampf(rate * 0.16, -0.42, 0.42)
+	var shown := float(holder.get_meta("bank", 0.0))
+	shown = move_toward(shown, want, 2.2 * _frame_delta)
+	holder.set_meta("bank", shown)
+	var xf := _flat_xform(pos, rot, height)
+	xf.basis = xf.basis * Basis(Vector3.RIGHT, shown)
+	holder.transform = xf
+
+
+func _place_wake(holder: Node3D, ship: Dictionary) -> void:
+	var wake := holder.get_node_or_null("Wake") as MeshInstance3D
+	if wake == null:
+		wake = MeshInstance3D.new()
+		wake.name = "Wake"
+		wake.mesh = _wake_mesh()
+		var mat := ShaderMaterial.new()
+		mat.shader = _wake_shader
+		mat.set_shader_parameter("albedo", Color(0.62, 0.78, 0.9, 0.4))
+		wake.material_override = mat
+		wake.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		holder.add_child(wake)
+	var vel: Vector2 = ship.get("vel", Vector2.ZERO)
+	var speed := vel.length()
+	if speed < 18.0:
+		wake.visible = false
+		return
+	var forward := Vector2.from_angle(float(ship.rot))
+	var right := Vector2(-forward.y, forward.x)
+	var local := Vector2(vel.dot(forward), vel.dot(right))
+	if local.length() < 1.0:
+		wake.visible = false
+		return
+	var trail := -local.normalized()
+	var reach := clampf(speed * 0.18, 16.0, 64.0)
+	var width := clampf(12.0 + speed * 0.02, 12.0, 20.0)
+	wake.visible = true
+	wake.position = Vector3(trail.x * 8.0, 0.7, trail.y * 8.0)
+	wake.basis = Basis(Vector3.UP, atan2(trail.y, -trail.x)).scaled(Vector3(reach, 1.0, width))
+
+
+func _place_jet_light(holder: Node3D, thrusting: bool) -> void:
+	var lamp := holder.get_node_or_null("JetLight") as OmniLight3D
+	if lamp == null:
+		lamp = OmniLight3D.new()
+		lamp.name = "JetLight"
+		lamp.light_color = Color(1.0, 0.58, 0.24)
+		lamp.light_energy = 0.85
+		lamp.omni_range = 38.0
+		lamp.shadow_enabled = false
+		var tail := float(holder.get_meta("tail", -20.0))
+		var crown := float(holder.get_meta("crown", 16.0))
+		lamp.position = Vector3(tail, crown * 0.42, 0.0)
+		holder.add_child(lamp)
+	lamp.visible = thrusting
+
+
+func _wake_mesh() -> ArrayMesh:
+	if _mesh_cache.has("wake"):
+		return _mesh_cache["wake"]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var root := 0.5
+	var tip := 0.06
+	st.set_uv(Vector2(0.0, 0.0))
+	st.add_vertex(Vector3(0.0, 0.0, root))
+	st.set_uv(Vector2(0.0, 1.0))
+	st.add_vertex(Vector3(0.0, 0.0, -root))
+	st.set_uv(Vector2(1.0, 0.85))
+	st.add_vertex(Vector3(-1.0, 0.0, -tip))
+	st.set_uv(Vector2(0.0, 0.0))
+	st.add_vertex(Vector3(0.0, 0.0, root))
+	st.set_uv(Vector2(1.0, 0.85))
+	st.add_vertex(Vector3(-1.0, 0.0, -tip))
+	st.set_uv(Vector2(1.0, 0.15))
+	st.add_vertex(Vector3(-1.0, 0.0, tip))
+	var mesh := st.commit()
+	_mesh_cache["wake"] = mesh
+	return mesh
 
 
 func _flat_xform(pos: Vector2, rot: float, height: float) -> Transform3D:
