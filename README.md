@@ -44,7 +44,9 @@ If the URL 404s, the repo still needs Pages pointed at the `gh-pages` branch, fo
 | Space | Gun |
 | Wheel, = / - | Zoom, tactical to sector |
 | 1 / 2 / 3 | Launch probe / harvester / boat |
-| B H D F J K | Bay, hangar, dossier, heat, quests, claim |
+| B H D F J K | Bay, hangar, dossier, heat, quests, homestead |
+
+Homestead (K), inside Hollow Latch: print a Claim Core from cinder-ore, plant it, raise the ash dome, sow ember kale, stock an ash hen and feed her kale. A stake turret wants keel salvage. If a Red Keel sits on an undefended core, the homestead freezes and the ship stays.
 | Hold, or Esc | Pause. Write or read the log from that card |
 | F5 / F9 | Write / read the log without pausing |
 

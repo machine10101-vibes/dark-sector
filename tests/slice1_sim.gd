@@ -12,6 +12,7 @@ func _init() -> void:
 		"system": Serde.load_json("res://data/system.json"),
 		"factions": Serde.load_json("res://data/factions.json"),
 		"quests": Serde.load_json("res://data/quests.json"),
+		"claim": Serde.load_json("res://data/claim.json"),
 	}
 	_geometry()
 	_keels()

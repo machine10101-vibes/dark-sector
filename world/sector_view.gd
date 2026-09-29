@@ -102,6 +102,7 @@ func _draw() -> void:
 	for body in sim.planets:
 		_draw_planet(sim, body)
 	_draw_pocket(sim)
+	_draw_homestead(sim)
 	for wreck in sim.wrecks:
 		_draw_wreck(wreck)
 	for shot in sim.projectiles:
@@ -203,6 +204,47 @@ func _draw_pocket(sim) -> void:
 		draw_line(p + Vector2(0, -10), p + Vector2(0, 10), Color("cbb892"), 2.0, true)
 	draw_line(sim.pocket_pos + Vector2(-14, 0), sim.pocket_pos + Vector2(14, 0), Color("cbb892"), 1.2, true)
 	draw_line(sim.pocket_pos + Vector2(0, -14), sim.pocket_pos + Vector2(0, 14), Color("cbb892"), 1.2, true)
+
+
+func _draw_homestead(sim) -> void:
+	var claim: Dictionary = sim.claim
+	if not bool(claim.get("owned", false)) and not bool(claim.get("core", false)):
+		return
+	var origin: Vector2 = sim.pocket_pos
+	var frozen := bool(claim.get("frozen", false))
+	var dome_col := Color("5c564c") if frozen else Color("9fd0c8")
+	if bool(claim.get("dome", false)):
+		draw_arc(origin, 78.0, 0.0, TAU, 40, dome_col, 2.2, true)
+		draw_line(origin + Vector2(-78, 0), origin + Vector2(78, 0), dome_col, 1.2, true)
+	if bool(claim.get("core", false)):
+		draw_circle(origin, 10.0, Color("e6d7bf"))
+	elif frozen:
+		draw_circle(origin, 8.0, Color("5a4038"))
+	var crop: Dictionary = claim.get("crop", {})
+	if str(crop.get("id", "")) != "":
+		var kale := Color("6a8f4e") if not bool(crop.get("ready", false)) else Color("d7e6c8")
+		if frozen:
+			kale = Color("3e4a38")
+		for i in 5:
+			var x := -28.0 + float(i) * 14.0
+			var h := 10.0 + float(i % 2) * 8.0
+			if bool(crop.get("ready", false)):
+				h = 22.0
+			draw_line(origin + Vector2(x, 18), origin + Vector2(x, 18 - h), kale, 2.0, true)
+	var animal: Dictionary = claim.get("animal", {})
+	if str(animal.get("id", "")) != "":
+		var hen := Color("d4724a") if bool(animal.get("alive", false)) else Color("3a3532")
+		if frozen and bool(animal.get("alive", false)):
+			hen = Color("8a7344")
+		draw_circle(origin + Vector2(36, -22), 7.0, hen)
+	var defense: Dictionary = claim.get("defense", {})
+	if bool(defense.get("online", false)):
+		var turret := Color("6d6558") if frozen else Color("cbb892")
+		var tip := origin + Vector2(0, -96)
+		draw_line(origin + Vector2(-16, -70), tip, turret, 2.0, true)
+		draw_line(origin + Vector2(16, -70), tip, turret, 2.0, true)
+	if frozen:
+		_text(origin + Vector2(-46, 96), "frozen stake", 14, Color("a08070"))
 
 
 func _draw_ship(sim, ship: Dictionary) -> void:
