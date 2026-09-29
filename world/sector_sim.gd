@@ -1,6 +1,10 @@
 class_name SectorSim
 extends RefCounted
 
+const BODY_SCALE := 3.4
+const ROCK_SCALE := 4.2
+const DOCK_GAP := 320.0
+
 var defs: Dictionary = {}
 var seed_value = 0
 var time = 0.0
@@ -16,6 +20,7 @@ var pocket_pos = Vector2.ZERO
 var gates: Array = []
 var nest_pos = Vector2.ZERO
 var beacon_pos = Vector2.ZERO
+var star_radius := 180.0
 var trash_pos = Vector2.ZERO
 var pack_pos = Vector2.ZERO
 var fined := false
@@ -78,7 +83,7 @@ func new_game(class_id: String) -> void:
 	var hull: Dictionary = defs.ships[class_id]
 	var fresh = _blank_ship(class_id, hull.callsign, "agent:captain", "human", "captain")
 	var dock = planet(str(defs.system.pdo.home))
-	fresh.pos = dock.pos + Vector2(float(dock.radius) + 560.0, 40.0)
+	fresh.pos = dock.pos + Vector2(float(dock.radius) + DOCK_GAP, 40.0)
 	fresh.rot = (fresh.pos - dock.pos).angle()
 	fresh.yard = hull.yard.duplicate()
 	fresh.slots = hull.slots.duplicate()
@@ -817,7 +822,7 @@ func _shot_reaches(origin: Vector2, dest: Vector2, center: Vector2, radius: floa
 func _bump_world(ship: Dictionary) -> void:
 	if not bool(ship.alive):
 		return
-	_bump_circle(ship, Vector2.ZERO, float(defs.system.star.radius), 16.0)
+	_bump_circle(ship, Vector2.ZERO, star_radius, 16.0)
 	for body in planets:
 		_bump_circle(ship, body.pos, float(body.radius) * 0.94, 9.0)
 
@@ -1135,7 +1140,7 @@ func _respawn_captain(unit: Dictionary) -> void:
 	if str(unit.agent_id) != str(player.agent_id):
 		nudge = 90.0
 	if dock != null:
-		unit.pos = dock.pos + Vector2(float(dock.radius) + 560.0, 40.0 + nudge)
+		unit.pos = dock.pos + Vector2(float(dock.radius) + DOCK_GAP, 40.0 + nudge)
 		unit.rot = (unit.pos - dock.pos).angle()
 	if str(unit.agent_id) == str(player.agent_id):
 		banner = "You wake at %s. The wreck still has your name, and some of the hold." % str(defs.system.name)
@@ -1150,6 +1155,72 @@ func _add_cargo(id: String, count: int) -> void:
 	player.cargo[id] = int(player.cargo.get(id, 0)) + count
 
 
+func _scale_sky() -> void:
+	var authored_star := float(defs.system.star.radius)
+	var inner_dist := 12000.0
+	var inner_radius := 0.0
+	for body in planets:
+		var row: Dictionary = body
+		var dist := float(row.distance)
+		var rad := float(row.radius)
+		if dist < inner_dist - 0.5:
+			inner_dist = dist
+			inner_radius = rad
+		elif absf(dist - inner_dist) <= 8.0:
+			inner_radius = maxf(inner_radius, rad)
+	var star_want := authored_star * BODY_SCALE
+	var star_room := inner_dist - inner_radius * BODY_SCALE - 220.0
+	if star_room < authored_star:
+		star_radius = authored_star
+	else:
+		star_radius = minf(star_want, star_room)
+	var pdo: Dictionary = defs.system.get("pdo", {})
+	var home := str(pdo.get("home", ""))
+	var pdo_n := int(pdo.get("count", 0))
+	var pdo_r := float(pdo.get("radius", 0.0))
+	var zones: Dictionary = defs.system.get("zones", {})
+	var green: Dictionary = zones.get("green", {})
+	var green_anchor := str(green.get("anchor", ""))
+	var green_reach := float(green.get("radius", 0.0))
+	var haul_limit := {}
+	for entry in defs.system.get("haulers", []):
+		var haul: Dictionary = entry
+		var hid := str(haul.get("home", ""))
+		var hr := float(haul.get("radius", 9000.0))
+		if haul_limit.has(hid) == false or hr < float(haul_limit[hid]):
+			haul_limit[hid] = hr
+	var gate_limit := {}
+	for entry in defs.system.get("gates", []):
+		var gate: Dictionary = entry
+		var gid := str(gate.get("anchor", ""))
+		if gid == "":
+			continue
+		var gd := float(gate.get("distance", 9000.0))
+		if gate_limit.has(gid) == false or gd < float(gate_limit[gid]):
+			gate_limit[gid] = gd
+	var pocket: Dictionary = defs.system.get("pocket", {})
+	var pocket_anchor := str(pocket.get("anchor", ""))
+	var pocket_gap := float(pocket.get("distance", 9000.0)) - float(pocket.get("radius", 0.0)) - 50.0
+	for body in planets:
+		var row: Dictionary = body
+		var authored := float(row.radius)
+		var bid := str(row.id)
+		var cap := authored * BODY_SCALE
+		var room := float(row.distance) - star_radius - 160.0
+		cap = minf(cap, maxf(authored, room))
+		if bid == home and pdo_n > 0 and pdo_r > 40.0:
+			cap = minf(cap, maxf(authored, pdo_r - 110.0))
+		if bid == green_anchor and green_reach > 80.0:
+			cap = minf(cap, maxf(authored, green_reach - DOCK_GAP - 90.0))
+		if haul_limit.has(bid):
+			cap = minf(cap, maxf(authored, float(haul_limit[bid]) - 90.0))
+		if gate_limit.has(bid):
+			cap = minf(cap, maxf(authored, float(gate_limit[bid]) - 140.0))
+		if bid == pocket_anchor and pocket_gap > authored:
+			cap = minf(cap, pocket_gap)
+		row.radius = maxf(authored, cap)
+
+
 func _build_static() -> void:
 	var rng = RandomNumberGenerator.new()
 	rng.seed = seed_value
@@ -1159,6 +1230,7 @@ func _build_static() -> void:
 		body.pos = Vector2.from_angle(float(body.angle)) * float(body.distance)
 		body.radius = float(body.radius)
 		planets.append(body)
+	_scale_sky()
 	var anchor = planet(str(defs.system.pocket.anchor))
 	pocket_pos = anchor.pos + Vector2.from_angle(float(defs.system.pocket.angle)) * float(defs.system.pocket.distance)
 	nest_pos = Vector2.from_angle(float(defs.system.nest.angle)) * float(defs.system.nest.distance)
@@ -1189,7 +1261,7 @@ func _build_static() -> void:
 		var ang = rng.randf() * TAU
 		var rad = float(belt.radius) + rng.randf_range(-float(belt.width), float(belt.width))
 		var center = Vector2.from_angle(ang) * rad
-		var size = rng.randf_range(7.0, 16.0) + float(i % 5) * 1.4
+		var size = (rng.randf_range(7.0, 16.0) + float(i % 5) * 1.4) * ROCK_SCALE
 		var rot = rng.randf() * TAU
 		var verts = PackedVector2Array()
 		var sides = 5 + (i + composition.length()) % 4
