@@ -6,6 +6,7 @@ const WATER_MAX := 8.0
 const STARVE := 14.0
 const RAID_EVERY := 48.0
 const PEN_MASS := 3
+const CRACK_NEED := 8.0
 
 
 static func normalize(sim) -> void:
@@ -36,11 +37,15 @@ static func step(sim, dt: float) -> void:
 	if float(sim.claim.raid_t) >= RAID_EVERY and not _miner_out(sim):
 		sim.claim.raid_t = 0.0
 		_summon(sim)
+	_step_crack(sim, dt)
 
 
 static func try_plant(sim) -> String:
 	if int(sim.player.cargo.get("claim_core", 0)) < 1:
 		return "No Claim Core in the hold."
+	var locked: Array = sim.claim.get("locked_out", [])
+	if locked.has(str(sim.player.agent_id)) and bool(sim.claim.get("owned", false)) and not bool(sim.claim.get("frozen", false)):
+		return "You are locked out of this homestead. Crack the core, or plant elsewhere."
 	if bool(sim.claim.get("owned", false)) and not bool(sim.claim.get("frozen", false)):
 		return "A core is already in the ground."
 	var blocked := _block_reason(sim)
@@ -69,6 +74,9 @@ static func try_make_core(sim) -> String:
 
 
 static func tend(sim) -> String:
+	var blocked := _owner_block(sim)
+	if blocked != "":
+		return blocked
 	if not _here(sim):
 		return "Tend the plot from inside the claim."
 	if bool(sim.claim.get("frozen", false)) or not bool(sim.claim.get("core", false)):
@@ -92,6 +100,9 @@ static func tend(sim) -> String:
 
 
 static func feed(sim) -> String:
+	var blocked := _owner_block(sim)
+	if blocked != "":
+		return blocked
 	if not bool(sim.claim.get("owned", false)) or bool(sim.claim.get("frozen", false)):
 		return "No living pen on a claim of yours."
 	var pen: Dictionary = sim.claim.pen
@@ -113,6 +124,9 @@ static func feed(sim) -> String:
 
 
 static func haul(sim) -> String:
+	var blocked := _owner_block(sim)
+	if blocked != "":
+		return blocked
 	if not bool(sim.claim.get("owned", false)):
 		return "No homestead to take a kine from."
 	var pen: Dictionary = sim.claim.pen
@@ -133,6 +147,9 @@ static func haul(sim) -> String:
 
 
 static func toggle_turret(sim) -> String:
+	var blocked := _owner_block(sim)
+	if blocked != "":
+		return blocked
 	if not _here(sim) or bool(sim.claim.get("frozen", false)):
 		return "Park the turret inside a living claim."
 	sim.claim.turret = not bool(sim.claim.get("turret", false))
@@ -204,9 +221,17 @@ static func text(sim) -> String:
 	elif bool(pen.get("alive", false)):
 		animal = "aboard" if bool(pen.get("aboard", false)) else "in the pen"
 	var turret := "parked" if bool(sim.claim.get("turret", false)) else "aboard"
-	return "Claim %s (%s).\nDome %s (%d).\nGlasswheat %s. Age %.0f. Water %.0f.\nHold-kine %s. Hunger %.0f. Milk %.0f. Fodder %d.\nCrate food %d.\nTurret %s.\nG tend  N feed  U load the kine  T turret.\nA raid comes if the pocket is empty and the gun is aboard." % [
+	var crack: Dictionary = sim.claim.get("crack", {})
+	var crack_line := "Core quiet."
+	if bool(crack.get("active", false)):
+		crack_line = "CORE CRACK %.0f / %.0f. Loud on the chart." % [float(crack.get("t", 0.0)), CRACK_NEED]
+	var owner := str(sim.claim.get("owner_name", sim.claim.get("agent_id", "")))
+	return "Claim %s (%s).\nSlot %s. Owner %s.\n%s\nDome %s (%d).\nGlasswheat %s. Age %.0f. Water %.0f.\nHold-kine %s. Hunger %.0f. Milk %.0f. Fodder %d.\nCrate food %d.\nTurret %s.\nG tend  N feed  U load the kine  T turret.\nV cracks a core you do not own. X hails if you have standing and you are not in the red.\nA raid comes if the pocket is empty and the gun is aboard." % [
 		where,
 		sys,
+		str(sim.claim.get("slot_id", "")),
+		owner,
+		crack_line,
 		dome,
 		int(sim.claim.get("dome_hp", 0)),
 		str(plot.get("state", "empty")),
@@ -232,15 +257,129 @@ static func _block_reason(sim) -> String:
 	return ""
 
 
+static func try_crack(sim, unit: Dictionary = {}) -> String:
+	if unit.is_empty():
+		unit = sim.player
+	if not bool(sim.claim.get("owned", false)) or bool(sim.claim.get("frozen", false)) or not bool(sim.claim.get("core", false)):
+		return "No living core to crack."
+	if str(sim.claim.get("system_id", "")) != str(sim.defs.system.id):
+		return "The core is in another system."
+	if str(unit.get("agent_id", "")) == str(sim.claim.get("agent_id", "")):
+		return "The core is already yours."
+	if not _unit_in_pocket(sim, unit):
+		return "Crack the core from inside the pocket."
+	var crack: Dictionary = sim.claim.get("crack", {})
+	if bool(crack.get("active", false)) and str(crack.get("agent_id", "")) == str(unit.get("agent_id", "")):
+		return "The crack is already loud."
+	sim.claim.crack = {"active": true, "agent_id": str(unit.agent_id), "t": 0.0}
+	sim.claim.flare = true
+	sim.say("%s starts cracking the core. The beacon flares." % str(unit.name))
+	sim.sfx("hail")
+	return ""
+
+
+static func try_hail(sim, unit: Dictionary = {}) -> String:
+	if unit.is_empty():
+		unit = sim.player
+	var crack: Dictionary = sim.claim.get("crack", {})
+	if not bool(crack.get("active", false)):
+		return "No one is cracking the core."
+	if str(unit.get("agent_id", "")) != str(sim.claim.get("agent_id", "")):
+		return "Only the owner can hail."
+	if Law.at(sim, unit.pos) == "red":
+		return "No Compact hail in the red."
+	var standing := int(sim.quest_flags.get("compact_standing", 0))
+	if standing < 1:
+		return "A Compact or Charter hail wants standing."
+	sim.quest_flags.compact_standing = standing - 1
+	abort_crack(sim, "hail")
+	if str(unit.get("class_id", "")) == "anvil":
+		sim.say("A Charter-adjacent factor sends the hail with the Compact slate.")
+	return ""
+
+
+static func abort_crack(sim, why: String) -> bool:
+	var crack: Dictionary = sim.claim.get("crack", {})
+	if not bool(crack.get("active", false)):
+		return false
+	sim.claim.crack = {"active": false, "agent_id": "", "t": 0.0}
+	sim.claim.flare = false
+	if why == "recall":
+		sim.say("Craft recalled. The crack stops.")
+	elif why == "shot":
+		sim.say("The owner fires. The crack stops.")
+	elif why == "hail":
+		sim.say("The hail is paid. The crack stops.")
+	elif why == "leave":
+		sim.say("The crack loses the pocket.")
+	return true
+
+
+static func _step_crack(sim, dt: float) -> void:
+	var crack: Dictionary = sim.claim.get("crack", {})
+	if not bool(crack.get("active", false)):
+		sim.claim.flare = false
+		return
+	var unit = sim.human_by_agent(str(crack.get("agent_id", "")))
+	if unit == null or not bool(unit.get("alive", false)) or not _unit_in_pocket(sim, unit):
+		abort_crack(sim, "leave")
+		return
+	crack.t = float(crack.get("t", 0.0)) + dt
+	sim.claim.crack = crack
+	sim.claim.flare = true
+	if float(crack.t) < CRACK_NEED:
+		return
+	_transfer(sim, unit)
+
+
+static func _transfer(sim, unit: Dictionary) -> void:
+	var prev := str(sim.claim.get("agent_id", ""))
+	var locked: Array = sim.claim.get("locked_out", [])
+	if prev != "" and not locked.has(prev):
+		locked.append(prev)
+	var nid := str(unit.get("agent_id", ""))
+	locked.erase(nid)
+	sim.claim.locked_out = locked
+	sim.claim.agent_id = nid
+	sim.claim.owner_name = str(unit.get("name", nid))
+	sim.claim.crack = {"active": false, "agent_id": "", "t": 0.0}
+	sim.claim.flare = false
+	sim.say("The core changes hands. The dome, the plot, and the kine stay. The loser is locked out. The keel was not taken.")
+	sim.sfx("install")
+
+
+static func _unit_in_pocket(sim, unit: Dictionary) -> bool:
+	if str(sim.claim.get("system_id", "")) != str(sim.defs.system.id):
+		return false
+	var reach := float(sim.defs.system.pocket.get("radius", 0.0))
+	return unit.pos.distance_to(sim.pocket_pos) <= reach
+
+
+static func _owner_block(sim) -> String:
+	if not bool(sim.claim.get("owned", false)):
+		return ""
+	var locked: Array = sim.claim.get("locked_out", [])
+	if locked.has(str(sim.player.agent_id)):
+		return "You are locked out until you recapture the core or plant elsewhere."
+	if str(sim.claim.get("agent_id", "")) != str(sim.player.agent_id):
+		return "The homestead answers to someone else."
+	return ""
+
+
 static func _anchor(sim) -> void:
 	var pocket: Dictionary = sim.defs.system.pocket
 	sim.claim.owned = true
 	sim.claim.frozen = false
 	sim.claim.core = true
 	sim.claim.agent_id = str(sim.player.agent_id)
+	sim.claim.owner_name = str(sim.player.name)
 	sim.claim.system_id = str(sim.defs.system.id)
 	sim.claim.pocket_id = str(pocket.id)
+	sim.claim.slot_id = "%s:%s:%s" % [str(sim.defs.system.id), str(pocket.get("anchor", "")), str(pocket.id)]
 	sim.claim.pocket_name = str(pocket.name)
+	sim.claim.locked_out = []
+	sim.claim.crack = {"active": false, "agent_id": "", "t": 0.0}
+	sim.claim.flare = false
 	sim.claim.plantable = true
 	sim.claim.x = sim.player.pos.x
 	sim.claim.y = sim.player.pos.y

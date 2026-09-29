@@ -2,6 +2,8 @@ extends Node
 
 var defs: Dictionary = {}
 var sim: SectorSim
+var link: ListenLink
+var verbs: Dictionary = {}
 var mode := "menu"
 var paused := false
 var zoom := 0.9
@@ -33,6 +35,7 @@ func has_save() -> bool:
 
 
 func begin_new(class_id: String) -> void:
+	_drop_link()
 	sim = SectorSim.new(defs)
 	sim.new_game(class_id)
 	zoom = 0.9
@@ -40,9 +43,52 @@ func begin_new(class_id: String) -> void:
 	mode = "sector"
 
 
+func begin_host(class_id: String) -> String:
+	begin_new(class_id)
+	link = ListenLink.new()
+	var err := link.open_host()
+	if err != "":
+		link = null
+		return err
+	sim.say("Host is up on port %s. Helion Dock and First Soil are on this board. A second captain joins with that code." % link.code)
+	return ""
+
+
+func begin_join(class_id: String, address: String) -> String:
+	begin_new(class_id)
+	link = ListenLink.new()
+	var who := "captain-%d" % int(Time.get_unix_time_from_system())
+	sim.player.player_id = who
+	var err := link.join(address, class_id, who)
+	if err != "":
+		link = null
+		return err
+	sim.say("Joining %s. The host keeps the world." % address)
+	return ""
+
+
+func tap(action: String, value = true) -> void:
+	verbs[action] = value
+
+
+func take_verbs() -> Dictionary:
+	var out := verbs.duplicate()
+	verbs = {}
+	return out
+
+
+func _drop_link() -> void:
+	if link != null:
+		link.close()
+	link = null
+	verbs = {}
+
+
 func write_save() -> String:
 	if sim == null:
 		return "Nothing to write."
+	if link != null and str(link.role) == "client":
+		return "The host keeps the log."
 	var data: Dictionary = sim.to_dict()
 	data["camera_zoom"] = zoom
 	var file := FileAccess.open(save_path(), FileAccess.WRITE)
@@ -76,5 +122,6 @@ func try_load() -> String:
 
 
 func abandon() -> void:
+	_drop_link()
 	paused = false
 	mode = "menu"

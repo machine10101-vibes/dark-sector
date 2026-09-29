@@ -12,6 +12,8 @@ func _ready() -> void:
 	menu = preload("res://ui/menu.gd").new()
 	add_child(menu)
 	menu.start_game.connect(_on_start)
+	menu.host_game.connect(_on_host)
+	menu.join_game.connect(_on_join)
 	menu.continue_game.connect(_on_continue)
 	menu.quit_game.connect(_on_quit)
 
@@ -31,6 +33,22 @@ func _process(_delta: float) -> void:
 
 func _on_start(class_id: String) -> void:
 	Game.begin_new(class_id)
+	_enter_sector()
+
+
+func _on_host(class_id: String) -> void:
+	var err := Game.begin_host(class_id)
+	if err != "":
+		menu.set_note(err)
+		return
+	_enter_sector()
+
+
+func _on_join(class_id: String, address: String) -> void:
+	var err := Game.begin_join(class_id, address)
+	if err != "":
+		menu.set_note(err)
+		return
 	_enter_sector()
 
 

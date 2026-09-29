@@ -1,12 +1,17 @@
 extends CanvasLayer
 
 signal start_game(class_id: String)
+signal host_game(class_id: String)
+signal join_game(class_id: String, address: String)
 signal continue_game
 signal quit_game
 
 var root_box: VBoxContainer
 var select_box: Control
 var continue_button: Button
+var address_line: LineEdit
+var note: Label
+var intent := "offline"
 
 
 var backdrop: Control
@@ -33,13 +38,26 @@ func _ready() -> void:
 	root_box.add_child(ThemeKit.label(sky, 16, Color("8a7344")))
 	root_box.add_child(ThemeKit.label("One keel. The dock is a place, not a menu.", 14, Color("b7ab96")))
 	var new_game := ThemeKit.button("New keel")
-	new_game.pressed.connect(func(): _show_select())
+	new_game.pressed.connect(func(): _show_select("offline"))
+	var host := ThemeKit.button("Host the dock")
+	host.pressed.connect(func(): _show_select("host"))
+	address_line = LineEdit.new()
+	address_line.placeholder_text = "IP or code, 127.0.0.1:24565"
+	address_line.text = "127.0.0.1:24565"
+	address_line.custom_minimum_size = Vector2(480, 32)
+	var join := ThemeKit.button("Join a dock")
+	join.pressed.connect(func(): _show_select("join"))
 	continue_button = ThemeKit.button("Continue log")
 	continue_button.pressed.connect(func(): continue_game.emit())
 	var quit := ThemeKit.button("Leave")
 	quit.pressed.connect(func(): quit_game.emit())
 	root_box.add_child(new_game)
+	root_box.add_child(host)
+	root_box.add_child(address_line)
+	root_box.add_child(join)
 	root_box.add_child(continue_button)
+	note = ThemeKit.label("", 13, Color("c4512c"))
+	root_box.add_child(note)
 	if not OS.has_feature("web"):
 		root_box.add_child(quit)
 	select_box = VBoxContainer.new()
@@ -69,8 +87,8 @@ func _fit() -> void:
 	backdrop.size = screen
 	root.position = Vector2.ZERO
 	root.size = screen
-	root_box.position = Vector2((screen.x - 520.0) * 0.5, (screen.y - 340.0) * 0.5)
-	root_box.size = Vector2(520, 340)
+	root_box.position = Vector2((screen.x - 520.0) * 0.5, (screen.y - 520.0) * 0.5)
+	root_box.size = Vector2(520, 520)
 	select_box.position = Vector2(28, 18)
 	select_box.size = screen - Vector2(56, 32)
 	backdrop.queue_redraw()
@@ -89,13 +107,24 @@ func _show_root() -> void:
 	continue_button.text = "Continue log" if has else "No log on the slate"
 
 
-func _show_select() -> void:
+func _show_select(next: String) -> void:
+	intent = next
 	root_box.hide()
 	select_box.show()
 
 
 func _choose(class_id: String) -> void:
-	start_game.emit(class_id)
+	if intent == "host":
+		host_game.emit(class_id)
+	elif intent == "join":
+		join_game.emit(class_id, address_line.text)
+	else:
+		start_game.emit(class_id)
+
+
+func set_note(text: String) -> void:
+	if note != null:
+		note.text = text
 
 
 func _card(class_id: String) -> PanelContainer:

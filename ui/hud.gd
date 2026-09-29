@@ -26,6 +26,8 @@ var bay_detail: Label
 var bay_buttons: Dictionary = {}
 var dossier_timer := 0.0
 var hold_button: Button
+var chat_line: LineEdit
+var chat_open := false
 
 
 func _ready() -> void:
@@ -39,7 +41,7 @@ func _ready() -> void:
 	_build_pause()
 	_build_dead()
 	var hint := ThemeKit.label(
-		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   R repair   L lane   C core   K claim     1 probe   2 harvest   B bay   H hangar   D dossier   F heat   J quests   Y mark   O contract     Hold / Esc pause   F5 save   F9 load",
+		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   R repair   L lane   C core   V crack   X hail   Z flag   K claim     1 probe   2 harvest   B bay   H hangar   D dossier   F heat   J quests   Y mark   O contract   Enter chat",
 		12,
 		Color("8d826c")
 	)
@@ -47,6 +49,13 @@ func _ready() -> void:
 	hint.size = Vector2(1240, 22)
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(hint)
+	chat_line = LineEdit.new()
+	chat_line.placeholder_text = "Local channel"
+	chat_line.visible = false
+	chat_line.position = Vector2(16, 656)
+	chat_line.size = Vector2(520, 28)
+	chat_line.text_submitted.connect(_submit_chat)
+	root.add_child(chat_line)
 	hold_button = ThemeKit.button("Hold")
 	hold_button.pressed.connect(_toggle_pause)
 	root.add_child(hold_button)
@@ -115,6 +124,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if Game.mode != "sector" or not (event is InputEventKey) or not event.pressed or event.echo:
 		return
 	var key: Key = (event as InputEventKey).keycode
+	if chat_open:
+		if key == KEY_ESCAPE:
+			_close_chat()
+			get_viewport().set_input_as_handled()
+		return
 	if key == KEY_ESCAPE:
 		if panel_kind != "":
 			_close_panel()
@@ -165,6 +179,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			_say_result(Homestead.fit_pen(Game.sim))
 		KEY_T:
 			_say_result(Homestead.toggle_turret(Game.sim))
+		KEY_V:
+			Game.tap("crack", true)
+		KEY_X:
+			Game.tap("hail", true)
+		KEY_Z:
+			Game.tap("flag", true)
+		KEY_ENTER, KEY_KP_ENTER:
+			_toggle_chat()
 		KEY_F5:
 			_save()
 		KEY_F9:
@@ -305,6 +327,13 @@ func _refresh_helm() -> void:
 		keel,
 		zoom_word,
 	]
+	var law_name := Law.at(sim, sim.player.pos)
+	helm_zone.add_theme_color_override("font_color", Law.color_of(law_name))
+	var link_word := ""
+	if Game.link != null and str(Game.link.role) == "host":
+		link_word = "    HOST %s" % str(Game.link.code)
+	elif Game.link != null and str(Game.link.role) == "client":
+		link_word = "    GUEST"
 	var heat := float(sim.heat.get(sim._pdo_id(), 0.0))
 	var stage := sim.heat_stage()
 	var stage_word := ""
@@ -314,7 +343,7 @@ func _refresh_helm() -> void:
 		stage_word = " — fined"
 	elif stage == "guns":
 		stage_word = " — guns"
-	helm_zone.text = "%s    %s heat %s (%.0f)%s" % [sim.zone_label(zone), sim._pdo_name(), HeatWords.word(heat), heat, stage_word]
+	helm_zone.text = "%s%s    %s heat %s (%.0f)%s" % [Law.hud_line(sim, sim.player.pos), link_word, sim._pdo_name(), HeatWords.word(heat), heat, stage_word]
 	var repair := ""
 	if sim.player.pos.distance_to(sim.beacon_pos) <= 170.0:
 		repair = "    R welds at the dock beacon"
@@ -397,6 +426,33 @@ func _toggle(kind: String) -> void:
 func _close_panel() -> void:
 	panel_kind = ""
 	panel.hide()
+
+
+func _toggle_chat() -> void:
+	chat_open = not chat_open
+	chat_line.visible = chat_open
+	if chat_open:
+		chat_line.grab_focus()
+	else:
+		chat_line.release_focus()
+
+
+func _close_chat() -> void:
+	chat_open = false
+	chat_line.visible = false
+	chat_line.release_focus()
+
+
+func _submit_chat(text: String) -> void:
+	_close_chat()
+	var line := text.strip_edges()
+	chat_line.text = ""
+	if line == "" or Game.sim == null:
+		return
+	if Game.link != null and str(Game.link.role) == "client":
+		Game.link.send_chat(str(Game.sim.player.get("player_id", "")), line)
+		return
+	Game.sim.post_chat(str(Game.sim.player.get("player_id", "")), line)
 
 
 func _toggle_pause() -> void:

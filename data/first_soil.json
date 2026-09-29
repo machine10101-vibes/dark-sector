@@ -95,6 +95,17 @@
     "green": { "anchor": "green_wound", "radius": 0 },
     "amber": { "anchor": "nest", "radius": 0 }
   },
+  "law": {
+    "red": {
+      "id": "perimeter_road",
+      "name": "Perimeter",
+      "atlas": "HC-V1-R5-S6",
+      "anchor": "green_wound",
+      "angle": 2.15,
+      "distance": 3900,
+      "radius": 640
+    }
+  },
   "pdo": {
     "faction": "helion_compact",
     "count": 0,
