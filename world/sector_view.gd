@@ -104,6 +104,7 @@ func _draw() -> void:
 	var center: Vector2 = cam.position
 	var view := Rect2(center - half, half * 2.0)
 	draw_rect(view.grow(8.0), Color("07080c"), true)
+	_draw_nebula()
 	_draw_grid(view, z)
 	for star in sim.stars:
 		var pos: Vector2 = star.pos
@@ -164,6 +165,13 @@ func _draw() -> void:
 		_draw_velocity(sim.player)
 	_draw_scale(center, half, z)
 	_draw_names(sim, z)
+
+
+func _draw_nebula() -> void:
+	draw_circle(Vector2(-2400, -1600), 1800.0, Color(0.1, 0.14, 0.2, 0.32))
+	draw_circle(Vector2(2800, 500), 1600.0, Color(0.18, 0.1, 0.07, 0.18))
+	draw_circle(Vector2(-500, 3000), 1300.0, Color(0.07, 0.12, 0.13, 0.16))
+	draw_circle(Vector2(1100, -2400), 800.0, Color(0.16, 0.13, 0.08, 0.1))
 
 
 func _draw_grid(view: Rect2, zoom: float) -> void:
@@ -235,6 +243,12 @@ func _draw_belt(sim) -> void:
 		var outline := verts.duplicate()
 		outline.append(verts[0])
 		draw_polyline(outline, tint.lightened(0.12), 1.0, true)
+		var span := 0.0
+		for point in verts:
+			span = maxf(span, point.distance_to(center))
+		if span > 6.0:
+			draw_circle(center - lit * span * 0.28, span * 0.22, tint.darkened(0.4))
+			draw_circle(center + lit * span * 0.35, span * 0.12, tint.lightened(0.22))
 
 
 func _draw_meteors(sim) -> void:
@@ -246,9 +260,11 @@ func _draw_meteors(sim) -> void:
 		var tail := pos + back * (18.0 + size * 2.0)
 		draw_line(pos, tail, Color(0.78, 0.42, 0.22, 0.35), size * 0.7, true)
 		draw_line(pos, pos + back * 10.0, Color("e7b15a"), 1.4, true)
+		draw_circle(pos, size * 2.2, Color(0.85, 0.4, 0.16, 0.12))
 		draw_circle(pos, size * 1.6, Color(0.85, 0.4, 0.16, 0.28))
-		draw_circle(pos, size, Color("c46a3a"))
-		draw_circle(pos, size * 0.45, Color("fff0d2"))
+		draw_circle(pos, size, Color("8a3c22"))
+		draw_circle(pos - back * size * 0.25, size * 0.72, Color("c46a3a"))
+		draw_circle(pos - back * size * 0.45, size * 0.28, Color("fff0d2"))
 
 
 func _draw_trash(sim) -> void:
@@ -292,6 +308,10 @@ func _draw_star(sim) -> void:
 	draw_circle(Vector2.ZERO, radius, core.darkened(0.08))
 	draw_circle(Vector2.ZERO, radius * 0.62, core.lightened(0.18))
 	draw_circle(Vector2.ZERO, radius * 0.28, Color("fff8ee"))
+	for grain in 8:
+		var spot := Vector2.from_angle(float(grain) * 0.85 + 0.4) * radius * (0.22 + float(grain % 3) * 0.08)
+		var fleck := core.lightened(0.06) if grain % 2 == 0 else core.darkened(0.16)
+		draw_circle(spot, radius * 0.09, fleck)
 	draw_arc(Vector2.ZERO, radius * 0.94, 0.0, TAU, 72, core.darkened(0.35), radius * 0.1, true)
 
 
@@ -333,17 +353,23 @@ func _draw_planet(sim, body: Dictionary) -> void:
 	draw_circle(pos + lit * radius * 0.48, maxf(2.0, radius * 0.09), Color(1, 1, 1, 0.22))
 	if bool(body.ring):
 		var ice := Color("d5e4ee") if str(body.get("ring_kind", "")) == "ice" else Color(colors[2])
-		var shadow_arc := ice.darkened(0.45)
-		shadow_arc.a = 0.85
-		draw_arc(pos, radius + 28.0, 0.0, TAU, 80, ice.darkened(0.25), 1.1, true)
-		draw_arc(pos, radius + 36.0, 0.0, TAU, 80, ice, 2.8, true)
-		draw_arc(pos, radius + 44.0, 0.2, PI + 0.2, 40, shadow_arc, 2.2, true)
-		draw_arc(pos, radius + 50.0, 0.0, TAU, 80, Color("9eb4c4"), 1.3, true)
+		draw_arc(pos, radius + 26.0, 0.0, TAU, 64, ice.darkened(0.35), 1.0, true)
+		for seg in 24:
+			var a0 := float(seg) * TAU / 24.0
+			var facing := clampf(Vector2.from_angle(a0 + 0.13).dot(lit) * 0.5 + 0.5, 0.12, 1.0)
+			var band := ice.darkened(0.5).lerp(ice.lightened(0.2), facing)
+			band.a = 0.45 + facing * 0.5
+			draw_arc(pos, radius + 36.0, a0, a0 + 0.22, 4, band, 2.4 + facing * 1.2, true)
+			draw_arc(pos, radius + 48.0, a0 + 0.04, a0 + 0.2, 3, band.darkened(0.15), 1.0, true)
+		draw_arc(pos, radius + 54.0, 0.0, TAU, 64, Color("9eb4c4"), 0.8, true)
 	if bool(body.moon):
 		var moon: Vector2 = pos + Vector2.from_angle(sim.time * 0.35 + 0.6) * (radius + 42.0)
 		var moon_col := Color(colors[1])
-		draw_circle(moon, 9.0, moon_col.darkened(0.35))
-		draw_circle(moon + lit * 2.4, 6.2, moon_col)
+		draw_circle(moon, 9.0, moon_col.darkened(0.5))
+		draw_circle(moon + lit * 2.2, 6.4, moon_col.darkened(0.08))
+		draw_circle(moon + lit * 3.4, 2.2, moon_col.lightened(0.2))
+		draw_circle(moon - lit * 2.0, 1.8, moon_col.darkened(0.55))
+		draw_circle(moon + Vector2(1.5, -2.0), 1.1, moon_col.darkened(0.4))
 	if bool(body.junk):
 		for k in 6:
 			var ang := float(k) * 1.05 + float(body.angle)
@@ -376,7 +402,11 @@ func _draw_gates(sim) -> void:
 			buoy = Color("a85a4a")
 		var wash := buoy
 		wash.a = 0.08
+		var halo := buoy
+		halo.a = 0.035
+		draw_circle(pos, radius * 1.22, halo)
 		draw_circle(pos, radius, wash)
+		draw_circle(pos, radius * 0.35, Color(buoy.r, buoy.g, buoy.b, 0.12))
 		draw_arc(pos, radius, 0.0, TAU, 48, buoy, 1.8, true)
 		draw_arc(pos, radius * 0.72, 0.0, TAU, 36, buoy.lightened(0.15), 1.0, true)
 		draw_arc(pos, radius * 0.55, 0.0, TAU, 32, Color("f0e2b0"), 1.2, true)
