@@ -34,6 +34,7 @@ uniform vec4 land : source_color = vec4(0.55, 0.58, 0.52, 1.0);
 uniform vec3 to_star = vec3(1.0, 0.05, 0.0);
 uniform float city = 0.0;
 uniform float seed = 0.0;
+uniform float spin = 0.0;
 " + _NOISE + "void vertex() {
 	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -64,6 +65,10 @@ void fragment() {
 		float dots = step(0.8, noise3(n * 24.0 + vec3(seed)));
 		lamps = dots * cluster * clamp(-ndl + 0.08, 0.0, 1.0) * land_w;
 	}
+	float shore = 1.0 - smoothstep(0.0, 0.05, abs(field - 0.51));
+	col += vec3(0.82, 0.88, 0.84) * shore * day * 0.45;
+	float cloud_shade = smoothstep(0.48, 0.72, fbm(n * 3.6 + vec3(seed, spin, 0.6)));
+	col *= 1.0 - cloud_shade * day * 0.34;
 	vec3 glow = vec3(1.0, 0.74, 0.38) * lamps * 2.4;
 	float rim = pow(clamp(1.0 - max(dot(n, eye), 0.0), 0.0, 1.0), 2.8);
 	col += albedo.rgb * rim * 0.16 + glow;
@@ -158,10 +163,14 @@ void fragment() {
 const HULL_SHADER := "shader_type spatial;
 varying vec3 local_pos;
 varying vec3 local_nrm;
+varying vec3 wnorm;
+varying vec3 wpos;
 uniform vec4 albedo : source_color = vec4(0.5, 0.55, 0.58, 1.0);
 void vertex() {
 	local_pos = VERTEX;
 	local_nrm = NORMAL;
+	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
 	vec3 n = normalize(local_nrm);
@@ -169,13 +178,18 @@ void fragment() {
 	float seam_z = smoothstep(0.42, 0.5, abs(fract(local_pos.z * 0.2) - 0.5));
 	float seam = max(seam_x, seam_z);
 	float deck = clamp(n.y, 0.0, 1.0);
-	vec3 col = albedo.rgb * (0.62 + 0.48 * deck);
-	col = mix(col, col * 0.32, seam * 0.9);
+	vec3 col = albedo.rgb * (0.55 + 0.55 * deck);
+	col = mix(col, col * 0.28, seam * 0.9);
 	float stripe = smoothstep(1.15, 0.0, abs(local_pos.z));
-	col = mix(col, col * 1.18, stripe * deck * 0.4);
+	col = mix(col, col * 1.16, stripe * deck * 0.45);
+	float grit = fract(sin(dot(local_pos.xz, vec2(17.1, 9.4))) * 43758.5);
+	col *= 0.9 + 0.1 * grit;
+	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
+	float spec = pow(clamp(dot(normalize(wnorm), normalize(vec3(0.15, 1.0, 0.05) + eye)), 0.0, 1.0), 24.0);
+	col += vec3(0.75, 0.82, 0.9) * spec * deck * (1.0 - seam) * 0.55;
 	ALBEDO = col;
-	METALLIC = 0.74;
-	ROUGHNESS = mix(0.26, 0.68, seam);
+	METALLIC = 0.78;
+	ROUGHNESS = mix(0.22, 0.72, seam);
 }
 "
 
@@ -205,8 +219,8 @@ render_mode blend_mix, unshaded, cull_disabled, depth_draw_never;
 uniform vec4 albedo : source_color = vec4(1.0, 0.7, 0.3, 0.8);
 uniform float core = 0.0;
 void fragment() {
-	float along = clamp(UV.y, 0.0, 1.0);
-	float fade = smoothstep(0.0, 0.08, along) * (1.0 - smoothstep(0.45, 1.0, along));
+	float along = clamp(UV.x, 0.0, 1.0);
+	float fade = (1.0 - smoothstep(0.12, 1.0, along));
 	vec3 hot = mix(albedo.rgb, vec3(1.0, 0.97, 0.9), core * (1.0 - along));
 	ALBEDO = hot;
 	EMISSION = hot * (1.2 + core);
@@ -326,7 +340,9 @@ var _mesh_cache: Dictionary = {}
 var tags: Array = []
 var _star_mesh: MeshInstance3D
 var _star_glow: MeshInstance3D
+var _star_far: MeshInstance3D
 var _sky: MultiMeshInstance3D
+var _band: MultiMeshInstance3D
 var _grid: MeshInstance3D
 var _sun: DirectionalLight3D
 var _planet_shader: Shader
@@ -368,7 +384,7 @@ func _ready() -> void:
 	_fill = DirectionalLight3D.new()
 	_fill.name = "Fill"
 	_fill.light_color = Color(0.72, 0.8, 0.95)
-	_fill.light_energy = 0.42
+	_fill.light_energy = 0.58
 	_fill.shadow_enabled = false
 	_fill.basis = Basis(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0), Vector3(0.0, 1.0, 0.0))
 	add_child(_fill)
@@ -390,6 +406,7 @@ func _process(_delta: float) -> void:
 	_sync_ships(Game.sim)
 	_sync_craft(Game.sim)
 	_sync_sky(Game.sim)
+	_sync_band()
 	_sync_props(Game.sim)
 	_aim_sun(Game.sim)
 	_hide_stale(_bodies)
@@ -494,6 +511,14 @@ func _sync_props(sim) -> void:
 		mast.material_override = _metal(Color("8a7a62"))
 		mast.set_meta("built", "yes")
 	mast.position = chart(sim.beacon_pos, 18.0)
+	var yard := _prop("beacon_yard")
+	if str(yard.get_meta("built", "")) != "yes":
+		var arm := BoxMesh.new()
+		arm.size = Vector3(18.0, 1.4, 1.6)
+		yard.mesh = arm
+		yard.material_override = _metal(Color("6e6254"))
+		yard.set_meta("built", "yes")
+	yard.position = chart(sim.beacon_pos, 32.0)
 	var pad := _prop("beacon_pad")
 	if str(pad.get_meta("built", "")) != "yes":
 		var slab := BoxMesh.new()
@@ -777,6 +802,23 @@ func _sync_star(sim) -> void:
 	(_star_glow.mesh as SphereMesh).radius = radius * 1.55
 	(_star_glow.mesh as SphereMesh).height = radius * 3.1
 	(_star_glow.material_override as ShaderMaterial).set_shader_parameter("albedo", core)
+	if _star_far == null:
+		_star_far = MeshInstance3D.new()
+		_star_far.name = "Halo"
+		var shell := SphereMesh.new()
+		shell.radial_segments = 28
+		shell.rings = 14
+		_star_far.mesh = shell
+		var far := ShaderMaterial.new()
+		far.shader = _corona_shader
+		_star_far.material_override = far
+		_star_far.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_star_far)
+	(_star_far.mesh as SphereMesh).radius = radius * 2.35
+	(_star_far.mesh as SphereMesh).height = radius * 4.7
+	var far_col := core
+	far_col.a = 0.45
+	(_star_far.material_override as ShaderMaterial).set_shader_parameter("albedo", far_col)
 
 
 func _sync_planets(sim) -> void:
@@ -809,6 +851,7 @@ func _sync_planets(sim) -> void:
 		mat.set_shader_parameter("land", land)
 		mat.set_shader_parameter("to_star", to_star)
 		mat.set_shader_parameter("seed", seed)
+		mat.set_shader_parameter("spin", float(sim.time) * 0.02)
 		var legal := str(row.get("legal", ""))
 		var city := 1.0 if (legal.contains("capital") or legal.contains("pdo")) else 0.0
 		mat.set_shader_parameter("city", city)
@@ -893,7 +936,7 @@ func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3) 
 		node.add_child(ring)
 	var band := maxf(36.0, radius * 0.085)
 	ring.mesh = _annulus(radius + band * 0.55, radius + band * 1.35, maxf(2.2, radius * 0.012), 96)
-	ring.rotation.x = 0.16
+	ring.rotation.x = 0.28
 	ring.visible = true
 	var outer := node.get_node_or_null("RingOuter") as MeshInstance3D
 	if outer == null:
@@ -905,7 +948,7 @@ func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3) 
 		outer.material_override = faint
 		node.add_child(outer)
 	outer.mesh = _annulus(radius + band * 1.5, radius + band * 2.05, maxf(1.2, radius * 0.006), 80)
-	outer.rotation.x = 0.16
+	outer.rotation.x = 0.28
 	outer.visible = true
 	var ice := Color(0.86, 0.92, 0.95, 0.92)
 	if str(row.get("ring_kind", "")) != "ice":
@@ -984,7 +1027,9 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 		var part := str(child.name)
 		if _hull_part(part):
 			var paint := body
-			if part.begins_with("Trim"):
+			if part == "Deck":
+				paint = body.lightened(0.16)
+			elif part.begins_with("Trim"):
 				paint = accent
 			_paint_hull(child, paint)
 	holder.transform = _flat_xform(ship.pos, float(ship.rot), 2.0)
@@ -1041,7 +1086,7 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	var hot := _metal(Color("2a2420"))
 	hot.emission_enabled = true
 	hot.emission = Color("e7b15a")
-	hot.emission_energy_multiplier = 0.22
+	hot.emission_energy_multiplier = 0.08
 	bell.material_override = hot
 	holder.add_child(bell)
 	var nose := float(holder.get_meta("nose", 20.0))
@@ -1051,7 +1096,7 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	var rail := BoxMesh.new()
 	rail.size = Vector3(span * 0.72, 1.3, 1.5)
 	spine.mesh = rail
-	spine.position = Vector3((nose + tail) * 0.5, height + 0.55, 0.0)
+	spine.position = Vector3((nose + tail) * 0.5, height * 1.08, 0.0)
 	spine.material_override = _hull_mat(Color("14181c"))
 	holder.add_child(spine)
 	_nav_lamp(holder, "LampNose", Vector3(nose * 0.86, height * 0.62, 0.0), Color("d8fff6"), 1.05)
@@ -1059,29 +1104,21 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	_nav_lamp(holder, "LampStbd", Vector3(tail * 0.55, height * 0.28, -2.1), Color("7dcea0"), 0.75)
 	var flame := MeshInstance3D.new()
 	flame.name = "Exhaust"
-	var plume := CylinderMesh.new()
-	plume.top_radius = 0.35
-	plume.bottom_radius = 2.8
-	plume.height = maxf(22.0, height * 1.45)
-	flame.mesh = plume
-	flame.basis = Basis(Vector3(0.0, 0.0, 1.0), Vector3(-1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0))
-	flame.position = Vector3(tail - plume.height * 0.48, height * 0.42, 0.0)
+	var reach := maxf(26.0, height * 1.7)
+	flame.mesh = _plume_mesh(reach, 2.4)
+	flame.position = Vector3(tail - 1.2, height * 0.42, 0.0)
 	var burn := ShaderMaterial.new()
 	burn.shader = _plume_shader
-	burn.set_shader_parameter("albedo", Color(1.0, 0.62, 0.22, 0.72))
+	burn.set_shader_parameter("albedo", Color(1.0, 0.62, 0.22, 0.8))
 	burn.set_shader_parameter("core", 0.0)
 	flame.material_override = burn
 	flame.visible = false
 	holder.add_child(flame)
 	var core := MeshInstance3D.new()
 	core.name = "ExhaustCore"
-	var jet := CylinderMesh.new()
-	jet.top_radius = 0.12
-	jet.bottom_radius = 1.15
-	jet.height = plume.height * 0.62
-	core.mesh = jet
-	core.basis = flame.basis
-	core.position = Vector3(tail - jet.height * 0.42, height * 0.42, 0.0)
+	var jet_len := reach * 0.55
+	core.mesh = _plume_mesh(jet_len, 1.05)
+	core.position = Vector3(tail - 1.2, height * 0.42, 0.0)
 	var white := ShaderMaterial.new()
 	white.shader = _plume_shader
 	white.set_shader_parameter("albedo", Color(1.0, 0.94, 0.82, 0.9))
@@ -1116,13 +1153,23 @@ func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array) 
 	for point in geom.hull:
 		nose = maxf(nose, point.x)
 	holder.set_meta("nose", nose)
-	var hull_mesh := _prism(geom.hull, height)
+	var lower := height * 0.62
+	var hull_mesh := _prism(geom.hull, lower)
 	if hull_mesh != null:
 		var plate := MeshInstance3D.new()
 		plate.name = "Plate"
 		plate.mesh = hull_mesh
 		plate.material_override = _hull_mat(Color("888888"))
 		holder.add_child(plate)
+	var deck_poly := _inset_poly(geom.hull, 0.78)
+	var deck_mesh := _prism(deck_poly, height * 0.48)
+	if deck_mesh != null:
+		var deck := MeshInstance3D.new()
+		deck.name = "Deck"
+		deck.mesh = deck_mesh
+		deck.position.y = lower * 0.92
+		deck.material_override = _hull_mat(Color("9a9a9a"))
+		holder.add_child(deck)
 	var extra_i := 0
 	for extra in geom.extras:
 		var extra_mesh := _prism(extra, height * 0.72)
@@ -1191,6 +1238,14 @@ func _craft_holder(key: String, kind: String) -> Node3D:
 		body.mesh = mesh
 		body.material_override = _hull_mat(_craft_color(kind))
 		node.add_child(body)
+		var cap_mesh := _prism(_inset_poly(poly, 0.72), 3.2)
+		if cap_mesh != null:
+			var cap := MeshInstance3D.new()
+			cap.name = "Deck"
+			cap.mesh = cap_mesh
+			cap.position.y = 3.4
+			cap.material_override = _hull_mat(_craft_color(kind).lightened(0.12))
+			node.add_child(cap)
 		var lamp := MeshInstance3D.new()
 		lamp.name = "LampNose"
 		var bulb := SphereMesh.new()
@@ -1302,7 +1357,7 @@ func _flat_xform(pos: Vector2, rot: float, height: float) -> Transform3D:
 
 
 func _hull_part(part: String) -> bool:
-	if part == "Plate" or part.begins_with("TrimC"):
+	if part == "Plate" or part == "Deck" or part.begins_with("TrimC"):
 		return true
 	if part.begins_with("Trim") and part.trim_prefix("Trim").is_valid_int():
 		return true
@@ -1368,6 +1423,83 @@ func _disc(radius: float, segs: int) -> ArrayMesh:
 	var mesh := st.commit()
 	_mesh_cache[cached] = mesh
 	return mesh
+
+
+func _inset_poly(poly: PackedVector2Array, scale: float) -> PackedVector2Array:
+	var center := Vector2.ZERO
+	if poly.is_empty():
+		return poly
+	for point in poly:
+		center += point
+	center /= float(poly.size())
+	var out := PackedVector2Array()
+	for point in poly:
+		out.append(center + (point - center) * scale)
+	return out
+
+
+func _plume_mesh(length: float, radius: float) -> ArrayMesh:
+	var cached := "plume|%0.1f|%0.2f" % [length, radius]
+	if _mesh_cache.has(cached):
+		return _mesh_cache[cached]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var segs := 12
+	for i in segs:
+		var a0 := float(i) * TAU / float(segs)
+		var a1 := float(i + 1) * TAU / float(segs)
+		var tip := radius * 0.15
+		var p0 := Vector3(0.0, cos(a0) * radius, sin(a0) * radius)
+		var p1 := Vector3(0.0, cos(a1) * radius, sin(a1) * radius)
+		var q0 := Vector3(-length, cos(a0) * tip, sin(a0) * tip)
+		var q1 := Vector3(-length, cos(a1) * tip, sin(a1) * tip)
+		st.set_uv(Vector2(0.0, 0.0))
+		st.add_vertex(p0)
+		st.set_uv(Vector2(1.0, 0.0))
+		st.add_vertex(q0)
+		st.set_uv(Vector2(1.0, 1.0))
+		st.add_vertex(q1)
+		st.set_uv(Vector2(0.0, 0.0))
+		st.add_vertex(p0)
+		st.set_uv(Vector2(1.0, 1.0))
+		st.add_vertex(q1)
+		st.set_uv(Vector2(0.0, 1.0))
+		st.add_vertex(p1)
+	var mesh := st.commit()
+	_mesh_cache[cached] = mesh
+	return mesh
+
+
+func _sync_band() -> void:
+	if _band == null:
+		_band = MultiMeshInstance3D.new()
+		_band.name = "Band"
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		var dot := SphereMesh.new()
+		dot.radius = 1.0
+		dot.height = 2.0
+		dot.radial_segments = 6
+		dot.rings = 3
+		mm.mesh = dot
+		mm.instance_count = 180
+		_band.multimesh = mm
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.vertex_color_use_as_albedo = true
+		_band.material_override = mat
+		_band.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_band)
+		for i in 180:
+			var ang := float(i) / 180.0 * TAU
+			var radius := 9800.0 + float(i % 5) * 420.0
+			var lift := sin(ang * 3.0) * 480.0
+			var scale := 1.6 + float(i % 4) * 0.45
+			var basis := Basis.IDENTITY.scaled(Vector3(scale, scale, scale))
+			mm.set_instance_transform(i, Transform3D(basis, Vector3(cos(ang) * radius, lift, sin(ang) * radius)))
+			var tint := Color(0.62, 0.7, 0.86) if i % 3 == 0 else Color(0.9, 0.84, 0.7)
+			mm.set_instance_color(i, tint)
 
 
 func _metal(color: Color) -> StandardMaterial3D:
