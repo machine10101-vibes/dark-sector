@@ -114,14 +114,19 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 	for point in hull:
 		pts.append(xf * (point * scale))
 	var shadow := PackedVector2Array()
+	var cast := PackedVector2Array()
 	for point in pts:
-		shadow.append(point - lit * (4.2 * scale))
-	ci.draw_colored_polygon(shadow, Color(0, 0, 0, 0.32))
-	ci.draw_colored_polygon(pts, worn.darkened(0.34))
-	var cap := _inset_world(pts, 2.4 * scale, lit * (2.6 * scale))
-	ci.draw_colored_polygon(cap, worn.lightened(0.16))
-	var spec := _centroid(pts) + lit * (7.0 * scale)
-	ci.draw_circle(spec, 1.7 * scale, Color(1, 0.96, 0.88, 0.42))
+		shadow.append(point - lit * (3.4 * scale))
+		cast.append(point - lit * (8.0 * scale))
+	ci.draw_colored_polygon(cast, Color(0, 0, 0, 0.14))
+	ci.draw_colored_polygon(shadow, Color(0, 0, 0, 0.4))
+	ci.draw_colored_polygon(pts, worn.darkened(0.5))
+	ci.draw_colored_polygon(_inset_world(pts, 1.1 * scale, lit * (1.0 * scale)), worn.darkened(0.16))
+	ci.draw_colored_polygon(_inset_world(pts, 2.6 * scale, lit * (3.0 * scale)), worn.lightened(0.06))
+	ci.draw_colored_polygon(_inset_world(pts, 4.4 * scale, lit * (5.2 * scale)), worn.lightened(0.26))
+	var spec := _centroid(pts) + lit * (5.5 * scale)
+	var tangent := Vector2(-lit.y, lit.x)
+	ci.draw_line(spec - tangent * (2.8 * scale), spec + tangent * (0.8 * scale) + lit * (1.6 * scale), Color(1, 0.97, 0.9, 0.62), maxf(1.0, 0.9 * scale), true)
 	if class_id == "vesper":
 		_paint_needle(ci, xf, scale, worn, accent, shapes, thrusting)
 	elif class_id == "anvil":
@@ -136,14 +141,17 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 		for point in extra:
 			extra_pts.append(xf * (point * scale))
 		if extra_pts.size() >= 3:
-			ci.draw_colored_polygon(extra_pts, accent.darkened(0.22))
-			ci.draw_colored_polygon(_inset_world(extra_pts, 1.2 * scale, lit * scale), accent.lightened(0.08))
+			ci.draw_colored_polygon(extra_pts, accent.darkened(0.38))
+			ci.draw_colored_polygon(_inset_world(extra_pts, 1.1 * scale, lit * (0.8 * scale)), accent.darkened(0.08))
+			ci.draw_colored_polygon(_inset_world(extra_pts, 2.2 * scale, lit * (1.8 * scale)), accent.lightened(0.18))
 			_rim(ci, extra_pts, lit, accent.lightened(0.35), 1.0)
 	for circle in geom.circles:
 		var center := xf * (Vector2(float(circle.x), float(circle.y)) * scale)
 		var rad := float(circle.r) * scale
-		ci.draw_circle(center, rad, accent.darkened(0.28))
-		ci.draw_circle(center + lit * rad * 0.28, rad * 0.72, accent.lightened(0.12))
+		ci.draw_circle(center, rad, accent.darkened(0.42))
+		ci.draw_circle(center + lit * rad * 0.22, rad * 0.78, accent.darkened(0.08))
+		ci.draw_circle(center + lit * rad * 0.4, rad * 0.42, accent.lightened(0.16))
+		ci.draw_circle(center + lit * rad * 0.48, rad * 0.16, Color(1, 1, 1, 0.32))
 	if class_id == "vesper" and (shapes.has("mast") or _layer_reaches(layers, 80.0)):
 		ci.draw_circle(xf * (Vector2(46, 0) * scale), 1.25 * scale, worn.darkened(0.2))
 	if hp_ratio < 0.72:

@@ -308,17 +308,29 @@ func _draw_planet(sim, body: Dictionary) -> void:
 	var base := Color(colors[0])
 	var lit := _light_at(pos)
 	var air := Color(colors[2])
-	air.a = 0.22
-	draw_circle(pos, radius + 18.0, air)
-	draw_circle(pos, radius, base.darkened(0.42))
-	draw_circle(pos + lit * radius * 0.22, radius * 0.9, base)
-	draw_circle(pos + lit * radius * 0.4, radius * 0.28, base.lightened(0.22))
+	var haze := air
+	haze.a = 0.07
+	air.a = 0.18
+	draw_circle(pos, radius + 36.0, haze)
+	draw_circle(pos, radius + 12.0, air)
+	draw_circle(pos, radius, base.darkened(0.64))
+	for day in 5:
+		var along := float(day) / 4.0
+		var tone := base.darkened(0.36).lerp(base.lightened(0.18), along)
+		draw_circle(pos + lit * radius * (0.05 + along * 0.32), radius * (0.93 - along * 0.15), tone)
 	var spin := float(body.get("spin", 0.1))
 	for i in 4:
 		var a0: float = float(sim.time) * spin + float(i) * 1.35
-		draw_arc(pos, radius * (0.38 + float(i) * 0.13), a0, a0 + 1.35, 18, Color(colors[1]), 5.0, true)
-	var night := Color(0.02, 0.03, 0.05, 0.55)
-	draw_circle(pos - lit * radius * 0.34, radius * 0.86, night)
+		draw_arc(pos, radius * (0.38 + float(i) * 0.13), a0, a0 + 1.35, 18, Color(colors[1]), 4.0, true)
+	for veil in 3:
+		var back := float(veil)
+		var shade := Color(0.012, 0.016, 0.024, 0.2 + back * 0.1)
+		draw_circle(pos - lit * radius * (0.26 + back * 0.11), radius * (0.58 - back * 0.1), shade)
+	var limb := base.lightened(0.45)
+	limb.a = 0.5
+	var limb_a := lit.angle()
+	draw_arc(pos, radius * 0.97, limb_a - 1.05, limb_a + 1.05, 22, limb, maxf(2.0, radius * 0.04), true)
+	draw_circle(pos + lit * radius * 0.48, maxf(2.0, radius * 0.09), Color(1, 1, 1, 0.22))
 	if bool(body.ring):
 		var ice := Color("d5e4ee") if str(body.get("ring_kind", "")) == "ice" else Color(colors[2])
 		var shadow_arc := ice.darkened(0.45)
@@ -496,9 +508,11 @@ func _draw_craft(sim, item: Dictionary) -> void:
 	var right := pos - dir * 6.0 - side * 4.0
 	var hull_pts := PackedVector2Array([nose, left, right])
 	var lit := _light_at(pos)
-	draw_colored_polygon(PackedVector2Array([nose - lit * 2.0, left - lit * 2.0, right - lit * 2.0]), Color(0, 0, 0, 0.28))
-	draw_colored_polygon(hull_pts, col.darkened(0.32))
-	draw_colored_polygon(Silhouette._inset_world(hull_pts, 1.4, lit * 1.2), col.lightened(0.1))
+	draw_colored_polygon(PackedVector2Array([nose - lit * 5.0, left - lit * 5.0, right - lit * 5.0]), Color(0, 0, 0, 0.14))
+	draw_colored_polygon(PackedVector2Array([nose - lit * 2.0, left - lit * 2.0, right - lit * 2.0]), Color(0, 0, 0, 0.34))
+	draw_colored_polygon(hull_pts, col.darkened(0.46))
+	draw_colored_polygon(Silhouette._inset_world(hull_pts, 1.2, lit * 0.8), col.darkened(0.1))
+	draw_colored_polygon(Silhouette._inset_world(hull_pts, 2.4, lit * 1.8), col.lightened(0.16))
 	Silhouette._rim(self, hull_pts, lit, col.lightened(0.35), 1.0)
 	if str(item.state) == "lost":
 		draw_line(pos + Vector2(-6, -6), pos + Vector2(6, 6), Color("c4512c"), 1.4, true)
@@ -514,8 +528,13 @@ func _draw_wreck(wreck: Dictionary) -> void:
 		pos + Vector2(10, 2), pos + Vector2(-4, 8), pos + Vector2(-12, -2), pos + Vector2(2, -8)
 	])
 	var lit := _light_at(pos)
-	draw_colored_polygon(pts, col.darkened(0.35))
-	draw_colored_polygon(Silhouette._inset_world(pts, 2.0, lit * 1.6), col.lightened(0.08))
+	var wreck_cast := PackedVector2Array()
+	for point in pts:
+		wreck_cast.append(point - lit * 4.0)
+	draw_colored_polygon(wreck_cast, Color(0, 0, 0, 0.22))
+	draw_colored_polygon(pts, col.darkened(0.48))
+	draw_colored_polygon(Silhouette._inset_world(pts, 1.4, lit * 0.8), col.darkened(0.12))
+	draw_colored_polygon(Silhouette._inset_world(pts, 2.8, lit * 2.0), col.lightened(0.1))
 	draw_line(pos + Vector2(-8, -6), pos + Vector2(8, 6), Color("1a0c0a"), 1.4, true)
 	draw_line(pos + Vector2(-2, 6), pos + Vector2(6, -4), Color("2a1814"), 1.0, true)
 	draw_circle(pos + lit * 3.0, 1.5, Color(0.85, 0.7, 0.5, 0.35))
