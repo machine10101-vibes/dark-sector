@@ -37,7 +37,8 @@ func _ready() -> void:
 	quit.pressed.connect(func(): quit_game.emit())
 	root_box.add_child(new_game)
 	root_box.add_child(continue_button)
-	root_box.add_child(quit)
+	if not OS.has_feature("web"):
+		root_box.add_child(quit)
 	select_box = VBoxContainer.new()
 	select_box.add_theme_constant_override("separation", 8)
 	select_box.visible = false
