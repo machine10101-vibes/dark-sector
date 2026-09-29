@@ -442,8 +442,9 @@ func _process(delta: float) -> void:
 
 func chart(p: Vector2, height: float = 0.0) -> Vector3:
 	var render: Vector2 = p
-	if FloatingOrigin:
-		render = FloatingOrigin.render_of_world(p)
+	var gate: Variant = WorldCoord.gate()
+	if gate != null:
+		render = gate.render_of_world(p)
 	return Vector3(render.x, height, -render.y)
 
 

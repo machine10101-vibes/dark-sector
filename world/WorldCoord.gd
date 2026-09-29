@@ -27,6 +27,14 @@ func to_dict() -> Dictionary:
 	}
 
 
+## The autoload node. Headless --script tests cannot name that singleton at compile time.
+static func gate() -> Variant:
+	var loop: MainLoop = Engine.get_main_loop()
+	if loop is SceneTree:
+		return (loop as SceneTree).root.get_node_or_null("FloatingOrigin")
+	return null
+
+
 static func from_dict(data: Dictionary) -> WorldCoord:
 	var coord := WorldCoord.new()
 	coord.system_id = str(data.get("system_id", ""))

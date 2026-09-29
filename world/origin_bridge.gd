@@ -12,20 +12,21 @@ func _ready() -> void:
 
 
 func bind_sector() -> void:
-	if FloatingOrigin == null or Game.sim == null:
+	var gate: Variant = WorldCoord.gate()
+	if gate == null or Game.sim == null:
 		return
 	var sim = Game.sim
-	FloatingOrigin.system_id = str(sim.defs.system.id)
+	gate.system_id = str(sim.defs.system.id)
 	var body := str(sim.body_id)
 	if body == "":
 		body = "aegis_prime"
-	FloatingOrigin.body_id = body
-	FloatingOrigin.layer = int(sim.layer)
-	FloatingOrigin.origin_id = _origin_name(body)
+	gate.body_id = body
+	gate.layer = int(sim.layer)
+	gate.origin_id = _origin_name(body)
 	var here: Vector2 = sim.view_focus()
-	FloatingOrigin.origin_m = here
-	FloatingOrigin.settle_left = 0.0
-	FloatingOrigin.armed = true
+	gate.origin_m = here
+	gate.settle_left = 0.0
+	gate.armed = true
 	_sync()
 
 
@@ -36,19 +37,22 @@ func _physics_process(_delta: float) -> void:
 
 
 func _sync() -> void:
+	var gate: Variant = WorldCoord.gate()
+	if gate == null:
+		return
 	var sim = Game.sim
-	FloatingOrigin.system_id = str(sim.defs.system.id)
+	gate.system_id = str(sim.defs.system.id)
 	var body := str(sim.body_id)
 	if body == "":
 		body = "aegis_prime"
-	FloatingOrigin.body_id = body
-	FloatingOrigin.layer = int(sim.layer)
-	FloatingOrigin.origin_id = _origin_name(body)
+	gate.body_id = body
+	gate.layer = int(sim.layer)
+	gate.origin_id = _origin_name(body)
 	var live: Dictionary = {}
 	var helm := _proxy("player")
 	helm.world_m = sim.view_focus()
 	helm.snap_to_world()
-	FloatingOrigin.set_focus(helm)
+	gate.set_focus(helm)
 	live["player"] = true
 	for mate in sim.captains:
 		var mate_row: Dictionary = mate

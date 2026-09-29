@@ -12,8 +12,9 @@ func _ready() -> void:
 	make_current()
 	if zoom.x > 0.35:
 		zoom = Vector2(0.22, 0.22)
-	if FloatingOrigin and FloatingOrigin.rebased.is_connected(_on_rebased) == false:
-		FloatingOrigin.rebased.connect(_on_rebased)
+	var gate: Variant = WorldCoord.gate()
+	if gate != null and gate.rebased.is_connected(_on_rebased) == false:
+		gate.rebased.connect(_on_rebased)
 	_snap()
 
 
@@ -27,8 +28,10 @@ func _on_rebased(_delta_m: Vector2, _new_origin_m: Vector2) -> void:
 
 func _snap() -> void:
 	var target: Node2D = follow
-	if target == null and FloatingOrigin:
-		target = FloatingOrigin.focus
+	if target == null:
+		var gate: Variant = WorldCoord.gate()
+		if gate != null:
+			target = gate.focus
 	if target == null or is_instance_valid(target) == false:
 		return
 	global_position = target.global_position

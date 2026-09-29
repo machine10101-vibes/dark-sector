@@ -10,8 +10,9 @@ var atmo_m: float = 80000.0
 
 
 func _ready() -> void:
-	if FloatingOrigin and FloatingOrigin.rebased.is_connected(_place) == false:
-		FloatingOrigin.rebased.connect(_place)
+	var gate: Variant = WorldCoord.gate()
+	if gate != null and gate.rebased.is_connected(_place) == false:
+		gate.rebased.connect(_place)
 	_place(Vector2.ZERO, Vector2.ZERO)
 
 
@@ -20,9 +21,10 @@ func _process(_delta: float) -> void:
 
 
 func _place(_delta_m: Vector2, _new_origin_m: Vector2) -> void:
-	if FloatingOrigin == null:
+	var gate: Variant = WorldCoord.gate()
+	if gate == null:
 		return
-	global_position = FloatingOrigin.render_of_world(world_center_m)
+	global_position = gate.render_of_world(world_center_m)
 	queue_redraw()
 
 

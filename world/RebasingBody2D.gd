@@ -7,14 +7,16 @@ var world_m: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
-	if FloatingOrigin:
-		FloatingOrigin.register_body(self)
+	var gate: Variant = WorldCoord.gate()
+	if gate != null:
+		gate.register_body(self)
 		snap_to_world()
 
 
 func _exit_tree() -> void:
-	if FloatingOrigin:
-		FloatingOrigin.unregister_body(self)
+	var gate: Variant = WorldCoord.gate()
+	if gate != null:
+		gate.unregister_body(self)
 
 
 func apply_origin_shift(shift: Vector2) -> void:
@@ -22,12 +24,14 @@ func apply_origin_shift(shift: Vector2) -> void:
 
 
 func snap_to_world() -> void:
-	if FloatingOrigin == null:
+	var gate: Variant = WorldCoord.gate()
+	if gate == null:
 		return
-	global_position = FloatingOrigin.render_of_world(world_m)
+	global_position = gate.render_of_world(world_m)
 
 
 func sync_world_from_render() -> void:
-	if FloatingOrigin == null:
+	var gate: Variant = WorldCoord.gate()
+	if gate == null:
 		return
-	world_m = FloatingOrigin.world_of_node(self)
+	world_m = gate.world_of_node(self)

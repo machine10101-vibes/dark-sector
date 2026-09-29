@@ -39,15 +39,17 @@ func _ready() -> void:
 		Vector2(-27.0, 0.0),
 	])
 	add_child(glow)
-	if FloatingOrigin:
-		FloatingOrigin.register_body(self)
-		FloatingOrigin.set_focus(self)
+	var gate: Variant = WorldCoord.gate()
+	if gate != null:
+		gate.register_body(self)
+		gate.set_focus(self)
 	sync_world_from_render()
 
 
 func _exit_tree() -> void:
-	if FloatingOrigin:
-		FloatingOrigin.unregister_body(self)
+	var gate: Variant = WorldCoord.gate()
+	if gate != null:
+		gate.unregister_body(self)
 
 
 func apply_origin_shift(shift: Vector2) -> void:
@@ -55,15 +57,17 @@ func apply_origin_shift(shift: Vector2) -> void:
 
 
 func snap_to_world() -> void:
-	if FloatingOrigin == null:
+	var gate: Variant = WorldCoord.gate()
+	if gate == null:
 		return
-	global_position = FloatingOrigin.render_of_world(world_m)
+	global_position = gate.render_of_world(world_m)
 
 
 func sync_world_from_render() -> void:
-	if FloatingOrigin == null:
+	var gate: Variant = WorldCoord.gate()
+	if gate == null:
 		return
-	world_m = FloatingOrigin.world_of_node(self)
+	world_m = gate.world_of_node(self)
 
 
 func _physics_process(delta: float) -> void:

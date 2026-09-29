@@ -5,16 +5,18 @@ extends Node2D
 
 
 func _ready() -> void:
+	var gate: Variant = WorldCoord.gate()
 	var center := Vector2(12000000.0, 0.0)
 	var park := center + Vector2(6371000.0 + 420000.0, 0.0)
-	FloatingOrigin.origin_m = park
-	FloatingOrigin.system_id = "HC-V1-R1-S1"
-	FloatingOrigin.body_id = "aegis_prime"
-	FloatingOrigin.layer = WorldCoord.BAND
-	FloatingOrigin.origin_id = "aegis_orbital_band"
-	FloatingOrigin.rebase_count = 0
-	FloatingOrigin.settle_left = 0.0
-	FloatingOrigin.armed = true
+	if gate != null:
+		gate.origin_m = park
+		gate.system_id = "HC-V1-R1-S1"
+		gate.body_id = "aegis_prime"
+		gate.layer = WorldCoord.BAND
+		gate.origin_id = "aegis_orbital_band"
+		gate.rebase_count = 0
+		gate.settle_left = 0.0
+		gate.armed = true
 
 	var limb := PlanetLimb2D.new()
 	limb.name = "AegisLimb"
@@ -28,7 +30,8 @@ func _ready() -> void:
 	ship.world_m = park
 	add_child(ship)
 	ship.snap_to_world()
-	FloatingOrigin.set_focus(ship)
+	if gate != null:
+		gate.set_focus(ship)
 
 	# Outbound buoys. 5 km spacing, far enough that an 8 km rebase jumps them.
 	for step in 9:
@@ -47,8 +50,8 @@ func _ready() -> void:
 	var cam := RebasingCamera2D.new()
 	cam.name = "Eye"
 	cam.follow = ship
-	# Tens of kilometers across the glass. Aegis stays a limb, not a marble.
-	cam.zoom = Vector2(0.16, 0.16)
+	# 5 km buoys sit on the glass. Aegis, 420 km down, stays a limb.
+	cam.zoom = Vector2(0.09, 0.09)
 	add_child(cam)
 
 	var hud := preload("res://ui/OriginDebugHUD.gd").new()

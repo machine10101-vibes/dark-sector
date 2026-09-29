@@ -643,8 +643,9 @@ func from_dict(data: Dictionary) -> void:
 		site_pos = Serde.vec_in(data.pos)
 	if not data.has("layer"):
 		_bind_band()
-	if data.has("focus_coord") and typeof(data.focus_coord) == TYPE_DICTIONARY and FloatingOrigin:
-		FloatingOrigin.load_focus(data.focus_coord)
+	var gate: Variant = WorldCoord.gate()
+	if data.has("focus_coord") and typeof(data.focus_coord) == TYPE_DICTIONARY and gate != null:
+		gate.load_focus(data.focus_coord)
 
 
 func _step(dt: float, cmd: Dictionary) -> void:
@@ -1707,8 +1708,9 @@ func apply_snapshot(data: Dictionary) -> void:
 		local_origin = Serde.vec_in(data.local_origin)
 	if int(layer) == ScaleFrame.SITE and data.has("pos"):
 		site_pos = Serde.vec_in(data.pos)
-	if data.has("focus_coord") and typeof(data.focus_coord) == TYPE_DICTIONARY and FloatingOrigin:
-		FloatingOrigin.load_focus(data.focus_coord)
+	var gate: Variant = WorldCoord.gate()
+	if data.has("focus_coord") and typeof(data.focus_coord) == TYPE_DICTIONARY and gate != null:
+		gate.load_focus(data.focus_coord)
 	if str(player.get("agent_id", "")) != str(data.get("heat_agent", "")):
 		heat[_pdo_id()] = float(player.get("heat_compact", 0.0))
 	elif data.has("heat"):
