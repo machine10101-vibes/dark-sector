@@ -106,6 +106,7 @@ func _draw() -> void:
 	_draw_beacon(sim)
 	_draw_gates(sim)
 	_draw_homestead(sim)
+	_draw_mark(sim)
 	for wreck in sim.wrecks:
 		_draw_wreck(wreck)
 	for shot in sim.projectiles:
@@ -295,6 +296,18 @@ func _draw_homestead(sim) -> void:
 		draw_colored_polygon(PackedVector2Array([
 			miner + Vector2(10, 0), miner + Vector2(-8, 6), miner + Vector2(-8, -6)
 		]), Color("c4512c"))
+
+
+func _draw_mark(sim) -> void:
+	var mark: Dictionary = sim.nav_mark
+	if mark.is_empty():
+		return
+	if str(mark.get("system_id", "")) != str(sim.defs.system.id):
+		return
+	var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
+	draw_arc(pos, 54.0, 0.0, TAU, 40, Color("e7b15a"), 1.6, true)
+	draw_line(sim.player.pos, pos, Color(0.91, 0.7, 0.35, 0.45), 1.2, true)
+	draw_string(font, pos + Vector2(12, -16), str(mark.get("label", "mark")), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("e7b15a"))
 
 
 func _draw_beacon(sim) -> void:

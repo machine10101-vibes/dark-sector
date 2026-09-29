@@ -39,7 +39,7 @@ func _ready() -> void:
 	_build_pause()
 	_build_dead()
 	var hint := ThemeKit.label(
-		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   R repair   L lane   C core   K claim     1 probe   2 harvest   B bay   H hangar   D dossier   F heat   J quests     Hold / Esc pause   F5 save   F9 load",
+		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   R repair   L lane   C core   K claim     1 probe   2 harvest   B bay   H hangar   D dossier   F heat   J quests   Y mark   O contract     Hold / Esc pause   F5 save   F9 load",
 		12,
 		Color("8d826c")
 	)
@@ -135,6 +135,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_toggle("heat")
 		KEY_J:
 			_toggle("quest")
+		KEY_Y:
+			_say_result(QuestBoard.mark(Game.sim))
+		KEY_O:
+			_say_result(QuestBoard.accept(Game.sim))
 		KEY_K:
 			_toggle("claim")
 		KEY_1, KEY_KP_1:
@@ -676,7 +680,14 @@ func _heat_text() -> String:
 func _quest_text() -> String:
 	var blocks: Array = []
 	for entry in QuestLog.entries(Game.sim.defs, Game.sim):
-		blocks.append("%s  [%s / %s]\n%s" % [entry.title, entry.kind, entry.state, entry.summary])
+		var where := ""
+		if str(entry.get("where", "")) != "":
+			where = "\nWhere: %s (%s)." % [str(entry.where), str(entry.get("link", ""))]
+		var giver := ""
+		if str(entry.get("giver", "")) != "":
+			giver = "\nGiver: %s." % str(entry.giver)
+		blocks.append("%s  [%s / %s]%s%s\n%s" % [entry.title, entry.kind, entry.state, giver, where, entry.summary])
+	blocks.append("Y marks the next place. O takes an offered contract. The keel does not move.")
 	if blocks.is_empty():
 		return "The log is blank."
 	return "\n\n".join(blocks)

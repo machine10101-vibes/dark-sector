@@ -22,5 +22,29 @@
     "title": "Beak and Charter",
     "state": "dormant",
     "summary": "The Compact still has your old squadron on a list. Walking Hollow Latch and surviving the Slat will open that argument. It is not open yet."
+  },
+  "authored_shakedown_01": {
+    "id": "authored_shakedown_01",
+    "type": "authored",
+    "kind": "authored",
+    "giver": "helion_compact",
+    "ship": "",
+    "title": "Shakedown",
+    "state": "active",
+    "prerequisites": [],
+    "location_ids": ["HC-V1-R1-S1", "aegis_prime", "aegis_ring", "seized_hold", "red_keel", "HC-V1-R5-S1", "quiet_hollow"],
+    "timers": {},
+    "beats": [
+      {"id": "undock", "location_ids": ["HC-V1-R1-S1"], "mutations": []},
+      {"id": "scan", "location_ids": ["aegis_prime"], "mutations": ["origin_vesper"]},
+      {"id": "harvest", "location_ids": ["aegis_ring", "seized_hold"], "mutations": ["harvest_choice"]},
+      {"id": "module", "location_ids": ["keel"], "mutations": []},
+      {"id": "pirate", "location_ids": ["red_keel"], "mutations": ["origin_kestrel"]},
+      {"id": "claim", "location_ids": ["HC-V1-R5-S1", "quiet_hollow"], "mutations": ["rumor_homestead"]},
+      {"id": "garden", "location_ids": ["quiet_hollow"], "mutations": ["origin_anvil"]}
+    ],
+    "success_mutations": ["blueprint", "npc_memory"],
+    "failure_mutations": ["compact_standing_down", "rumor_shakedown_fail"],
+    "summary": "Undock in Helion Dock. Scan Aegis Prime. Cut the ice ring or the seized hold. Bolt one module. Meet the Red Keel and live. Plant a core on Quiet Hollow. Cut glasswheat and keep the hold-kine alive."
   }
 }
