@@ -50,6 +50,14 @@ var pdo_alert = false
 var hailed = false
 var sfx_queue: Array = []
 var hold_npc = false
+var layer := 2
+var body_id := ""
+var band_id := ""
+var site_id := ""
+var local_origin := Vector2.ZERO
+var site_pos := Vector2.ZERO
+var traffic: Array = []
+var said_city := false
 
 
 func _init(defs_in: Dictionary = {}) -> void:
@@ -146,6 +154,7 @@ func new_game(class_id: String) -> void:
 	say("A Claim Core is in the hold. The Homestead Road buoy is off the green. L takes the lane.")
 	say("Green spine buoys leave for Brass Lantern and Writ. From First Soil the amber road reaches Perimeter, and the hatch reaches Gyre.")
 	say("Shakedown is on the log. J reads it. Y marks the next place. The keel stays put.")
+	_bind_band()
 
 
 func tick(dt: float, cmd: Dictionary) -> void:
@@ -554,6 +563,13 @@ func to_dict() -> Dictionary:
 		"pdo_alert": pdo_alert,
 		"hailed": hailed,
 		"fined": fined,
+		"body_id": body_id,
+		"layer": layer,
+		"band_id": band_id,
+		"site_id": site_id,
+		"local_origin": Serde.vec_out(local_origin),
+		"pos": Serde.vec_out(player.pos if int(layer) != ScaleFrame.SITE else site_pos),
+		"site_pos": Serde.vec_out(site_pos),
 	}
 
 
@@ -618,6 +634,16 @@ func from_dict(data: Dictionary) -> void:
 	fined = bool(data.get("fined", false))
 	sfx_queue = []
 	hold_npc = false
+	layer = int(data.get("layer", ScaleFrame.BAND))
+	body_id = str(data.get("body_id", ""))
+	band_id = str(data.get("band_id", ""))
+	site_id = str(data.get("site_id", ""))
+	local_origin = Serde.vec_in(data.get("local_origin", [0.0, 0.0]))
+	site_pos = Serde.vec_in(data.get("site_pos", [0.0, 0.0]))
+	if int(layer) == ScaleFrame.SITE and data.has("pos"):
+		site_pos = Serde.vec_in(data.pos)
+	if not data.has("layer"):
+		_bind_band()
 
 
 func _step(dt: float, cmd: Dictionary) -> void:
@@ -627,7 +653,11 @@ func _step(dt: float, cmd: Dictionary) -> void:
 		var guest_cmd: Dictionary = commands.get(str(mate.get("player_id", "")), {})
 		_apply_verbs(mate, guest_cmd)
 	_clear_oneshots()
-	_step_ship(player, cmd, dt)
+	var before_pos: Vector2 = player.pos
+	if int(layer) == ScaleFrame.SITE:
+		_walk_site(cmd, dt)
+	else:
+		_step_ship(player, cmd, dt)
 	for mate in captains:
 		var guest_cmd: Dictionary = commands.get(str(mate.get("player_id", "")), {})
 		_step_ship(mate, guest_cmd, dt)
@@ -652,6 +682,8 @@ func _step(dt: float, cmd: Dictionary) -> void:
 	if banner_t > 9.0:
 		banner = ""
 	_step_stream(dt)
+	_step_traffic(dt)
+	_step_scale(before_pos)
 	Homestead.step(self, dt)
 	QuestBoard.pulse(self, dt)
 	_step_compact()
@@ -689,8 +721,13 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 	if absf(strafe) > 0.0:
 		unit.vel += forward.orthogonal() * float(stats.strafe_accel) * strafe * dt
 	unit.vel *= 1.0 - float(stats.damp) * dt
-	if unit.vel.length() > float(stats.vmax):
-		unit.vel = unit.vel.limit_length(float(stats.vmax))
+	var cap := float(stats.vmax)
+	if int(layer) == ScaleFrame.CHART:
+		cap = 24.0
+	elif int(layer) == ScaleFrame.APPROACH:
+		cap = 80.0
+	if unit.vel.length() > cap:
+		unit.vel = unit.vel.limit_length(cap)
 	unit.pos += unit.vel * dt
 	if bool(cmd.get("fire", false)):
 		try_fire(unit, stats.gun)
@@ -720,8 +757,10 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 		var engage := pdo_alert or heat_now >= 12.0
 		var blooded = memory.get(_pdo_id(), []).has("killed_patrol")
 		var quarry = _law_quarry()
-		if quarry == null and engage and player.alive:
+		if quarry == null and engage and player.alive and int(layer) == ScaleFrame.BAND:
 			quarry = player
+		if quarry == player and int(layer) != ScaleFrame.BAND:
+			quarry = null
 		if quarry != null and bool(quarry.get("alive", false)):
 			var leash = 1700.0 if blooded else 1200.0
 			var lane_body = planet(str(defs.system.zones.green.anchor))
@@ -845,7 +884,7 @@ func _bump_circle(ship: Dictionary, center: Vector2, radius: float, dmg: float) 
 	if float(ship.hurt_cd) <= 0.0:
 		damage_unit(ship, dmg, "world")
 		if str(ship.agent_id) == str(player.agent_id) and bool(player.alive):
-			say("The keel scrapes. Capital ships stay off the crust.")
+			say("The keel scrapes. Burning in does not land it. The city stays under the band.")
 
 
 func hangar_down() -> bool:
@@ -1235,8 +1274,10 @@ func _build_static() -> void:
 		var body: Dictionary = source.duplicate(true)
 		body.pos = Vector2.from_angle(float(body.angle)) * float(body.distance)
 		body.radius = float(body.radius)
+		body.chart_km = ScaleFrame.chart_km(body)
 		planets.append(body)
 	_scale_sky()
+	_build_traffic()
 	var anchor = planet(str(defs.system.pocket.anchor))
 	pocket_pos = anchor.pos + Vector2.from_angle(float(defs.system.pocket.angle)) * float(defs.system.pocket.distance)
 	nest_pos = Vector2.from_angle(float(defs.system.nest.angle)) * float(defs.system.nest.distance)
@@ -1375,9 +1416,11 @@ func _arrive(system_id: String, gate_id: String) -> void:
 		item.vel = Vector2.ZERO
 		item.order = ""
 		item.target = ""
+		ScaleFrame.mark_lost(self, item)
 		say("%s was left behind the lane. It did not jump home." % str(item.name))
 	if not visited.has(system_id):
 		visited.append(system_id)
+	_bind_band()
 	say("The lane opens on %s." % str(defs.system.name))
 	sfx("launch")
 	Catalog.confiscate(self)
@@ -1570,6 +1613,12 @@ func net_snapshot() -> Dictionary:
 	var crack: Dictionary = claim.get("crack", {})
 	return {
 		"system_id": str(defs.system.id),
+		"body_id": body_id,
+		"layer": layer,
+		"band_id": band_id,
+		"site_id": site_id,
+		"local_origin": Serde.vec_out(local_origin),
+		"pos": Serde.vec_out(player.pos if int(layer) != ScaleFrame.SITE else site_pos),
 		"time": time,
 		"captains": people,
 		"actors": actor_rows,
@@ -1646,6 +1695,18 @@ func apply_snapshot(data: Dictionary) -> void:
 	law_target = str(data.get("law_target", ""))
 	chat = data.get("chat", []).duplicate(true)
 	time = float(data.get("time", time))
+	if data.has("layer"):
+		layer = int(data.layer)
+	if data.has("body_id"):
+		body_id = str(data.body_id)
+	if data.has("band_id"):
+		band_id = str(data.band_id)
+	if data.has("site_id"):
+		site_id = str(data.site_id)
+	if data.has("local_origin"):
+		local_origin = Serde.vec_in(data.local_origin)
+	if int(layer) == ScaleFrame.SITE and data.has("pos"):
+		site_pos = Serde.vec_in(data.pos)
 	if str(player.get("agent_id", "")) != str(data.get("heat_agent", "")):
 		heat[_pdo_id()] = float(player.get("heat_compact", 0.0))
 	elif data.has("heat"):
@@ -1662,6 +1723,10 @@ func _captain_rows() -> Array:
 
 
 func _apply_verbs(unit: Dictionary, cmd: Dictionary) -> void:
+	if bool(cmd.get("site", false)) and str(unit.get("agent_id", "")) == str(player.get("agent_id", "")):
+		var site_line := enter_site()
+		if site_line != "":
+			say(site_line)
 	if bool(cmd.get("crack", false)):
 		var cracked := Homestead.try_crack(self, unit)
 		if cracked != "":
@@ -1682,6 +1747,7 @@ func _apply_verbs(unit: Dictionary, cmd: Dictionary) -> void:
 func _clear_oneshots() -> void:
 	for key in commands.keys():
 		var row: Dictionary = commands[key]
+		row.erase("site")
 		row.erase("crack")
 		row.erase("hail")
 		row.erase("flag")
@@ -1951,3 +2017,229 @@ func _roman(index: int) -> String:
 			return "IV"
 		_:
 			return str(index)
+
+
+func view_focus() -> Vector2:
+	if int(layer) == ScaleFrame.SITE:
+		return site_pos
+	return player.pos
+
+
+func enter_site() -> String:
+	if int(layer) == ScaleFrame.SITE:
+		_leave_site()
+		return ""
+	if not bool(claim.get("owned", false)):
+		return "No dome to drop toward."
+	var claim_system := str(claim.get("system_id", defs.system.id))
+	if claim_system != "" and claim_system != str(defs.system.id):
+		return "The dome is in another system."
+	var pocket: Dictionary = defs.system.pocket
+	if player.pos.distance_to(pocket_pos) > float(pocket.radius):
+		return "The valley is under the shard, not under this keel."
+	layer = ScaleFrame.SITE
+	var anchor = planet(str(pocket.get("anchor", body_id)))
+	if anchor != null:
+		body_id = str(anchor.id)
+		local_origin = anchor.chart_km
+		for biome in ScaleFrame.biomes_of(anchor):
+			var row: Dictionary = biome
+			if bool(row.get("claim", false)):
+				site_id = str(row.get("id", "quiet_hollow"))
+				break
+	if site_id == "":
+		site_id = str(pocket.get("id", "site"))
+	band_id = ""
+	site_pos = Vector2.ZERO
+	player.vel = Vector2.ZERO
+	say("The dome is the floor. The keel stays in the sky.")
+	return ""
+
+
+func _leave_site() -> void:
+	layer = ScaleFrame.BAND
+	site_pos = Vector2.ZERO
+	player.vel = Vector2.ZERO
+	_bind_band()
+	say("Back on the keel. The valley is a pin under the band.")
+
+
+func _walk_site(cmd: Dictionary, dt: float) -> void:
+	var rot := float(cmd.get("rot", 0.0))
+	player.rot += rot * 1.4 * dt
+	var thrust := float(cmd.get("thrust", 0.0))
+	var forward := Vector2.from_angle(player.rot)
+	if thrust > 0.0:
+		site_pos += forward * 16.0 * dt
+	var span := _site_span() * 0.5
+	if site_pos.length() > span:
+		site_pos = site_pos.limit_length(span)
+		if not said_city:
+			said_city = true
+			say("This valley ends. Other land is past the dome.")
+
+
+func _site_span() -> float:
+	var body = planet(body_id)
+	if body == null:
+		return 520.0
+	for biome in ScaleFrame.biomes_of(body):
+		var row: Dictionary = biome
+		if str(row.get("id", "")) == site_id or bool(row.get("claim", false)):
+			return float(row.get("span_m", 520.0))
+	return 520.0
+
+
+func _bind_band() -> void:
+	var home := str(defs.system.get("pdo", {}).get("home", ""))
+	var body = planet(home)
+	if body == null and planets.is_empty() == false:
+		body = planets[0]
+	if body == null:
+		layer = ScaleFrame.BAND
+		return
+	layer = ScaleFrame.BAND
+	body_id = str(body.id)
+	var band := ScaleFrame.primary_band(body)
+	band_id = str(band.get("id", "band"))
+	site_id = ""
+	local_origin = body.chart_km
+	said_city = false
+
+
+func _step_scale(before: Vector2) -> void:
+	if int(layer) == ScaleFrame.SITE:
+		return
+	if int(layer) == ScaleFrame.BAND:
+		var body = planet(body_id)
+		if body == null:
+			return
+		var outer := ScaleFrame.band_outer(self, body)
+		var center: Vector2 = body.pos
+		var was: float = before.distance_to(center)
+		var now: float = player.pos.distance_to(center)
+		if was <= outer and now > outer:
+			_to_chart_from_band(body)
+		return
+	if int(layer) == ScaleFrame.APPROACH:
+		_step_approach()
+		return
+	if int(layer) == ScaleFrame.CHART:
+		_rebase_chart()
+		_step_chart()
+
+
+func _to_chart_from_band(body: Dictionary) -> void:
+	var center: Vector2 = body.pos
+	var exit: Vector2 = player.pos - center
+	if exit.length() < 1.0:
+		exit = Vector2.RIGHT
+	exit = exit.normalized()
+	var outside := ScaleFrame.soi_km(body) + 40.0
+	local_origin = body.chart_km
+	player.pos = exit * outside
+	player.vel = Vector2.ZERO
+	layer = ScaleFrame.CHART
+	body_id = ""
+	band_id = ""
+	say("Clear of the band. The chart has the well. The city stays down there.")
+
+
+func _step_approach() -> void:
+	var body = planet(body_id)
+	if body == null:
+		layer = ScaleFrame.CHART
+		return
+	var radius := ScaleFrame.radius_km(body)
+	var alt: float = player.pos.length() - radius
+	var band := ScaleFrame.primary_band(body)
+	var mid := float(band.get("alt_km", 80.0))
+	var half := float(band.get("width_km", 40.0)) * 0.5
+	if alt <= mid + half and alt >= mid - half:
+		_enter_band(body)
+		return
+	if player.pos.length() > ScaleFrame.soi_km(body):
+		local_origin = body.chart_km + player.pos
+		player.pos = Vector2.ZERO
+		player.vel = Vector2.ZERO
+		layer = ScaleFrame.CHART
+		body_id = ""
+		band_id = ""
+		say("Out of the well. The chart is icons and lanes.")
+
+
+func _enter_band(body: Dictionary) -> void:
+	var dir: Vector2 = player.pos.normalized()
+	if dir.length() < 0.2:
+		dir = Vector2.RIGHT
+	var outer := ScaleFrame.band_outer(self, body)
+	var sim_r := minf(float(body.radius) + DOCK_GAP, outer - 120.0)
+	player.pos = body.pos + dir * sim_r
+	player.vel = Vector2.ZERO
+	layer = ScaleFrame.BAND
+	body_id = str(body.id)
+	band_id = str(ScaleFrame.primary_band(body).get("id", "band"))
+	local_origin = body.chart_km
+	say("In the %s. Burning in does not land this keel." % str(ScaleFrame.primary_band(body).get("name", "band")))
+
+
+func _rebase_chart() -> void:
+	if player.pos.length() < ScaleFrame.REBASE_KM:
+		return
+	var shift: Vector2 = player.pos
+	local_origin += shift
+	player.pos = Vector2.ZERO
+	for mate in captains:
+		mate.pos -= shift
+
+
+func _step_chart() -> void:
+	var world: Vector2 = local_origin + player.pos
+	var best = null
+	var best_d := 1.0e12
+	for body in planets:
+		var row: Dictionary = body
+		var dist: float = world.distance_to(row.chart_km)
+		if dist < ScaleFrame.soi_km(row) and dist < best_d:
+			best = row
+			best_d = dist
+	if best == null:
+		return
+	var chosen: Dictionary = best
+	var rel: Vector2 = world - chosen.chart_km
+	local_origin = chosen.chart_km
+	player.pos = rel
+	player.vel = player.vel.limit_length(40.0)
+	layer = ScaleFrame.APPROACH
+	body_id = str(best.id)
+	band_id = ""
+	say("%s fills the well. The band is the floor, not the streets." % str(best.name))
+
+
+func _build_traffic() -> void:
+	traffic = []
+	var home = planet(str(defs.system.get("pdo", {}).get("home", "")))
+	if home == null:
+		return
+	if str(home.id) != "aegis_prime":
+		return
+	var shells := [
+		{"kind": "civic", "orbit": float(home.radius) + 460.0, "rate": 0.11, "phase": 0.4},
+		{"kind": "cargo", "orbit": float(home.radius) + 540.0, "rate": 0.07, "phase": 1.7},
+		{"kind": "pdo", "orbit": float(home.radius) + 610.0, "rate": 0.15, "phase": 3.1},
+	]
+	for shell in shells:
+		var row: Dictionary = shell
+		row.body_id = str(home.id)
+		row.pos = home.pos
+		traffic.append(row)
+
+
+func _step_traffic(dt: float) -> void:
+	for shell in traffic:
+		var row: Dictionary = shell
+		row.phase = float(row.phase) + dt * float(row.rate)
+		var body = planet(str(row.body_id))
+		if body == null:
+			continue
+		row.pos = body.pos + Vector2.from_angle(float(row.phase)) * float(row.orbit)

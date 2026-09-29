@@ -445,8 +445,14 @@ func chart(p: Vector2, height: float = 0.0) -> Vector3:
 
 
 func _sync_props(sim) -> void:
+	var belt: Dictionary = sim.defs.system.get("belt", {})
+	var volume := ScaleFrame.belt_is_volume(belt)
 	var index := 0
+	var shown := 0
 	for rock in sim.asteroids:
+		if volume and shown >= 6:
+			break
+		shown += 1
 		var row: Dictionary = rock
 		var chunk := _prop("rock%d" % index)
 		index += 1
@@ -470,6 +476,8 @@ func _sync_props(sim) -> void:
 			chunk.material_override = stone
 			chunk.set_meta("built", "yes")
 		chunk.visible = chunk.mesh != null
+	if volume:
+		_sync_belt_volume(sim, belt)
 	index = 0
 	for hull in sim.trash:
 		var row: Dictionary = hull
@@ -588,6 +596,7 @@ func _sync_props(sim) -> void:
 		add_child(_beacon_light)
 	_beacon_light.position = chart(sim.beacon_pos, 38.0)
 	_tag("Dock beacon", chart(sim.beacon_pos, 52.0), Color("8aa896"), 13)
+	_sync_density(sim)
 	_sync_pocket(sim)
 	_sync_nebula()
 	_sync_shots(sim)
@@ -853,15 +862,40 @@ func _sync_star(sim) -> void:
 	var far_col := core
 	far_col.a = 0.45
 	(_star_far.material_override as ShaderMaterial).set_shader_parameter("albedo", far_col)
+	var show_star := int(sim.layer) == ScaleFrame.BAND
+	_star_mesh.visible = show_star
+	_star_glow.visible = show_star
+	_star_far.visible = show_star
 
 
 func _sync_planets(sim) -> void:
+	var layer := int(sim.layer)
+	if layer == ScaleFrame.CHART:
+		_sync_chart_bodies(sim)
+		return
+	if layer == ScaleFrame.APPROACH:
+		_sync_approach_body(sim)
+		return
+	if layer == ScaleFrame.SITE:
+		_sync_site(sim)
+		return
 	for body in sim.planets:
 		var row: Dictionary = body
 		var bid := str(row.get("id", "planet"))
 		var node := _body_node(bid)
+		var limb := bid == str(sim.body_id)
 		var radius := float(row.radius)
-		node.position = chart(row.pos, 0.0)
+		if limb:
+			radius = ScaleFrame.LIMB_RADIUS
+			var ship: Vector2 = sim.player.pos
+			var away: Vector2 = ship - row.pos
+			if away.length() < 1.0:
+				away = Vector2.RIGHT
+			away = away.normalized()
+			var center2 := ship - away * (radius + 420.0)
+			node.position = chart(center2, -140.0)
+		else:
+			node.position = chart(row.pos, 0.0)
 		node.rotation.y = float(row.get("angle", 0.0)) + float(sim.time) * float(row.get("spin", 0.05))
 		var ball := node.get_node("Ball") as MeshInstance3D
 		(ball.mesh as SphereMesh).radius = radius
@@ -890,6 +924,10 @@ func _sync_planets(sim) -> void:
 		var city := 1.0 if (legal.contains("capital") or legal.contains("pdo")) else 0.0
 		mat.set_shader_parameter("city", city)
 		var clouds := node.get_node("Clouds") as MeshInstance3D
+		clouds.visible = true
+		var well := node.get_node_or_null("Well") as MeshInstance3D
+		if well != null:
+			well.visible = false
 		(clouds.mesh as SphereMesh).radius = radius * 1.018
 		(clouds.mesh as SphereMesh).height = radius * 2.036
 		var cloud_mat := clouds.material_override as ShaderMaterial
@@ -899,11 +937,258 @@ func _sync_planets(sim) -> void:
 		var air_mat := air.material_override as ShaderMaterial
 		air_mat.set_shader_parameter("to_star", to_star)
 		air_mat.set_shader_parameter("tint", albedo.lerp(Color(0.55, 0.78, 0.88), 0.55))
-		_sync_ring(node, row, radius, to_star)
-		_sync_moon(node, sim, row, radius)
-		_tag(str(row.get("name", "")), chart(row.pos, radius + 28.0), Color("e6d7bf"), 16)
+		var draw: Dictionary = row
+		if limb:
+			draw = row.duplicate()
+			draw.ring = false
+			draw.moon = false
+		_sync_ring(node, draw, radius, to_star)
+		_sync_moon(node, sim, draw, radius)
+		_parallax(node, radius, float(sim.time), limb)
+		var label_at := chart(row.pos, float(row.radius) + 28.0)
+		if limb:
+			label_at = chart(sim.player.pos, 80.0)
+		_tag(str(row.get("name", "")), label_at, Color("e6d7bf"), 16)
 	var star_name := str(sim.defs.system.star.name)
 	_tag(star_name, Vector3(0.0, float(sim.star_radius) + 40.0, 0.0), Color("f0c27a"), 16)
+
+
+func _sync_density(sim) -> void:
+	var belt: Dictionary = sim.defs.system.get("belt", {})
+	if ScaleFrame.belt_is_volume(belt):
+		_sync_belt_volume(sim, belt)
+	var spec: Dictionary = sim.defs.system.get("stream", {})
+	var ribbon := _prop("stream_volume")
+	if spec.is_empty() or str(spec.get("id", "")) == "":
+		ribbon.visible = false
+		_used.erase("prop:stream_volume")
+	else:
+		if ribbon.mesh == null:
+			var box := BoxMesh.new()
+			box.size = Vector3(1.0, 8.0, 36.0)
+			ribbon.mesh = box
+			var haze := StandardMaterial3D.new()
+			haze.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			haze.albedo_color = Color(0.62, 0.58, 0.48, 0.22)
+			haze.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			ribbon.material_override = haze
+		var span := float(spec.get("span", 400.0))
+		(ribbon.mesh as BoxMesh).size = Vector3(maxf(span, 80.0), 10.0, 48.0)
+		ribbon.position = chart(sim.stream_origin, 4.0)
+		ribbon.visible = int(sim.layer) == ScaleFrame.BAND
+	var shell_i := 0
+	for shell in sim.traffic:
+		var row: Dictionary = shell
+		var craft := _prop("shell%d" % shell_i)
+		shell_i += 1
+		if craft.mesh == null:
+			var hull := BoxMesh.new()
+			hull.size = Vector3(18.0, 6.0, 8.0)
+			craft.mesh = hull
+			craft.material_override = _hull_mat(Color("8a9390"))
+		craft.position = chart(row.pos, 8.0)
+		craft.visible = int(sim.layer) == ScaleFrame.BAND
+	var pin := _prop("claim_pin")
+	var show_pin := bool(sim.claim.get("owned", false)) and str(sim.claim.get("system_id", "")) == str(sim.defs.system.id)
+	if not show_pin:
+		pin.visible = false
+		_used.erase("prop:claim_pin")
+		return
+	if pin.mesh == null:
+		var mast := CylinderMesh.new()
+		mast.top_radius = 1.2
+		mast.bottom_radius = 2.4
+		mast.height = 70.0
+		pin.mesh = mast
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.albedo_color = Color("e7f2c8")
+		glow.emission_enabled = true
+		glow.emission = Color("d7e6a8")
+		glow.emission_energy_multiplier = 1.2
+		pin.material_override = glow
+	var at := Vector2(float(sim.claim.get("x", sim.pocket_pos.x)), float(sim.claim.get("y", sim.pocket_pos.y)))
+	pin.position = chart(at, 35.0)
+	pin.visible = int(sim.layer) == ScaleFrame.BAND
+
+
+func _sync_belt_volume(sim, belt: Dictionary) -> void:
+	var hoop := _prop("belt_volume")
+	if hoop.mesh == null:
+		var torus := TorusMesh.new()
+		torus.rings = 64
+		torus.ring_segments = 10
+		hoop.mesh = torus
+		var mat := StandardMaterial3D.new()
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = Color(0.45, 0.4, 0.34, 0.28)
+		hoop.material_override = mat
+		hoop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var radius := float(belt.get("radius", 1000.0))
+	var width := maxf(float(belt.get("width", 40.0)), 24.0)
+	(hoop.mesh as TorusMesh).inner_radius = maxf(radius - width, 8.0)
+	(hoop.mesh as TorusMesh).outer_radius = radius + width
+	hoop.position = Vector3.ZERO
+	hoop.visible = int(sim.layer) == ScaleFrame.BAND
+
+
+func _parallax(node: Node3D, radius: float, spin: float, on: bool) -> void:
+	for i in 3:
+		var band := node.get_node_or_null("Para%d" % i) as MeshInstance3D
+		if band == null:
+			band = MeshInstance3D.new()
+			band.name = "Para%d" % i
+			var shell := SphereMesh.new()
+			shell.radial_segments = 28
+			shell.rings = 16
+			band.mesh = shell
+			var mat := ShaderMaterial.new()
+			mat.shader = _air_shader
+			band.material_override = mat
+			band.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			node.add_child(band)
+		band.visible = on
+		if not on:
+			continue
+		var grow := 1.012 + float(i) * 0.02
+		(band.mesh as SphereMesh).radius = radius * grow
+		(band.mesh as SphereMesh).height = radius * grow * 2.0
+		band.rotation = Vector3(0.15 * float(i), spin * (0.05 + float(i) * 0.03), 0.08)
+		var tint := Color(0.45, 0.62, 0.78, 0.22 - float(i) * 0.04)
+		(band.material_override as ShaderMaterial).set_shader_parameter("tint", tint)
+
+
+func _sync_chart_bodies(sim) -> void:
+	for body in sim.planets:
+		var row: Dictionary = body
+		var node := _body_node(str(row.id))
+		var icon := 900.0
+		node.position = chart(row.chart_km - sim.local_origin, 0.0)
+		var ball := node.get_node("Ball") as MeshInstance3D
+		(ball.mesh as SphereMesh).radius = icon
+		(ball.mesh as SphereMesh).height = icon * 2.0
+		var air := node.get_node("Air") as MeshInstance3D
+		(air.mesh as SphereMesh).radius = icon * 1.08
+		(air.mesh as SphereMesh).height = icon * 2.16
+		var clouds := node.get_node("Clouds") as MeshInstance3D
+		clouds.visible = false
+		_parallax(node, icon, 0.0, false)
+		var well := node.get_node_or_null("Well") as MeshInstance3D
+		if well == null:
+			well = MeshInstance3D.new()
+			well.name = "Well"
+			var hoop := TorusMesh.new()
+			hoop.rings = 48
+			hoop.ring_segments = 8
+			well.mesh = hoop
+			var mat := StandardMaterial3D.new()
+			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			mat.albedo_color = Color(0.55, 0.7, 0.62, 0.35)
+			well.material_override = mat
+			well.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			node.add_child(well)
+		var soi := ScaleFrame.soi_km(row)
+		(well.mesh as TorusMesh).inner_radius = maxf(soi - 180.0, 20.0)
+		(well.mesh as TorusMesh).outer_radius = soi + 180.0
+		well.visible = true
+		_tag(str(row.name), node.position + Vector3(0.0, icon + 200.0, 0.0), Color("e6d7bf"), 16)
+	var mark := _prop("chart_ship")
+	if mark.mesh == null:
+		var dot := SphereMesh.new()
+		dot.radius = 280.0
+		dot.height = 560.0
+		mark.mesh = dot
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.albedo_color = Color("d7e6c8")
+		mark.material_override = glow
+	mark.position = chart(sim.player.pos, 0.0)
+	mark.visible = true
+
+
+func _sync_approach_body(sim) -> void:
+	var focus := str(sim.body_id)
+	for body in sim.planets:
+		var row: Dictionary = body
+		var node := _body_node(str(row.id))
+		var mine := str(row.id) == focus
+		node.visible = mine
+		if not mine:
+			_used.erase("body:" + str(row.id))
+			continue
+		var radius := ScaleFrame.radius_km(row)
+		node.position = Vector3.ZERO
+		var ball := node.get_node("Ball") as MeshInstance3D
+		(ball.mesh as SphereMesh).radius = radius
+		(ball.mesh as SphereMesh).height = radius * 2.0
+		var air := node.get_node("Air") as MeshInstance3D
+		(air.mesh as SphereMesh).radius = radius * 1.01
+		(air.mesh as SphereMesh).height = radius * 2.02
+		var clouds := node.get_node("Clouds") as MeshInstance3D
+		clouds.visible = true
+		(clouds.mesh as SphereMesh).radius = radius * 1.004
+		(clouds.mesh as SphereMesh).height = radius * 2.008
+		_parallax(node, radius, float(sim.time), true)
+		var well := node.get_node_or_null("Well") as MeshInstance3D
+		if well != null:
+			well.visible = false
+		_tag(str(row.name), Vector3(0.0, radius * 0.15, 0.0), Color("e6d7bf"), 16)
+
+
+func _sync_site(sim) -> void:
+	for body in sim.planets:
+		var bid := str(body.id)
+		if _bodies.has(bid):
+			(_bodies[bid] as Node3D).visible = false
+	var ground := _prop("site_ground")
+	if ground.mesh == null:
+		var slab := BoxMesh.new()
+		slab.size = Vector3(520.0, 2.0, 520.0)
+		ground.mesh = slab
+		ground.material_override = _hull_mat(Color("6f8a52"))
+	ground.position = chart(sim.site_pos, -1.0)
+	var dome := _prop("site_dome")
+	if dome.mesh == null:
+		var ball := SphereMesh.new()
+		ball.radius = 46.0
+		ball.height = 40.0
+		dome.mesh = ball
+		var glass := StandardMaterial3D.new()
+		glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		glass.albedo_color = Color(0.7, 0.86, 0.74, 0.28)
+		glass.emission_enabled = true
+		glass.emission = Color("d7e6c8")
+		glass.emission_energy_multiplier = 0.15
+		dome.material_override = glass
+	dome.position = chart(sim.site_pos, 16.0)
+	var alive := bool(sim.claim.get("pen", {}).get("alive", false))
+	for i in 3:
+		var beast := _prop("kine%d" % i)
+		if beast.mesh == null:
+			var box := BoxMesh.new()
+			box.size = Vector3(2.4, 1.4, 4.2)
+			beast.mesh = box
+			beast.material_override = _hull_mat(Color("c4b49a"))
+		var spot := Vector2.from_angle(float(i) * 2.1) * (8.0 + float(i) * 3.0)
+		beast.position = chart(sim.site_pos + spot, 0.8)
+		beast.visible = alive
+	var lamp := _prop("grow_light")
+	if lamp.mesh == null:
+		var bulb := SphereMesh.new()
+		bulb.radius = 1.6
+		bulb.height = 3.2
+		lamp.mesh = bulb
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.albedo_color = Color("e7f2c8")
+		glow.emission_enabled = true
+		glow.emission = Color("d7e6a8")
+		glow.emission_energy_multiplier = 1.4
+		lamp.material_override = glow
+	lamp.position = chart(sim.site_pos + Vector2(18.0, 6.0), 7.0)
+	_tag("Quiet valley", chart(sim.site_pos, 24.0), Color("d7e6c8"), 14)
 
 
 func _body_node(bid: String) -> Node3D:
@@ -1066,7 +1351,13 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 			elif part.begins_with("Trim"):
 				paint = accent
 			_paint_hull(child, paint)
-	_banked(holder, ship.pos, float(ship.rot), 2.0)
+	if int(sim.layer) == ScaleFrame.SITE and key == "player":
+		holder.scale = Vector3(0.28, 0.28, 0.28)
+		holder.position = chart(sim.site_pos + Vector2(36.0, -20.0), 280.0)
+		holder.rotation = Vector3(-0.4, float(ship.rot), 0.15)
+	else:
+		holder.scale = Vector3.ONE
+		_banked(holder, ship.pos, float(ship.rot), 2.0)
 	var thrusting := bool(ship.get("thrusting", false))
 	var exhaust := holder.get_node_or_null("Exhaust") as MeshInstance3D
 	if exhaust != null:

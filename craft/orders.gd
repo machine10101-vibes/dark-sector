@@ -158,6 +158,7 @@ static func step(sim, craft, dt: float) -> void:
 	if float(craft.hp) <= 0.0 and str(craft.state) != "lost":
 		craft.state = "lost"
 		craft.hp = 0.0
+		ScaleFrame.mark_lost(sim, craft)
 		sim.say("%s lost. Rebuild it from returned mass." % craft.name)
 		sim.sfx("destroyed")
 
@@ -179,6 +180,10 @@ static func _step_probe(sim, craft, dt: float) -> void:
 	var order_name := str(craft.order)
 	if str(craft.state) == "outbound":
 		var dist = _fly_safe(sim, craft, _work_point(place, craft.pos), dt, float(craft.speed))
+		craft.layer = ScaleFrame.CRAFT
+		var fly_km: Vector2 = ScaleFrame.local_km(sim, craft.pos)
+		craft.km_x = fly_km.x
+		craft.km_y = fly_km.y
 		if dist < 28.0:
 			if order_name == "scan":
 				craft.state = "working"
@@ -201,7 +206,12 @@ static func _step_probe(sim, craft, dt: float) -> void:
 			craft.state = "returning"
 			sim.say("Survey of %s still holds." % place.name)
 			return
-		craft.work = float(craft.work) + dt
+		var pace := ScaleFrame.scan_pace(sim, place)
+		craft.work = float(craft.work) + dt / pace
+		craft.layer = ScaleFrame.CRAFT
+		var km: Vector2 = ScaleFrame.local_km(sim, craft.pos)
+		craft.km_x = km.x
+		craft.km_y = km.y
 		var step_time = float(craft.work_step)
 		var should = int(float(craft.work) / step_time)
 		while int(craft.layers_done) < should and int(craft.layers_done) < LAYERS.size():
