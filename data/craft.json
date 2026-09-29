@@ -1,0 +1,64 @@
+{
+  "survey_probe": {
+    "id": "survey_probe",
+    "name": "Survey Probe",
+    "job": "Orbits a world and reads it in layers: orbit, air, surface, crust, biosign, ruins, legal title.",
+    "speed": 520,
+    "battery": 150,
+    "drain": 3.2,
+    "hp": 16,
+    "work": 0.46,
+    "radius": 7
+  },
+  "harvest_drone": {
+    "id": "harvest_drone",
+    "name": "Harvest Drone",
+    "job": "Pulls one crate from a surveyed seam. Bring the keel within the neighborhood; it will not cross the Reach alone.",
+    "speed": 230,
+    "battery": 100,
+    "drain": 4.5,
+    "hp": 22,
+    "work": 2.35,
+    "radius": 9
+  },
+  "salvage_tender": {
+    "id": "salvage_tender",
+    "name": "Salvage Tender",
+    "job": "Strips a wreck for keel salvage and one crate. Wreck rights, not a looting festival.",
+    "speed": 200,
+    "battery": 110,
+    "drain": 3.8,
+    "hp": 30,
+    "work": 2.15,
+    "radius": 11
+  },
+  "away_shuttle": {
+    "id": "away_shuttle",
+    "name": "Away Shuttle",
+    "job": "Puts a crew on a site the keel will not land on. Hollow Latch can be walked.",
+    "speed": 210,
+    "battery": 100,
+    "drain": 3.6,
+    "hp": 26,
+    "work": 2.6,
+    "radius": 10
+  },
+  "fighter": {
+    "id": "fighter",
+    "name": "Fighter",
+    "job": "Leaves the throat, escorts the keel, and shoots what is already hunting you.",
+    "speed": 340,
+    "battery": 90,
+    "drain": 3.4,
+    "hp": 28,
+    "work": 0,
+    "radius": 8,
+    "gun": {
+      "damage": 6,
+      "cooldown": 0.42,
+      "speed": 700,
+      "range": 300,
+      "ttl": 1.05
+    }
+  }
+}

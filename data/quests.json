@@ -1,0 +1,26 @@
+{
+  "origin_vesper": {
+    "id": "origin_vesper",
+    "kind": "authored",
+    "ship": "vesper",
+    "title": "The Long Errand",
+    "state": "dormant",
+    "summary": "Someone in the Reach still pays for maps that are not drawn. The letter stays sealed until the mast is longer and a dossier exists for every world here."
+  },
+  "origin_anvil": {
+    "id": "origin_anvil",
+    "kind": "authored",
+    "ship": "anvil",
+    "title": "A Hold Worth Landing",
+    "state": "dormant",
+    "summary": "The Barn was promised a garden. Hollow Latch will take a core. The charter is not written, and the keel is not yet fat enough to haul a dome."
+  },
+  "origin_kestrel": {
+    "id": "origin_kestrel",
+    "kind": "authored",
+    "ship": "kestrel",
+    "title": "Beak and Charter",
+    "state": "dormant",
+    "summary": "The Compact still has your old squadron on a list. Walking Hollow Latch and surviving the Slat will open that argument. It is not open yet."
+  }
+}
