@@ -39,7 +39,7 @@ func _ready() -> void:
 	_build_pause()
 	_build_dead()
 	var hint := ThemeKit.label(
-		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   R repair   wheel zoom     1 probe   2 harvest     B bay   H hangar   D dossier   F heat   J quests   K claim     Hold / Esc pause   F5 save   F9 load",
+		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   R repair   L lane   C core   K claim     1 probe   2 harvest   B bay   H hangar   D dossier   F heat   J quests     Hold / Esc pause   F5 save   F9 load",
 		12,
 		Color("8d826c")
 	)
@@ -145,6 +145,22 @@ func _unhandled_input(event: InputEvent) -> void:
 			_launch(_boat_id())
 		KEY_R:
 			_repair()
+		KEY_L:
+			_say_result(Game.sim.try_lane())
+		KEY_C:
+			_say_result(Homestead.try_plant(Game.sim))
+		KEY_M:
+			_say_result(Homestead.try_make_core(Game.sim))
+		KEY_G:
+			_say_result(Homestead.tend(Game.sim))
+		KEY_N:
+			_say_result(Homestead.feed(Game.sim))
+		KEY_U:
+			_say_result(Homestead.haul(Game.sim))
+		KEY_P:
+			_say_result(Homestead.fit_pen(Game.sim))
+		KEY_T:
+			_say_result(Homestead.toggle_turret(Game.sim))
 		KEY_F5:
 			_save()
 		KEY_F9:
@@ -240,7 +256,7 @@ func _build_pause() -> void:
 func _build_dead() -> void:
 	dead_box = _center_card("The keel is a wreck")
 	dead_box.visible = false
-	var note := ThemeKit.label("The wreck keeps your name and some of the hold. The layout stays. You wake at Helion Dock.", 14)
+	var note := ThemeKit.label("The wreck keeps your name and some of the hold. The layout stays. You wake at the dock.", 14)
 	note.custom_minimum_size = Vector2(360, 0)
 	var load := ThemeKit.button("Read the log")
 	load.pressed.connect(_load)
@@ -298,6 +314,9 @@ func _refresh_helm() -> void:
 	var repair := ""
 	if sim.player.pos.distance_to(sim.beacon_pos) <= 170.0:
 		repair = "    R welds at the dock beacon"
+	var gate := sim.nearby_gate()
+	if not gate.is_empty():
+		repair += "    L %s" % str(gate.name)
 	helm_cargo.text = _cargo_line(sim, stats) + repair
 	helm_craft.text = _craft_line(sim)
 	var bits: Array = []
@@ -665,13 +684,20 @@ func _quest_text() -> String:
 
 func _claim_text() -> String:
 	var status := PocketRules.status(Game.sim)
-	return "%s\nEligible: %s\nCore planted: %s\nWalked: %s\n\n%s\n\nFly into the pale ring trailing Cinder. A shuttle can walk it. Planting a core is the next work." % [
+	return "%s\nEligible: %s\nCore planted: %s\nFrozen: %s\nWalked: %s\n\n%s\n\n%s" % [
 		status.name,
 		"yes" if status.eligible else "no",
 		"yes" if status.owned else "no",
+		"yes" if status.frozen else "no",
 		"yes" if status.surveyed else "no",
 		status.line,
+		Homestead.text(Game.sim),
 	]
+
+
+func _say_result(message: String) -> void:
+	if message != "" and Game.sim != null:
+		Game.sim.say(message)
 
 
 func reset_overlays() -> void:
