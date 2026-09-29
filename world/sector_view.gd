@@ -136,6 +136,8 @@ func _cmd() -> Dictionary:
 
 
 func _draw() -> void:
+	# The helm renders the sector as meshes. This view only ticks the sim and takes input.
+	return
 	if Game.sim == null or cam == null:
 		return
 	var sim = Game.sim
