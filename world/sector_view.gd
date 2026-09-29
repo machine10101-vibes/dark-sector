@@ -104,6 +104,8 @@ func _draw() -> void:
 		_draw_planet(sim, body)
 	_draw_pocket(sim)
 	_draw_beacon(sim)
+	_draw_gates(sim)
+	_draw_homestead(sim)
 	for wreck in sim.wrecks:
 		_draw_wreck(wreck)
 	for shot in sim.projectiles:
@@ -248,6 +250,53 @@ func _draw_pocket(sim) -> void:
 	draw_line(sim.pocket_pos + Vector2(0, -14), sim.pocket_pos + Vector2(0, 14), Color("cbb892"), 1.2, true)
 
 
+func _draw_gates(sim) -> void:
+	for gate in sim.gates:
+		var row: Dictionary = gate
+		var pos: Vector2 = row.pos
+		var radius := float(row.radius)
+		draw_arc(pos, radius, 0.0, TAU, 48, Color("d7c48a"), 1.8, true)
+		draw_arc(pos, radius * 0.55, 0.0, TAU, 32, Color("f0e2b0"), 1.2, true)
+
+
+func _draw_homestead(sim) -> void:
+	if not bool(sim.claim.get("owned", false)):
+		return
+	if str(sim.claim.get("system_id", "")) != str(sim.defs.system.id):
+		return
+	var origin := Vector2(float(sim.claim.get("x", 0.0)), float(sim.claim.get("y", 0.0)))
+	var frozen := bool(sim.claim.get("frozen", false))
+	var ruptured := bool(sim.claim.get("ruptured", false))
+	var border := Color("9fbf78") if not frozen else Color("6a6458")
+	draw_arc(origin, 150.0, 0.0, TAU, 64, border, 2.2, true)
+	var dome_col := Color("d7e6c8")
+	if ruptured or frozen:
+		dome_col = Color("5c4038")
+	draw_circle(origin, 22.0, dome_col)
+	draw_arc(origin, 22.0, 0.0, TAU, 24, Color("243020"), 1.4, true)
+	if not ruptured and not frozen:
+		for i in 5:
+			var lamp: Vector2 = origin + Vector2.from_angle(float(i) * TAU / 5.0 + sim.time) * 16.0
+			draw_circle(lamp, 2.2, Color("f4e2a1"))
+	var plot := origin + Vector2(70, 18)
+	draw_rect(Rect2(plot - Vector2(16, 10), Vector2(32, 20)), Color("6f8a48"))
+	var pen := origin + Vector2(-62, 36)
+	draw_rect(Rect2(pen - Vector2(14, 12), Vector2(28, 24)), Color("8a7048"))
+	var crate := origin + Vector2(18, -64)
+	draw_rect(Rect2(crate - Vector2(8, 8), Vector2(16, 16)), Color("c4b49a"))
+	var beacon := origin + Vector2(0, 108)
+	draw_circle(beacon, 5.0, Color("e7b15a") if not frozen else Color("5a5348"))
+	if bool(sim.claim.get("turret", false)):
+		var gun: Vector2 = origin + Vector2(48, 78)
+		draw_circle(gun, 4.0, Color("d7e6c8"))
+		draw_line(gun, gun + Vector2(0, -14), Color("e6d7bf"), 1.6, true)
+	if sim.claim.has("miner"):
+		var miner := Vector2(float(sim.claim.miner.x), float(sim.claim.miner.y))
+		draw_colored_polygon(PackedVector2Array([
+			miner + Vector2(10, 0), miner + Vector2(-8, 6), miner + Vector2(-8, -6)
+		]), Color("c4512c"))
+
+
 func _draw_beacon(sim) -> void:
 	var pos: Vector2 = sim.beacon_pos
 	draw_arc(pos, 36.0, 0.0, TAU, 28, Color("8aa896"), 1.6, true)
@@ -353,7 +402,16 @@ func _draw_names(sim, zoom: float) -> void:
 	_text(sim.pocket_pos + Vector2(-70, -float(sim.defs.system.pocket.radius) - 16.0), pocket_name, 15, Color("c5d2b4"))
 	if zoom < 0.4 and float(sim.defs.system.zones.amber.radius) > 1.0:
 		_text(sim.nest_pos + Vector2(-40, -float(sim.defs.system.zones.amber.radius) - 12.0), "The Slat — amber", 14, Color("c4923a"))
-	_text(sim.beacon_pos + Vector2(-46, -22), "Dock beacon", 13, Color("8aa896"))
+	var pad_name := "Dock beacon"
+	if int(sim.defs.system.pdo.get("count", 0)) <= 0:
+		pad_name = "Repair pad"
+	_text(sim.beacon_pos + Vector2(-46, -22), pad_name, 13, Color("8aa896"))
+	for gate in sim.gates:
+		var row: Dictionary = gate
+		_text(row.pos + Vector2(-50, -float(row.radius) - 14.0), str(row.name), 13, Color("e6d7a8"))
+	if bool(sim.claim.get("owned", false)) and str(sim.claim.get("system_id", "")) == str(sim.defs.system.id):
+		var origin := Vector2(float(sim.claim.get("x", 0.0)), float(sim.claim.get("y", 0.0)))
+		_text(origin + Vector2(-36, -168), "Claim", 14, Color("d5e2b8"))
 	if zoom < 0.55 and sim.trash.size() > 0:
 		var pile: Vector2 = sim.trash[0].pos
 		_text(pile + Vector2(-30, -28), str(sim.defs.system.trash.name), 14, Color("c2b49a"))

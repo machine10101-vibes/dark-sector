@@ -6,16 +6,23 @@ static func status(sim) -> Dictionary:
 	var pocket: Dictionary = sim.defs.system.pocket
 	var plantable := bool(pocket.get("plantable", false))
 	var surveyed := bool(sim.claim.get("surveyed", false))
+	var same := str(sim.claim.get("system_id", "")) == str(sim.defs.system.id)
+	var owned := bool(sim.claim.get("owned", false)) and same
+	var frozen := bool(sim.claim.get("frozen", false)) and owned
 	var line := str(pocket.get("why", "Marked pocket."))
 	if not plantable:
 		line = "%s is marked and closed. Nothing can be planted." % pocket.name
+	elif frozen:
+		line = "The core is gone. %s is frozen in place. The keel was not taken." % pocket.name
+	elif owned:
+		line = "A Claim Core anchors %s. Dome, plot, pen, crate, beacon." % pocket.name
 	elif surveyed:
-		line = "A shuttle walked the pocket. It will take a dome and a core. Neither is aboard."
+		line = "A shuttle walked the pocket. Press C with a Claim Core aboard."
 	return {
 		"name": str(pocket.name),
 		"eligible": plantable,
-		"owned": false,
-		"frozen": false,
+		"owned": owned,
+		"frozen": frozen,
 		"surveyed": surveyed,
 		"line": line,
 	}

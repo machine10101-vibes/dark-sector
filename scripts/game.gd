@@ -8,11 +8,17 @@ var zoom := 0.9
 
 
 func _ready() -> void:
+	var helion: Dictionary = Serde.load_json("res://data/system.json")
+	var soil: Dictionary = Serde.load_json("res://data/first_soil.json")
 	defs = {
 		"ships": Serde.load_json("res://data/ships.json"),
 		"modules": Serde.load_json("res://data/modules.json"),
 		"craft": Serde.load_json("res://data/craft.json"),
-		"system": Serde.load_json("res://data/system.json"),
+		"system": helion,
+		"systems": {
+			str(helion.id): helion,
+			str(soil.id): soil,
+		},
 		"factions": Serde.load_json("res://data/factions.json"),
 		"quests": Serde.load_json("res://data/quests.json"),
 	}

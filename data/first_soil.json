@@ -1,0 +1,118 @@
+{
+  "id": "HC-V1-R5-S1",
+  "name": "First Soil",
+  "seed": 59021,
+  "star": {
+    "id": "first_soil_star",
+    "name": "First Soil",
+    "class": "G-warm",
+    "radius": 160,
+    "color": "#f0d7a4"
+  },
+  "planets": [
+    {
+      "id": "green_wound",
+      "name": "Green Wound",
+      "angle": 0.9,
+      "distance": 2100,
+      "radius": 96,
+      "spin": 0.05,
+      "ring": false,
+      "ring_kind": "",
+      "moon": false,
+      "junk": false,
+      "shard": true,
+      "colors": ["#6f9a45", "#d5e2b8", "#243020"],
+      "legal": "claim_country",
+      "protected": false,
+      "resource": { "id": "raw_mass", "name": "Raw mass", "amount": 4 },
+      "layers": {
+        "orbit": "A flagship shard. The light on the cut face is green.",
+        "atmosphere": "A thin held breath under old dome scars. Not a city.",
+        "surface": "Glass-soil and fracture glass. The wound is the valley.",
+        "crust": "Shard crust, thin, with water cached in the cracks.",
+        "biosign": "Hold-kine country. Nothing Compact-bonded.",
+        "ruins": "An older homestead ring, packed and gone.",
+        "legal": "Garden Shards. Claim country. Not a Compact exclusion."
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "green_wound",
+      "name": "Green Wound",
+      "kind": "planet",
+      "anchor": "green_wound",
+      "legal_title": "Garden Shards, open shard",
+      "heat": "",
+      "resource": { "id": "raw_mass", "name": "Raw mass", "amount": 4 },
+      "layers": {
+        "orbit": "A flagship shard. The light on the cut face is green.",
+        "atmosphere": "A thin held breath under old dome scars.",
+        "surface": "Glass-soil and fracture glass.",
+        "crust": "Thin shard crust. Water sits in the cracks.",
+        "biosign": "Hold-kine country.",
+        "ruins": "An older homestead ring, packed and gone.",
+        "legal": "Garden Shards. Not a Compact exclusion."
+      }
+    }
+  ],
+  "belt": {
+    "id": "garden_belt",
+    "name": "Garden Belt",
+    "radius": 3400,
+    "width": 160,
+    "count": 22
+  },
+  "trash": {
+    "id": "none",
+    "name": "",
+    "origin": "",
+    "anchor": "",
+    "angle": 0.0,
+    "distance": 0,
+    "count": 0,
+    "spread": 0
+  },
+  "pocket": {
+    "id": "quiet_hollow",
+    "name": "Quiet Hollow",
+    "anchor": "green_wound",
+    "angle": 0.35,
+    "distance": 540,
+    "radius": 230,
+    "plantable": true,
+    "exclusion": false,
+    "why": "Quiet Lagrange of Green Wound. No Compact exclusion. A Claim Core can sit here."
+  },
+  "nest": {
+    "id": "none",
+    "name": "",
+    "angle": 0.0,
+    "distance": 9000
+  },
+  "zones": {
+    "green": { "anchor": "green_wound", "radius": 0 },
+    "amber": { "anchor": "nest", "radius": 0 }
+  },
+  "pdo": {
+    "faction": "helion_compact",
+    "count": 0,
+    "radius": 0,
+    "home": "green_wound"
+  },
+  "pirates": { "count": 0, "angle": 0.0, "standoff": 0 },
+  "haulers": [],
+  "gates": [
+    {
+      "id": "soil_lane",
+      "name": "Homestead Road",
+      "to": "HC-V1-R1-S1",
+      "arrive": "helion_lane",
+      "anchor": "green_wound",
+      "angle": 2.5,
+      "distance": 980,
+      "radius": 100
+    }
+  ]
+}

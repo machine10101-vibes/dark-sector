@@ -148,5 +148,17 @@
       "home": "aegis_prime",
       "radius": 880
     }
+  ],
+  "gates": [
+    {
+      "id": "helion_lane",
+      "name": "Homestead Road",
+      "to": "HC-V1-R5-S1",
+      "arrive": "soil_lane",
+      "anchor": "aegis_prime",
+      "angle": -2.55,
+      "distance": 1500,
+      "radius": 100
+    }
   ]
 }

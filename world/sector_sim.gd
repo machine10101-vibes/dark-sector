@@ -10,6 +10,7 @@ var asteroids: Array = []
 var trash: Array = []
 var stars: Array = []
 var pocket_pos = Vector2.ZERO
+var gates: Array = []
 var nest_pos = Vector2.ZERO
 var beacon_pos = Vector2.ZERO
 var trash_pos = Vector2.ZERO
@@ -95,8 +96,10 @@ func new_game(class_id: String) -> void:
 		"surveyed": false,
 		"plantable": bool(pocket.get("plantable", false)),
 	}
+	player.cargo["claim_core"] = 1
 	say("You have the %s, callsign %s." % [hull.class_name, hull.callsign])
 	say("%s. %s is the city-orbital. The ice ring is lit. %s holds confiscated hulls. %s is marked and not a homestead." % [defs.system.name, planet(str(defs.system.pdo.home)).name, defs.system.trash.name, pocket.name])
+	say("A Claim Core is in the hold. The Homestead Road buoy is off the green. L takes the lane.")
 
 
 func tick(dt: float, cmd: Dictionary) -> void:
@@ -295,6 +298,14 @@ func resource_name(id: String) -> String:
 		return "keel salvage"
 	if id == "scrap":
 		return "scrap"
+	if id == "claim_core":
+		return "Claim Core"
+	if id == "food_mass":
+		return "food mass"
+	if id == "milk_analogue":
+		return "milk analogue"
+	if id == "fodder":
+		return "fodder"
 	for row in nodes:
 		if str(row.resource.id) == id:
 			return str(row.resource.name)
@@ -447,6 +458,10 @@ func to_dict() -> Dictionary:
 
 
 func from_dict(data: Dictionary) -> void:
+	var want := str(data.get("system_id", ""))
+	var chart: Dictionary = defs.get("systems", {})
+	if chart.has(want):
+		defs.system = chart[want]
 	seed_value = int(data.galaxy_seed)
 	time = float(data.time)
 	_build_static()
@@ -479,6 +494,7 @@ func from_dict(data: Dictionary) -> void:
 	heat_log = data.get("heat_log", []).duplicate(true)
 	quest_flags = data.quest_flags.duplicate(true)
 	claim = data.claim.duplicate(true)
+	Homestead.normalize(self)
 	lines = data.get("lines", []).duplicate(true)
 	banner = str(data.get("banner", ""))
 	banner_t = 0.0
@@ -509,6 +525,7 @@ func _step(dt: float, cmd: Dictionary) -> void:
 	banner_t += dt
 	if banner_t > 9.0:
 		banner = ""
+	Homestead.step(self, dt)
 	_step_compact()
 
 
@@ -1032,7 +1049,93 @@ func _build_static() -> void:
 	pack_pos = Vector2.from_angle(pang) * (green_r + stand)
 	if green_body != null:
 		pack_pos = green_body.pos + Vector2.from_angle(pang) * (green_r + stand)
+	_build_gates()
 	_build_nodes()
+
+
+func nearby_gate() -> Dictionary:
+	var best: Dictionary = {}
+	var best_d := 100000.0
+	for gate in gates:
+		var row: Dictionary = gate
+		var reach := float(row.get("radius", 80.0))
+		var dist: float = player.pos.distance_to(row.pos)
+		if dist <= reach and dist < best_d:
+			best = row
+			best_d = dist
+	return best
+
+
+func try_lane() -> String:
+	var gate := nearby_gate()
+	if gate.is_empty():
+		return "No lane buoy in reach."
+	if hangar_down():
+		for item in craft:
+			var state := str(item.state)
+			if state != "docked" and state != "lost":
+				return "The hangar is down and a craft is still out. The lane will not take an open bay."
+	var dest := str(gate.get("to", ""))
+	var chart: Dictionary = defs.get("systems", {})
+	if not chart.has(dest):
+		return "That lane is charted and not on this keel's board."
+	_arrive(dest, str(gate.get("arrive", "")))
+	return ""
+
+
+func _arrive(system_id: String, gate_id: String) -> void:
+	defs.system = defs.systems[system_id]
+	seed_value = int(defs.system.seed)
+	projectiles = []
+	wrecks = []
+	actors = []
+	_build_static()
+	_spawn_factions()
+	var spot := _gate_by_id(gate_id)
+	if not spot.is_empty():
+		var ang := float(spot.get("angle", 0.0))
+		player.pos = spot.pos + Vector2.from_angle(ang) * (float(spot.get("radius", 80.0)) + 120.0)
+		player.vel = Vector2.ZERO
+		player.rot = ang + PI
+	else:
+		player.vel = Vector2.ZERO
+	var buttoned := false
+	for item in craft:
+		var state := str(item.state)
+		if state == "lost" or state == "docked":
+			continue
+		item.state = "docked"
+		item.pos = player.pos
+		item.vel = Vector2.ZERO
+		item.order = ""
+		item.target = ""
+		buttoned = true
+	if buttoned:
+		say("Craft buttoned up for the lane.")
+	say("The lane opens on %s." % str(defs.system.name))
+	sfx("launch")
+
+
+func _gate_by_id(gate_id: String) -> Dictionary:
+	for gate in gates:
+		var row: Dictionary = gate
+		if str(row.get("id", "")) == gate_id:
+			return row
+	return {}
+
+
+func _build_gates() -> void:
+	gates = []
+	for source in defs.system.get("gates", []):
+		var row: Dictionary = source.duplicate(true)
+		var anchor = planet(str(row.get("anchor", "")))
+		var origin := Vector2.ZERO
+		if anchor != null:
+			origin = anchor.pos
+		var ang := float(row.get("angle", 0.0))
+		row.pos = origin + Vector2.from_angle(ang) * float(row.get("distance", 0.0))
+		row.radius = float(row.get("radius", 80.0))
+		gates.append(row)
 
 
 func _build_nodes() -> void:
