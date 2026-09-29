@@ -121,12 +121,15 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 	ci.draw_colored_polygon(cast, Color(0, 0, 0, 0.14))
 	ci.draw_colored_polygon(shadow, Color(0, 0, 0, 0.4))
 	ci.draw_colored_polygon(pts, worn.darkened(0.5))
+	ci.draw_colored_polygon(_inset_world(pts, 2.4 * scale, -lit * (2.2 * scale)), Color(0.02, 0.025, 0.03, 0.34))
 	ci.draw_colored_polygon(_inset_world(pts, 1.1 * scale, lit * (1.0 * scale)), worn.darkened(0.16))
 	ci.draw_colored_polygon(_inset_world(pts, 2.6 * scale, lit * (3.0 * scale)), worn.lightened(0.06))
 	ci.draw_colored_polygon(_inset_world(pts, 4.4 * scale, lit * (5.2 * scale)), worn.lightened(0.26))
 	var spec := _centroid(pts) + lit * (5.5 * scale)
 	var tangent := Vector2(-lit.y, lit.x)
 	ci.draw_line(spec - tangent * (2.8 * scale), spec + tangent * (0.8 * scale) + lit * (1.6 * scale), Color(1, 0.97, 0.9, 0.62), maxf(1.0, 0.9 * scale), true)
+	var cool := spec - tangent * (1.6 * scale) - lit * (1.8 * scale)
+	ci.draw_line(cool, cool + lit * (3.2 * scale) + tangent * (0.4 * scale), Color(0.72, 0.86, 0.94, 0.32), maxf(1.0, 0.55 * scale), true)
 	if class_id == "vesper":
 		_paint_needle(ci, xf, scale, worn, accent, shapes, thrusting)
 	elif class_id == "anvil":
@@ -178,10 +181,25 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 			xf * (Vector2(tail - 8.0, 0.0) * scale),
 			xf * (Vector2(tail + 1.0, -1.3) * scale),
 		])
+		var sheath := PackedVector2Array([
+			xf * (Vector2(tail + 1.0, 9.2) * scale),
+			xf * (Vector2(tail - 40.0, 0.0) * scale),
+			xf * (Vector2(tail + 1.0, -9.2) * scale),
+		])
+		var ion := PackedVector2Array([
+			xf * (Vector2(tail + 0.6, 0.7) * scale),
+			xf * (Vector2(tail - 6.2, 0.0) * scale),
+			xf * (Vector2(tail + 0.6, -0.7) * scale),
+		])
+		ci.draw_colored_polygon(sheath, Color(0.95, 0.38, 0.1, 0.18))
 		ci.draw_colored_polygon(haze, Color(0.91, 0.55, 0.22, 0.45))
 		ci.draw_colored_polygon(flame, Color("e7b15a"))
 		ci.draw_colored_polygon(core, Color("fff1d2"))
+		ci.draw_colored_polygon(ion, Color(0.82, 0.92, 1.0, 0.92))
 		ci.draw_circle(xf * (Vector2(tail - 7.0, 0.0) * scale), 3.4 * scale, Color(1.0, 0.62, 0.28, 0.28))
+		for diamond in 3:
+			var along := tail - 8.0 - float(diamond) * 7.0
+			ci.draw_circle(xf * (Vector2(along, 0.0) * scale), (1.15 - float(diamond) * 0.22) * scale, Color(1.0, 0.94, 0.82, 0.32))
 
 
 static func _unit(v: Vector2) -> Vector2:
@@ -281,6 +299,25 @@ static func _paint_needle(ci: CanvasItem, xf: Transform2D, scale: float, plate: 
 		maxf(1.0, 0.55 * scale),
 		true
 	)
+	ci.draw_line(
+		xf * (Vector2(27, 1.35) * scale),
+		xf * (Vector2(19, -0.35) * scale),
+		Color(0.9, 0.97, 0.95, 0.32),
+		maxf(1.0, 0.4 * scale),
+		true
+	)
+	for rivet_i in 5:
+		var rx := 18.0 - float(rivet_i) * 7.5
+		ci.draw_circle(xf * (Vector2(rx, 2.05) * scale), 0.36 * scale, seam.lightened(0.2))
+		ci.draw_circle(xf * (Vector2(rx, -2.05) * scale), 0.36 * scale, seam.lightened(0.2))
+	ci.draw_circle(xf * (Vector2(-29, 0) * scale), 2.2 * scale, Color(0.42, 0.2, 0.08, 0.4))
+	ci.draw_line(
+		xf * (Vector2(-40, 1.05) * scale),
+		xf * (Vector2(-40, -1.05) * scale),
+		accent.lightened(0.35),
+		maxf(1.0, 0.7 * scale),
+		true
+	)
 	var collar := PackedVector2Array([
 		xf * (Vector2(-32, 1.35) * scale),
 		xf * (Vector2(-40, 1.05) * scale),
@@ -326,6 +363,9 @@ static func _paint_barn(ci: CanvasItem, xf: Transform2D, scale: float, plate: Co
 	])
 	ci.draw_colored_polygon(bridge, Color("1c2420"))
 	ci.draw_line(xf * (Vector2(14.5, -1.5) * scale), xf * (Vector2(9.5, 1.1) * scale), Color(0.72, 0.84, 0.76, 0.6), 1.0, true)
+	ci.draw_line(xf * (Vector2(13.2, 1.6) * scale), xf * (Vector2(10.2, -0.4) * scale), Color(0.9, 0.95, 0.9, 0.28), 1.0, true)
+	ci.draw_line(xf * (Vector2(-8, 6) * scale), xf * (Vector2(-8, -6) * scale), seam, 1.2, true)
+	ci.draw_circle(xf * (Vector2(-26, 0) * scale), 2.6 * scale, Color(0.28, 0.14, 0.08, 0.35))
 	for stud in [2.0, -6.0, -16.0]:
 		ci.draw_circle(xf * (Vector2(stud, 7.2) * scale), 0.6 * scale, seam)
 		ci.draw_circle(xf * (Vector2(stud, -7.2) * scale), 0.6 * scale, seam)
@@ -353,6 +393,14 @@ static func _paint_beak(ci: CanvasItem, xf: Transform2D, scale: float, plate: Co
 	])
 	ci.draw_colored_polygon(canopy, Color("1a2428"))
 	ci.draw_line(xf * (Vector2(18, -1.5) * scale), xf * (Vector2(8, 0.7) * scale), Color(0.78, 0.88, 0.92, 0.62), 1.0, true)
+	ci.draw_line(xf * (Vector2(16, 1.8) * scale), xf * (Vector2(9, -0.2) * scale), Color(0.92, 0.96, 0.98, 0.28), 1.0, true)
+	var intake := PackedVector2Array([
+		xf * (Vector2(-8, 2.2) * scale),
+		xf * (Vector2(-16, 1.4) * scale),
+		xf * (Vector2(-16, -1.4) * scale),
+		xf * (Vector2(-8, -2.2) * scale),
+	])
+	ci.draw_colored_polygon(intake, plate.darkened(0.7))
 	for y in [9.0, -9.0]:
 		ci.draw_line(xf * (Vector2(6, y) * scale), xf * (Vector2(-18, y * 0.7) * scale), accent.darkened(0.15), 1.1, true)
 		ci.draw_line(xf * (Vector2(-2, y * 0.85) * scale), xf * (Vector2(-14, y * 0.55) * scale), plate.darkened(0.55), 1.5, true)
@@ -367,7 +415,9 @@ static func _paint_small(ci: CanvasItem, xf: Transform2D, scale: float, plate: C
 	ci.draw_line(xf * (Vector2(8, -1.7) * scale), xf * (Vector2(-5, -1.7) * scale), plate.darkened(0.28), 1.0, true)
 	ci.draw_line(xf * (Vector2(1.5, 2.6) * scale), xf * (Vector2(1.5, -2.6) * scale), plate.darkened(0.4), 1.0, true)
 	ci.draw_circle(xf * (Vector2(6, 0) * scale), 1.3 * scale, accent.darkened(0.1))
+	ci.draw_circle(xf * (Vector2(5.2, -0.35) * scale), 0.4 * scale, Color(0.9, 0.96, 0.94, 0.55))
 	ci.draw_circle(xf * (Vector2(2.2, -0.4) * scale), 0.55 * scale, Color(0.85, 0.92, 0.88, 0.5))
+	ci.draw_circle(xf * (Vector2(-6, 0) * scale), 1.1 * scale, plate.darkened(0.65))
 
 
 static func _paint_lights(ci: CanvasItem, xf: Transform2D, scale: float, class_id: String) -> void:

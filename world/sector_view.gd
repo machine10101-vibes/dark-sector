@@ -668,6 +668,51 @@ func _draw_ship(sim, ship: Dictionary) -> void:
 		draw_circle(ship.pos + Vector2(0, -bar - 22.0), 3.5, Color("d27a6a"))
 
 
+func _craft_hull(kind: String, pos: Vector2, dir: Vector2, side: Vector2) -> PackedVector2Array:
+	match kind:
+		"survey_probe":
+			return PackedVector2Array([
+				pos + dir * 12.0,
+				pos + dir * 2.0 + side * 1.7,
+				pos - dir * 8.0 + side * 1.2,
+				pos - dir * 8.0 - side * 1.2,
+				pos + dir * 2.0 - side * 1.7,
+			])
+		"harvest_drone":
+			return PackedVector2Array([
+				pos + dir * 5.5 + side * 4.6,
+				pos + dir * 5.5 - side * 4.6,
+				pos - dir * 5.0 - side * 4.0,
+				pos - dir * 5.0 + side * 4.0,
+			])
+		"salvage_tender":
+			return PackedVector2Array([
+				pos + dir * 8.0 + side * 3.0,
+				pos + dir * 3.0 + side * 5.2,
+				pos - dir * 7.5 + side * 4.4,
+				pos - dir * 7.5 - side * 4.4,
+				pos + dir * 3.0 - side * 5.2,
+				pos + dir * 8.0 - side * 3.0,
+			])
+		"away_shuttle":
+			return PackedVector2Array([
+				pos + dir * 9.0,
+				pos + dir * 1.5 + side * 4.0,
+				pos - dir * 6.5 + side * 3.2,
+				pos - dir * 6.5 - side * 3.2,
+				pos + dir * 1.5 - side * 4.0,
+			])
+		_:
+			return PackedVector2Array([
+				pos + dir * 11.0,
+				pos + dir * 1.0 + side * 2.0,
+				pos - dir * 3.5 + side * 6.0,
+				pos - dir * 1.2,
+				pos - dir * 3.5 - side * 6.0,
+				pos + dir * 1.0 - side * 2.0,
+			])
+
+
 func _draw_craft(sim, item: Dictionary) -> void:
 	var pos: Vector2 = item.pos
 	var col := Color("d7e6c8")
@@ -684,10 +729,8 @@ func _draw_craft(sim, item: Dictionary) -> void:
 			col = Color("c4512c")
 	var dir := Vector2.from_angle(float(item.rot))
 	var side := dir.orthogonal()
-	var nose := pos + dir * 10.0
-	var left := pos - dir * 6.0 + side * 4.0
-	var right := pos - dir * 6.0 - side * 4.0
-	var hull_pts := PackedVector2Array([nose, left, right])
+	var kind := str(item.def_id)
+	var hull_pts := _craft_hull(kind, pos, dir, side)
 	var lit := _light_at(pos)
 	draw_colored_polygon(PackedVector2Array([nose - lit * 5.0, left - lit * 5.0, right - lit * 5.0]), Color(0, 0, 0, 0.14))
 	draw_colored_polygon(PackedVector2Array([nose - lit * 2.0, left - lit * 2.0, right - lit * 2.0]), Color(0, 0, 0, 0.34))
@@ -695,6 +738,28 @@ func _draw_craft(sim, item: Dictionary) -> void:
 	draw_colored_polygon(Silhouette._inset_world(hull_pts, 1.2, lit * 0.8), col.darkened(0.1))
 	draw_colored_polygon(Silhouette._inset_world(hull_pts, 2.4, lit * 1.8), col.lightened(0.16))
 	Silhouette._rim(self, hull_pts, lit, col.lightened(0.35), 1.0)
+	if kind == "survey_probe":
+		var dish := pos - dir * 6.2
+		draw_circle(dish, 3.2, col.darkened(0.4))
+		draw_arc(dish, 3.2, dir.angle() - 1.15, dir.angle() + 1.15, 8, Color(0.75, 0.92, 0.9, 0.75), 1.1, true)
+		draw_circle(dish + lit * 1.1, 0.7, Color(1, 1, 1, 0.35))
+	elif kind == "harvest_drone":
+		draw_line(pos + side * 7.2, pos - side * 7.2, col.darkened(0.25), 1.5, true)
+		draw_circle(pos + side * 7.2, 1.4, col.lightened(0.12))
+		draw_circle(pos - side * 7.2, 1.4, col.lightened(0.12))
+	elif kind == "salvage_tender":
+		draw_line(pos - dir * 2.0 + side * 3.2, pos - dir * 2.0 - side * 3.2, col.darkened(0.45), 1.6, true)
+		draw_colored_polygon(PackedVector2Array([
+			pos - dir * 0.4 + side * 1.6,
+			pos - dir * 0.4 - side * 1.6,
+			pos - dir * 3.4 - side * 1.6,
+			pos - dir * 3.4 + side * 1.6,
+		]), Color(0.12, 0.1, 0.08))
+	elif kind == "away_shuttle":
+		draw_circle(pos + dir * 1.5, 2.2, Color(0.12, 0.16, 0.18, 0.85))
+		draw_line(pos + dir * 2.4 + lit * 0.4, pos + dir * 0.4, Color(0.9, 0.95, 0.96, 0.45), 1.0, true)
+	else:
+		draw_line(pos - dir * 1.5 + side * 4.5, pos - dir * 1.5 - side * 4.5, col.darkened(0.35), 1.2, true)
 	draw_circle(pos + dir * 3.2, 1.35, Color(0.12, 0.16, 0.18))
 	draw_circle(pos + dir * 3.5 + lit * 0.5, 0.45, Color(1, 1, 1, 0.45))
 	draw_line(pos - dir * 2.0, pos + dir * 5.0, col.lightened(0.28), 1.0, true)
