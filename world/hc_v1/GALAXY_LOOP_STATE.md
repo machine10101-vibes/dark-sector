@@ -26,7 +26,7 @@ G15 Stitch: undock Helion Dock, reach all 8 regions
 
 Blocked by:
 - No galaxy loader. Data can sit as JSON until a later slice asks the helm to read it.
-- Ashen Reach and the Vellum Compact stay the live tutorial. This slice does not rename them into Helion Dock.
+- The flyable helm is HC-V1-R1-S1 Helion Dock. Vellum Compact was not renamed. Helion Compact is the dock patrol.
 
 Open design decisions (max 5):
 - Continuous space vs instance-per-system with lane jumps (recommend instance-per-system for MMO v1, continuous inside the system)

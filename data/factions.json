@@ -1,4 +1,13 @@
 {
+  "helion_compact": {
+    "id": "helion_compact",
+    "name": "Helion Compact",
+    "kind": "pdo",
+    "temper": "inspection-absolute",
+    "color": "#9bb5a4",
+    "blurb": "Helion Compact Guard. They own the dock lanes, the inspections, and the slate.",
+    "heat_to_engage": 40
+  },
   "vellum_compact": {
     "id": "vellum_compact",
     "name": "Vellum Compact",

@@ -24,11 +24,13 @@ static func add_heat(sim, faction_id: String, amount: float, reason: String, act
 static func on_captain_shot(sim, pos: Vector2) -> void:
 	if sim.zone_at(pos) != "green":
 		return
-	add_heat(sim, "vellum_compact", 8.0, "fired_in_green_lane", sim.player.agent_id)
+	var faction_id := str(sim.defs.system.pdo.get("faction", "vellum_compact"))
+	var faction_name := str(sim.defs.factions[faction_id].name)
+	add_heat(sim, faction_id, 8.0, "fired_in_green_lane", sim.player.agent_id)
 	sim.pdo_alert = true
 	if not sim.hailed:
 		sim.hailed = true
-		sim.banner = "Vellum Compact: \"Guns in the green lane. Heave to, or we cut.\""
+		sim.banner = "%s: \"Guns in the green lane. Heave to, or we cut.\"" % faction_name
 		sim.banner_t = 0.0
 		sim.sfx("hail")
 	else:

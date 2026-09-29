@@ -49,8 +49,8 @@ static func launch(sim, def_id: String) -> String:
 			sim.sfx("launch")
 			return ""
 		"away_shuttle":
-			_depart(sim, craft, "hollow_latch")
-			sim.say("Shuttle away to walk Hollow Latch.")
+			_depart(sim, craft, str(sim.defs.system.pocket.id))
+			sim.say("Shuttle away to %s." % sim.defs.system.pocket.name)
 			sim.sfx("launch")
 			return ""
 	return "That craft has no order on the board."

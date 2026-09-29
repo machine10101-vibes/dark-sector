@@ -12,7 +12,7 @@ static func word(value: float) -> String:
 
 static func lines(sim, defs: Dictionary) -> Array:
 	var out: Array = []
-	for faction_id in ["vellum_compact", "red_keel"]:
+	for faction_id in defs.factions.keys():
 		var faction: Dictionary = defs.factions[faction_id]
 		var heat := float(sim.heat.get(faction_id, 0.0))
 		var memory: Array = sim.memory.get(faction_id, [])

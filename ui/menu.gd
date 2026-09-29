@@ -27,8 +27,11 @@ func _ready() -> void:
 	root_box.add_theme_constant_override("separation", 10)
 	root.add_child(root_box)
 	root_box.add_child(ThemeKit.label("DARK SECTOR", 42, Color("e6d7bf")))
-	root_box.add_child(ThemeKit.label("ASHEN REACH", 16, Color("8a7344")))
-	root_box.add_child(ThemeKit.label("One keel. The Reach is a place, not a menu.", 14, Color("b7ab96")))
+	var sky := "HELION DOCK"
+	if Game.defs.has("system"):
+		sky = str(Game.defs.system.name).to_upper()
+	root_box.add_child(ThemeKit.label(sky, 16, Color("8a7344")))
+	root_box.add_child(ThemeKit.label("One keel. The dock is a place, not a menu.", 14, Color("b7ab96")))
 	var new_game := ThemeKit.button("New keel")
 	new_game.pressed.connect(func(): _show_select())
 	continue_button = ThemeKit.button("Continue log")

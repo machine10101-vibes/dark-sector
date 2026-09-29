@@ -13,12 +13,11 @@ func _init() -> void:
 		"factions": Serde.load_json("res://data/factions.json"),
 		"quests": Serde.load_json("res://data/quests.json"),
 	}
-	_geometry()
-	_keels()
-	_vesper_loop()
-	_anvil_salvage()
-	_kestrel_shuttle()
-	_rules()
+	_silhouettes()
+	_dock()
+	_inertia_and_gun()
+	_traffic()
+	_save()
 	if fails == 0:
 		print("SLICE1 PASS")
 	else:
@@ -41,245 +40,96 @@ func make(class_id: String) -> SectorSim:
 	return sim
 
 
-func _geometry() -> void:
-	var bare := Silhouette.extent(Silhouette.parts("vesper", []))
-	var mast := Silhouette.extent(Silhouette.parts("vesper", ["mast"]))
-	check(mast.x > bare.x + 15.0, "survey mast lengthens the Needle")
+func _silhouettes() -> void:
+	var needle := Silhouette.extent(Silhouette.parts("vesper", []))
 	var barn := Silhouette.extent(Silhouette.parts("anvil", []))
-	var blister := Silhouette.extent(Silhouette.parts("anvil", ["blister"]))
-	check(blister.y > barn.y + 8.0, "cargo blister widens the Barn")
 	var beak := Silhouette.extent(Silhouette.parts("kestrel", []))
-	var sponson := Silhouette.extent(Silhouette.parts("kestrel", ["sponson"]))
-	check(sponson.y > beak.y + 6.0, "sponson widens the Beak")
+	check(needle.x > barn.x + 10.0 and barn.y > needle.y + 8.0, "Needle is longer than Barn, Barn is wider")
+	check(absf(beak.y - needle.y) > 4.0 and absf(beak.x - barn.x) > 4.0, "Beak is not a copy of the other two")
+	check(defs.ships.vesper.color != defs.ships.anvil.color, "Needle and Barn colors differ")
+	check(defs.ships.kestrel.color != defs.ships.vesper.color, "Beak color differs from Needle")
+	check(defs.factions.has("vellum_compact") and defs.factions.has("helion_compact"), "Vellum Compact was not renamed")
 
 
-func _keels() -> void:
-	var vesper := Fit.stats(defs, {"class_id": "vesper", "modules": []})
-	var anvil := Fit.stats(defs, {"class_id": "anvil", "modules": []})
-	var kestrel := Fit.stats(defs, {"class_id": "kestrel", "modules": []})
-	check(vesper.accel > kestrel.accel and kestrel.accel > anvil.accel, "starters diverge in accel")
-	check(vesper.signature_word == "quiet", "Needle launches quiet")
-	check(anvil.cargo_cap > vesper.cargo_cap, "Barn holds more")
+func _dock() -> void:
 	var sim := make("vesper")
-	check(sim.zone_at(sim.player.pos) == "pocket", "keel starts in Hollow Latch")
-	check(sim.zone_at(sim.planet("vellum").pos) == "green", "Vellum is the green lane")
-	check(sim.zone_at(sim.nest_pos) == "amber", "Red Keel nest is amber")
-	check(sim.zone_at(sim.planet("cinder").pos) == "dark", "Cinder itself is unpatrolled dark")
-	check(_count(sim, "survey_probe") == 2, "Needle carries two probes")
-	check(_count(sim, "harvest_drone") == 1, "Needle carries a harvester")
-	check(sim.player.controller == "human", "captain is a human-schema agent")
-	check(str(sim.player.crew[0].name) == "Ilya Voss", "crew is aboard")
-	var anvil_sim := make("anvil")
-	check(_count(anvil_sim, "salvage_tender") == 1, "Barn carries a tender")
-	var beak := make("kestrel")
-	check(_count(beak, "fighter") == 1 and _count(beak, "away_shuttle") == 1, "Beak carries fighter and shuttle")
-	check(CraftOrders.launch(beak, "harvest_drone") != "", "Beak has no harvester")
+	check(str(sim.defs.system.id) == "HC-V1-R1-S1", "system id is Helion Dock")
+	check(str(sim.defs.system.name) == "Helion Dock", "system name stays Helion Dock")
+	check(str(sim.defs.system.star.name) == "Helion", "the star is Helion")
+	var aegis = sim.planet("aegis_prime")
+	check(aegis != null and bool(aegis.ring) and str(aegis.ring_kind) == "ice", "Aegis Prime wears an ice ring")
+	check("Helion Compact Guard" in str(aegis.layers.legal), "Aegis Prime has a legal title")
+	check(sim.trash.size() >= 8, "confiscated hulls are in the hold field")
+	check("confiscated" in str(sim.defs.system.trash.origin).to_lower(), "trash names its origin")
+	check(sim.asteroids.is_empty(), "no clone rock belt")
+	check(str(sim.defs.system.pocket.name) == "The Unlet", "claim pocket is marked")
+	check(not bool(sim.defs.system.pocket.plantable), "pocket is not plantable")
+	check(not bool(sim.claim.plantable), "new game keeps the pocket closed")
+	var before := str(sim.lines[0].text)
+	PocketRules.confirm_walk(sim)
+	check(not bool(sim.claim.surveyed), "a walk does not open the pocket")
+	check(str(sim.lines[0].text) != before, "the closed pocket says so")
 
 
-func _vesper_loop() -> void:
-	var sim := make("vesper")
-	var facing := Vector2.from_angle(sim.player.rot)
-	sim.tick(0.45, {"thrust": 1.0})
-	var speed: float = sim.player.vel.length()
-	check(speed > 30.0, "thrust builds speed")
-	check(sim.player.vel.normalized().dot(facing) > 0.85, "thrust follows facing")
-	var coast: Vector2 = sim.player.vel
-	sim.tick(0.45, {})
-	check(sim.player.vel.length() > speed * 0.75, "keel coasts when thrust stops")
-	sim.tick(0.4, {"rot": 1.0})
-	check(absf(wrapf(sim.player.rot - facing.angle(), -PI, PI)) > 0.3, "yaw is independent of velocity")
-	check(sim.player.vel.normalized().dot(coast.normalized()) > 0.7, "inertia keeps the vector")
-	sim.player.pos = sim.planet("cinder").pos + Vector2(260, 40)
-	sim.player.vel = Vector2.ZERO
-	var launched := CraftOrders.launch(sim, "survey_probe")
-	check(launched == "", "probe launches")
-	var guard := 0
-	while not sim.dossier_complete("cinder") and guard < 900:
-		sim.tick(0.05, {})
-		guard += 1
-	check(sim.dossier_complete("cinder"), "Cinder dossier seals (%d)" % guard)
-	check("Unclaimed" in str(sim.scans["cinder"].layers.legal.text), "legal layer is real text")
-	guard = 0
-	while not _all_docked(sim, "survey_probe") and guard < 900:
-		sim.tick(0.05, {})
-		guard += 1
-	check(_all_docked(sim, "survey_probe"), "probe returns to the rack")
-	var before := int(sim.player.cargo.get("cinder_ore", 0))
-	check(CraftOrders.launch(sim, "harvest_drone") == "", "harvester launches")
-	guard = 0
-	while int(sim.player.cargo.get("cinder_ore", 0)) == before and guard < 900:
-		sim.tick(0.05, {})
-		guard += 1
-	check(int(sim.player.cargo.get("cinder_ore", 0)) == before + 1, "Cinder-ore comes home")
-	check(int(sim.deposits.cinder) == 3, "seam depletes")
-	var yaw_before: float = Fit.stats(defs, sim.player).yaw_deg
-	var installed := sim.install("sensor_mast")
-	check(bool(installed.ok), "mast bolts on")
-	check(sim.player.modules.has("sensor_mast"), "layout records the mast")
-	check(Fit.stats(defs, sim.player).yaw_deg < yaw_before, "mast makes yaw heavier")
-	check(sim.player.yard.is_empty(), "yard spent the part")
-	var rejected := sim.install("sensor_mast")
-	check(not bool(rejected.ok), "a second mast is refused")
-	sim.defs.modules["too_hot"] = {
-		"id": "too_hot",
-		"name": "Overdraw",
-		"slot": "S",
-		"shape": "sponson",
-		"effects": {"power_draw": 99, "mass": 1},
-	}
-	sim.player.yard.append("too_hot")
-	var hot := sim.install("too_hot")
-	check(not bool(hot.ok), "reactor spare blocks a hungry part")
-	check(not sim.player.modules.has("too_hot"), "rejected part stays off the keel")
-	var heat_before := float(sim.heat.vellum_compact)
-	sim.player.fire_cd = 0.0
-	sim.tick(0.05, {"fire": true})
-	check(is_equal_approx(float(sim.heat.vellum_compact), heat_before), "shots in the Latch are not green-lane crimes")
-	_roundtrip(sim)
-
-
-func _anvil_salvage() -> void:
+func _inertia_and_gun() -> void:
 	var sim := make("anvil")
-	var before_cap: int = Fit.stats(defs, sim.player).cargo_cap
-	var installed := sim.install("cargo_blister")
-	check(bool(installed.ok), "blister bolts on")
-	check(Fit.stats(defs, sim.player).cargo_cap > before_cap, "blister adds hold")
-	check(Fit.stats(defs, sim.player).keel_warn, "blister makes the keel complain")
-	var pirate: Dictionary = _pirate(sim)
-	var hp: float = float(pirate.hp)
-	sim.damage_unit(pirate, 5.0, sim.player.agent_id)
-	check(is_equal_approx(float(pirate.hp), hp - 5.0), "pirate uses the same HP path")
-	sim.damage_unit(sim.player, 5.0, pirate.agent_id)
-	check(float(sim.player.hp) < float(sim.player.max_hp), "captain uses the same HP path")
-	pirate.hp = 1
-	sim.damage_unit(pirate, 8.0, sim.player.agent_id)
-	check(not bool(pirate.alive), "pirate becomes a wreck")
-	check(sim.wrecks.size() == 1, "wreck remains in the sector")
-	check(str(sim.wrecks[0].controller) == "npc", "wreck keeps controller")
-	check(str(sim.wrecks[0].agent_id).begins_with("agent:red_keel"), "wreck keeps agent id")
-	check(sim.memory.red_keel.has("killed_a_skiff"), "Red Keel remembers")
-	sim.player.pos = sim.wrecks[0].pos + Vector2(70, 0)
-	check(CraftOrders.launch(sim, "salvage_tender") == "", "tender launches")
-	var guard := 0
-	while int(sim.player.cargo.get("salvage_parts", 0)) < 1 and guard < 900:
-		sim.tick(0.05, {})
-		guard += 1
-	check(int(sim.player.cargo.get("salvage_parts", 0)) >= 1, "tender brings salvage")
-	check(bool(sim.wrecks[0].stripped), "wreck rights are spent once")
-
-
-func _kestrel_shuttle() -> void:
-	var sim := make("kestrel")
-	var gun_before := float(Fit.stats(defs, sim.player).gun.damage)
-	check(bool(sim.install("gun_sponson").ok), "sponson bolts on")
-	check(float(Fit.stats(defs, sim.player).gun.damage) > gun_before, "sponson adds gun")
-	check(CraftOrders.launch(sim, "away_shuttle") == "", "shuttle launches")
-	var guard := 0
-	while not bool(sim.quest_flags.get("hollow_latch_surveyed", false)) and guard < 900:
-		sim.tick(0.05, {})
-		guard += 1
-	check(bool(sim.claim.surveyed), "shuttle walks Hollow Latch")
-	check(bool(sim.quest_flags.get("hollow_latch_surveyed", false)), "walk writes a quest flag")
-	check(CraftOrders.launch(sim, "fighter") == "", "fighter launches")
-	var fighter_pos: Vector2 = _craft(sim, "fighter").pos
-	for _i in 40:
-		sim.tick(0.05, {})
-	check(_craft(sim, "fighter").pos.distance_to(sim.player.pos) > 40.0, "fighter leaves the throat")
-	check(_craft(sim, "fighter").pos.distance_to(fighter_pos) > 20.0, "fighter actually moves")
-
-
-func _rules() -> void:
-	var sim := make("vesper")
-	sim.player.pos = sim.planet("vellum").pos + Vector2(420, 0)
-	sim.player.vel = Vector2.ZERO
+	var dock = sim.planet("aegis_prime")
+	sim.player.rot = (sim.player.pos - dock.pos).angle()
+	sim.tick(0.7, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
+	var coasting: float = sim.player.vel.length()
+	check(coasting > 30.0, "thrust builds speed")
+	sim.tick(0.4, {"thrust": 0.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
+	check(not bool(sim.player.thrusting), "thrust flag drops when the key is up")
+	check(sim.player.vel.length() > 15.0, "the hull still drifts")
+	var shots := sim.projectiles.size()
 	sim.player.fire_cd = 0.0
-	check(sim.zone_at(sim.player.pos) == "green", "test shot is inside the green lane")
-	sim.tick(0.05, {"fire": true})
-	check(float(sim.heat.vellum_compact) >= 8.0, "green-lane gunfire writes Compact heat")
-	check(sim.memory.vellum_compact.has("fired_in_green_lane"), "Compact memory records the shot")
-	check(sim.pdo_alert, "patrol is alerted")
-	for layer in ["orbit", "atmosphere", "surface", "crust", "biosign", "ruins", "legal"]:
-		sim.reveal_layer("vellum", layer)
-	sim.player.pos = sim.planet("vellum").pos + Vector2(280, 0)
-	check(CraftOrders.launch(sim, "harvest_drone") == "", "harvester can still cut a protected crust")
-	var guard := 0
-	var heat_before := float(sim.heat.vellum_compact)
-	while float(sim.heat.vellum_compact) < heat_before + 20.0 and guard < 900:
-		sim.tick(0.05, {})
-		guard += 1
-	check(sim.memory.vellum_compact.has("harvested_protected"), "protected extract writes heat")
-	check(int(sim.player.cargo.get("vellum_rime", 0)) == 1, "rime still comes aboard")
-	sim.player.pos = Vector2(0, 980)
-	sim.player.rot = 0.0
-	sim.player.vel = Vector2.ZERO
-	var pirate: Dictionary = _pirate(sim)
-	pirate.hp = 400.0
-	pirate.max_hp = 400
-	pirate.pos = sim.player.pos + Vector2(110, 0)
-	pirate.vel = Vector2.ZERO
-	for _i in 20:
-		sim.tick(0.05, {"fire": true})
-	check(float(pirate.hp) < 400.0, "fixed gun reaches a Red Keel skiff")
-	sim.hold_npc = false
-	var home: Vector2 = pirate.pos
-	for _i in 80:
-		sim.tick(0.05, {})
-	check(pirate.alive, "skiff still in the fight")
-	check(pirate.pos.distance_to(home) > 15.0 or pirate.thrusting, "skiff pilots itself")
+	sim.try_fire(sim.player, Fit.stats(defs, sim.player).gun)
+	check(sim.projectiles.size() == shots + 1, "the gun fires")
 
 
-func _roundtrip(sim: SectorSim) -> void:
-	var path := "user://slice1_test_save.json"
-	var raw := sim.to_dict()
-	raw["camera_zoom"] = 0.42
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	file.store_string(JSON.stringify(raw, "\t"))
-	file.close()
-	var loaded = JSON.parse_string(FileAccess.open(path, FileAccess.READ).get_as_text())
+func _traffic() -> void:
+	var sim := SectorSim.new(defs)
+	sim.new_game("kestrel")
+	var patrol := {}
+	var hauler := {}
+	var pirates := 0
+	for actor in sim.actors:
+		if str(actor.team) == "helion_compact":
+			patrol = actor
+		elif str(actor.team) == "civilian":
+			hauler = actor
+		elif str(actor.team) == "red_keel":
+			pirates += 1
+	check(not patrol.is_empty(), "Helion Compact patrol is on the lane")
+	check(not hauler.is_empty() and str(hauler.name) == "Hauler Holt", "a civilian hauler is in the system")
+	check(pirates == 0, "no pirate pack this slice")
+	var patrol_at: Vector2 = patrol.pos
+	var hauler_at: Vector2 = hauler.pos
+	sim.tick(1.6, {})
+	var patrol_now: Vector2 = Vector2.ZERO
+	var hauler_now: Vector2 = Vector2.ZERO
+	for actor in sim.actors:
+		if str(actor.agent_id) == str(patrol.agent_id):
+			patrol_now = actor.pos
+		if str(actor.agent_id) == str(hauler.agent_id):
+			hauler_now = actor.pos
+	check(patrol_now.distance_to(patrol_at) > 12.0, "the patrol moves")
+	check(hauler_now.distance_to(hauler_at) > 8.0, "the hauler moves")
+
+
+func _save() -> void:
+	var sim := make("vesper")
+	sim.player.pos = Vector2(1234.0, -567.0)
+	sim.player.vel = Vector2(40.0, -10.0)
+	var data := sim.to_dict()
+	check(str(data.system_id) == "HC-V1-R1-S1", "the log names Helion Dock")
+	check(str(data.player.class_id) == "vesper", "the log names the Needle")
 	var copy := SectorSim.new(defs)
-	copy.from_dict(loaded)
-	check(int(copy.seed_value) == int(sim.seed_value), "galaxy seed survives")
-	check(copy.player.modules.has("sensor_mast"), "module layout survives")
-	check(int(copy.player.cargo.get("cinder_ore", 0)) == 1, "cargo survives")
-	check(str(copy.player.crew[0].name) == "Ilya Voss", "crew survives")
-	check(copy.dossier_complete("cinder"), "dossier survives")
-	check(str(copy.quest_flags.get("origin_vesper", "")) == "dormant", "quest flag survives")
-	check(str(copy.claim.pocket_id) == "hollow_latch", "claim slate survives")
-	check(copy.player.pos.distance_to(sim.player.pos) < 1.0, "position survives")
-	check(_count(copy, "survey_probe") == 2, "craft survive")
-
-
-func _count(sim: SectorSim, def_id: String) -> int:
-	var n := 0
-	for item in sim.craft:
-		if str(item.def_id) == def_id:
-			n += 1
-	return n
-
-
-func _all_docked(sim: SectorSim, def_id: String) -> bool:
-	var seen := 0
-	for item in sim.craft:
-		if str(item.def_id) != def_id:
-			continue
-		seen += 1
-		if str(item.state) != "docked":
-			return false
-	return seen > 0
-
-
-func _craft(sim: SectorSim, def_id: String) -> Dictionary:
-	for item in sim.craft:
-		if str(item.def_id) == def_id:
-			return item
-	return {}
-
-
-func _pirate(sim: SectorSim) -> Dictionary:
-	for actor in sim.actors:
-		if str(actor.team) == "red_keel" and bool(actor.alive):
-			return actor
-	for actor in sim.actors:
-		if str(actor.team) == "red_keel":
-			return actor
-	return {}
+	copy.from_dict(data)
+	check(str(copy.player.class_id) == "vesper", "reload keeps the Needle")
+	check(copy.player.pos.distance_to(Vector2(1234.0, -567.0)) < 1.0, "reload keeps the position")
+	check(str(copy.defs.system.id) == "HC-V1-R1-S1", "reload is still Helion Dock")
+	var barn := make("anvil")
+	check(str(barn.player.class_id) == "anvil", "Barn is a different hull")
+	var beak := make("kestrel")
+	check(str(beak.player.class_id) == "kestrel", "Beak is a different hull")

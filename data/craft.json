@@ -35,7 +35,7 @@
   "away_shuttle": {
     "id": "away_shuttle",
     "name": "Away Shuttle",
-    "job": "Puts a crew on a site the keel will not land on. Hollow Latch can be walked.",
+    "job": "Puts a crew on the marked pocket. A closed mark stays closed.",
     "speed": 210,
     "battery": 100,
     "drain": 3.6,
