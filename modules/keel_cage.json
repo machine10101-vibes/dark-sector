@@ -1,0 +1,19 @@
+{
+  "id": "keel_cage",
+  "name": "Keel Cage",
+  "family": "hull",
+  "size": "L",
+  "slot": "Utility",
+  "favored": "",
+  "mass": 18,
+  "power": 4,
+  "crew": 0,
+  "attach": {"x": 70, "y": 0},
+  "footprint": {"w": 96, "h": 14},
+  "shape": "cage",
+  "blurb": "A cage run out ahead of the keel. Any starter is longer when it is bolted.",
+  "layer": [
+    [[46, 7], [140, 0], [46, -7]]
+  ],
+  "effects": {"radius": 4}
+}

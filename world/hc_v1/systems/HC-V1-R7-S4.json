@@ -1,0 +1,133 @@
+{
+  "id": "HC-V1-R7-S4",
+  "name": "Crossed Flags",
+  "seed": 37004,
+  "why_visit": "Two deserter squadrons. Both fly fake Compact colors.",
+  "law_color": "red",
+  "status": "authored",
+  "region": "R7",
+  "star": {
+    "id": "hc-v1-r7-s4-star",
+    "name": "Cross",
+    "class": "K-binary",
+    "radius": 120,
+    "color": "#d09060"
+  },
+  "bodies": [
+    {
+      "id": "false_green",
+      "name": "False Green",
+      "angle": 0.7,
+      "distance": 1600,
+      "radius": 65,
+      "color": "#6a8a72",
+      "blurb": "A squadron in Compact green that the Compact did not send.",
+      "legal": "Red. The color is a costume.",
+      "air": "None.",
+      "face": "Stolen green paint.",
+      "crust": "Rock.",
+      "life": "Deserters.",
+      "ruins": "A cutter number that was never issued.",
+      "resource_id": "stolen_paint",
+      "resource_name": "Stolen paint",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "false_twin",
+      "name": "False Twin",
+      "angle": 3.5,
+      "distance": 1600,
+      "radius": 65,
+      "color": "#8a9a88",
+      "blurb": "The other squadron. Same green. Different grudge.",
+      "legal": "Red. Two flags, neither real.",
+      "air": "None.",
+      "face": "Second-hand green.",
+      "crust": "Rock.",
+      "life": "Deserters.",
+      "ruins": "A copied pennant.",
+      "resource_id": "copied_pennant",
+      "resource_name": "Copied pennant",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "pennant_rag",
+    "name": "Pennant Rag",
+    "composition": "stolen Compact pennant cloth and paint from the two deserter squadrons",
+    "radius": 2400,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Pennant Rag",
+    "amount": 6,
+    "legal": "stolen Compact pennant cloth and paint from the two deserter squadrons",
+    "heat": ""
+  },
+  "trash": {
+    "id": "costume_hulls",
+    "name": "Costume Hulls",
+    "origin": "Hulls painted Compact and abandoned when the real cutter did not come.",
+    "anchor": "false_green",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Hulls painted Compact and abandoned when the real cutter did not come.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "false_green_pocket",
+    "name": "Crossed Flags Pocket",
+    "anchor": "false_green",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "Two deserter squadrons. Both fly fake Compact colors."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "helion_compact",
+    "count": 0,
+    "radius": 520,
+    "home": "false_green"
+  },
+  "pirates": {
+    "count": 2,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "false_green",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

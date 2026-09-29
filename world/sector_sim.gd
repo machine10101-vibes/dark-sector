@@ -1241,6 +1241,11 @@ func try_lane() -> String:
 
 
 func _arrive(system_id: String, gate_id: String) -> void:
+	if bool(defs.get("live_catalog", false)):
+		Catalog.refresh(defs)
+	if not defs.systems.has(system_id):
+		say("That lane is charted and not on this keel's board.")
+		return
 	defs.system = defs.systems[system_id]
 	seed_value = int(defs.system.seed)
 	projectiles = []
@@ -1278,6 +1283,7 @@ func _arrive(system_id: String, gate_id: String) -> void:
 		visited.append(system_id)
 	say("The lane opens on %s." % str(defs.system.name))
 	sfx("launch")
+	Catalog.confiscate(self)
 	QuestBoard.on_arrive(self)
 
 

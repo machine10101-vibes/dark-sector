@@ -1,0 +1,155 @@
+{
+  "id": "HC-V1-R4-S1",
+  "name": "Choir Gate",
+  "seed": 34001,
+  "why_visit": "The checkpoint. Coda scans the hold. Living cargo without Glass standing is taken.",
+  "law_color": "green",
+  "status": "authored",
+  "region": "R4",
+  "star": {
+    "id": "hc-v1-r4-s1-star",
+    "name": "Coda Star",
+    "class": "F-pale",
+    "radius": 120,
+    "color": "#f4f7f2"
+  },
+  "bodies": [
+    {
+      "id": "coda",
+      "name": "Coda",
+      "angle": 0.2,
+      "distance": 1400,
+      "radius": 100,
+      "color": "#e7f0e4",
+      "blurb": "The checkpoint station. Disinfectant sweeps pass on a clock.",
+      "legal": "Glass Choir Wardens. A checkpoint, not a port of mercy.",
+      "air": "Disinfectant mist.",
+      "face": "White gate plate.",
+      "crust": "Station bone.",
+      "life": "Wardens. No loose stock.",
+      "ruins": "The first sweep log.",
+      "resource_id": "sweep_tags",
+      "resource_name": "Sweep tags",
+      "amount": 3,
+      "heat": "pdo",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "wash_rock",
+      "name": "Wash Rock",
+      "angle": 2.5,
+      "distance": 2100,
+      "radius": 55,
+      "color": "#c5d0c4",
+      "blurb": "The rock where confiscated holds are washed.",
+      "legal": "Choir wash. Taken cargo does not return.",
+      "air": "None.",
+      "face": "Bleach stone.",
+      "crust": "Pale crust.",
+      "life": "None.",
+      "ruins": "A crate stencil half erased.",
+      "resource_id": "wash_stone",
+      "resource_name": "Wash stone",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "sweep_dust",
+    "name": "Sweep Dust",
+    "composition": "disinfectant dust and stripped crate fiber from Coda's sweeps",
+    "radius": 2700,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Sweep Dust",
+    "amount": 6,
+    "legal": "disinfectant dust and stripped crate fiber from Coda's sweeps",
+    "heat": ""
+  },
+  "trash": {
+    "id": "confiscated_holds",
+    "name": "Confiscated Holds",
+    "origin": "Living cargo taken at Coda and parked until a warden burns the manifest.",
+    "anchor": "coda",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Living cargo taken at Coda and parked until a warden burns the manifest.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "coda_pocket",
+    "name": "Choir Gate Pocket",
+    "anchor": "coda",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "The checkpoint. Coda scans the hold. Living cargo without Glass standing is taken."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "glass_choir",
+    "count": 2,
+    "radius": 520,
+    "home": "coda"
+  },
+  "pirates": {
+    "count": 0,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "gate_warden",
+      "name": "Gate Warden",
+      "class_id": "cutter",
+      "home": "coda",
+      "radius": 640
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "coda",
+      "radius": 780
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": "Coda",
+  "checkpoint": {
+    "standing": "glass_standing",
+    "living_cargo": [
+      "food_mass",
+      "voidbean",
+      "ember_kale",
+      "ghost_gourd",
+      "silkreed",
+      "crab_meat",
+      "milk_analogue",
+      "ribbon"
+    ],
+    "line": "Choir Gate confiscates living cargo. Glass standing would have cleared the hold."
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "id": "black_sail",
+  "name": "Black Sail",
+  "kind": "pirate",
+  "temper": "tribute",
+  "color": "#8a2a24",
+  "blurb": "Black Sail. Tribute is the dock fee at Quay. They are not a Compact patrol.",
+  "heat_to_engage": 12
+}

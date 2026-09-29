@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R3-S6",
+  "name": "After Hours",
+  "seed": 33006,
+  "why_visit": "When the navy goes home the amber window opens. The player market is the night shift.",
+  "law_color": "amber",
+  "status": "authored",
+  "region": "R3",
+  "star": {
+    "id": "hc-v1-r3-s6-star",
+    "name": "Gutter",
+    "class": "Gutter",
+    "radius": 120,
+    "color": "#c47a3a"
+  },
+  "bodies": [
+    {
+      "id": "night_market",
+      "name": "Night Market",
+      "angle": 0.5,
+      "distance": 1400,
+      "radius": 80,
+      "color": "#e0a060",
+      "blurb": "A market that opens when the navy lamps go dark.",
+      "legal": "Amber window. Deals hold until morning.",
+      "air": "Lamp smoke.",
+      "face": "Stall plate.",
+      "crust": "Market rock.",
+      "life": "Night vendors. No herds.",
+      "ruins": "A navy seal turned face down.",
+      "resource_id": "night_goods",
+      "resource_name": "Night goods",
+      "amount": 6,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "shuttered_yard",
+      "name": "Shuttered Yard",
+      "angle": 2.7,
+      "distance": 2200,
+      "radius": 64,
+      "color": "#8a5a38",
+      "blurb": "The navy yard with the shutters down.",
+      "legal": "Closed in daylight. Amber after hours.",
+      "air": "None.",
+      "face": "Shutter steel.",
+      "crust": "Yard stone.",
+      "life": "None.",
+      "ruins": "A duty roster stopped at dusk.",
+      "resource_id": "shutter_steel",
+      "resource_name": "Shutter steel",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "night_foil",
+    "name": "Night Foil",
+    "composition": "market foil and shutter rust from the after-hours stalls",
+    "radius": 2900,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Night Foil",
+    "amount": 6,
+    "legal": "market foil and shutter rust from the after-hours stalls",
+    "heat": ""
+  },
+  "trash": {
+    "id": "morning_after",
+    "name": "Morning After",
+    "origin": "Deals that failed when the navy came back and towed the stalls.",
+    "anchor": "night_market",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Deals that failed when the navy came back and towed the stalls.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "night_market_pocket",
+    "name": "After Hours Pocket",
+    "anchor": "night_market",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "When the navy goes home the amber window opens. The player market is the night shift."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "municipal_navy",
+    "count": 0,
+    "radius": 520,
+    "home": "night_market"
+  },
+  "pirates": {
+    "count": 2,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "night_broker",
+      "name": "Night Broker",
+      "class_id": "anvil",
+      "home": "night_market",
+      "radius": 700
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "night_market",
+      "radius": 280
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

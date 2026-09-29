@@ -1,0 +1,133 @@
+{
+  "id": "HC-V1-R7-S5",
+  "name": "Claimwake",
+  "seed": 37005,
+  "why_visit": "Dead homesteads. Reclaim the core or strip the dome.",
+  "law_color": "red",
+  "status": "authored",
+  "region": "R7",
+  "star": {
+    "id": "hc-v1-r7-s5-star",
+    "name": "Wake",
+    "class": "G",
+    "radius": 120,
+    "color": "#c4b080"
+  },
+  "bodies": [
+    {
+      "id": "dead_hollow",
+      "name": "Dead Hollow",
+      "angle": 1.1,
+      "distance": 1500,
+      "radius": 90,
+      "color": "#a09070",
+      "blurb": "A homestead whose core is already a story.",
+      "legal": "Red. A dead claim can be stripped or replanted if the slot is filed.",
+      "air": "Dome leak.",
+      "face": "Broken dome.",
+      "crust": "Garden crust, exhausted.",
+      "life": "Nothing alive in the pen.",
+      "ruins": "An owner name, crossed out.",
+      "resource_id": "dome_scrap",
+      "resource_name": "Dome scrap",
+      "amount": 5,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "strip_yard",
+      "name": "Strip Yard",
+      "angle": 2.6,
+      "distance": 2100,
+      "radius": 55,
+      "color": "#706050",
+      "blurb": "Where the domes go after the core is gone.",
+      "legal": "Strip yard. Wreck rights.",
+      "air": "None.",
+      "face": "Dome ribs.",
+      "crust": "Yard.",
+      "life": "None.",
+      "ruins": "A core socket, empty.",
+      "resource_id": "core_socket",
+      "resource_name": "Core socket",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "dome_ribs",
+    "name": "Dome Ribs",
+    "composition": "broken homestead ribs and exhausted garden crust from Claimwake",
+    "radius": 2700,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Dome Ribs",
+    "amount": 6,
+    "legal": "broken homestead ribs and exhausted garden crust from Claimwake",
+    "heat": ""
+  },
+  "trash": {
+    "id": "frozen_claims",
+    "name": "Frozen Claims",
+    "origin": "Homesteads frozen by raids and towed here to be stripped.",
+    "anchor": "dead_hollow",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Homesteads frozen by raids and towed here to be stripped.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "dead_hollow_pocket",
+    "name": "Dead Hollow",
+    "anchor": "dead_hollow",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": true,
+    "why": "A dead homestead. The slot is filed. Reclaim or strip."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "rimward_charter",
+    "count": 0,
+    "radius": 520,
+    "home": "dead_hollow"
+  },
+  "pirates": {
+    "count": 1,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "dead_hollow",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

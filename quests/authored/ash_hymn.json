@@ -1,0 +1,9 @@
+{
+  "id": "authored_ash_hymn",
+  "title": "Ash Hymn",
+  "kind": "authored",
+  "summary": "Stand on the glassed farm. The Choir writes Glass standing and a burn rumor. The soil is still not a gift.",
+  "body": "ash_hymn",
+  "system_id": "HC-V1-R4-S4",
+  "mutations": ["rumor_ash_hymn", "glass_standing_up"]
+}

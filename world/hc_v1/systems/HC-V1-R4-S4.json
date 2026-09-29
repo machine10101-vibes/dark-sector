@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R4-S4",
+  "name": "Ash Hymn",
+  "seed": 34004,
+  "why_visit": "A glassed farm world. The soil under the glass is still good. The Choir will burn it again.",
+  "law_color": "green",
+  "status": "authored",
+  "region": "R4",
+  "star": {
+    "id": "hc-v1-r4-s4-star",
+    "name": "Hymn",
+    "class": "M",
+    "radius": 120,
+    "color": "#c45a3a"
+  },
+  "bodies": [
+    {
+      "id": "ash_hymn",
+      "name": "Ash Hymn",
+      "angle": 0.6,
+      "distance": 1500,
+      "radius": 130,
+      "color": "#a85a42",
+      "blurb": "The flagship farm, glassed. The hymn is the burn order.",
+      "legal": "Glass Choir. Soil under glass is not a gift.",
+      "air": "Hot glass wind.",
+      "face": "Glazed furrows.",
+      "crust": "Farm crust under a burn.",
+      "life": "Nothing the Choir allows to sprout.",
+      "ruins": "The burn order, still legible.",
+      "resource_id": "glass_soil",
+      "resource_name": "Glass soil",
+      "amount": 6,
+      "heat": "pdo",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "second_burn",
+      "name": "Second Burn",
+      "angle": 2.6,
+      "distance": 2200,
+      "radius": 55,
+      "color": "#6e3428",
+      "blurb": "The rock where they rehearse the next fire.",
+      "legal": "Choir range. A second burn is policy.",
+      "air": "None.",
+      "face": "Soot glass.",
+      "crust": "Cinder.",
+      "life": "None.",
+      "ruins": "A practice hymn.",
+      "resource_id": "soot_glass",
+      "resource_name": "Soot glass",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "hymn_soot",
+    "name": "Hymn Soot",
+    "composition": "farm soot and choir glass from the Ash Hymn burn, not a generic belt",
+    "radius": 3000,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Hymn Soot",
+    "amount": 6,
+    "legal": "farm soot and choir glass from the Ash Hymn burn, not a generic belt",
+    "heat": ""
+  },
+  "trash": {
+    "id": "glassed_sheds",
+    "name": "Glassed Sheds",
+    "origin": "Farm sheds glassed in the hymn and left as a warning.",
+    "anchor": "ash_hymn",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Farm sheds glassed in the hymn and left as a warning.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "ash_hymn_pocket",
+    "name": "Ash Hymn Pocket",
+    "anchor": "ash_hymn",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "A glassed farm world. The soil under the glass is still good. The Choir will burn it again."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "glass_choir",
+    "count": 1,
+    "radius": 520,
+    "home": "ash_hymn"
+  },
+  "pirates": {
+    "count": 0,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "hymn_warden",
+      "name": "Hymn Warden",
+      "class_id": "cutter",
+      "home": "ash_hymn",
+      "radius": 760
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "ash_hymn",
+      "radius": 780
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": "Ash Hymn"
+}

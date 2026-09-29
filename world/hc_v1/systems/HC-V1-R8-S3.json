@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R8-S3",
+  "name": "Seedcut",
+  "seed": 38003,
+  "why_visit": "Stolen vaults. The night orchard sells what the Choir sealed.",
+  "law_color": "red",
+  "status": "authored",
+  "region": "R8",
+  "star": {
+    "id": "hc-v1-r8-s3-star",
+    "name": "Cut",
+    "class": "G",
+    "radius": 120,
+    "color": "#c4b070"
+  },
+  "bodies": [
+    {
+      "id": "night_orchard",
+      "name": "Night Orchard",
+      "angle": 1.0,
+      "distance": 1500,
+      "radius": 90,
+      "color": "#6a7048",
+      "blurb": "A black-market orchard of stolen vault stock.",
+      "legal": "Red. The seeds were sealed somewhere else.",
+      "air": "Sweet and wrong.",
+      "face": "Stolen domes.",
+      "crust": "Vault soil.",
+      "life": "Cuttings the Choir would burn.",
+      "ruins": "A seal, cut.",
+      "resource_id": "cut_seed",
+      "resource_name": "Cut seed",
+      "amount": 6,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "opened_vault",
+      "name": "Opened Vault",
+      "angle": 2.8,
+      "distance": 2100,
+      "radius": 55,
+      "color": "#4a4030",
+      "blurb": "A vault door that does not close.",
+      "legal": "Stolen vault.",
+      "air": "None.",
+      "face": "Cut hinges.",
+      "crust": "Vault.",
+      "life": "Illegal cultures.",
+      "ruins": "A Choir lock, broken.",
+      "resource_id": "cut_hinge",
+      "resource_name": "Cut hinge",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "cut_hulls",
+    "name": "Cut Hulls",
+    "composition": "cut seed hulls and broken Choir hinges from the night orchard",
+    "radius": 2400,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Cut Hulls",
+    "amount": 6,
+    "legal": "cut seed hulls and broken Choir hinges from the night orchard",
+    "heat": ""
+  },
+  "trash": {
+    "id": "sealed_then_stolen",
+    "name": "Sealed Then Stolen",
+    "origin": "Vaults lifted from Sealed Orchard and cracked at Seedcut.",
+    "anchor": "opened_vault",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Vaults lifted from Sealed Orchard and cracked at Seedcut.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "night_orchard_pocket",
+    "name": "Seedcut Pocket",
+    "anchor": "night_orchard",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "Stolen vaults. The night orchard sells what the Choir sealed."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "black_sail",
+    "count": 0,
+    "radius": 520,
+    "home": "night_orchard"
+  },
+  "pirates": {
+    "count": 1,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "orchard_cutter",
+      "name": "Orchard Cutter",
+      "class_id": "anvil",
+      "home": "night_orchard",
+      "radius": 680
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "night_orchard",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

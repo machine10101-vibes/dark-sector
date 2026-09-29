@@ -6,14 +6,46 @@
   "axes": "x increases along the green spine from Compact Core toward Municipal Skies. y increases rimward toward Black Sail Grounds.",
   "notes": "Spine only, arrows copied from the atlas. Spindle is the flagship world of Haven Wheel, so that hop leaves from HC-V1-R3-S1. Lanes are traversable both ways. Travel times and markets stay empty until G11.",
   "regions": [
-    {"id": "R1", "x": 0, "y": 0},
-    {"id": "R2", "x": 2, "y": 0},
-    {"id": "R3", "x": 4, "y": 0},
-    {"id": "R4", "x": 4, "y": -2},
-    {"id": "R5", "x": 2, "y": 2},
-    {"id": "R6", "x": 0, "y": 2},
-    {"id": "R7", "x": 2, "y": 4},
-    {"id": "R8", "x": 2, "y": 6}
+    {
+      "id": "R1",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "R2",
+      "x": 2,
+      "y": 0
+    },
+    {
+      "id": "R3",
+      "x": 4,
+      "y": 0
+    },
+    {
+      "id": "R4",
+      "x": 4,
+      "y": -2
+    },
+    {
+      "id": "R5",
+      "x": 2,
+      "y": 2
+    },
+    {
+      "id": "R6",
+      "x": 0,
+      "y": 2
+    },
+    {
+      "id": "R7",
+      "x": 2,
+      "y": 4
+    },
+    {
+      "id": "R8",
+      "x": 2,
+      "y": 6
+    }
   ],
   "lanes": [
     {
@@ -110,6 +142,198 @@
       "to": "HC-V1-R7-S3",
       "rule_color": "mixed",
       "traffic": "jurisdiction hole",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-haven-lower",
+      "from": "HC-V1-R3-S1",
+      "to": "HC-V1-R3-S2",
+      "rule_color": "green",
+      "traffic": "municipal",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-haven-guest",
+      "from": "HC-V1-R3-S1",
+      "to": "HC-V1-R3-S3",
+      "rule_color": "green",
+      "traffic": "municipal",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-haven-cinder",
+      "from": "HC-V1-R3-S1",
+      "to": "HC-V1-R3-S5",
+      "rule_color": "amber",
+      "traffic": "municipal",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-haven-after",
+      "from": "HC-V1-R3-S1",
+      "to": "HC-V1-R3-S6",
+      "rule_color": "amber",
+      "traffic": "municipal",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-choir-orchard",
+      "from": "HC-V1-R4-S1",
+      "to": "HC-V1-R4-S2",
+      "rule_color": "green",
+      "traffic": "quarantine",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-choir-spore",
+      "from": "HC-V1-R4-S1",
+      "to": "HC-V1-R4-S3",
+      "rule_color": "amber",
+      "traffic": "quarantine",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-choir-ash",
+      "from": "HC-V1-R4-S1",
+      "to": "HC-V1-R4-S4",
+      "rule_color": "green",
+      "traffic": "quarantine",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-choir-clean",
+      "from": "HC-V1-R4-S1",
+      "to": "HC-V1-R4-S5",
+      "rule_color": "green",
+      "traffic": "quarantine",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-choir-exception",
+      "from": "HC-V1-R4-S1",
+      "to": "HC-V1-R4-S6",
+      "rule_color": "amber",
+      "traffic": "quarantine",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-gyre-clock",
+      "from": "HC-V1-R6-S1",
+      "to": "HC-V1-R6-S2",
+      "rule_color": "amber",
+      "traffic": "drift",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-gyre-nameless",
+      "from": "HC-V1-R6-S1",
+      "to": "HC-V1-R6-S3",
+      "rule_color": "amber",
+      "traffic": "drift",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-gyre-hull",
+      "from": "HC-V1-R6-S1",
+      "to": "HC-V1-R6-S4",
+      "rule_color": "amber",
+      "traffic": "drift",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-gyre-iron",
+      "from": "HC-V1-R6-S1",
+      "to": "HC-V1-R6-S5",
+      "rule_color": "amber",
+      "traffic": "drift",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-gyre-beacon",
+      "from": "HC-V1-R6-S1",
+      "to": "HC-V1-R6-S6",
+      "rule_color": "amber",
+      "traffic": "drift",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-march-letter",
+      "from": "HC-V1-R7-S1",
+      "to": "HC-V1-R7-S2",
+      "rule_color": "red",
+      "traffic": "red road",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-march-tithe",
+      "from": "HC-V1-R7-S1",
+      "to": "HC-V1-R7-S3",
+      "rule_color": "red",
+      "traffic": "red road",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-march-flags",
+      "from": "HC-V1-R7-S1",
+      "to": "HC-V1-R7-S4",
+      "rule_color": "red",
+      "traffic": "red road",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-march-claimwake",
+      "from": "HC-V1-R7-S1",
+      "to": "HC-V1-R7-S5",
+      "rule_color": "red",
+      "traffic": "red road",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-march-witness",
+      "from": "HC-V1-R7-S1",
+      "to": "HC-V1-R7-S6",
+      "rule_color": "red",
+      "traffic": "red road",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-quay-false",
+      "from": "HC-V1-R8-S1",
+      "to": "HC-V1-R8-S2",
+      "rule_color": "red",
+      "traffic": "black sail",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-quay-seed",
+      "from": "HC-V1-R8-S1",
+      "to": "HC-V1-R8-S3",
+      "rule_color": "red",
+      "traffic": "black sail",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-quay-twin",
+      "from": "HC-V1-R8-S1",
+      "to": "HC-V1-R8-S4",
+      "rule_color": "red",
+      "traffic": "black sail",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-quay-deep",
+      "from": "HC-V1-R8-S1",
+      "to": "HC-V1-R8-S5",
+      "rule_color": "red",
+      "traffic": "black sail",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-quay-joke",
+      "from": "HC-V1-R8-S1",
+      "to": "HC-V1-R8-S6",
+      "rule_color": "red",
+      "traffic": "black sail",
       "pdo_response_time": ""
     }
   ]

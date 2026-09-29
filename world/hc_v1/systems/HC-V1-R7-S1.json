@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R7-S1",
+  "name": "Marchport",
+  "seed": 37001,
+  "why_visit": "The last cheap dock. Privateer paper is sold from a shuttered charter booth. The rock is Step.",
+  "law_color": "red",
+  "status": "authored",
+  "region": "R7",
+  "star": {
+    "id": "hc-v1-r7-s1-star",
+    "name": "March",
+    "class": "K",
+    "radius": 120,
+    "color": "#c46a3a"
+  },
+  "bodies": [
+    {
+      "id": "step",
+      "name": "Step",
+      "angle": 0.6,
+      "distance": 1450,
+      "radius": 100,
+      "color": "#a85a32",
+      "blurb": "The flagship rock. The last cheap dock is bolted to it.",
+      "legal": "Red road. Privateer paper. Thin law.",
+      "air": "Dock vent.",
+      "face": "Cheap plate.",
+      "crust": "March stone.",
+      "life": "Dock crews. No Compact.",
+      "ruins": "A shuttered charter booth.",
+      "resource_id": "privateer_paper",
+      "resource_name": "Privateer paper",
+      "amount": 5,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "shuttered_booth",
+      "name": "Shuttered Booth",
+      "angle": 2.5,
+      "distance": 2100,
+      "radius": 45,
+      "color": "#6e4030",
+      "blurb": "The Rimward Charter booth that still sells paper with the shutter down.",
+      "legal": "Paper without a patrol.",
+      "air": "None.",
+      "face": "Booth tin.",
+      "crust": "Tin.",
+      "life": "A clerk.",
+      "ruins": "The charter seal, cracked.",
+      "resource_id": "booth_tin",
+      "resource_name": "Booth tin",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "march_clinker",
+    "name": "March Clinker",
+    "composition": "dock clinker and cracked charter seal from Step's cheap dock",
+    "radius": 2700,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "March Clinker",
+    "amount": 6,
+    "legal": "dock clinker and cracked charter seal from Step's cheap dock",
+    "heat": ""
+  },
+  "trash": {
+    "id": "expired_papers",
+    "name": "Expired Papers",
+    "origin": "Privateers whose paper died at Step and whose hulls stayed.",
+    "anchor": "step",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Privateers whose paper died at Step and whose hulls stayed.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "step_pocket",
+    "name": "Marchport Pocket",
+    "anchor": "step",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "The last cheap dock. Privateer paper is sold from a shuttered charter booth. The rock is Step."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "rimward_charter",
+    "count": 0,
+    "radius": 520,
+    "home": "step"
+  },
+  "pirates": {
+    "count": 2,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "paper_seller",
+      "name": "Paper Seller",
+      "class_id": "anvil",
+      "home": "shuttered_booth",
+      "radius": 520
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "step",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": "Step"
+}

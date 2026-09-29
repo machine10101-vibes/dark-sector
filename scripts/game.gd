@@ -10,25 +10,7 @@ var zoom := 0.9
 
 
 func _ready() -> void:
-	var helion: Dictionary = Serde.load_json("res://data/system.json")
-	var soil: Dictionary = Serde.load_json("res://data/first_soil.json")
-	var chart := {
-		str(helion.id): helion,
-		str(soil.id): soil,
-	}
-	var density: Dictionary = Serde.load_json("res://data/density.json")
-	for spec in density.get("systems", []):
-		var built: Dictionary = Chart.expand(spec)
-		chart[str(built.id)] = built
-	defs = {
-		"ships": Serde.load_json("res://data/ships.json"),
-		"modules": Serde.load_json("res://data/modules.json"),
-		"craft": Serde.load_json("res://data/craft.json"),
-		"system": helion,
-		"systems": chart,
-		"factions": Serde.load_json("res://data/factions.json"),
-		"quests": Serde.load_json("res://data/quests.json"),
-	}
+	defs = Catalog.boot()
 
 
 func save_path() -> String:
@@ -43,6 +25,7 @@ func begin_new(class_id: String) -> void:
 	_drop_link()
 	sim = SectorSim.new(defs)
 	sim.new_game(class_id)
+	Catalog.arm_yards(sim)
 	zoom = 0.9
 	paused = false
 	mode = "sector"

@@ -1,0 +1,9 @@
+{
+  "id": "authored_swallow_01",
+  "title": "The Swallow Recovery",
+  "kind": "authored",
+  "summary": "Bring keel salvage out of the Swallow. A lost craft in that cyclone is a rumor with a price.",
+  "body": "the_swallow",
+  "system_id": "HC-V1-R6-S1",
+  "mutations": ["rumor_swallow", "salvage_grant"]
+}

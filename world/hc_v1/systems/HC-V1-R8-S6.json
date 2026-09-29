@@ -1,0 +1,133 @@
+{
+  "id": "HC-V1-R8-S6",
+  "name": "The Joke",
+  "seed": 38006,
+  "why_visit": "A PDO fortress that is plywood and guns. A humiliating first death, or the best story.",
+  "law_color": "red",
+  "status": "authored",
+  "region": "R8",
+  "star": {
+    "id": "hc-v1-r8-s6-star",
+    "name": "Joke",
+    "class": "Gutter",
+    "radius": 120,
+    "color": "#c45a3a"
+  },
+  "bodies": [
+    {
+      "id": "plywood_fort",
+      "name": "Plywood Fort",
+      "angle": 0.6,
+      "distance": 1300,
+      "radius": 90,
+      "color": "#a07040",
+      "blurb": "The fortress. The guns are real. The walls are not.",
+      "legal": "Red. It is not a PDO. It wants you to think it is.",
+      "air": "None. The walls leak.",
+      "face": "Plywood and gun mounts.",
+      "crust": "A joke with mass.",
+      "life": "A crew that laughs.",
+      "ruins": "A painted Compact crest, peeling.",
+      "resource_id": "plywood",
+      "resource_name": "Plywood",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": true,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "real_guns",
+      "name": "Real Guns",
+      "angle": 2.2,
+      "distance": 1900,
+      "radius": 40,
+      "color": "#4a3028",
+      "blurb": "The battery that makes the joke expensive.",
+      "legal": "The guns are the true law here.",
+      "air": "None.",
+      "face": "Gun steel.",
+      "crust": "Mount.",
+      "life": "Gunners.",
+      "ruins": "A kill mark for a courier.",
+      "resource_id": "gun_steel",
+      "resource_name": "Gun steel",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "peel_and_brass",
+    "name": "Peel and Brass",
+    "composition": "peeled fortress paint and real gun brass from The Joke",
+    "radius": 2200,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Peel and Brass",
+    "amount": 6,
+    "legal": "peeled fortress paint and real gun brass from The Joke",
+    "heat": ""
+  },
+  "trash": {
+    "id": "first_deaths",
+    "name": "First Deaths",
+    "origin": "Couriers who believed the plywood was a Compact fort.",
+    "anchor": "plywood_fort",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Couriers who believed the plywood was a Compact fort.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "plywood_fort_pocket",
+    "name": "The Joke Pocket",
+    "anchor": "plywood_fort",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "A PDO fortress that is plywood and guns. A humiliating first death, or the best story."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "black_sail",
+    "count": 0,
+    "radius": 520,
+    "home": "plywood_fort"
+  },
+  "pirates": {
+    "count": 2,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "plywood_fort",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

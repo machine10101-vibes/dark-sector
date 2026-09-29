@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R3-S2",
+  "name": "Lower Stack",
+  "seed": 33002,
+  "why_visit": "Industrial moon-cities and algae curtains. The union still has the keys.",
+  "law_color": "green",
+  "status": "authored",
+  "region": "R3",
+  "star": {
+    "id": "hc-v1-r3-s2-star",
+    "name": "Stack",
+    "class": "K",
+    "radius": 120,
+    "color": "#e0b070"
+  },
+  "bodies": [
+    {
+      "id": "algae_stack",
+      "name": "Algae Stack",
+      "angle": 0.7,
+      "distance": 1600,
+      "radius": 100,
+      "color": "#6a8f62",
+      "blurb": "Moon-cities hung in an algae curtain. The smell is the industry.",
+      "legal": "Municipal industrial lease. The curtain is not a garden claim.",
+      "air": "Algae vent. Wet and chemical.",
+      "face": "Curtain scoops and vat glass.",
+      "crust": "Vat stone.",
+      "life": "Algae, tended, not wild.",
+      "ruins": "The first union lock.",
+      "resource_id": "algae_mass",
+      "resource_name": "Algae mass",
+      "amount": 7,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "union_bell",
+      "name": "Union Bell",
+      "angle": 3.0,
+      "distance": 2200,
+      "radius": 55,
+      "color": "#8a7048",
+      "blurb": "A bell rock the shift changes by.",
+      "legal": "Union mark. Not a homestead.",
+      "air": "None.",
+      "face": "Bell iron and algae stain.",
+      "crust": "Iron.",
+      "life": "None.",
+      "ruins": "A cracked shift board.",
+      "resource_id": "bell_iron",
+      "resource_name": "Bell iron",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "curtain_drift",
+    "name": "Curtain Drift",
+    "composition": "dried algae matting and vat glass from the Lower Stack curtains",
+    "radius": 2700,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Curtain Drift",
+    "amount": 6,
+    "legal": "dried algae matting and vat glass from the Lower Stack curtains",
+    "heat": ""
+  },
+  "trash": {
+    "id": "shift_wrecks",
+    "name": "Shift Wrecks",
+    "origin": "Tugs that missed the union bell and were left between shifts.",
+    "anchor": "algae_stack",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Tugs that missed the union bell and were left between shifts.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "algae_stack_pocket",
+    "name": "Lower Stack Pocket",
+    "anchor": "algae_stack",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "Industrial moon-cities and algae curtains. The union still has the keys."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "municipal_navy",
+    "count": 1,
+    "radius": 520,
+    "home": "algae_stack"
+  },
+  "pirates": {
+    "count": 0,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "shift_boss",
+      "name": "Shift Boss",
+      "class_id": "anvil",
+      "home": "algae_stack",
+      "radius": 700
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "algae_stack",
+      "radius": 780
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

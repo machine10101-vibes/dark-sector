@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R4-S5",
+  "name": "Clean Hands",
+  "seed": 34005,
+  "why_visit": "Sterile ice and medical feedstock. The fine is higher than the cargo.",
+  "law_color": "green",
+  "status": "authored",
+  "region": "R4",
+  "star": {
+    "id": "hc-v1-r4-s5-star",
+    "name": "Sterile",
+    "class": "A",
+    "radius": 120,
+    "color": "#f7fbff"
+  },
+  "bodies": [
+    {
+      "id": "feedstock",
+      "name": "Feedstock",
+      "angle": 0.4,
+      "distance": 1600,
+      "radius": 85,
+      "color": "#d5e4ee",
+      "blurb": "Sterile ice worked into medical feedstock. The ring is the product.",
+      "legal": "Glass Choir medical lease. The fine is the point.",
+      "air": "Clean and thin.",
+      "face": "Cut ice faces, lamp-numbered.",
+      "crust": "Medical ice, not a garden.",
+      "life": "None. Sterile on purpose.",
+      "ruins": "A fine schedule etched in the face.",
+      "resource_id": "feedstock_ice",
+      "resource_name": "Feedstock ice",
+      "amount": 5,
+      "heat": "pdo",
+      "moon": false,
+      "junk": false,
+      "ring": true,
+      "ring_kind": "ice"
+    },
+    {
+      "id": "fine_office",
+      "name": "Fine Office",
+      "angle": 3.2,
+      "distance": 2100,
+      "radius": 48,
+      "color": "#b7c8d4",
+      "blurb": "The office that prices a dirty hold.",
+      "legal": "Choir fines. Standing does not make you poor here. Dirt does.",
+      "air": "Office air.",
+      "face": "White counters.",
+      "crust": "Office stone.",
+      "life": "Clerks.",
+      "ruins": "A ledger of ruined captains.",
+      "resource_id": "fine_paper",
+      "resource_name": "Fine paper",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "sterile_grit",
+    "name": "Sterile Grit",
+    "composition": "medical ice grit and glove fiber from the Clean Hands feedstock line",
+    "radius": 2900,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Sterile Grit",
+    "amount": 6,
+    "legal": "medical ice grit and glove fiber from the Clean Hands feedstock line",
+    "heat": ""
+  },
+  "trash": {
+    "id": "dirty_holds",
+    "name": "Dirty Holds",
+    "origin": "Holds the Choir emptied because the gloves were not clean.",
+    "anchor": "feedstock",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Holds the Choir emptied because the gloves were not clean.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "feedstock_pocket",
+    "name": "Clean Hands Pocket",
+    "anchor": "feedstock",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "Sterile ice and medical feedstock. The fine is higher than the cargo."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "glass_choir",
+    "count": 1,
+    "radius": 520,
+    "home": "feedstock"
+  },
+  "pirates": {
+    "count": 0,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "fine_clerk",
+      "name": "Fine Clerk",
+      "class_id": "anvil",
+      "home": "fine_office",
+      "radius": 600
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "feedstock",
+      "radius": 780
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

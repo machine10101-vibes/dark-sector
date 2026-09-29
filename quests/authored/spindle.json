@@ -1,0 +1,9 @@
+{
+  "id": "authored_spindle",
+  "title": "Spindle audience",
+  "kind": "authored",
+  "summary": "Come in under Spindle. The municipal navy raises the dock fee and keeps the rumor.",
+  "body": "spindle",
+  "system_id": "HC-V1-R3-S1",
+  "mutations": ["dock_fee", "rumor_spindle", "municipal_standing_up"]
+}

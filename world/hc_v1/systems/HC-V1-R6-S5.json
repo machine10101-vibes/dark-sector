@@ -1,0 +1,149 @@
+{
+  "id": "HC-V1-R6-S5",
+  "name": "Iron Rain",
+  "seed": 36005,
+  "why_visit": "A nickel stream. Anvil heaven. Fighter hell.",
+  "law_color": "amber",
+  "status": "authored",
+  "region": "R6",
+  "star": {
+    "id": "hc-v1-r6-s5-star",
+    "name": "Rain",
+    "class": "A",
+    "radius": 120,
+    "color": "#e8eef8"
+  },
+  "bodies": [
+    {
+      "id": "anvil_heaven",
+      "name": "Anvil Heaven",
+      "angle": 0.3,
+      "distance": 1600,
+      "radius": 80,
+      "color": "#d0d6e0",
+      "blurb": "Where an Anvil wants to be and a fighter does not.",
+      "legal": "Drift nickel. The rain is the mine.",
+      "air": "None.",
+      "face": "Nickel slick.",
+      "crust": "Metal world.",
+      "life": "None.",
+      "ruins": "A fighter that parked in the rain.",
+      "resource_id": "nickel_mass",
+      "resource_name": "Nickel mass",
+      "amount": 9,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "fighter_grave",
+      "name": "Fighter Grave",
+      "angle": 2.2,
+      "distance": 2300,
+      "radius": 48,
+      "color": "#8090a0",
+      "blurb": "Fighters that met the rain and stayed.",
+      "legal": "Wreck rights in the rain.",
+      "air": "None.",
+      "face": "Fighter teeth.",
+      "crust": "Nickel.",
+      "life": "None.",
+      "ruins": "A squadron mark.",
+      "resource_id": "fighter_teeth",
+      "resource_name": "Fighter teeth",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": true,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "nickel_slick",
+    "name": "Nickel Slick",
+    "composition": "nickel slick and fighter teeth from the Iron Rain, an Anvil belt",
+    "radius": 2200,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Nickel Slick",
+    "amount": 6,
+    "legal": "nickel slick and fighter teeth from the Iron Rain, an Anvil belt",
+    "heat": ""
+  },
+  "trash": {
+    "id": "none",
+    "name": "",
+    "origin": "",
+    "anchor": "",
+    "angle": 0,
+    "distance": 0,
+    "count": 0,
+    "spread": 0,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 0,
+    "legal": "",
+    "heat": ""
+  },
+  "stream": {
+    "id": "iron_rain",
+    "name": "Iron Rain",
+    "origin": "Nickel on a hard vector. Fighters hate it. Anvils invoice it.",
+    "vector": 2.2,
+    "period": 11.0,
+    "speed": 64.0,
+    "span": 704.0,
+    "anchor": "anvil_heaven",
+    "angle": 0.6,
+    "distance": 820,
+    "resource_id": "stream_mass",
+    "resource_name": "Iron Rain",
+    "amount": 5,
+    "legal": "Nickel on a hard vector. Fighters hate it. Anvils invoice it.",
+    "heat": ""
+  },
+  "pocket": {
+    "id": "anvil_heaven_pocket",
+    "name": "Iron Rain Pocket",
+    "anchor": "anvil_heaven",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "A nickel stream. Anvil heaven. Fighter hell."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "rimward_charter",
+    "count": 0,
+    "radius": 520,
+    "home": "anvil_heaven"
+  },
+  "pirates": {
+    "count": 2,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "anvil_heaven",
+      "radius": 280
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

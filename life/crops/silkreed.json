@@ -1,0 +1,12 @@
+{
+  "id": "silkreed",
+  "name": "Silkreed",
+  "dies_if": "motion",
+  "need": "stillness",
+  "die_after": 5,
+  "water": 6,
+  "yield": "silkreed",
+  "open_dome_kills": true,
+  "line": "Silkreed is sown. It wants the keel still. Motion kills it.",
+  "tend_line": "You sit with the silkreed."
+}

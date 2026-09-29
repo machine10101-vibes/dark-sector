@@ -1,0 +1,8 @@
+{
+  "id": "meteor_window",
+  "title": "Meteor-window salvage",
+  "summary": "A stream is open. Bring salvage parts out of the window before it closes.",
+  "uses": "streams",
+  "success_mutations": ["rumor_meteor", "salvage_grant"],
+  "failure_mutations": ["rumor_meteor_fail"]
+}

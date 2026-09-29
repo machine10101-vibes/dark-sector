@@ -3,6 +3,7 @@ extends Node
 var menu: CanvasLayer
 var sector: Node2D
 var hud: CanvasLayer
+var desk: CanvasLayer
 var tones: Node
 
 
@@ -68,6 +69,9 @@ func _enter_sector() -> void:
 		hud = preload("res://ui/hud.gd").new()
 		hud.name = "Hud"
 		add_child(hud)
+		desk = preload("res://ui/debug_pane.gd").new()
+		desk.name = "DataDesk"
+		add_child(desk)
 	sector.show()
 	hud.show()
 	if hud.has_method("reset_overlays"):

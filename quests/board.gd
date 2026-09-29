@@ -9,6 +9,7 @@ static func pulse(sim, dt: float) -> void:
 		return
 	_shakedown(sim)
 	_shorts(sim)
+	_data_hooks(sim)
 	_contracts(sim, dt)
 	var waited := float(sim.quest_flags.get("offer_t", 0.0)) + dt
 	sim.quest_flags.offer_t = waited
@@ -214,7 +215,107 @@ static func _density_offer(sim) -> Dictionary:
 		return _contract("lantern", "helion_compact", "Deliver to Brass Lantern", "Carry food mass to Brass Lantern.", ["HC-V1-R1-S2", "lamp_yard"], "food_mass", 0.0, 0.0, "HC-V1-R1-S2")
 	if not bool(sim.quest_flags.get("did_defend", false)) and chart.has("HC-V1-R5-S1"):
 		return _contract("defend", "homestead", "Defend First Soil", "Hold a garden pocket through the raid timer.", ["HC-V1-R5-S1", "quiet_hollow"], "quiet_hollow", 0.0, 0.0, "HC-V1-R5-S1")
+	return _template_offer(sim)
+
+
+static func _template_offer(sim) -> Dictionary:
+	if not sim.defs.has("templates"):
+		return {}
+	var book = sim.defs.get("templates", {})
+	if typeof(book) != TYPE_DICTIONARY or book.is_empty():
+		return {}
+	var streams_doc = sim.defs.get("streams", {})
+	if typeof(streams_doc) != TYPE_DICTIONARY:
+		return {}
+	var list: Array = streams_doc.get("streams", [])
+	if list.is_empty():
+		return {}
+	for key in book.keys():
+		var spec: Dictionary = book[key]
+		var tid := str(spec.get("id", key))
+		if bool(sim.quest_flags.get("did_%s" % tid, false)):
+			continue
+		if str(spec.get("uses", "")) != "streams":
+			continue
+		var pick: Dictionary = list[int(abs(hash(tid))) % list.size()]
+		var made := _contract(tid, "rimward_charter", str(spec.get("title", tid)), str(spec.get("summary", "")), [str(pick.get("system_id", "")), str(pick.get("id", ""))], str(pick.get("id", "")), 0.0, 0.0, str(pick.get("system_id", "")))
+		made.success_mutations = spec.get("success_mutations", [])
+		made.failure_mutations = spec.get("failure_mutations", [])
+		made.template = tid
+		return made
 	return {}
+
+
+static func _template_done(sim, contract: Dictionary) -> bool:
+	var template := str(contract.get("template", ""))
+	var book = sim.defs.get("templates", {})
+	if typeof(book) != TYPE_DICTIONARY or not book.has(template):
+		return false
+	var spec: Dictionary = book[template]
+	if str(spec.get("uses", "")) != "streams":
+		return false
+	return str(sim.defs.system.id) == str(contract.get("system_id", "")) and int(sim.player.cargo.get("salvage_parts", 0)) > 0
+
+
+static func _data_hooks(sim) -> void:
+	var quests = sim.defs.get("quests", {})
+	if typeof(quests) != TYPE_DICTIONARY:
+		return
+	for key in quests.keys():
+		var quest = quests[key]
+		if typeof(quest) != TYPE_DICTIONARY:
+			continue
+		if not quest.has("route") and str(quest.get("body", "")) == "":
+			continue
+		var qid := str(quest.get("id", key))
+		if str(sim.quest_flags.get(qid, "")) == "done":
+			continue
+		var hit := false
+		if str(quest.get("body", "")) != "":
+			var system_id := str(quest.get("system_id", ""))
+			if system_id == "" or str(sim.defs.system.id) == system_id:
+				var rock = sim.planet(str(quest.body))
+				if rock != null and sim.player.pos.distance_to(rock.pos) < float(rock.radius) + 240.0:
+					hit = true
+		if quest.has("route") and not hit:
+			var route: Array = quest.route
+			var step := int(sim.quest_flags.get("%s_step" % qid, 0))
+			if step < route.size() and str(sim.defs.system.id) == str(route[step]):
+				var need := str(quest.get("need_cargo", ""))
+				var last := step == route.size() - 1
+				if need != "" and last and int(sim.player.cargo.get(need, 0)) < 1:
+					pass
+				else:
+					sim.quest_flags["%s_step" % qid] = step + 1
+					sim.say("%s: %s." % [str(quest.get("title", qid)), str(sim.defs.system.name)])
+					if step + 1 >= route.size():
+						hit = true
+		if hit:
+			sim.quest_flags[qid] = "done"
+			for mutation in quest.get("mutations", []):
+				_apply(sim, str(mutation))
+			sim.say("%s is on the slate." % str(quest.get("title", qid)))
+
+
+static func _apply_open(sim, mutation: String) -> void:
+	var text := mutation.to_lower()
+	if text.contains("xp"):
+		return
+	if mutation.begins_with("rumor_"):
+		_rumor(sim, mutation.replace("_", " "))
+		sim.quest_flags[mutation] = true
+		return
+	if mutation.ends_with("_standing_up"):
+		var fac := mutation.substr(0, mutation.length() - 12)
+		var flag := "%s_standing" % fac
+		sim.quest_flags[flag] = int(sim.quest_flags.get(flag, 0)) + 1
+		return
+	if mutation.begins_with("heat_"):
+		var faction := mutation.substr(5)
+		sim.heat[faction] = float(sim.heat.get(faction, 0.0)) + 8.0
+		return
+	if mutation == "claim_law_red":
+		sim.quest_flags.claim_law = "red"
 
 
 static func _shorts(sim) -> void:
@@ -334,7 +435,7 @@ static func _contract_done(sim, contract: Dictionary) -> bool:
 		"lantern":
 			return str(sim.defs.system.id) == "HC-V1-R1-S2" and int(sim.player.cargo.get("food_mass", 0)) > 0
 		_:
-			return false
+			return _template_done(sim, contract)
 
 
 static func _contract_failed(sim, contract: Dictionary) -> bool:
@@ -502,7 +603,7 @@ static func _apply(sim, mutation: String) -> void:
 		"rumor_shakedown_fail":
 			_rumor(sim, "Shakedown failed on the pen.")
 		_:
-			pass
+			_apply_open(sim, mutation)
 
 
 static func _rumor(sim, line: String) -> void:

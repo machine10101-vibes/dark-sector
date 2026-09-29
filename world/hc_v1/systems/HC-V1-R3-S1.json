@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R3-S1",
+  "name": "Haven Wheel",
+  "seed": 33001,
+  "why_visit": "Dock fees and luxury food under Spindle. The municipal navy likes an audience.",
+  "law_color": "green",
+  "status": "authored",
+  "region": "R3",
+  "star": {
+    "id": "hc-v1-r3-s1-star",
+    "name": "Haven",
+    "class": "G",
+    "radius": 120,
+    "color": "#f0d7a8"
+  },
+  "bodies": [
+    {
+      "id": "spindle",
+      "name": "Spindle",
+      "angle": 0.4,
+      "distance": 1500,
+      "radius": 140,
+      "color": "#d7c4a0",
+      "blurb": "The city-world. Dock fees are painted on the approach.",
+      "legal": "Orbital Municipal Navy. A city, not a claim.",
+      "air": "City air inside the wheel. Vacuum on the rim.",
+      "face": "Dock rings and fee lamps.",
+      "crust": "Civic stone under the fees.",
+      "life": "People, bonded kitchens, no wild stock.",
+      "ruins": "The first wheel spoke, still collecting.",
+      "resource_id": "dock_fee_scrip",
+      "resource_name": "Dock scrip",
+      "amount": 4,
+      "heat": "lease",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "fee_moon",
+      "name": "Fee Moon",
+      "angle": 2.6,
+      "distance": 2300,
+      "radius": 60,
+      "color": "#b7a888",
+      "blurb": "The moon where luxury food is priced before it lands.",
+      "legal": "Municipal market moon. Scanning is welcome. Planting is not.",
+      "air": "Cold pantry air.",
+      "face": "Crate stamps and gold leaf.",
+      "crust": "Pantry rock.",
+      "life": "Kitchens, not herds.",
+      "ruins": "A tariff nail from the first feast.",
+      "resource_id": "luxury_food",
+      "resource_name": "Luxury food",
+      "amount": 5,
+      "heat": "",
+      "moon": true,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "fee_chaff",
+    "name": "Fee Chaff",
+    "composition": "tariff foil and kitchen ash shaken off Spindle, not a stone belt",
+    "radius": 3000,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Fee Chaff",
+    "amount": 6,
+    "legal": "tariff foil and kitchen ash shaken off Spindle, not a stone belt",
+    "heat": ""
+  },
+  "trash": {
+    "id": "unpaid_hulls",
+    "name": "Unpaid Hulls",
+    "origin": "Haulers impounded at Spindle for an unpaid dock fee.",
+    "anchor": "spindle",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Haulers impounded at Spindle for an unpaid dock fee.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "spindle_pocket",
+    "name": "Haven Wheel Pocket",
+    "anchor": "spindle",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "Dock fees and luxury food under Spindle. The municipal navy likes an audience."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "municipal_navy",
+    "count": 2,
+    "radius": 520,
+    "home": "spindle"
+  },
+  "pirates": {
+    "count": 0,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "navy_factor",
+      "name": "Navy Factor",
+      "class_id": "anvil",
+      "home": "spindle",
+      "radius": 800
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "spindle",
+      "radius": 780
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": "Spindle"
+}

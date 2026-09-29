@@ -1,0 +1,9 @@
+{
+  "id": "glass_choir",
+  "name": "Glass Choir",
+  "kind": "pdo",
+  "temper": "quarantine",
+  "color": "#e7f0e4",
+  "blurb": "Glass Choir Wardens. They sweep living cargo at Choir Gate unless the hold has Glass standing.",
+  "heat_to_engage": 34
+}

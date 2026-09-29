@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R8-S1",
+  "name": "Black Quay",
+  "seed": 38001,
+  "why_visit": "The rogue port. Tribute is the dock fee. The platform is Quay.",
+  "law_color": "red",
+  "status": "authored",
+  "region": "R8",
+  "star": {
+    "id": "hc-v1-r8-s1-star",
+    "name": "Quay Star",
+    "class": "K-red",
+    "radius": 120,
+    "color": "#c43a2a"
+  },
+  "bodies": [
+    {
+      "id": "quay",
+      "name": "Quay",
+      "angle": 0.5,
+      "distance": 1400,
+      "radius": 120,
+      "color": "#8a2a24",
+      "blurb": "The flagship platform. You pay tribute or you do not dock.",
+      "legal": "Red port. Black Sail. No Compact hail.",
+      "air": "Port smoke.",
+      "face": "Tribute paint and guns.",
+      "crust": "Platform plate.",
+      "life": "A port crew. Not a patrol.",
+      "ruins": "The first tribute nail.",
+      "resource_id": "tribute",
+      "resource_name": "Tribute",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "ledger_dark",
+      "name": "Dark Ledger",
+      "angle": 2.4,
+      "distance": 2100,
+      "radius": 50,
+      "color": "#4a2420",
+      "blurb": "Where the tribute is written in a book the Compact does not get.",
+      "legal": "Rogue books.",
+      "air": "None.",
+      "face": "Black paper.",
+      "crust": "Rock.",
+      "life": "Clerks with guns.",
+      "ruins": "A Compact seal used as a paperweight.",
+      "resource_id": "dark_paper",
+      "resource_name": "Dark paper",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "tribute_slag",
+    "name": "Tribute Slag",
+    "composition": "tribute slag and port paint from Quay, a red-port belt",
+    "radius": 2600,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Tribute Slag",
+    "amount": 6,
+    "legal": "tribute slag and port paint from Quay, a red-port belt",
+    "heat": ""
+  },
+  "trash": {
+    "id": "unpaid_tribute",
+    "name": "Unpaid Tribute",
+    "origin": "Hulls that reached Quay and would not pay.",
+    "anchor": "quay",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Hulls that reached Quay and would not pay.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "quay_pocket",
+    "name": "Black Quay Pocket",
+    "anchor": "quay",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "The rogue port. Tribute is the dock fee. The platform is Quay."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "black_sail",
+    "count": 0,
+    "radius": 520,
+    "home": "quay"
+  },
+  "pirates": {
+    "count": 2,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "quay_factor",
+      "name": "Quay Factor",
+      "class_id": "anvil",
+      "home": "quay",
+      "radius": 760
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "quay",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": "Quay"
+}

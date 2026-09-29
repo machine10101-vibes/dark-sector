@@ -1,0 +1,9 @@
+{
+  "id": "authored_step",
+  "title": "Step paper",
+  "kind": "authored",
+  "summary": "Buy the last cheap dock's rumor. Step sells privateer paper and warms Red Keel heat.",
+  "body": "step",
+  "system_id": "HC-V1-R7-S1",
+  "mutations": ["rumor_step", "heat_red_keel"]
+}

@@ -1,0 +1,133 @@
+{
+  "id": "HC-V1-R7-S2",
+  "name": "Letter",
+  "seed": 37002,
+  "why_visit": "Letters of marque expire here more often than they are honored.",
+  "law_color": "red",
+  "status": "authored",
+  "region": "R7",
+  "star": {
+    "id": "hc-v1-r7-s2-star",
+    "name": "Letter",
+    "class": "G",
+    "radius": 120,
+    "color": "#e0c888"
+  },
+  "bodies": [
+    {
+      "id": "marque_rock",
+      "name": "Marque Rock",
+      "angle": 0.9,
+      "distance": 1550,
+      "radius": 75,
+      "color": "#c4a060",
+      "blurb": "Where a letter of marque goes to expire.",
+      "legal": "Red. The letter is older than the gun.",
+      "air": "None.",
+      "face": "Wax and shot.",
+      "crust": "Stone.",
+      "life": "None.",
+      "ruins": "A stack of expired letters.",
+      "resource_id": "expired_wax",
+      "resource_name": "Expired wax",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "honor_gap",
+      "name": "Honor Gap",
+      "angle": 2.7,
+      "distance": 2200,
+      "radius": 50,
+      "color": "#806848",
+      "blurb": "The gap between the letter and anyone who will honor it.",
+      "legal": "No witness worth the paper.",
+      "air": "None.",
+      "face": "Empty dock.",
+      "crust": "Gap stone.",
+      "life": "None.",
+      "ruins": "A signature with no office.",
+      "resource_id": "gap_stone",
+      "resource_name": "Gap stone",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "wax_chips",
+    "name": "Wax Chips",
+    "composition": "expired marque wax and shot from Letter's dead commissions",
+    "radius": 2600,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Wax Chips",
+    "amount": 6,
+    "legal": "expired marque wax and shot from Letter's dead commissions",
+    "heat": ""
+  },
+  "trash": {
+    "id": "dishonored",
+    "name": "Dishonored",
+    "origin": "Captains who presented a letter at Marque Rock and were fired on anyway.",
+    "anchor": "marque_rock",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Captains who presented a letter at Marque Rock and were fired on anyway.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "marque_rock_pocket",
+    "name": "Letter Pocket",
+    "anchor": "marque_rock",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "Letters of marque expire here more often than they are honored."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "rimward_charter",
+    "count": 0,
+    "radius": 520,
+    "home": "marque_rock"
+  },
+  "pirates": {
+    "count": 2,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "marque_rock",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

@@ -269,6 +269,22 @@ static func _block_reason(sim) -> String:
 		return "%s is closed. Compact exclusion. The core stays in the hold." % str(pocket.get("name", "This pocket"))
 	if bool(pocket.get("exclusion", false)):
 		return "Compact exclusion covers this pocket. The core stays in the hold."
+	if sim.defs.has("claim_slots"):
+		var book = sim.defs.get("claim_slots", {})
+		if typeof(book) == TYPE_DICTIONARY:
+			var slots = book.get("slots", [])
+			if typeof(slots) == TYPE_ARRAY and not slots.is_empty():
+				var filed := false
+				var sys_id := str(sim.defs.system.id)
+				var pocket_id := str(pocket.get("id", ""))
+				for slot in slots:
+					if typeof(slot) != TYPE_DICTIONARY:
+						continue
+					if str(slot.get("system_id", "")) == sys_id and str(slot.get("pocket_id", "")) == pocket_id:
+						filed = true
+						break
+				if not filed:
+					return "No claim slot is filed for this pocket."
 	return ""
 
 
@@ -474,7 +490,8 @@ static func _gather(sim) -> String:
 
 
 static func sow(sim, crop_id: String) -> String:
-	if not CROPS.has(crop_id) or crop_id == "glasswheat":
+	var data_crop := _data_crop(sim, crop_id)
+	if (not CROPS.has(crop_id) and data_crop.is_empty()) or crop_id == "glasswheat":
 		return "That is not a new crop."
 	var blocked := _owner_block(sim)
 	if blocked != "":
@@ -497,6 +514,10 @@ static func sow(sim, crop_id: String) -> String:
 	elif crop_id == "ember_kale":
 		plot.water = 3.0
 		sim.say("Ember kale is sown. It wants heat, and it rots if you drown it.")
+	elif not data_crop.is_empty():
+		plot.water = float(data_crop.get("water", WATER_MAX))
+		plot.motion = 0.0
+		sim.say(str(data_crop.get("line", "%s is sown." % str(data_crop.get("name", crop_id)))))
 	else:
 		plot.water = WATER_MAX
 		sim.say("Ghost gourd is sown. Leave the pocket and it collapses.")
@@ -504,7 +525,8 @@ static func sow(sim, crop_id: String) -> String:
 
 
 static func stock(sim, kind: String) -> String:
-	if not ANIMALS.has(kind):
+	var animal_def := _data_animal(sim, kind)
+	if not ANIMALS.has(kind) and animal_def.is_empty():
 		return "That animal is not on the slate."
 	var blocked := _owner_block(sim)
 	if blocked != "":
@@ -518,18 +540,23 @@ static func stock(sim, kind: String) -> String:
 	else:
 		sim.claim.crate.food = int(sim.claim.crate.food) - 1
 	var herd: Array = sim.claim.get("stock", [])
+	var stock_name := "Ash hen" if kind == "ash_hen" else "Rock crab"
+	if not animal_def.is_empty():
+		stock_name = str(animal_def.get("name", kind))
 	herd.append({
 		"kind": kind,
 		"alive": true,
 		"hunger": 0.0,
 		"yield": 0.0,
-		"name": "Ash hen" if kind == "ash_hen" else "Rock crab",
+		"name": stock_name,
 	})
 	sim.claim.stock = herd
 	if kind == "ash_hen":
 		sim.say("An ash hen is in the coop. She wants grit. Hunger kills her.")
-	else:
+	elif kind == "rock_crab":
 		sim.say("A rock crab is in the cage. It drinks the plot. A dry plot kills it.")
+	else:
+		sim.say(str(animal_def.get("line", "%s is in the pen." % stock_name)))
 	return ""
 
 
@@ -571,6 +598,11 @@ static func _tend_named(sim, plot: Dictionary, crop: String) -> String:
 			return ""
 		sim.say("Ember kale takes a little water and keeps its heat.")
 		return ""
+	var tended := _data_crop(sim, crop)
+	if not tended.is_empty():
+		plot.motion = 0.0
+		sim.say(str(tended.get("tend_line", "You sit with the %s." % str(tended.get("name", crop)))))
+		return ""
 	plot.gone = 0.0
 	sim.say("You stay with the ghost gourd.")
 	return ""
@@ -602,6 +634,9 @@ static func _step_named_crop(sim, plot: Dictionary, crop: String, dt: float) -> 
 		if float(plot.tend_age) > 7.0:
 			_fail_crop(sim, "Ember kale loses its heat.")
 			return
+	elif not _data_crop(sim, crop).is_empty():
+		_step_data_crop(sim, plot, _data_crop(sim, crop), dt)
+		return
 	else:
 		plot.water = maxf(0.0, float(plot.water) - dt)
 		if not _here(sim):
@@ -626,6 +661,9 @@ static func _gather_named(sim, crop: String) -> String:
 	plot.age = 0.0
 	plot.crop = "glasswheat"
 	var cargo_id := crop
+	var gathered := _data_crop(sim, crop)
+	if not gathered.is_empty():
+		cargo_id = str(gathered.get("yield", crop))
 	sim.claim.crate.food = int(sim.claim.crate.get("food", 0)) + 1
 	var stats := Fit.stats(sim.defs, sim.player)
 	if Fit.cargo_used(sim.player) < int(stats.cargo_cap):
@@ -688,6 +726,81 @@ static func _step_stock(sim, dt: float) -> void:
 					if Fit.cargo_used(sim.player) < int(stats.cargo_cap):
 						sim._add_cargo("crab_meat", 1)
 					sim.say("The rock crab yields meat.")
+		else:
+			_step_data_animal(sim, animal, dt)
+
+
+static func _data_crop(sim, crop_id: String) -> Dictionary:
+	var book = sim.defs.get("crops", {})
+	if typeof(book) != TYPE_DICTIONARY:
+		return {}
+	var row = book.get(crop_id, {})
+	if typeof(row) != TYPE_DICTIONARY:
+		return {}
+	return row
+
+
+static func _data_animal(sim, kind: String) -> Dictionary:
+	var book = sim.defs.get("animals", {})
+	if typeof(book) != TYPE_DICTIONARY:
+		return {}
+	var row = book.get(kind, {})
+	if typeof(row) != TYPE_DICTIONARY:
+		return {}
+	return row
+
+
+static func _step_data_crop(sim, plot: Dictionary, spec: Dictionary, dt: float) -> void:
+	var crop_name := str(spec.get("name", "crop"))
+	if bool(sim.claim.get("ruptured", false)) and bool(spec.get("open_dome_kills", true)):
+		_fail_crop(sim, "The open dome kills the %s." % crop_name)
+		return
+	if str(spec.get("dies_if", "")) == "motion":
+		if sim.player.vel.length() > 8.0:
+			plot.motion = float(plot.get("motion", 0.0)) + dt
+		else:
+			plot.motion = 0.0
+		if float(plot.motion) > float(spec.get("die_after", 5.0)):
+			_fail_crop(sim, "%s dies when the keel will not sit still." % crop_name)
+			return
+	plot.water = maxf(0.0, float(plot.get("water", 0.0)) - dt * 0.4)
+	if float(plot.water) <= 0.0:
+		_fail_crop(sim, "%s dries out." % crop_name)
+		return
+	plot.age = float(plot.age) + dt
+	if float(plot.age) >= GROW:
+		plot.state = "ripe"
+		sim.say("%s is ready under the dome." % crop_name)
+
+
+static func _step_data_animal(sim, animal: Dictionary, dt: float) -> void:
+	var spec := _data_animal(sim, str(animal.get("kind", "")))
+	if spec.is_empty():
+		return
+	var label := str(spec.get("name", "stock"))
+	if bool(sim.claim.get("ruptured", false)) and bool(spec.get("open_dome_kills", true)):
+		animal.alive = false
+		sim.say("The %s dies in the open dome." % label)
+		sim.sfx("destroyed")
+		return
+	if float(animal.hunger) > 4.0 and int(sim.claim.get("crate", {}).get("food", 0)) > 0:
+		sim.claim.crate.food = int(sim.claim.crate.food) - 1
+		animal.hunger = 0.0
+		sim.say("The %s takes food from the crate." % label)
+	if str(spec.get("dies_if", "")) == "hunger" and float(animal.hunger) >= float(spec.get("hunger_death", 8.0)):
+		animal.alive = false
+		sim.say("The %s starves." % label)
+		sim.sfx("destroyed")
+		return
+	if float(animal.hunger) < 3.0:
+		animal.yield = float(animal.get("yield", 0.0)) + dt
+		if float(animal.yield) >= float(spec.get("yield_after", 10.0)):
+			animal.yield = 0.0
+			var cargo_id := str(spec.get("yield", "ribbon"))
+			var stats := Fit.stats(sim.defs, sim.player)
+			if Fit.cargo_used(sim.player) < int(stats.cargo_cap):
+				sim._add_cargo(cargo_id, 1)
+			sim.say("The %s yields %s." % [label, cargo_id.replace("_", " ")])
 
 
 static func _stock_line(sim) -> String:
