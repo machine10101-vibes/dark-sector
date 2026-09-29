@@ -111,6 +111,7 @@ func _draw() -> void:
 			draw_circle(pos, float(star.r), Color(0.90, 0.86, 0.75, float(star.a)))
 	_draw_zones(sim)
 	_draw_belt(sim)
+	_draw_meteors(sim)
 	_draw_trash(sim)
 	_draw_star(sim)
 	for body in sim.planets:
@@ -203,11 +204,20 @@ func _draw_zones(sim) -> void:
 func _draw_belt(sim) -> void:
 	for rock in sim.asteroids:
 		var verts: PackedVector2Array = rock.verts
-		draw_colored_polygon(verts, Color("3a342c"))
+		var tint := Color(str(rock.get("tint", "#3a342c")))
+		draw_colored_polygon(verts, tint)
 		if verts.size() > 1:
 			var outline := verts.duplicate()
 			outline.append(verts[0])
 			draw_polyline(outline, Color("6a5c4a"), 1.0, true)
+
+
+func _draw_meteors(sim) -> void:
+	for rock in sim.meteors:
+		var pos: Vector2 = rock.pos
+		var size := float(rock.get("size", 4.0))
+		draw_circle(pos, size, Color("c46a3a"))
+		draw_line(pos, pos - Vector2.from_angle(float(sim.defs.system.get("stream", {}).get("vector", 0.0))) * 18.0, Color("e0a070"), 1.2, true)
 
 
 func _draw_trash(sim) -> void:
@@ -286,7 +296,13 @@ func _draw_gates(sim) -> void:
 		var row: Dictionary = gate
 		var pos: Vector2 = row.pos
 		var radius := float(row.radius)
-		draw_arc(pos, radius, 0.0, TAU, 48, Color("d7c48a"), 1.8, true)
+		var tone := str(row.get("color", "green"))
+		var buoy := Color("7d9a86")
+		if tone == "amber":
+			buoy = Color("c4a15a")
+		elif tone == "red":
+			buoy = Color("a85a4a")
+		draw_arc(pos, radius, 0.0, TAU, 48, buoy, 1.8, true)
 		draw_arc(pos, radius * 0.55, 0.0, TAU, 32, Color("f0e2b0"), 1.2, true)
 
 
@@ -462,6 +478,10 @@ func _draw_names(sim, zoom: float) -> void:
 	if bool(sim.claim.get("owned", false)) and str(sim.claim.get("system_id", "")) == str(sim.defs.system.id):
 		var origin := Vector2(float(sim.claim.get("x", 0.0)), float(sim.claim.get("y", 0.0)))
 		_text(origin + Vector2(-36, -168), "Claim", 14, Color("d5e2b8"))
+	var mix := str(sim.defs.system.get("belt", {}).get("composition", ""))
+	if mix != "" and sim.asteroids.size() > 0:
+		var sample: Vector2 = sim.asteroids[0].pos
+		_text(sample + Vector2(-40, -24), mix, 13, Color("b7a48a"))
 	if zoom < 0.55 and sim.trash.size() > 0:
 		var pile: Vector2 = sim.trash[0].pos
 		_text(pile + Vector2(-30, -28), str(sim.defs.system.trash.name), 14, Color("c2b49a"))

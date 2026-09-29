@@ -8,6 +8,9 @@ var planets: Array = []
 var nodes: Array = []
 var asteroids: Array = []
 var trash: Array = []
+var meteors: Array = []
+var visited: Array = []
+var stream_origin := Vector2.ZERO
 var stars: Array = []
 var pocket_pos = Vector2.ZERO
 var gates: Array = []
@@ -119,7 +122,9 @@ func new_game(class_id: String) -> void:
 	}
 	contracts = []
 	nav_mark = {}
-	market = {"glasswheat": 4}
+	market = {}
+	_fill_market()
+	visited = [str(defs.system.id)]
 	var pocket: Dictionary = defs.system.pocket
 	claim = {
 		"pocket_id": str(pocket.id),
@@ -134,6 +139,7 @@ func new_game(class_id: String) -> void:
 	say("You have the %s, callsign %s." % [hull.class_name, hull.callsign])
 	say("%s. %s is the city-orbital. The ice ring is lit. %s holds confiscated hulls. %s is marked and not a homestead." % [defs.system.name, planet(str(defs.system.pdo.home)).name, defs.system.trash.name, pocket.name])
 	say("A Claim Core is in the hold. The Homestead Road buoy is off the green. L takes the lane.")
+	say("Green spine buoys leave for Brass Lantern and Writ. From First Soil the amber road reaches Perimeter, and the hatch reaches Gyre.")
 	say("Shakedown is on the log. J reads it. Y marks the next place. The keel stays put.")
 
 
@@ -326,6 +332,41 @@ func try_salvage(wreck_id: String) -> String:
 	return "ok"
 
 
+func try_field_salvage(node_id: String) -> String:
+	var row = survey_node(node_id)
+	if row == null:
+		return "missing"
+	if int(deposits.get(node_id, 0)) <= 0:
+		return "empty"
+	var stats = Fit.stats(defs, player)
+	if Fit.cargo_used(player) >= int(stats.cargo_cap):
+		return "full"
+	deposits[node_id] = int(deposits[node_id]) - 1
+	_add_cargo("salvage_parts", 1)
+	var origin := str(row.get("origin", ""))
+	if origin == "":
+		origin = str(defs.system.get("trash", {}).get("origin", "an unmarked field"))
+	say("Tender strips %s. Origin: %s." % [row.name, origin])
+	sfx("extract")
+	if str(row.get("heat", "")) == "pdo":
+		_heat_for_cut(row, 0)
+	return "ok"
+
+
+func _fill_market() -> void:
+	var defaults := {
+		"glasswheat": 4,
+		"voidbean": 6,
+		"ember_kale": 5,
+		"ghost_gourd": 7,
+		"dock_fee": 2,
+	}
+	for key in defaults.keys():
+		if not market.has(key):
+			market[key] = int(defaults[key])
+	market.glasswheat = int(market.get("glasswheat", 4))
+
+
 func resource_name(id: String) -> String:
 	if id == "raw_mass":
 		return "raw mass"
@@ -498,6 +539,7 @@ func to_dict() -> Dictionary:
 		"contracts": contracts.duplicate(true),
 		"nav_mark": nav_mark.duplicate(true),
 		"market": market.duplicate(true),
+		"visited": visited.duplicate(),
 		"claim": claim.duplicate(true),
 		"captains": _captain_rows(),
 		"law_target": law_target,
@@ -548,8 +590,11 @@ func from_dict(data: Dictionary) -> void:
 	quest_flags = data.quest_flags.duplicate(true)
 	contracts = data.get("contracts", []).duplicate(true)
 	nav_mark = data.get("nav_mark", {}).duplicate(true)
-	market = data.get("market", {"glasswheat": 4}).duplicate(true)
-	market.glasswheat = int(market.get("glasswheat", 4))
+	market = data.get("market", {}).duplicate(true)
+	_fill_market()
+	visited = data.get("visited", []).duplicate()
+	if visited.is_empty():
+		visited = [str(defs.system.id)]
 	claim = data.claim.duplicate(true)
 	Homestead.normalize(self)
 	captains = []
@@ -601,6 +646,7 @@ func _step(dt: float, cmd: Dictionary) -> void:
 	banner_t += dt
 	if banner_t > 9.0:
 		banner = ""
+	_step_stream(dt)
 	Homestead.step(self, dt)
 	QuestBoard.pulse(self, dt)
 	_step_compact()
@@ -1114,21 +1160,31 @@ func _build_static() -> void:
 				"rot": rng.randf() * TAU,
 				"kind": i % 3,
 				"scale": rng.randf_range(0.85, 1.55),
+				"origin": str(field.get("origin", "")),
 			})
 	var belt: Dictionary = defs.system.belt
-	for _i in int(belt.count):
+	var composition := str(belt.get("composition", ""))
+	var tint := _belt_tint(composition)
+	for i in int(belt.count):
 		var ang = rng.randf() * TAU
 		var rad = float(belt.radius) + rng.randf_range(-float(belt.width), float(belt.width))
 		var center = Vector2.from_angle(ang) * rad
-		var size = rng.randf_range(7.0, 20.0)
+		var size = rng.randf_range(7.0, 16.0) + float(i % 5) * 1.4
 		var rot = rng.randf() * TAU
 		var verts = PackedVector2Array()
-		var sides = rng.randi_range(5, 7)
+		var sides = 5 + (i + composition.length()) % 4
 		for s in sides:
 			var a = rot + float(s) / float(sides) * TAU
-			var rr = size * rng.randf_range(0.65, 1.15)
+			var rr = size * rng.randf_range(0.55, 1.25)
 			verts.append(center + Vector2.from_angle(a) * rr)
-		asteroids.append({"pos": center, "verts": verts, "size": size})
+		asteroids.append({
+			"pos": center,
+			"verts": verts,
+			"size": size,
+			"composition": composition,
+			"tint": tint,
+		})
+	_build_meteors(rng)
 	stars = []
 	for _i in 420:
 		var ang = rng.randf() * TAU
@@ -1218,6 +1274,8 @@ func _arrive(system_id: String, gate_id: String) -> void:
 		buttoned = true
 	if buttoned:
 		say("Craft buttoned up for the lane.")
+	if not visited.has(system_id):
+		visited.append(system_id)
 	say("The lane opens on %s." % str(defs.system.name))
 	sfx("launch")
 	QuestBoard.on_arrive(self)
@@ -1733,6 +1791,51 @@ func _craft_in(row: Dictionary) -> Dictionary:
 	if not item.has("max_hp"):
 		item.max_hp = int(item.hp)
 	return item
+
+
+func _belt_tint(composition: String) -> String:
+	if composition == "":
+		return "#3a342c"
+	var tones := ["#6a5344", "#8a6a3a", "#4e5c68", "#7a4e3a", "#5c6848", "#6e5a68", "#3e4a44"]
+	return tones[int(abs(composition.hash())) % tones.size()]
+
+
+func _build_meteors(rng: RandomNumberGenerator) -> void:
+	meteors = []
+	stream_origin = Vector2.ZERO
+	var spec: Dictionary = defs.system.get("stream", {})
+	if spec.is_empty() or str(spec.get("id", "")) == "":
+		return
+	var anchor = planet(str(spec.get("anchor", "")))
+	var origin := Vector2.ZERO
+	if anchor != null:
+		origin = anchor.pos
+	stream_origin = origin + Vector2.from_angle(float(spec.get("angle", 0.0))) * float(spec.get("distance", 0.0))
+	var count := 7
+	for i in count:
+		meteors.append({
+			"phase": float(i) / float(count),
+			"offset": Vector2(rng.randf_range(-40.0, 40.0), rng.randf_range(-28.0, 28.0)),
+			"size": rng.randf_range(3.0, 8.0),
+			"pos": stream_origin,
+		})
+
+
+func _step_stream(dt: float) -> void:
+	var spec: Dictionary = defs.system.get("stream", {})
+	if spec.is_empty() or str(spec.get("id", "")) == "":
+		return
+	var period := maxf(float(spec.get("period", 12.0)), 0.1)
+	var span := float(spec.get("span", float(spec.get("speed", 70.0)) * period))
+	var along := fmod(time, period) / period * span
+	var vector := Vector2.from_angle(float(spec.get("vector", 0.0)))
+	var node = survey_node(str(spec.id))
+	if node != null:
+		node.pos = stream_origin + vector * along
+	for rock in meteors:
+		var phase := float(rock.phase)
+		var walk := fmod(along + phase * span, span)
+		rock.pos = stream_origin + vector * walk + rock.offset
 
 
 func _roman(index: int) -> String:

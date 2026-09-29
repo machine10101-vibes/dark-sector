@@ -22,10 +22,18 @@
       "moon": false,
       "junk": false,
       "shard": true,
-      "colors": ["#6f9a45", "#d5e2b8", "#243020"],
+      "colors": [
+        "#6f9a45",
+        "#d5e2b8",
+        "#243020"
+      ],
       "legal": "claim_country",
       "protected": false,
-      "resource": { "id": "raw_mass", "name": "Raw mass", "amount": 4 },
+      "resource": {
+        "id": "raw_mass",
+        "name": "Raw mass",
+        "amount": 4
+      },
       "layers": {
         "orbit": "A flagship shard. The light on the cut face is green.",
         "atmosphere": "A thin held breath under old dome scars. Not a city.",
@@ -45,7 +53,11 @@
       "anchor": "green_wound",
       "legal_title": "Garden Shards, open shard",
       "heat": "",
-      "resource": { "id": "raw_mass", "name": "Raw mass", "amount": 4 },
+      "resource": {
+        "id": "raw_mass",
+        "name": "Raw mass",
+        "amount": 4
+      },
       "layers": {
         "orbit": "A flagship shard. The light on the cut face is green.",
         "atmosphere": "A thin held breath under old dome scars.",
@@ -62,12 +74,13 @@
     "name": "Garden Belt",
     "radius": 3400,
     "width": 160,
-    "count": 22
+    "count": 22,
+    "composition": "garden glass and seed gravel off Green Wound"
   },
   "trash": {
     "id": "none",
     "name": "",
-    "origin": "",
+    "origin": "No junk field. The garden trash was towed to the Swallow.",
     "anchor": "",
     "angle": 0.0,
     "distance": 0,
@@ -92,8 +105,14 @@
     "distance": 9000
   },
   "zones": {
-    "green": { "anchor": "green_wound", "radius": 0 },
-    "amber": { "anchor": "nest", "radius": 0 }
+    "green": {
+      "anchor": "green_wound",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
   },
   "law": {
     "red": {
@@ -112,7 +131,11 @@
     "radius": 0,
     "home": "green_wound"
   },
-  "pirates": { "count": 0, "angle": 0.0, "standoff": 0 },
+  "pirates": {
+    "count": 0,
+    "angle": 0.0,
+    "standoff": 0
+  },
   "haulers": [],
   "gates": [
     {
@@ -123,7 +146,74 @@
       "anchor": "green_wound",
       "angle": 2.5,
       "distance": 980,
-      "radius": 100
+      "radius": 100,
+      "color": "amber"
+    },
+    {
+      "id": "soil_from_towline",
+      "name": "Homestead Road",
+      "to": "HC-V1-R2-S2",
+      "arrive": "towline_to_soil",
+      "anchor": "green_wound",
+      "angle": 0.25,
+      "distance": 1280,
+      "radius": 110,
+      "color": "amber"
+    },
+    {
+      "id": "soil_to_perimeter",
+      "name": "Perimeter Road",
+      "to": "HC-V1-R5-S6",
+      "arrive": "peri_from_soil",
+      "anchor": "green_wound",
+      "angle": 0.95,
+      "distance": 1460,
+      "radius": 110,
+      "color": "amber"
+    },
+    {
+      "id": "soil_to_gyre",
+      "name": "Swallow Hatch",
+      "to": "HC-V1-R6-S1",
+      "arrive": "gyre_from_soil",
+      "anchor": "green_wound",
+      "angle": 1.65,
+      "distance": 1580,
+      "radius": 110,
+      "color": "amber"
+    },
+    {
+      "id": "soil_to_weathers",
+      "name": "Weather Road",
+      "to": "HC-V1-R5-S2",
+      "arrive": "weather_from_soil",
+      "anchor": "green_wound",
+      "angle": 3.45,
+      "distance": 1360,
+      "radius": 110,
+      "color": "amber"
+    },
+    {
+      "id": "soil_to_broken",
+      "name": "Dispute Road",
+      "to": "HC-V1-R5-S4",
+      "arrive": "broken_from_soil",
+      "anchor": "green_wound",
+      "angle": 4.3,
+      "distance": 1420,
+      "radius": 110,
+      "color": "amber"
+    },
+    {
+      "id": "soil_lane",
+      "name": "Homestead Road",
+      "to": "HC-V1-R1-S1",
+      "arrive": "helion_lane",
+      "anchor": "green_wound",
+      "angle": 2.5,
+      "distance": 980,
+      "radius": 100,
+      "color": "amber"
     }
   ]
 }

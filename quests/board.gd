@@ -8,6 +8,7 @@ static func pulse(sim, dt: float) -> void:
 	if sim.player.is_empty():
 		return
 	_shakedown(sim)
+	_shorts(sim)
 	_contracts(sim, dt)
 	var waited := float(sim.quest_flags.get("offer_t", 0.0)) + dt
 	sim.quest_flags.offer_t = waited
@@ -196,7 +197,54 @@ static func _from_world(sim) -> Dictionary:
 			x = float(node.pos.x)
 			y = float(node.pos.y)
 		return _contract("survey", "helion_compact", "Survey %s" % label, "A layer on %s is still unknown. Seal it." % label, [str(sim.defs.system.id), unknown], unknown, x, y, str(sim.defs.system.id))
+	return _density_offer(sim)
+
+
+static func _density_offer(sim) -> Dictionary:
+	if not bool(sim.quest_flags.get("did_survey", false)):
+		return {}
+	var chart: Dictionary = sim.defs.get("systems", {})
+	if not bool(sim.quest_flags.get("did_ledger", false)) and chart.has("HC-V1-R1-S5"):
+		return _contract("ledger", "helion_compact", "Scan Ledger", "Seal a layer on Bonded Loft. The bond is the job.", ["HC-V1-R1-S5", "bonded_loft"], "bonded_loft", 0.0, 0.0, "HC-V1-R1-S5")
+	if not bool(sim.quest_flags.get("did_towline", false)) and chart.has("HC-V1-R2-S2"):
+		return _contract("towline", "rimward_charter", "Escort Towline", "Take the keel to Towline and stay on the tug road.", ["HC-V1-R2-S2", "tug_yard"], "tug_yard", 0.0, 0.0, "HC-V1-R2-S2")
+	if not bool(sim.quest_flags.get("did_gyre", false)) and chart.has("HC-V1-R6-S1"):
+		return _contract("gyre", "red_keel", "Salvage Gyre", "Bring keel salvage out of the Swallow.", ["HC-V1-R6-S1", "the_swallow"], "the_swallow", 0.0, 0.0, "HC-V1-R6-S1")
+	if not bool(sim.quest_flags.get("did_lantern", false)) and chart.has("HC-V1-R1-S2"):
+		return _contract("lantern", "helion_compact", "Deliver to Brass Lantern", "Carry food mass to Brass Lantern.", ["HC-V1-R1-S2", "lamp_yard"], "food_mass", 0.0, 0.0, "HC-V1-R1-S2")
+	if not bool(sim.quest_flags.get("did_defend", false)) and chart.has("HC-V1-R5-S1"):
+		return _contract("defend", "homestead", "Defend First Soil", "Hold a garden pocket through the raid timer.", ["HC-V1-R5-S1", "quiet_hollow"], "quiet_hollow", 0.0, 0.0, "HC-V1-R5-S1")
 	return {}
+
+
+static func _shorts(sim) -> void:
+	if str(sim.quest_flags.get("authored_aegis_01", "")) != "done":
+		if str(sim.defs.system.id) == "HC-V1-R1-S1" and sim.dossier_complete("aegis_prime") and sim.player.pos.distance_to(sim.beacon_pos) < 180.0:
+			sim.quest_flags.authored_aegis_01 = "done"
+			_apply(sim, "dock_fee")
+			_apply(sim, "rumor_inspection")
+			sim.say("Aegis Prime inspection is on the slate.")
+	if str(sim.quest_flags.get("authored_tallyrock_01", "")) != "done" and str(sim.defs.system.id) == "HC-V1-R2-S1":
+		var rock = sim.planet("tallyrock")
+		if rock != null and sim.player.pos.distance_to(rock.pos) < float(rock.radius) + 240.0:
+			sim.quest_flags.authored_tallyrock_01 = "done"
+			_apply(sim, "glasswheat_dearer")
+			_apply(sim, "rumor_fine_print")
+			sim.say("Tallyrock's fine print is on the slate.")
+	if str(sim.quest_flags.get("authored_blight_01", "")) != "done":
+		var failed: bool = sim.claim.has("plot") and str(sim.claim.plot.get("state", "")) == "failed" and str(sim.claim.get("system_id", "")) == "HC-V1-R5-S1"
+		var stolen: bool = sim.claim.has("pen") and bool(sim.claim.pen.get("stolen", false))
+		if failed or stolen:
+			sim.quest_flags.authored_blight_01 = "done"
+			_apply(sim, "rumor_blight")
+			if failed:
+				sim.market.glasswheat = int(sim.market.get("glasswheat", 4)) + 1
+			sim.say("Green Wound kept a mark. Blight or a stolen kine.")
+	if str(sim.quest_flags.get("authored_swallow_01", "")) != "done" and str(sim.defs.system.id) == "HC-V1-R6-S1" and int(sim.player.cargo.get("salvage_parts", 0)) > 0:
+		sim.quest_flags.authored_swallow_01 = "done"
+		_apply(sim, "rumor_swallow")
+		_apply(sim, "salvage_grant")
+		sim.say("The Swallow recovery is on the slate.")
 
 
 static func _contract(template: String, giver: String, title: String, summary: String, locations: Array, target: String, x: float, y: float, system_id: String) -> Dictionary:
@@ -221,6 +269,22 @@ static func _contract(template: String, giver: String, title: String, summary: S
 			success = ["rumor_defend", "compact_standing_up"]
 			failure = ["rumor_defend_fail", "compact_standing_down"]
 			limit = 90.0
+		"ledger":
+			success = ["rumor_ledger"]
+			failure = ["rumor_ledger_fail", "warrant"]
+			limit = 360.0
+		"towline":
+			success = ["rumor_towline", "charter_standing_up"]
+			failure = ["rumor_towline_fail"]
+			limit = 360.0
+		"gyre":
+			success = ["rumor_gyre", "salvage_grant"]
+			failure = ["rumor_gyre_fail"]
+			limit = 360.0
+		"lantern":
+			success = ["rumor_lantern", "glasswheat_cheaper"]
+			failure = ["rumor_lantern_fail", "glasswheat_dearer"]
+			limit = 360.0
 	return {
 		"id": "systemic_%s" % template,
 		"type": "systemic",
@@ -261,6 +325,14 @@ static func _contract_done(sim, contract: Dictionary) -> bool:
 			return sim.player.pos.distance_to(spot) < 140.0
 		"defend":
 			return float(contract.get("pocket_time", 0.0)) >= 48.0 and not bool(sim.claim.get("ruptured", false))
+		"ledger":
+			return str(sim.defs.system.id) == "HC-V1-R1-S5" and _body_known(sim, target)
+		"towline":
+			return str(sim.defs.system.id) == "HC-V1-R2-S2"
+		"gyre":
+			return str(sim.defs.system.id) == "HC-V1-R6-S1" and int(sim.player.cargo.get("salvage_parts", 0)) > 0
+		"lantern":
+			return str(sim.defs.system.id) == "HC-V1-R1-S2" and int(sim.player.cargo.get("food_mass", 0)) > 0
 		_:
 			return false
 
@@ -322,7 +394,7 @@ static func _advance(sim, nxt: String, line: String) -> void:
 
 
 static func _apply(sim, mutation: String) -> void:
-	var once := mutation != "harvest_choice" and mutation != "origin_vesper" and mutation != "origin_anvil" and mutation != "origin_kestrel" and mutation != "compact_standing_up" and mutation != "compact_standing_down" and mutation != "glasswheat_cheaper" and mutation != "glasswheat_dearer" and mutation != "salvage_grant"
+	var once := mutation != "harvest_choice" and mutation != "origin_vesper" and mutation != "origin_anvil" and mutation != "origin_kestrel" and mutation != "compact_standing_up" and mutation != "compact_standing_down" and mutation != "charter_standing_up" and mutation != "glasswheat_cheaper" and mutation != "glasswheat_dearer" and mutation != "salvage_grant"
 	var key := "applied_%s" % mutation
 	if once:
 		if bool(sim.quest_flags.get(key, false)):
@@ -341,6 +413,8 @@ static func _apply(sim, mutation: String) -> void:
 			sim.quest_flags.compact_standing = int(sim.quest_flags.get("compact_standing", 0)) + 1
 		"compact_standing_down":
 			sim.quest_flags.compact_standing = int(sim.quest_flags.get("compact_standing", 0)) - 1
+		"charter_standing_up":
+			sim.quest_flags.charter_standing = int(sim.quest_flags.get("charter_standing", 0)) + 1
 		"repair_discount":
 			sim.quest_flags.repair_discount = true
 		"warrant":
@@ -371,6 +445,32 @@ static func _apply(sim, mutation: String) -> void:
 			if str(sim.player.class_id) == "kestrel":
 				sim.quest_flags.origin_note = "The patrol lead comments on the pirate contact."
 				sim.say(str(sim.quest_flags.origin_note))
+		"rumor_ledger":
+			_rumor(sim, "Ledger's bond loft has a sealed layer.")
+		"rumor_ledger_fail":
+			_rumor(sim, "The Ledger survey lapsed. A warrant is warmer.")
+		"rumor_towline":
+			_rumor(sim, "Towline paid the escort. The Charter remembers.")
+		"rumor_towline_fail":
+			_rumor(sim, "The Towline escort never arrived.")
+		"rumor_gyre":
+			_rumor(sim, "The Swallow gave up salvage.")
+		"rumor_gyre_fail":
+			_rumor(sim, "A Gyre salvage contract came home empty.")
+		"rumor_lantern":
+			_rumor(sim, "Brass Lantern bought the grain. The price eased.")
+		"rumor_lantern_fail":
+			_rumor(sim, "Brass Lantern missed the delivery. Grain is dearer.")
+		"rumor_inspection":
+			_rumor(sim, "Aegis Prime logged an inspection.")
+		"rumor_fine_print":
+			_rumor(sim, "Tallyrock's fine print moved the grain futures.")
+		"rumor_blight":
+			_rumor(sim, "Green Wound has blight, or the kine were taken.")
+		"rumor_swallow":
+			_rumor(sim, "A lost craft came out of the Swallow.")
+		"dock_fee":
+			sim.market["dock_fee"] = int(sim.market.get("dock_fee", 2)) + 1
 		"rumor_survey":
 			_rumor(sim, "The survey office has a new sealed layer.")
 		"rumor_survey_fail":

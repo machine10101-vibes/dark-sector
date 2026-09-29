@@ -25,5 +25,14 @@
     "color": "#8d2f2a",
     "blurb": "A pack in the Slat. They hunt amber space and they remember a killed skiff.",
     "heat_to_engage": 10
+  },
+  "rimward_charter": {
+    "id": "rimward_charter",
+    "name": "Rimward Charter",
+    "kind": "charter",
+    "temper": "paper-first",
+    "color": "#c4a15a",
+    "blurb": "Rimward Charter Authority. They sell harvest paper at Lease and remember a broken stamp.",
+    "heat_to_engage": 55
   }
 }

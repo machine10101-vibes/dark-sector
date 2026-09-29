@@ -19,17 +19,75 @@
     "signature": 0.32,
     "sensor": 980,
     "radius": 16,
-    "slots": ["Utility", "S", "Hangar"],
-    "yard": ["sensor_mast", "cargo_blister", "gun_sponson", "farm_cassette", "armor_belt"],
-    "gun": { "damage": 5, "cooldown": 0.32, "speed": 760, "range": 560, "ttl": 1.15 },
+    "slots": [
+      "Utility",
+      "S",
+      "Hangar"
+    ],
+    "yard": [
+      "sensor_mast",
+      "cargo_blister",
+      "gun_sponson",
+      "farm_cassette",
+      "armor_belt",
+      "keel_stretch",
+      "extra_hold",
+      "radiator_fans",
+      "battery_pack",
+      "heavy_turret",
+      "missile_rack",
+      "point_defense",
+      "probe_rack",
+      "fighter_rack",
+      "lighter_dock",
+      "hydro_stack",
+      "seed_vault",
+      "greenhouse_ring",
+      "claim_beacon",
+      "perimeter_stakes",
+      "tow_collar",
+      "scale_house",
+      "warrant_locker",
+      "ice_shear",
+      "grain_hopper",
+      "ash_coop",
+      "crab_cage",
+      "swallow_hook",
+      "quiet_baffle",
+      "choir_bell",
+      "lamp_spine",
+      "stake_gun"
+    ],
+    "gun": {
+      "damage": 5,
+      "cooldown": 0.32,
+      "speed": 760,
+      "range": 560,
+      "ttl": 1.15
+    },
     "starting_craft": [
-      { "id": "survey_probe", "count": 2 },
-      { "id": "harvest_drone", "count": 1 }
+      {
+        "id": "survey_probe",
+        "count": 2
+      },
+      {
+        "id": "harvest_drone",
+        "count": 1
+      }
     ],
     "crew": [
-      { "name": "Ilya Voss", "skill": "helm" },
-      { "name": "Sen Cord", "skill": "survey" },
-      { "name": "P. Hart", "skill": "drone bay" }
+      {
+        "name": "Ilya Voss",
+        "skill": "helm"
+      },
+      {
+        "name": "Sen Cord",
+        "skill": "survey"
+      },
+      {
+        "name": "P. Hart",
+        "skill": "drone bay"
+      }
     ]
   },
   "anvil": {
@@ -52,18 +110,85 @@
     "signature": 0.7,
     "sensor": 540,
     "radius": 30,
-    "slots": ["Utility", "Utility", "Farm", "Hangar", "L"],
-    "yard": ["cargo_blister", "sensor_mast", "gun_sponson", "farm_cassette", "armor_belt"],
-    "gun": { "damage": 4, "cooldown": 0.55, "speed": 540, "range": 460, "ttl": 1.2 },
+    "slots": [
+      "Utility",
+      "Utility",
+      "Farm",
+      "Hangar",
+      "L"
+    ],
+    "yard": [
+      "cargo_blister",
+      "sensor_mast",
+      "gun_sponson",
+      "farm_cassette",
+      "armor_belt",
+      "keel_stretch",
+      "extra_hold",
+      "radiator_fans",
+      "battery_pack",
+      "heavy_turret",
+      "missile_rack",
+      "point_defense",
+      "probe_rack",
+      "fighter_rack",
+      "lighter_dock",
+      "hydro_stack",
+      "seed_vault",
+      "greenhouse_ring",
+      "claim_beacon",
+      "perimeter_stakes",
+      "tow_collar",
+      "scale_house",
+      "warrant_locker",
+      "ice_shear",
+      "grain_hopper",
+      "ash_coop",
+      "crab_cage",
+      "swallow_hook",
+      "quiet_baffle",
+      "choir_bell",
+      "lamp_spine",
+      "stake_gun"
+    ],
+    "gun": {
+      "damage": 4,
+      "cooldown": 0.55,
+      "speed": 540,
+      "range": 460,
+      "ttl": 1.2
+    },
     "starting_craft": [
-      { "id": "harvest_drone", "count": 1 },
-      { "id": "salvage_tender", "count": 1 },
-      { "id": "survey_probe", "count": 1 }
+      {
+        "id": "harvest_drone",
+        "count": 1
+      },
+      {
+        "id": "salvage_tender",
+        "count": 1
+      },
+      {
+        "id": "survey_probe",
+        "count": 1
+      },
+      {
+        "id": "livestock_lighter",
+        "count": 1
+      }
     ],
     "crew": [
-      { "name": "Marrow Keene", "skill": "helm" },
-      { "name": "Ada Sol", "skill": "holds" },
-      { "name": "Vetch", "skill": "drone bay" }
+      {
+        "name": "Marrow Keene",
+        "skill": "helm"
+      },
+      {
+        "name": "Ada Sol",
+        "skill": "holds"
+      },
+      {
+        "name": "Vetch",
+        "skill": "drone bay"
+      }
     ]
   },
   "kestrel": {
@@ -86,17 +211,76 @@
     "signature": 0.62,
     "sensor": 660,
     "radius": 22,
-    "slots": ["S", "S", "M", "Hangar"],
-    "yard": ["armor_belt", "gun_sponson", "cargo_blister", "sensor_mast", "farm_cassette"],
-    "gun": { "damage": 9, "cooldown": 0.22, "speed": 840, "range": 640, "ttl": 1.1 },
+    "slots": [
+      "S",
+      "S",
+      "M",
+      "Hangar"
+    ],
+    "yard": [
+      "armor_belt",
+      "gun_sponson",
+      "cargo_blister",
+      "sensor_mast",
+      "farm_cassette",
+      "keel_stretch",
+      "extra_hold",
+      "radiator_fans",
+      "battery_pack",
+      "heavy_turret",
+      "missile_rack",
+      "point_defense",
+      "probe_rack",
+      "fighter_rack",
+      "lighter_dock",
+      "hydro_stack",
+      "seed_vault",
+      "greenhouse_ring",
+      "claim_beacon",
+      "perimeter_stakes",
+      "tow_collar",
+      "scale_house",
+      "warrant_locker",
+      "ice_shear",
+      "grain_hopper",
+      "ash_coop",
+      "crab_cage",
+      "swallow_hook",
+      "quiet_baffle",
+      "choir_bell",
+      "lamp_spine",
+      "stake_gun"
+    ],
+    "gun": {
+      "damage": 9,
+      "cooldown": 0.22,
+      "speed": 840,
+      "range": 640,
+      "ttl": 1.1
+    },
     "starting_craft": [
-      { "id": "survey_probe", "count": 1 },
-      { "id": "fighter", "count": 1 }
+      {
+        "id": "survey_probe",
+        "count": 1
+      },
+      {
+        "id": "fighter",
+        "count": 1
+      }
     ],
     "crew": [
-      { "name": "R. Pell", "skill": "helm" },
-      { "name": "Juno Vale", "skill": "guns" },
-      { "name": "I. Brant", "skill": "boat" }
+      {
+        "name": "R. Pell",
+        "skill": "helm"
+      },
+      {
+        "name": "Juno Vale",
+        "skill": "guns"
+      },
+      {
+        "name": "I. Brant",
+        "skill": "boat"
+      }
     ]
   },
   "skiff": {
@@ -121,7 +305,13 @@
     "radius": 14,
     "slots": [],
     "yard": [],
-    "gun": { "damage": 6, "cooldown": 0.85, "speed": 620, "range": 430, "ttl": 1.1 },
+    "gun": {
+      "damage": 6,
+      "cooldown": 0.85,
+      "speed": 620,
+      "range": 430,
+      "ttl": 1.1
+    },
     "starting_craft": [],
     "crew": []
   },
@@ -147,7 +337,13 @@
     "radius": 18,
     "slots": [],
     "yard": [],
-    "gun": { "damage": 8, "cooldown": 0.48, "speed": 740, "range": 560, "ttl": 1.15 },
+    "gun": {
+      "damage": 8,
+      "cooldown": 0.48,
+      "speed": 740,
+      "range": 560,
+      "ttl": 1.15
+    },
     "starting_craft": [],
     "crew": []
   }

@@ -9,12 +9,31 @@
     "mass": 7,
     "power": 6,
     "crew": 0,
-    "attach": { "x": 62, "y": 0 },
-    "footprint": { "w": 62, "h": 4 },
+    "attach": {
+      "x": 62,
+      "y": 0
+    },
+    "footprint": {
+      "w": 62,
+      "h": 4
+    },
     "shape": "mast",
     "blurb": "A spine ahead of the keel. You are longer, a little louder, and you see farther.",
     "layer": [
-      [[30, 1.8], [92, 0], [30, -1.8]]
+      [
+        [
+          30,
+          1.8
+        ],
+        [
+          92,
+          0
+        ],
+        [
+          30,
+          -1.8
+        ]
+      ]
     ],
     "effects": {
       "sensor": 480,
@@ -32,13 +51,53 @@
     "mass": 22,
     "power": 4,
     "crew": 1,
-    "attach": { "x": -4, "y": 0 },
-    "footprint": { "w": 24, "h": 44 },
+    "attach": {
+      "x": -4,
+      "y": 0
+    },
+    "footprint": {
+      "w": 24,
+      "h": 44
+    },
     "shape": "blister",
     "blurb": "A swollen hold on each flank. She carries a real haul and turns like a loaded barge.",
     "layer": [
-      [[-6, 18], [10, 26], [4, 40], [-14, 36]],
-      [[-6, -18], [10, -26], [4, -40], [-14, -36]]
+      [
+        [
+          -6,
+          18
+        ],
+        [
+          10,
+          26
+        ],
+        [
+          4,
+          40
+        ],
+        [
+          -14,
+          36
+        ]
+      ],
+      [
+        [
+          -6,
+          -18
+        ],
+        [
+          10,
+          -26
+        ],
+        [
+          4,
+          -40
+        ],
+        [
+          -14,
+          -36
+        ]
+      ]
     ],
     "effects": {
       "cargo": 16,
@@ -56,13 +115,45 @@
     "mass": 9,
     "power": 10,
     "crew": 1,
-    "attach": { "x": 12, "y": 0 },
-    "footprint": { "w": 26, "h": 30 },
+    "attach": {
+      "x": 12,
+      "y": 0
+    },
+    "footprint": {
+      "w": 26,
+      "h": 30
+    },
     "shape": "sponson",
     "blurb": "A light cheek turret. The outline breaks, and the reactor feeds the mount.",
     "layer": [
-      [[14, 12], [28, 30], [2, 26]],
-      [[14, -12], [28, -30], [2, -26]]
+      [
+        [
+          14,
+          12
+        ],
+        [
+          28,
+          30
+        ],
+        [
+          2,
+          26
+        ]
+      ],
+      [
+        [
+          14,
+          -12
+        ],
+        [
+          28,
+          -30
+        ],
+        [
+          2,
+          -26
+        ]
+      ]
     ],
     "effects": {
       "gun_damage": 3,
@@ -80,12 +171,51 @@
     "mass": 8,
     "power": 6,
     "crew": 1,
-    "attach": { "x": 40, "y": 26 },
-    "footprint": { "w": 16, "h": 16 },
+    "attach": {
+      "x": 40,
+      "y": 26
+    },
+    "footprint": {
+      "w": 16,
+      "h": 16
+    },
     "shape": "dome",
     "blurb": "A dome bump on the hull. It does not grow a crop. It will carry a hold-kine.",
     "layer": [
-      [[40, 34], [46, 32], [48, 26], [46, 20], [40, 18], [34, 20], [32, 26], [34, 32]]
+      [
+        [
+          40,
+          34
+        ],
+        [
+          46,
+          32
+        ],
+        [
+          48,
+          26
+        ],
+        [
+          46,
+          20
+        ],
+        [
+          40,
+          18
+        ],
+        [
+          34,
+          20
+        ],
+        [
+          32,
+          26
+        ],
+        [
+          34,
+          32
+        ]
+      ]
     ],
     "effects": {
       "signature": 0.04,
@@ -102,12 +232,35 @@
     "mass": 11,
     "power": 4,
     "crew": 1,
-    "attach": { "x": -28, "y": 18 },
-    "footprint": { "w": 22, "h": 18 },
+    "attach": {
+      "x": -28,
+      "y": 18
+    },
+    "footprint": {
+      "w": 22,
+      "h": 18
+    },
     "shape": "pen",
     "blurb": "A gravity pen bolted to the keel. It costs harvested mass. A hold-kine can ride in it.",
     "layer": [
-      [[-40, 10], [-18, 12], [-16, 28], [-38, 26]]
+      [
+        [
+          -40,
+          10
+        ],
+        [
+          -18,
+          12
+        ],
+        [
+          -16,
+          28
+        ],
+        [
+          -38,
+          26
+        ]
+      ]
     ],
     "effects": {
       "signature": 0.05,
@@ -125,17 +278,1224 @@
     "power": 2,
     "crew": 1,
     "armor": 0.35,
-    "attach": { "x": -6, "y": 0 },
-    "footprint": { "w": 28, "h": 40 },
+    "attach": {
+      "x": -6,
+      "y": 0
+    },
+    "footprint": {
+      "w": 28,
+      "h": 40
+    },
     "shape": "belt",
     "blurb": "A wider belt of plate. More mass, a fatter profile, and the starter gun bites less.",
     "layer": [
-      [[6, 16], [2, 36], [-20, 34], [-22, 14]],
-      [[6, -16], [2, -36], [-20, -34], [-22, -14]]
+      [
+        [
+          6,
+          16
+        ],
+        [
+          2,
+          36
+        ],
+        [
+          -20,
+          34
+        ],
+        [
+          -22,
+          14
+        ]
+      ],
+      [
+        [
+          6,
+          -16
+        ],
+        [
+          2,
+          -36
+        ],
+        [
+          -20,
+          -34
+        ],
+        [
+          -22,
+          -14
+        ]
+      ]
     ],
     "effects": {
       "signature": 0.06,
       "radius": 6
+    }
+  },
+  "keel_stretch": {
+    "id": "keel_stretch",
+    "name": "Keel Stretch",
+    "family": "hull",
+    "size": "L",
+    "slot": "Utility",
+    "favored": "",
+    "mass": 26,
+    "power": 4,
+    "crew": 0,
+    "attach": {
+      "x": 90,
+      "y": 0
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "keel",
+    "blurb": "A longer keel. She points farther and turns like a barge.",
+    "layer": [
+      [
+        [
+          70,
+          6
+        ],
+        [
+          118,
+          0
+        ],
+        [
+          70,
+          -6
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 10,
+      "signature": 0.08
+    }
+  },
+  "extra_hold": {
+    "id": "extra_hold",
+    "name": "Extra Cargo Hold",
+    "family": "hull",
+    "size": "L",
+    "slot": "Utility",
+    "favored": "",
+    "mass": 30,
+    "power": 8,
+    "crew": 1,
+    "attach": {
+      "x": 0,
+      "y": 40
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "hold",
+    "blurb": "A second hold hung under the keel. The pig gets heavier and the yaw dies.",
+    "layer": [
+      [
+        [
+          -8,
+          30
+        ],
+        [
+          24,
+          46
+        ],
+        [
+          8,
+          58
+        ],
+        [
+          -20,
+          44
+        ]
+      ]
+    ],
+    "effects": {
+      "cargo": 22,
+      "radius": 9,
+      "signature": 0.14
+    }
+  },
+  "radiator_fans": {
+    "id": "radiator_fans",
+    "name": "Radiator Fans",
+    "family": "hull",
+    "size": "S",
+    "slot": "Utility",
+    "favored": "",
+    "mass": 8,
+    "power": 9,
+    "crew": 0,
+    "attach": {
+      "x": -24,
+      "y": 28
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "fans",
+    "blurb": "Fans on the waist. They bleed signature and they drink power.",
+    "layer": [
+      [
+        [
+          -30,
+          22
+        ],
+        [
+          -10,
+          34
+        ],
+        [
+          -36,
+          40
+        ]
+      ]
+    ],
+    "effects": {
+      "signature": -0.1,
+      "radius": 4
+    }
+  },
+  "battery_pack": {
+    "id": "battery_pack",
+    "name": "Battery Pack",
+    "family": "hull",
+    "size": "M",
+    "slot": "Utility",
+    "favored": "",
+    "mass": 16,
+    "power": -12,
+    "crew": 0,
+    "attach": {
+      "x": 28,
+      "y": 20
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "pack",
+    "blurb": "A pack on the spine. It feeds the reactor and it still counts as mass.",
+    "layer": [
+      [
+        [
+          18,
+          14
+        ],
+        [
+          40,
+          18
+        ],
+        [
+          36,
+          30
+        ],
+        [
+          14,
+          26
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 4
+    }
+  },
+  "heavy_turret": {
+    "id": "heavy_turret",
+    "name": "Heavy Turret",
+    "family": "offense",
+    "size": "L",
+    "slot": "L",
+    "favored": "",
+    "mass": 18,
+    "power": 18,
+    "crew": 1,
+    "attach": {
+      "x": 30,
+      "y": 26
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "turret",
+    "blurb": "A second, larger turret. The cheek gun looks small beside it.",
+    "layer": [
+      [
+        [
+          20,
+          18
+        ],
+        [
+          48,
+          36
+        ],
+        [
+          8,
+          40
+        ]
+      ]
+    ],
+    "effects": {
+      "gun_damage": 7,
+      "radius": 7,
+      "signature": 0.16
+    }
+  },
+  "missile_rack": {
+    "id": "missile_rack",
+    "name": "Missile Rack",
+    "family": "offense",
+    "size": "M",
+    "slot": "S",
+    "favored": "",
+    "mass": 14,
+    "power": 16,
+    "crew": 1,
+    "attach": {
+      "x": 50,
+      "y": -12
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "rack",
+    "blurb": "A rack of missiles along the spine. Power and mass both complain.",
+    "layer": [
+      [
+        [
+          24,
+          -8
+        ],
+        [
+          78,
+          -4
+        ],
+        [
+          78,
+          -16
+        ],
+        [
+          24,
+          -18
+        ]
+      ]
+    ],
+    "effects": {
+      "gun_damage": 5,
+      "radius": 5,
+      "signature": 0.12
+    }
+  },
+  "point_defense": {
+    "id": "point_defense",
+    "name": "Point Defense",
+    "family": "offense",
+    "size": "S",
+    "slot": "S",
+    "favored": "",
+    "mass": 11,
+    "power": 14,
+    "crew": 1,
+    "attach": {
+      "x": -40,
+      "y": 16
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "defense",
+    "blurb": "A close gun on the tail. It wants power more than it wants glory.",
+    "layer": [
+      [
+        [
+          -46,
+          8
+        ],
+        [
+          -28,
+          20
+        ],
+        [
+          -52,
+          22
+        ]
+      ]
+    ],
+    "effects": {
+      "gun_damage": 2,
+      "radius": 4,
+      "signature": 0.08
+    }
+  },
+  "probe_rack": {
+    "id": "probe_rack",
+    "name": "Probe Rack",
+    "family": "hangar",
+    "size": "S",
+    "slot": "Hangar",
+    "favored": "",
+    "mass": 9,
+    "power": 5,
+    "crew": 0,
+    "attach": {
+      "x": 70,
+      "y": 8
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "probes",
+    "blurb": "A rack ahead of the bay. Another probe silhouette on the nose.",
+    "layer": [
+      [
+        [
+          48,
+          8
+        ],
+        [
+          86,
+          14
+        ],
+        [
+          84,
+          2
+        ]
+      ]
+    ],
+    "effects": {
+      "sensor": 120,
+      "radius": 3
+    }
+  },
+  "fighter_rack": {
+    "id": "fighter_rack",
+    "name": "Fighter Rack",
+    "family": "hangar",
+    "size": "M",
+    "slot": "Hangar",
+    "favored": "",
+    "mass": 13,
+    "power": 8,
+    "crew": 1,
+    "attach": {
+      "x": -4,
+      "y": -30
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "fighter",
+    "blurb": "A throat for a fighter. The outline grows a second beak.",
+    "layer": [
+      [
+        [
+          -18,
+          -14
+        ],
+        [
+          16,
+          -28
+        ],
+        [
+          8,
+          -42
+        ],
+        [
+          -24,
+          -36
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 6,
+      "signature": 0.1
+    }
+  },
+  "lighter_dock": {
+    "id": "lighter_dock",
+    "name": "Livestock Lighter Dock",
+    "family": "farm",
+    "size": "M",
+    "slot": "Hangar",
+    "favored": "",
+    "mass": 12,
+    "power": 6,
+    "crew": 1,
+    "attach": {
+      "x": -28,
+      "y": -14
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "lighter",
+    "blurb": "A dock for the livestock lighter. The keel grows a barn door.",
+    "layer": [
+      [
+        [
+          -36,
+          -8
+        ],
+        [
+          -14,
+          -6
+        ],
+        [
+          -16,
+          -24
+        ],
+        [
+          -40,
+          -22
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 5,
+      "signature": 0.06
+    }
+  },
+  "hydro_stack": {
+    "id": "hydro_stack",
+    "name": "Hydro Stack",
+    "family": "farm",
+    "size": "M",
+    "slot": "Farm",
+    "favored": "",
+    "mass": 10,
+    "power": 7,
+    "crew": 1,
+    "attach": {
+      "x": 0,
+      "y": 36
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "stack",
+    "blurb": "Stacked water trays. They feed a crop and they weigh the waist.",
+    "layer": [
+      [
+        [
+          -6,
+          24
+        ],
+        [
+          10,
+          36
+        ],
+        [
+          4,
+          52
+        ],
+        [
+          -12,
+          44
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 4
+    }
+  },
+  "seed_vault": {
+    "id": "seed_vault",
+    "name": "Seed Vault",
+    "family": "farm",
+    "size": "S",
+    "slot": "Farm",
+    "favored": "",
+    "mass": 7,
+    "power": 3,
+    "crew": 0,
+    "attach": {
+      "x": -42,
+      "y": -8
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "vault",
+    "blurb": "A vault of seed behind the bay. Small, and it still changes the tail.",
+    "layer": [
+      [
+        [
+          -48,
+          -4
+        ],
+        [
+          -32,
+          0
+        ],
+        [
+          -34,
+          -14
+        ],
+        [
+          -50,
+          -12
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 3
+    }
+  },
+  "greenhouse_ring": {
+    "id": "greenhouse_ring",
+    "name": "Greenhouse Ring",
+    "family": "farm",
+    "size": "L",
+    "slot": "Farm",
+    "favored": "",
+    "mass": 15,
+    "power": 8,
+    "crew": 1,
+    "attach": {
+      "x": 0,
+      "y": 44
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "ring",
+    "blurb": "A ring of glass around the waist. Wide, fragile-looking, and heavy.",
+    "layer": [
+      [
+        [
+          -10,
+          20
+        ],
+        [
+          10,
+          28
+        ],
+        [
+          6,
+          64
+        ],
+        [
+          -14,
+          58
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 11,
+      "signature": 0.1
+    }
+  },
+  "claim_beacon": {
+    "id": "claim_beacon",
+    "name": "Claim Beacon",
+    "family": "claim",
+    "size": "S",
+    "slot": "Utility",
+    "favored": "",
+    "mass": 9,
+    "power": 7,
+    "crew": 0,
+    "attach": {
+      "x": 40,
+      "y": 18
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "beacon",
+    "blurb": "A claim beacon on a mast. The chart can see the keel.",
+    "layer": [
+      [
+        [
+          36,
+          10
+        ],
+        [
+          52,
+          28
+        ],
+        [
+          28,
+          22
+        ]
+      ]
+    ],
+    "effects": {
+      "sensor": 80,
+      "signature": 0.12,
+      "radius": 3
+    }
+  },
+  "perimeter_stakes": {
+    "id": "perimeter_stakes",
+    "name": "Perimeter Stakes",
+    "family": "claim",
+    "size": "M",
+    "slot": "Utility",
+    "favored": "",
+    "mass": 12,
+    "power": 5,
+    "crew": 0,
+    "attach": {
+      "x": -16,
+      "y": 24
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "stakes",
+    "blurb": "Stakes along the flank. A garden keel stops looking like a courier.",
+    "layer": [
+      [
+        [
+          -20,
+          16
+        ],
+        [
+          -4,
+          18
+        ],
+        [
+          -8,
+          36
+        ],
+        [
+          -28,
+          32
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 5,
+      "signature": 0.05
+    }
+  },
+  "tow_collar": {
+    "id": "tow_collar",
+    "name": "Tow Collar",
+    "family": "hull",
+    "size": "M",
+    "slot": "Utility",
+    "favored": "",
+    "mass": 14,
+    "power": 6,
+    "crew": 0,
+    "attach": {
+      "x": 52,
+      "y": 0
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "collar",
+    "blurb": "A tow collar on the nose. Towline work, and a fatter bow.",
+    "layer": [
+      [
+        [
+          40,
+          10
+        ],
+        [
+          66,
+          0
+        ],
+        [
+          40,
+          -10
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 4
+    }
+  },
+  "scale_house": {
+    "id": "scale_house",
+    "name": "Scale House",
+    "family": "hull",
+    "size": "S",
+    "slot": "Utility",
+    "favored": "",
+    "mass": 8,
+    "power": 4,
+    "crew": 1,
+    "attach": {
+      "x": 14,
+      "y": 18
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "scale",
+    "blurb": "A scale house on the deck. Brass Lantern hardware.",
+    "layer": [
+      [
+        [
+          6,
+          12
+        ],
+        [
+          22,
+          14
+        ],
+        [
+          20,
+          28
+        ],
+        [
+          4,
+          26
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 3
+    }
+  },
+  "warrant_locker": {
+    "id": "warrant_locker",
+    "name": "Warrant Locker",
+    "family": "hull",
+    "size": "S",
+    "slot": "Utility",
+    "favored": "",
+    "mass": 6,
+    "power": 2,
+    "crew": 0,
+    "attach": {
+      "x": 18,
+      "y": -20
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "locker",
+    "blurb": "A locker for writs. It sits on the cheek and it is not a gun.",
+    "layer": [
+      [
+        [
+          12,
+          -16
+        ],
+        [
+          28,
+          -14
+        ],
+        [
+          26,
+          -28
+        ],
+        [
+          10,
+          -26
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 2
+    }
+  },
+  "ice_shear": {
+    "id": "ice_shear",
+    "name": "Ice Shear",
+    "family": "offense",
+    "size": "S",
+    "slot": "S",
+    "favored": "",
+    "mass": 8,
+    "power": 6,
+    "crew": 0,
+    "attach": {
+      "x": 40,
+      "y": -26
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "shear",
+    "blurb": "A shear for ring ice. White Wake tooling. It is not a second turret.",
+    "layer": [
+      [
+        [
+          30,
+          -20
+        ],
+        [
+          58,
+          -30
+        ],
+        [
+          28,
+          -34
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 3
+    }
+  },
+  "grain_hopper": {
+    "id": "grain_hopper",
+    "name": "Grain Hopper",
+    "family": "farm",
+    "size": "M",
+    "slot": "Utility",
+    "favored": "",
+    "mass": 13,
+    "power": 4,
+    "crew": 0,
+    "attach": {
+      "x": -18,
+      "y": 16
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "hopper",
+    "blurb": "A hopper for bonded grain. Ledger hardware on a hauler.",
+    "layer": [
+      [
+        [
+          -24,
+          8
+        ],
+        [
+          -8,
+          10
+        ],
+        [
+          -10,
+          26
+        ],
+        [
+          -28,
+          22
+        ]
+      ]
+    ],
+    "effects": {
+      "cargo": 8,
+      "radius": 4
+    }
+  },
+  "ash_coop": {
+    "id": "ash_coop",
+    "name": "Ash Coop",
+    "family": "farm",
+    "size": "S",
+    "slot": "Farm",
+    "favored": "",
+    "mass": 6,
+    "power": 3,
+    "crew": 0,
+    "attach": {
+      "x": 22,
+      "y": -26
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "coop",
+    "blurb": "A coop for ash hens. It is a box with a vent, and it shows.",
+    "layer": [
+      [
+        [
+          16,
+          -22
+        ],
+        [
+          32,
+          -20
+        ],
+        [
+          30,
+          -34
+        ],
+        [
+          14,
+          -32
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 3
+    }
+  },
+  "crab_cage": {
+    "id": "crab_cage",
+    "name": "Crab Cage",
+    "family": "farm",
+    "size": "S",
+    "slot": "Farm",
+    "favored": "",
+    "mass": 7,
+    "power": 3,
+    "crew": 0,
+    "attach": {
+      "x": 0,
+      "y": -24
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "cage",
+    "blurb": "A wet cage for rock crabs. It hangs off the belly line.",
+    "layer": [
+      [
+        [
+          -8,
+          -18
+        ],
+        [
+          8,
+          -16
+        ],
+        [
+          6,
+          -32
+        ],
+        [
+          -10,
+          -30
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 3
+    }
+  },
+  "swallow_hook": {
+    "id": "swallow_hook",
+    "name": "Swallow Hook",
+    "family": "hangar",
+    "size": "M",
+    "slot": "Hangar",
+    "favored": "",
+    "mass": 11,
+    "power": 5,
+    "crew": 0,
+    "attach": {
+      "x": -36,
+      "y": 14
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "hook",
+    "blurb": "A hook for Gyre salvage. The tender has somewhere to marry the keel.",
+    "layer": [
+      [
+        [
+          -44,
+          6
+        ],
+        [
+          -22,
+          12
+        ],
+        [
+          -26,
+          24
+        ],
+        [
+          -48,
+          16
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 4
+    }
+  },
+  "quiet_baffle": {
+    "id": "quiet_baffle",
+    "name": "Quiet Baffle",
+    "family": "hull",
+    "size": "S",
+    "slot": "Utility",
+    "favored": "",
+    "mass": 5,
+    "power": 3,
+    "crew": 0,
+    "attach": {
+      "x": -6,
+      "y": 10
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "baffle",
+    "blurb": "A baffle for the suburb run. It quiets the waist and lengthens the shadow.",
+    "layer": [
+      [
+        [
+          -16,
+          6
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          6,
+          16
+        ],
+        [
+          -18,
+          14
+        ]
+      ]
+    ],
+    "effects": {
+      "signature": -0.08,
+      "radius": 2
+    }
+  },
+  "choir_bell": {
+    "id": "choir_bell",
+    "name": "Choir Bell",
+    "family": "offense",
+    "size": "M",
+    "slot": "S",
+    "favored": "",
+    "mass": 12,
+    "power": 10,
+    "crew": 1,
+    "attach": {
+      "x": 14,
+      "y": 32
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "bell",
+    "blurb": "A bell housing for the Ore Choir drills. Loud, and it sits high.",
+    "layer": [
+      [
+        [
+          8,
+          20
+        ],
+        [
+          26,
+          34
+        ],
+        [
+          4,
+          48
+        ]
+      ]
+    ],
+    "effects": {
+      "signature": 0.14,
+      "radius": 5,
+      "gun_damage": 2
+    }
+  },
+  "lamp_spine": {
+    "id": "lamp_spine",
+    "name": "Lamp Spine",
+    "family": "hull",
+    "size": "S",
+    "slot": "Utility",
+    "favored": "",
+    "mass": 4,
+    "power": 5,
+    "crew": 0,
+    "attach": {
+      "x": 74,
+      "y": 0
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "lamp",
+    "blurb": "A lamp spine for Brass Lantern night work. Thin, and it leads the nose.",
+    "layer": [
+      [
+        [
+          54,
+          3
+        ],
+        [
+          96,
+          0
+        ],
+        [
+          54,
+          -3
+        ]
+      ]
+    ],
+    "effects": {
+      "sensor": 60,
+      "radius": 2
+    }
+  },
+  "stake_gun": {
+    "id": "stake_gun",
+    "name": "Stake Gun",
+    "family": "claim",
+    "size": "S",
+    "slot": "S",
+    "favored": "",
+    "mass": 9,
+    "power": 8,
+    "crew": 0,
+    "attach": {
+      "x": 28,
+      "y": 30
+    },
+    "footprint": {
+      "w": 20,
+      "h": 16
+    },
+    "shape": "stake",
+    "blurb": "A gun that plants perimeter stakes. It is a tool and it still draws power.",
+    "layer": [
+      [
+        [
+          22,
+          22
+        ],
+        [
+          40,
+          40
+        ],
+        [
+          16,
+          36
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 4,
+      "gun_damage": 1
     }
   }
 }
