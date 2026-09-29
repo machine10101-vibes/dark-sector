@@ -16,9 +16,10 @@ func _ready() -> void:
 func snap() -> void:
 	snapped = false
 	if Game.sim != null and cam != null:
-		cam.position = Game.sim.player.pos
 		_frame_dock()
 		cam.zoom = Vector2.ONE * Game.zoom
+		cam.position = _chase_pos()
+		cam.rotation = _chase_rot()
 		snapped = true
 
 
@@ -52,14 +53,29 @@ func _process(delta: float) -> void:
 			Game.sim.tick(delta, _cmd())
 			if link != null and str(link.role) == "host":
 				link.broadcast(Game.sim)
-	var target: Vector2 = Game.sim.player.pos
+	var target: Vector2 = _chase_pos()
+	var heading := _chase_rot()
 	if not snapped:
 		cam.position = target
+		cam.rotation = heading
 		snapped = true
 	else:
-		cam.position = cam.position.lerp(target, clampf(delta * 5.0, 0.0, 1.0))
+		var blend := clampf(delta * 5.0, 0.0, 1.0)
+		cam.position = cam.position.lerp(target, blend)
+		cam.rotation = lerp_angle(cam.rotation, heading, blend)
 	cam.zoom = Vector2.ONE * Game.zoom
 	queue_redraw()
+
+
+func _chase_pos() -> Vector2:
+	var ship: Dictionary = Game.sim.player
+	var ahead := Vector2.from_angle(float(ship.rot))
+	var zoom := maxf(Game.zoom, 0.12)
+	return ship.pos + ahead * (36.0 / zoom) + Vector2(0.0, -72.0 / zoom)
+
+
+func _chase_rot() -> float:
+	return 0.0
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -126,7 +142,8 @@ func _draw() -> void:
 	var z: float = maxf(Game.zoom, 0.05)
 	var half: Vector2 = get_viewport_rect().size * 0.5 / z
 	var center: Vector2 = cam.position
-	var view := Rect2(center - half, half * 2.0)
+	var cover := half.length()
+	var view := Rect2(center - Vector2(cover, cover), Vector2(cover, cover) * 2.0)
 	draw_rect(view.grow(8.0), Color("07080c"), true)
 	_draw_nebula()
 	_draw_grid(view, z)
@@ -191,7 +208,7 @@ func _draw() -> void:
 	if bool(sim.player.alive):
 		_draw_ship(sim, sim.player)
 		_draw_velocity(sim.player)
-	_draw_scale(center, half, z)
+	_draw_scale(z)
 	_draw_names(sim, z)
 
 
@@ -549,7 +566,7 @@ func _draw_mark(sim) -> void:
 	var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
 	draw_arc(pos, 54.0, 0.0, TAU, 40, Color("e7b15a"), 1.6, true)
 	draw_line(sim.player.pos, pos, Color(0.91, 0.7, 0.35, 0.45), 1.2, true)
-	draw_string(font, pos + Vector2(62, -22), str(mark.get("label", "mark")), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("e7b15a"))
+	_text(pos + Vector2(62, -22), str(mark.get("label", "mark")), 13, Color("e7b15a"))
 
 
 func _draw_beacon(sim) -> void:
@@ -664,7 +681,7 @@ func _draw_velocity(ship: Dictionary) -> void:
 	draw_line(ship.pos + forward * 24.0, ship.pos + forward * 42.0, Color("e6d7bf"), 1.4, true)
 
 
-func _draw_scale(center: Vector2, half: Vector2, zoom: float) -> void:
+func _draw_scale(zoom: float) -> void:
 	var raw := 140.0 / zoom
 	var mag := pow(10.0, floor(log(maxf(raw, 1.0)) / log(10.0)))
 	var length := mag
@@ -672,11 +689,16 @@ func _draw_scale(center: Vector2, half: Vector2, zoom: float) -> void:
 		length = mag * 5.0
 	elif raw / mag > 2.0:
 		length = mag * 2.0
-	var origin := center + Vector2(-half.x + 36.0 / zoom, half.y - 36.0 / zoom)
-	draw_line(origin, origin + Vector2(length, 0), Color("cbb892"), 1.6, true)
-	draw_line(origin, origin + Vector2(0, -6.0 / zoom), Color("cbb892"), 1.4, true)
-	draw_line(origin + Vector2(length, 0), origin + Vector2(length, -6.0 / zoom), Color("cbb892"), 1.4, true)
-	_text(origin + Vector2(0, -18.0 / zoom), "%d m" % int(length), 13, Color("cbb892"))
+	var screen := get_viewport_rect().size
+	var px := length * zoom
+	var origin := Vector2(28.0, screen.y - 36.0)
+	var xf := cam.get_canvas_transform().affine_inverse()
+	draw_set_transform_matrix(xf)
+	draw_line(origin, origin + Vector2(px, 0), Color("cbb892"), 2.0, true)
+	draw_line(origin, origin + Vector2(0, -7), Color("cbb892"), 2.0, true)
+	draw_line(origin + Vector2(px, 0), origin + Vector2(px, -7), Color("cbb892"), 2.0, true)
+	draw_set_transform_matrix(Transform2D.IDENTITY)
+	_text(xf * (origin + Vector2(0, -18)), "%d m" % int(length), 13, Color("cbb892"))
 
 
 func _draw_names(sim, zoom: float) -> void:
@@ -746,4 +768,9 @@ func _draw_names(sim, zoom: float) -> void:
 func _text(pos: Vector2, text: String, size: int, color: Color) -> void:
 	if font == null:
 		return
-	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, color)
+	var upright := 0.0
+	if cam != null:
+		upright = cam.rotation
+	draw_set_transform(pos, upright, Vector2.ONE)
+	draw_string(font, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, color)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

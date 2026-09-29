@@ -6,7 +6,7 @@ config_version=5
 [application]
 
 config/name="Dark Sector"
-config/description="Top-down working-captain sector. One keel, detachable craft, claims, heat."
+config/description="Angled overhead working-captain sector. One keel, detachable craft, claims, heat."
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
