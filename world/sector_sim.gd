@@ -99,11 +99,36 @@ func tick(dt: float, cmd: Dictionary) -> void:
 
 
 func install(module_id: String) -> Dictionary:
+	if in_combat():
+		var shut := {"ok": false, "reason": "The bay is shut. Break off before you touch a bolt."}
+		say(str(shut.reason))
+		return shut
 	var result = Fit.try_install(defs, player, module_id)
 	say(str(result.reason))
 	if result.ok:
 		sfx("install")
 	return result
+
+
+func uninstall(module_id: String) -> Dictionary:
+	if in_combat():
+		var shut := {"ok": false, "reason": "The bay is shut. Break off before you touch a bolt."}
+		say(str(shut.reason))
+		return shut
+	var result = Fit.try_remove(defs, player, module_id)
+	say(str(result.reason))
+	if result.ok:
+		sfx("install")
+	return result
+
+
+func in_combat() -> bool:
+	if pdo_alert:
+		return true
+	for shot in projectiles:
+		if str(shot.team) != str(player.team):
+			return true
+	return false
 
 
 func _pdo_id() -> String:
@@ -325,6 +350,10 @@ func damage_unit(unit: Dictionary, amount: float, attacker: String) -> void:
 		return
 	if not bool(unit.get("alive", false)):
 		return
+	if unit.has("class_id") and not unit.has("state"):
+		var belt := float(Fit.stats(defs, unit).armor)
+		if belt > 0.0:
+			amount = maxf(0.35, amount * (1.0 - belt))
 	unit.hp = float(unit.hp) - amount
 	unit.hurt_cd = 0.4
 	if float(unit.hp) <= 0.0:

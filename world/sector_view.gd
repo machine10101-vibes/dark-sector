@@ -250,6 +250,7 @@ func _draw_pocket(sim) -> void:
 func _draw_ship(sim, ship: Dictionary) -> void:
 	var hull: Dictionary = sim.defs.ships[ship.class_id]
 	var shapes: Array = Silhouette.shapes_of(sim.defs, ship.modules)
+	var layers: Array = Silhouette.layers_of(sim.defs, ship.modules)
 	var hp_ratio := clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0)
 	Silhouette.draw(
 		self,
@@ -261,7 +262,8 @@ func _draw_ship(sim, ship: Dictionary) -> void:
 		Color(str(hull.color)),
 		Color(str(hull.accent)),
 		hp_ratio,
-		bool(ship.thrusting)
+		bool(ship.thrusting),
+		layers
 	)
 	var bar := float(Fit.stats(sim.defs, ship).hit_radius)
 	var frac := hp_ratio

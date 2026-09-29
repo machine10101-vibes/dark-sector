@@ -174,6 +174,7 @@ class KeelPreview extends Control:
 			return
 		var hull: Dictionary = Game.defs.ships[class_id]
 		var shapes: Array = Silhouette.shapes_of(Game.defs, modules)
+		var layers: Array = Silhouette.layers_of(Game.defs, modules)
 		Silhouette.draw(
 			self,
 			size * 0.5 + Vector2(0, 8),
@@ -184,5 +185,6 @@ class KeelPreview extends Control:
 			Color(str(hull.color)),
 			Color(str(hull.accent)),
 			1.0,
-			false
+			false,
+			layers
 		)

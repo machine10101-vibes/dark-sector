@@ -12,7 +12,17 @@ static func shapes_of(defs: Dictionary, module_ids: Array) -> Array:
 	return shapes
 
 
-static func parts(class_id: String, shapes: Array) -> Dictionary:
+static func layers_of(defs: Dictionary, module_ids: Array) -> Array:
+	var layers: Array = []
+	for module_id in module_ids:
+		var mod: Dictionary = defs.modules.get(module_id, {})
+		var raw: Array = mod.get("layer", [])
+		for poly in raw:
+			layers.append(poly)
+	return layers
+
+
+static func parts(class_id: String, shapes: Array, layers: Array = []) -> Dictionary:
 	var hull := PackedVector2Array()
 	var extras: Array = []
 	var circles: Array = []
@@ -43,11 +53,11 @@ static func parts(class_id: String, shapes: Array) -> Dictionary:
 			])
 		_:
 			hull = PackedVector2Array([Vector2(16, 0), Vector2(-12, 8), Vector2(-12, -8)])
-	if shapes.has("mast"):
+	if layers.is_empty() and shapes.has("mast"):
 		extras.append(PackedVector2Array([
 			Vector2(46, 1.6), Vector2(86, 0), Vector2(46, -1.6)
 		]))
-	if shapes.has("blister"):
+	if layers.is_empty() and shapes.has("blister"):
 		circles.append({"x": -4.0, "y": 32.0, "r": 11.0})
 		circles.append({"x": -4.0, "y": -32.0, "r": 11.0})
 		extras.append(PackedVector2Array([
@@ -56,13 +66,19 @@ static func parts(class_id: String, shapes: Array) -> Dictionary:
 		extras.append(PackedVector2Array([
 			Vector2(-2, -20), Vector2(6, -24), Vector2(-10, -24)
 		]))
-	if shapes.has("sponson"):
+	if layers.is_empty() and shapes.has("sponson"):
 		extras.append(PackedVector2Array([
 			Vector2(4, 10), Vector2(16, 26), Vector2(-8, 22), Vector2(-6, 12)
 		]))
 		extras.append(PackedVector2Array([
 			Vector2(4, -10), Vector2(16, -26), Vector2(-8, -22), Vector2(-6, -12)
 		]))
+	for poly in layers:
+		var packed := PackedVector2Array()
+		for pt in poly:
+			packed.append(Vector2(float(pt[0]), float(pt[1])))
+		if packed.size() >= 3:
+			extras.append(packed)
 	var tail := 0.0
 	if hull.size() > 0:
 		tail = hull[0].x
@@ -86,8 +102,8 @@ static func extent(geom: Dictionary) -> Vector2:
 	return Vector2(max_x, max_y)
 
 
-static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, shapes: Array, scale: float, body: Color, accent: Color, hp_ratio: float = 1.0, thrusting: bool = false) -> void:
-	var geom := parts(class_id, shapes)
+static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, shapes: Array, scale: float, body: Color, accent: Color, hp_ratio: float = 1.0, thrusting: bool = false, layers: Array = []) -> void:
+	var geom := parts(class_id, shapes, layers)
 	var hull: PackedVector2Array = geom.hull
 	if hull.is_empty():
 		return
@@ -111,7 +127,7 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 	for circle in geom.circles:
 		var center := xf * (Vector2(float(circle.x), float(circle.y)) * scale)
 		ci.draw_circle(center, float(circle.r) * scale, accent)
-	if class_id == "vesper" and shapes.has("mast"):
+	if class_id == "vesper" and (shapes.has("mast") or _layer_reaches(layers, 80.0)):
 		ci.draw_circle(xf * (Vector2(46, 0) * scale), 1.25 * scale, worn.darkened(0.2))
 	if hp_ratio < 0.72:
 		var scar_a := xf * (Vector2(-10, -7) * scale)
@@ -125,6 +141,14 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 			xf * (Vector2(tail + 2.0, -4.0) * scale),
 		])
 		ci.draw_colored_polygon(flame, Color("e7b15a"))
+
+
+static func _layer_reaches(layers: Array, reach: float) -> bool:
+	for poly in layers:
+		for pt in poly:
+			if absf(float(pt[0])) >= reach or absf(float(pt[1])) >= reach:
+				return true
+	return false
 
 
 static func _paint_needle(ci: CanvasItem, xf: Transform2D, scale: float, plate: Color, accent: Color, shapes: Array, thrusting: bool) -> void:

@@ -9,7 +9,24 @@ const VMAX := 340.0
 const EFFECT_KEYS := [
 	"mass", "power_draw", "cargo", "sensor", "signature",
 	"gun_damage", "thrust", "strafe", "turn", "radius",
+	"crew", "armor",
 ]
+
+
+static func module_effects(mod: Dictionary) -> Dictionary:
+	var effects: Dictionary = mod.get("effects", {})
+	var total := {}
+	for key in EFFECT_KEYS:
+		total[key] = float(effects.get(key, 0.0))
+	if mod.has("mass"):
+		total.mass = float(mod.mass)
+	if mod.has("power"):
+		total.power_draw = float(mod.power)
+	if mod.has("crew"):
+		total.crew = float(mod.crew)
+	if mod.has("armor"):
+		total.armor = float(mod.armor)
+	return total
 
 
 static func effects_sum(defs: Dictionary, module_ids: Array) -> Dictionary:
@@ -18,18 +35,31 @@ static func effects_sum(defs: Dictionary, module_ids: Array) -> Dictionary:
 		total[key] = 0.0
 	for module_id in module_ids:
 		var mod: Dictionary = defs.modules.get(module_id, {})
-		var effects: Dictionary = mod.get("effects", {})
+		var piece := module_effects(mod)
 		for key in EFFECT_KEYS:
-			total[key] += float(effects.get(key, 0.0))
+			total[key] += float(piece[key])
 	return total
 
 
 static func stats(defs: Dictionary, ship: Dictionary) -> Dictionary:
 	var hull: Dictionary = defs.ships[ship.class_id]
-	var effects := effects_sum(defs, ship.get("modules", []))
+	var module_ids: Array = ship.get("modules", [])
+	var effects := effects_sum(defs, module_ids)
 	var mass := float(hull.mass) + float(effects.mass)
 	var thrust := float(hull.thrust) + float(effects.thrust)
-	var turn := float(hull.turn) * (float(hull.mass) / mass) + float(effects.turn)
+	var moment := Vector2.ZERO
+	for module_id in module_ids:
+		var mod: Dictionary = defs.modules.get(module_id, {})
+		var piece := module_effects(mod)
+		var attach: Dictionary = mod.get("attach", {})
+		var mount := Vector2(float(attach.get("x", 0.0)), float(attach.get("y", 0.0)))
+		moment += mount * float(piece.mass)
+	var com := Vector2.ZERO
+	if mass > 0.01:
+		com = moment / mass
+	var inertia := 1.0 + com.length() * 0.012
+	var lateral := 1.0 + absf(com.y) * 0.008
+	var turn := float(hull.turn) * (float(hull.mass) / mass) / inertia + float(effects.turn)
 	var strafe_stat := float(hull.strafe) + float(effects.strafe)
 	var power := float(hull.power)
 	var draw := float(hull.power_draw) + float(effects.power_draw)
@@ -40,13 +70,20 @@ static func stats(defs: Dictionary, ship: Dictionary) -> Dictionary:
 	gun.damage = float(gun.damage) + float(effects.gun_damage)
 	var keel := float(hull.mass) * 1.12
 	var radius := float(hull.radius) + float(effects.radius)
+	var crew_budget := 0
+	if ship.has("crew"):
+		crew_budget = ship.crew.size()
+	var crew_used := int(round(float(effects.crew)))
+	var armor := clampf(float(effects.armor), 0.0, 0.7)
 	return {
 		"mass": mass,
 		"base_mass": float(hull.mass),
 		"thrust": thrust,
+		"ttw": thrust / mass,
+		"com": com,
 		"turn": turn,
-		"accel": thrust / mass * ACCEL_SCALE,
-		"strafe_accel": strafe_stat / mass * STRAFE_SCALE,
+		"accel": thrust / mass * ACCEL_SCALE / lateral,
+		"strafe_accel": strafe_stat / mass * STRAFE_SCALE / lateral,
 		"damp": DAMP,
 		"vmax": VMAX,
 		"power": power,
@@ -62,6 +99,10 @@ static func stats(defs: Dictionary, ship: Dictionary) -> Dictionary:
 		"keel_warn": mass > keel,
 		"yaw_deg": rad_to_deg(turn),
 		"hit_radius": radius,
+		"crew_budget": crew_budget,
+		"crew_used": crew_used,
+		"crew_over": crew_used > crew_budget,
+		"armor": armor,
 	}
 
 
@@ -98,25 +139,38 @@ static func try_install(defs: Dictionary, ship: Dictionary, module_id: String) -
 	var mod: Variant = defs.modules.get(module_id)
 	if mod == null:
 		return {"ok": false, "reason": "No drawing for that part."}
-	var slot := str(mod.get("slot", "Utility"))
-	if free_slots(defs, ship).find(slot) < 0:
-		return {"ok": false, "reason": "No free %s hardpoint on this keel." % slot}
 	var before := stats(defs, ship)
 	var hypothetical := ship.duplicate(true)
 	hypothetical.modules = ship.modules.duplicate()
 	hypothetical.modules.append(module_id)
 	var after := stats(defs, hypothetical)
-	if after.power_spare < -0.01:
-		return {
-			"ok": false,
-			"reason": "Reactor spare is %.0f. That part wants more than the bus can feed." % before.power_spare,
-		}
 	ship.yard.erase(module_id)
 	ship.modules.append(module_id)
-	var keel_line := ""
+	var extra := ""
 	if after.keel_warn:
-		keel_line = " The keel complains under the new mass."
-	var reason := "%s bolted. Yaw %.0f°/s → %.0f°/s. Signature %s → %s.%s" % [
-		mod.name, before.yaw_deg, after.yaw_deg, before.signature_word, after.signature_word, keel_line
+		extra += " The keel complains under the new mass."
+	if after.power_spare < -0.01:
+		extra += " Reactor overloaded."
+	if after.crew_over:
+		extra += " Crew budget is past the names on the board."
+	var reason := "%s bolted. Mass %.0f → %.0f. Yaw %.0f°/s → %.0f°/s. Thrust-to-weight %.2f → %.2f.%s" % [
+		mod.name, before.mass, after.mass, before.yaw_deg, after.yaw_deg, before.ttw, after.ttw, extra
+	]
+	return {"ok": true, "reason": reason}
+
+
+static func try_remove(defs: Dictionary, ship: Dictionary, module_id: String) -> Dictionary:
+	if not ship.modules.has(module_id):
+		return {"ok": false, "reason": "That part is not on the keel."}
+	var mod: Variant = defs.modules.get(module_id)
+	if mod == null:
+		return {"ok": false, "reason": "No drawing for that part."}
+	var before := stats(defs, ship)
+	ship.modules.erase(module_id)
+	if not ship.yard.has(module_id):
+		ship.yard.append(module_id)
+	var after := stats(defs, ship)
+	var reason := "%s pulled. Mass %.0f → %.0f. Yaw %.0f°/s → %.0f°/s. Thrust-to-weight %.2f → %.2f." % [
+		mod.name, before.mass, after.mass, before.yaw_deg, after.yaw_deg, before.ttw, after.ttw
 	]
 	return {"ok": true, "reason": reason}

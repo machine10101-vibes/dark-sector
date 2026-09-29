@@ -22,8 +22,8 @@ var hangar_node := "aegis_prime"
 var hangar_target: Label
 var hangar_sig := ""
 var bay_preview: Control
-var install_button: Button
 var bay_detail: Label
+var bay_buttons: Dictionary = {}
 var dossier_timer := 0.0
 var hold_button: Button
 
@@ -59,8 +59,8 @@ func _fit() -> void:
 	root.position = Vector2.ZERO
 	root.size = screen
 	if panel != null:
-		panel.position = Vector2(screen.x - 432, 12)
-		panel.size = Vector2(420, screen.y - 48)
+		panel.position = Vector2(screen.x - 472, 12)
+		panel.size = Vector2(460, screen.y - 48)
 	if pause_box != null:
 		pause_box.position = screen * 0.5 - Vector2(220, 160)
 		pause_box.size = Vector2(440, 330)
@@ -201,7 +201,7 @@ func _build_panel() -> void:
 	box.add_child(scroll)
 	var inner := VBoxContainer.new()
 	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	inner.custom_minimum_size = Vector2(360, 0)
+	inner.custom_minimum_size = Vector2(420, 0)
 	scroll.add_child(inner)
 	panel_body = ThemeKit.label("", 14)
 	panel_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -369,20 +369,39 @@ func _toggle_pause() -> void:
 func _build_bay() -> void:
 	for child in bay_box.get_children():
 		child.queue_free()
+	bay_buttons = {}
 	var sim = Game.sim
 	bay_preview = BayPreview.new()
-	bay_preview.custom_minimum_size = Vector2(360, 150)
+	bay_preview.custom_minimum_size = Vector2(400, 170)
 	bay_box.add_child(bay_preview)
 	bay_detail = ThemeKit.label("", 14)
 	bay_box.add_child(bay_detail)
 	var crew_lines: Array = []
 	for person in sim.player.crew:
 		crew_lines.append("%s — %s" % [person.name, person.skill])
-	bay_box.add_child(ThemeKit.label("Crew\n" + "\n".join(crew_lines), 14, Color("cbb892")))
-	install_button = ThemeKit.button("Bolt")
-	install_button.pressed.connect(_on_install)
-	bay_box.add_child(install_button)
-	bay_box.add_child(ThemeKit.label("Bolted means bolted. There is no crane aboard to pull a module off.", 13, Color("8d826c")))
+	var crew_text := "No names on the board."
+	if not crew_lines.is_empty():
+		crew_text = "\n".join(crew_lines)
+	bay_box.add_child(ThemeKit.label("Crew\n" + crew_text, 14, Color("cbb892")))
+	bay_box.add_child(ThemeKit.label("Overload is allowed. A heavy keel just turns and accelerates worse. Pull a part off while nobody is shooting.", 13, Color("8d826c")))
+	var order: Array = ["cargo_blister", "gun_sponson", "sensor_mast", "farm_cassette", "armor_belt"]
+	for module_id in order:
+		if not sim.defs.modules.has(module_id):
+			continue
+		if not sim.player.yard.has(module_id) and not sim.player.modules.has(module_id):
+			continue
+		var mod: Dictionary = sim.defs.modules[module_id]
+		var block := VBoxContainer.new()
+		block.add_theme_constant_override("separation", 2)
+		var title := "%s    %s    %s" % [mod.name, mod.size, mod.family]
+		block.add_child(ThemeKit.label(title, 15))
+		var meta := ThemeKit.label("", 13, Color("8d826c"))
+		block.add_child(meta)
+		var button := ThemeKit.button("Bolt on")
+		button.pressed.connect(_on_bolt.bind(str(module_id)))
+		block.add_child(button)
+		bay_box.add_child(block)
+		bay_buttons[str(module_id)] = {"meta": meta, "button": button}
 	_refresh_bay_text()
 
 
@@ -390,51 +409,81 @@ func _refresh_bay_text() -> void:
 	if bay_detail == null or not is_instance_valid(bay_detail):
 		return
 	var sim = Game.sim
-	var before := Fit.stats(sim.defs, sim.player)
-	var bolted: Array = []
-	for module_id in sim.player.modules:
-		bolted.append(str(sim.defs.modules[module_id].name))
-	var have := "Bolted: %s." % ", ".join(bolted) if not bolted.is_empty() else "Nothing extra bolted. The silhouette is the yard keel."
-	var yard: Array = sim.player.yard
-	if yard.is_empty():
-		bay_detail.text = "%s\nMass %.0f. Yaw %.0f°/s. Power spare %.0f. Cargo %d. Sensor %.0f. Signature %s.\n%s" % [
-			have, before.mass, before.yaw_deg, before.power_spare, before.cargo_cap, before.sensor, before.signature_word,
-			"The keel complains." if before.keel_warn else "The keel is inside tolerance.",
-		]
-		if install_button != null and is_instance_valid(install_button):
-			install_button.visible = false
-		if bay_preview != null and is_instance_valid(bay_preview):
-			bay_preview.queue_redraw()
-		return
-	var module_id := str(yard[0])
-	var mod: Dictionary = sim.defs.modules[module_id]
-	var hypo: Dictionary = sim.player.duplicate(true)
-	hypo.modules = sim.player.modules.duplicate()
-	hypo.modules.append(module_id)
-	var after := Fit.stats(sim.defs, hypo)
-	bay_detail.text = "%s\nYard: %s. %s\nYaw %.0f°/s → %.0f°/s. Signature %s → %s. Cargo %d → %d. Mass %.0f → %.0f. Sensor %.0f → %.0f.\n%s" % [
-		have,
-		mod.name,
-		mod.blurb,
-		before.yaw_deg, after.yaw_deg,
-		before.signature_word, after.signature_word,
-		before.cargo_cap, after.cargo_cap,
-		before.mass, after.mass,
-		before.sensor, after.sensor,
-		"The keel will complain under that mass." if after.keel_warn else "The keel can carry it.",
+	var stats := Fit.stats(sim.defs, sim.player)
+	var com: Vector2 = stats.com
+	var keel := "Keel within tolerance."
+	if stats.keel_warn:
+		keel = "Keel complaining."
+	var power_line := "Power %.0f/%.0f." % [stats.power_draw, stats.power]
+	if stats.power_spare < -0.01:
+		power_line = "Power %.0f/%.0f. Overloaded." % [stats.power_draw, stats.power]
+	var crew_line := "Crew %d/%d." % [int(stats.crew_used), int(stats.crew_budget)]
+	if stats.crew_over:
+		crew_line = "Crew %d/%d. Overloaded." % [int(stats.crew_used), int(stats.crew_budget)]
+	var shut := ""
+	if sim.in_combat():
+		shut = "\nBay shut. Break off before you touch a bolt."
+	bay_detail.text = "Mass %.0f t. Center of mass %.1f m off the spine. Thrust-to-weight %.2f. Yaw %.0f°/s.\nHold %d. Sensor %.0f. Signature %s. %s %s %s%s" % [
+		stats.mass,
+		com.length(),
+		stats.ttw,
+		stats.yaw_deg,
+		stats.cargo_cap,
+		stats.sensor,
+		stats.signature_word,
+		power_line,
+		crew_line,
+		keel,
+		shut,
 	]
-	if install_button != null and is_instance_valid(install_button):
-		install_button.visible = true
-		install_button.text = "Bolt on %s" % mod.name
-		install_button.set_meta("module_id", module_id)
+	var hot := bool(stats.keel_warn) or float(stats.power_spare) < -0.01 or bool(stats.crew_over)
+	var tone := Color("e6d7bf")
+	if hot:
+		tone = Color("e7b15a")
+	bay_detail.add_theme_color_override("font_color", tone)
+	var fighting := sim.in_combat()
+	for module_id in bay_buttons.keys():
+		var row: Dictionary = bay_buttons[module_id]
+		var meta: Label = row.meta
+		var button: Button = row.button
+		if not is_instance_valid(meta) or not is_instance_valid(button):
+			continue
+		var mod: Dictionary = sim.defs.modules[module_id]
+		var foot: Dictionary = mod.get("footprint", {})
+		var favored := _favored_line(sim, mod)
+		var mounted: bool = bool(sim.player.modules.has(module_id))
+		var state := "In the yard."
+		if mounted:
+			state = "On the keel."
+		meta.text = "Mass %.0f. Power %.0f. Crew %.0f. Footprint %.0f×%.0f. %s %s" % [
+			float(mod.mass), float(mod.power), float(mod.crew),
+			float(foot.get("w", 0)), float(foot.get("h", 0)),
+			favored, state,
+		]
+		button.disabled = fighting
+		if mounted:
+			button.text = "Pull off"
+		else:
+			button.text = "Bolt on"
 	if bay_preview != null and is_instance_valid(bay_preview):
 		bay_preview.queue_redraw()
 
 
-func _on_install() -> void:
-	if install_button == null or not install_button.has_meta("module_id"):
+func _favored_line(sim, mod: Dictionary) -> String:
+	var favored := str(mod.get("favored", ""))
+	if favored == "":
+		return "Any keel."
+	var hull: Dictionary = sim.defs.ships.get(favored, {})
+	return "%s-favored." % str(hull.get("callsign", favored))
+
+
+func _on_bolt(module_id: String) -> void:
+	if Game.sim == null:
 		return
-	Game.sim.install(str(install_button.get_meta("module_id")))
+	if Game.sim.player.modules.has(module_id):
+		Game.sim.uninstall(module_id)
+	else:
+		Game.sim.install(module_id)
 	_refresh_bay_text()
 
 
@@ -675,15 +724,24 @@ class BayPreview extends Control:
 		var ship: Dictionary = Game.sim.player
 		var hull: Dictionary = Game.sim.defs.ships[ship.class_id]
 		var shapes: Array = Silhouette.shapes_of(Game.sim.defs, ship.modules)
+		var layers: Array = Silhouette.layers_of(Game.sim.defs, ship.modules)
+		var origin := size * 0.5
+		var scale := 1.2
 		Silhouette.draw(
 			self,
-			size * 0.5,
+			origin,
 			-PI * 0.5,
 			str(ship.class_id),
 			shapes,
-			1.35,
+			scale,
 			Color(str(hull.color)),
 			Color(str(hull.accent)),
 			clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0),
-			false
+			false,
+			layers
 		)
+		var stats := Fit.stats(Game.sim.defs, ship)
+		var com: Vector2 = stats.com
+		var mark: Vector2 = Transform2D(-PI * 0.5, origin) * (com * scale)
+		draw_line(mark + Vector2(-5, 0), mark + Vector2(5, 0), Color("e7b15a"), 1.3, true)
+		draw_line(mark + Vector2(0, -5), mark + Vector2(0, 5), Color("e7b15a"), 1.3, true)
