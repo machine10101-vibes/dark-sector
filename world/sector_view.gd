@@ -108,7 +108,12 @@ func _draw() -> void:
 	for star in sim.stars:
 		var pos: Vector2 = star.pos
 		if view.grow(20).has_point(pos):
-			draw_circle(pos, float(star.r), Color(0.90, 0.86, 0.75, float(star.a)))
+			var temp := float(star.a)
+			var tint := Color(0.72, 0.8, 0.95, temp) if temp < 0.4 else Color(0.95, 0.9, 0.78, temp)
+			if temp > 0.7:
+				tint = Color(1.0, 0.82, 0.62, temp)
+			draw_circle(pos, float(star.r) * 2.4, Color(tint.r, tint.g, tint.b, temp * 0.18))
+			draw_circle(pos, float(star.r), tint)
 	_draw_zones(sim)
 	_draw_belt(sim)
 	_draw_meteors(sim)
@@ -180,11 +185,13 @@ func _draw_zones(sim) -> void:
 	var green_body = sim.planet(str(sim.defs.system.zones.green.anchor))
 	var green_r := float(sim.defs.system.zones.green.radius)
 	if green_body != null and green_r > 1.0:
-		draw_circle(green_body.pos, green_r, Color(0.43, 0.66, 0.48, 0.07))
+		draw_circle(green_body.pos, green_r, Color(0.43, 0.66, 0.48, 0.045))
+		draw_circle(green_body.pos, green_r * 0.62, Color(0.55, 0.78, 0.58, 0.04))
 		draw_arc(green_body.pos, green_r, 0.0, TAU, 96, Color("8aa896"), 1.6, true)
 	var amber_r := float(sim.defs.system.zones.amber.radius)
 	if amber_r > 1.0:
-		draw_circle(sim.nest_pos, amber_r, Color(0.77, 0.57, 0.23, 0.06))
+		draw_circle(sim.nest_pos, amber_r, Color(0.77, 0.57, 0.23, 0.04))
+		draw_circle(sim.nest_pos, amber_r * 0.55, Color(0.9, 0.7, 0.32, 0.035))
 		draw_arc(sim.nest_pos, amber_r, 0.0, TAU, 80, Color("c4923a"), 1.6, true)
 	for disc in Law.discs(sim):
 		var row: Dictionary = disc
@@ -204,20 +211,40 @@ func _draw_zones(sim) -> void:
 func _draw_belt(sim) -> void:
 	for rock in sim.asteroids:
 		var verts: PackedVector2Array = rock.verts
+		if verts.size() < 3:
+			continue
 		var tint := Color(str(rock.get("tint", "#3a342c")))
-		draw_colored_polygon(verts, tint)
-		if verts.size() > 1:
-			var outline := verts.duplicate()
-			outline.append(verts[0])
-			draw_polyline(outline, Color("6a5c4a"), 1.0, true)
+		var center := Vector2.ZERO
+		for point in verts:
+			center += point
+		center /= float(verts.size())
+		var lit := _light_at(center)
+		var colors := PackedColorArray()
+		for point in verts:
+			var n: Vector2 = point - center
+			var face := 0.5
+			if n.length_squared() > 1.0:
+				face = clampf(n.normalized().dot(lit) * 0.5 + 0.5, 0.15, 1.0)
+			var shade := tint.darkened(0.45).lerp(tint.lightened(0.18), face)
+			colors.append(shade)
+		draw_polygon(verts, colors)
+		var outline := verts.duplicate()
+		outline.append(verts[0])
+		draw_polyline(outline, tint.lightened(0.12), 1.0, true)
 
 
 func _draw_meteors(sim) -> void:
+	var vector := float(sim.defs.system.get("stream", {}).get("vector", 0.0))
+	var back := -Vector2.from_angle(vector)
 	for rock in sim.meteors:
 		var pos: Vector2 = rock.pos
 		var size := float(rock.get("size", 4.0))
+		var tail := pos + back * (18.0 + size * 2.0)
+		draw_line(pos, tail, Color(0.78, 0.42, 0.22, 0.35), size * 0.7, true)
+		draw_line(pos, pos + back * 10.0, Color("e7b15a"), 1.4, true)
+		draw_circle(pos, size * 1.6, Color(0.85, 0.4, 0.16, 0.28))
 		draw_circle(pos, size, Color("c46a3a"))
-		draw_line(pos, pos - Vector2.from_angle(float(sim.defs.system.get("stream", {}).get("vector", 0.0))) * 18.0, Color("e0a070"), 1.2, true)
+		draw_circle(pos, size * 0.45, Color("fff0d2"))
 
 
 func _draw_trash(sim) -> void:
@@ -237,22 +264,31 @@ func _draw_trash(sim) -> void:
 		var world := PackedVector2Array()
 		for point in pts:
 			world.append(xf * (point * scale))
-		draw_colored_polygon(world, Color("6e675c"))
-		world.append(world[0])
-		draw_polyline(world, Color("c2b49a"), 1.1, true)
+		var lit := _light_at(pos)
+		draw_colored_polygon(world, Color("3e3a34"))
+		draw_colored_polygon(Silhouette._inset_world(world, 1.6 * scale, lit * (1.4 * scale)), Color("8a8174"))
+		var rust := world.duplicate()
+		rust.append(rust[0])
+		draw_polyline(rust, Color("6a4034"), 1.3, true)
+		Silhouette._rim(self, world, lit, Color("d7cbb4"), 1.0)
 
 
 func _draw_star(sim) -> void:
 	var radius := float(sim.defs.system.star.radius)
 	var core := Color(str(sim.defs.system.star.color))
 	var glow := core
-	glow.a = 0.08
+	glow.a = 0.05
 	var mid := core
-	mid.a = 0.18
-	draw_circle(Vector2.ZERO, radius * 2.1, glow)
-	draw_circle(Vector2.ZERO, radius * 1.35, mid)
-	draw_circle(Vector2.ZERO, radius, core)
-	draw_circle(Vector2.ZERO, radius * 0.42, Color("fff6e4"))
+	mid.a = 0.12
+	var limb := core
+	limb.a = 0.22
+	draw_circle(Vector2.ZERO, radius * 3.1, glow)
+	draw_circle(Vector2.ZERO, radius * 1.9, mid)
+	draw_circle(Vector2.ZERO, radius * 1.15, limb)
+	draw_circle(Vector2.ZERO, radius, core.darkened(0.08))
+	draw_circle(Vector2.ZERO, radius * 0.62, core.lightened(0.18))
+	draw_circle(Vector2.ZERO, radius * 0.28, Color("fff8ee"))
+	draw_arc(Vector2.ZERO, radius * 0.94, 0.0, TAU, 72, core.darkened(0.35), radius * 0.1, true)
 
 
 func _light_at(pos: Vector2) -> Vector2:
@@ -318,8 +354,13 @@ func _draw_gates(sim) -> void:
 			buoy = Color("c4a15a")
 		elif tone == "red":
 			buoy = Color("a85a4a")
+		var wash := buoy
+		wash.a = 0.08
+		draw_circle(pos, radius, wash)
 		draw_arc(pos, radius, 0.0, TAU, 48, buoy, 1.8, true)
+		draw_arc(pos, radius * 0.72, 0.0, TAU, 36, buoy.lightened(0.15), 1.0, true)
 		draw_arc(pos, radius * 0.55, 0.0, TAU, 32, Color("f0e2b0"), 1.2, true)
+		draw_circle(pos, 3.2, Color("fff6e0"))
 
 
 func _draw_homestead(sim) -> void:
