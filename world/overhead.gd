@@ -92,6 +92,8 @@ func _aim() -> void:
 		return
 	var zoom := maxf(Game.zoom, 0.12)
 	var chase: Vector2 = sector._chase_pos()
+	if FloatingOrigin:
+		chase = FloatingOrigin.render_of_world(chase)
 	var height := 920.0 / zoom
 	var far := 80000.0
 	var layer := int(Game.sim.layer)

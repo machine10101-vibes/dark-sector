@@ -531,9 +531,7 @@ func to_dict() -> Dictionary:
 		shots.append(row)
 	var wreck_rows: Array = []
 	for wreck in wrecks:
-		var row = wreck.duplicate(true)
-		row.pos = Serde.vec_out(wreck.pos)
-		wreck_rows.append(row)
+		wreck_rows.append(_wreck_out(wreck))
 	return {
 		"version": 1,
 		"galaxy_seed": seed_value,
@@ -570,6 +568,7 @@ func to_dict() -> Dictionary:
 		"local_origin": Serde.vec_out(local_origin),
 		"pos": Serde.vec_out(player.pos if int(layer) != ScaleFrame.SITE else site_pos),
 		"site_pos": Serde.vec_out(site_pos),
+		"focus_coord": _coord_dict(player.pos if int(layer) != ScaleFrame.SITE else site_pos, int(layer)),
 	}
 
 
@@ -644,6 +643,8 @@ func from_dict(data: Dictionary) -> void:
 		site_pos = Serde.vec_in(data.pos)
 	if not data.has("layer"):
 		_bind_band()
+	if data.has("focus_coord") and typeof(data.focus_coord) == TYPE_DICTIONARY and FloatingOrigin:
+		FloatingOrigin.load_focus(data.focus_coord)
 
 
 func _step(dt: float, cmd: Dictionary) -> void:
@@ -1607,9 +1608,7 @@ func net_snapshot() -> Dictionary:
 		craft_rows.append(_craft_out(item))
 	var wreck_rows: Array = []
 	for wreck in wrecks:
-		var row: Dictionary = wreck.duplicate(true)
-		row.pos = Serde.vec_out(wreck.pos)
-		wreck_rows.append(row)
+		wreck_rows.append(_wreck_out(wreck))
 	var crack: Dictionary = claim.get("crack", {})
 	return {
 		"system_id": str(defs.system.id),
@@ -1619,6 +1618,7 @@ func net_snapshot() -> Dictionary:
 		"site_id": site_id,
 		"local_origin": Serde.vec_out(local_origin),
 		"pos": Serde.vec_out(player.pos if int(layer) != ScaleFrame.SITE else site_pos),
+		"focus_coord": _coord_dict(player.pos if int(layer) != ScaleFrame.SITE else site_pos, int(layer)),
 		"time": time,
 		"captains": people,
 		"actors": actor_rows,
@@ -1707,6 +1707,8 @@ func apply_snapshot(data: Dictionary) -> void:
 		local_origin = Serde.vec_in(data.local_origin)
 	if int(layer) == ScaleFrame.SITE and data.has("pos"):
 		site_pos = Serde.vec_in(data.pos)
+	if data.has("focus_coord") and typeof(data.focus_coord) == TYPE_DICTIONARY and FloatingOrigin:
+		FloatingOrigin.load_focus(data.focus_coord)
 	if str(player.get("agent_id", "")) != str(data.get("heat_agent", "")):
 		heat[_pdo_id()] = float(player.get("heat_compact", 0.0))
 	elif data.has("heat"):
@@ -1913,6 +1915,7 @@ func _ship_out(ship: Dictionary) -> Dictionary:
 	row.vel = Serde.vec_out(ship.vel)
 	if ship.has("home"):
 		row.home = Serde.vec_out(ship.home)
+	row.coord = _coord_dict(ship.pos, int(layer))
 	return row
 
 
@@ -1941,10 +1944,35 @@ func _ship_in(row: Dictionary) -> Dictionary:
 	return ship
 
 
+func _wreck_out(wreck: Dictionary) -> Dictionary:
+	var row = wreck.duplicate(true)
+	row.pos = Serde.vec_out(wreck.pos)
+	row.coord = _coord_dict(wreck.pos, int(layer))
+	return row
+
+
+func _coord_dict(meters: Vector2, at_layer: int) -> Dictionary:
+	var coord := WorldCoord.new()
+	coord.system_id = str(defs.system.id)
+	var named := str(body_id)
+	coord.body_id = named
+	coord.layer = at_layer
+	if named == "" or named == "aegis_prime":
+		coord.origin_id = "aegis_orbital_band"
+	else:
+		coord.origin_id = "%s_band" % named
+	coord.meters = meters
+	return coord.to_dict()
+
+
 func _craft_out(item: Dictionary) -> Dictionary:
 	var row = item.duplicate(true)
 	row.pos = Serde.vec_out(item.pos)
 	row.vel = Serde.vec_out(item.vel)
+	var craft_layer := int(layer)
+	if item.has("layer"):
+		craft_layer = int(item.layer)
+	row.coord = _coord_dict(item.pos, craft_layer)
 	return row
 
 
