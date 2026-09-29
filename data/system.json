@@ -23,16 +23,16 @@
       "junk": false,
       "colors": ["#b7c4c0", "#8aa4a0", "#e7f2ef"],
       "legal": "pdo_capital",
-      "protected": true,
-      "resource": { "id": "aegis_quiet", "name": "nothing the drone can cut", "amount": 0 },
+      "protected": false,
+      "resource": { "id": "ring_ice", "name": "Ring ice", "amount": 4 },
       "layers": {
         "orbit": "Inspection lane. Traffic is counted. You are already on a slate.",
         "atmosphere": "City air inside the orbital. The keel stays outside.",
         "surface": "Dock rings and lamp rows. Not a landing for this hull.",
-        "crust": "Closed. The Guard does not sell seams here.",
+        "crust": "The city crust is closed. Ring ice sits in the band a drone can cut.",
         "biosign": "People, livestock in bond, nothing wild the probe should chase.",
         "ruins": "The first dock spine, still in use.",
-        "legal": "Helion Compact Guard. City-orbital. Not a claim."
+        "legal": "Helion Compact Guard. City-orbital. Not a claim. Ring ice is a surveyed cut, not a homestead."
       }
     }
   ],

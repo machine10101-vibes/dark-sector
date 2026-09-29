@@ -97,6 +97,8 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 	for point in hull:
 		pts.append(xf * (point * scale))
 	ci.draw_colored_polygon(pts, worn)
+	if class_id == "vesper":
+		_paint_needle(ci, xf, scale, worn, accent, shapes, thrusting)
 	var outline := pts.duplicate()
 	outline.append(pts[0])
 	ci.draw_polyline(outline, accent.darkened(0.15), 1.4, true)
@@ -109,6 +111,8 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 	for circle in geom.circles:
 		var center := xf * (Vector2(float(circle.x), float(circle.y)) * scale)
 		ci.draw_circle(center, float(circle.r) * scale, accent)
+	if class_id == "vesper" and shapes.has("mast"):
+		ci.draw_circle(xf * (Vector2(46, 0) * scale), 1.25 * scale, worn.darkened(0.2))
 	if hp_ratio < 0.72:
 		var scar_a := xf * (Vector2(-10, -7) * scale)
 		var scar_b := xf * (Vector2(14, 8) * scale)
@@ -121,3 +125,56 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 			xf * (Vector2(tail + 2.0, -4.0) * scale),
 		])
 		ci.draw_colored_polygon(flame, Color("e7b15a"))
+
+
+static func _paint_needle(ci: CanvasItem, xf: Transform2D, scale: float, plate: Color, accent: Color, shapes: Array, thrusting: bool) -> void:
+	# Material gate on the existing Needle planform. Same teal plate and bone trim.
+	# Seams, canopy, collar, and nozzle sit inside the hull. They do not change extent.
+	var seam := plate.darkened(0.42)
+	var weight := maxf(1.0, 0.55 * scale)
+	ci.draw_line(xf * (Vector2(36, 0) * scale), xf * (Vector2(-32, 0) * scale), seam, weight, true)
+	for station in [24.0, 2.0, -16.0]:
+		var half := 1.35
+		ci.draw_line(
+			xf * (Vector2(station, half) * scale),
+			xf * (Vector2(station, -half) * scale),
+			seam,
+			maxf(1.0, weight * 0.8),
+			true
+		)
+	var nose := PackedVector2Array([
+		xf * (Vector2(52, 0) * scale),
+		xf * (Vector2(40, 1.15) * scale),
+		xf * (Vector2(40, -1.15) * scale),
+	])
+	ci.draw_colored_polygon(nose, accent)
+	var glass := Color("143e42")
+	var canopy := PackedVector2Array([
+		xf * (Vector2(34, 0) * scale),
+		xf * (Vector2(22, 2.6) * scale),
+		xf * (Vector2(14, 0) * scale),
+		xf * (Vector2(22, -2.6) * scale),
+	])
+	ci.draw_colored_polygon(canopy, glass)
+	var collar := PackedVector2Array([
+		xf * (Vector2(-32, 1.35) * scale),
+		xf * (Vector2(-40, 1.05) * scale),
+		xf * (Vector2(-40, -1.05) * scale),
+		xf * (Vector2(-32, -1.35) * scale),
+	])
+	ci.draw_colored_polygon(collar, accent)
+	var throat := PackedVector2Array([
+		xf * (Vector2(-35.5, 0.55) * scale),
+		xf * (Vector2(-40, 0.42) * scale),
+		xf * (Vector2(-40, -0.42) * scale),
+		xf * (Vector2(-35.5, -0.55) * scale),
+	])
+	ci.draw_colored_polygon(throat, plate.darkened(0.82))
+	if thrusting:
+		var ember := PackedVector2Array([
+			xf * (Vector2(-36.2, 0.28) * scale),
+			xf * (Vector2(-39.6, 0.18) * scale),
+			xf * (Vector2(-39.6, -0.18) * scale),
+			xf * (Vector2(-36.2, -0.28) * scale),
+		])
+		ci.draw_colored_polygon(ember, Color("e7b15a"))
