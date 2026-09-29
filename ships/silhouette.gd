@@ -178,6 +178,7 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 		ci.draw_colored_polygon(haze, Color(0.91, 0.55, 0.22, 0.45))
 		ci.draw_colored_polygon(flame, Color("e7b15a"))
 		ci.draw_colored_polygon(core, Color("fff1d2"))
+		ci.draw_circle(xf * (Vector2(tail - 7.0, 0.0) * scale), 3.4 * scale, Color(1.0, 0.62, 0.28, 0.28))
 
 
 static func _unit(v: Vector2) -> Vector2:
@@ -267,6 +268,13 @@ static func _paint_needle(ci: CanvasItem, xf: Transform2D, scale: float, plate: 
 		xf * (Vector2(22, -2.6) * scale),
 	])
 	ci.draw_colored_polygon(canopy, glass)
+	ci.draw_line(
+		xf * (Vector2(30, -1.1) * scale),
+		xf * (Vector2(18, 0.55) * scale),
+		Color(0.78, 0.93, 0.9, 0.72),
+		maxf(1.0, 0.55 * scale),
+		true
+	)
 	var collar := PackedVector2Array([
 		xf * (Vector2(-32, 1.35) * scale),
 		xf * (Vector2(-40, 1.05) * scale),
@@ -311,6 +319,10 @@ static func _paint_barn(ci: CanvasItem, xf: Transform2D, scale: float, plate: Co
 		xf * (Vector2(16, -3.2) * scale),
 	])
 	ci.draw_colored_polygon(bridge, Color("1c2420"))
+	ci.draw_line(xf * (Vector2(14.5, -1.5) * scale), xf * (Vector2(9.5, 1.1) * scale), Color(0.72, 0.84, 0.76, 0.6), 1.0, true)
+	for stud in [2.0, -6.0, -16.0]:
+		ci.draw_circle(xf * (Vector2(stud, 7.2) * scale), 0.6 * scale, seam)
+		ci.draw_circle(xf * (Vector2(stud, -7.2) * scale), 0.6 * scale, seam)
 	ci.draw_circle(xf * (Vector2(18, 0) * scale), 1.4 * scale, accent.lightened(0.25))
 
 
@@ -324,6 +336,7 @@ static func _paint_beak(ci: CanvasItem, xf: Transform2D, scale: float, plate: Co
 		xf * (Vector2(12, -3.4) * scale),
 	])
 	ci.draw_colored_polygon(canopy, Color("1a2428"))
+	ci.draw_line(xf * (Vector2(18, -1.5) * scale), xf * (Vector2(8, 0.7) * scale), Color(0.78, 0.88, 0.92, 0.62), 1.0, true)
 	for y in [9.0, -9.0]:
 		ci.draw_line(xf * (Vector2(6, y) * scale), xf * (Vector2(-18, y * 0.7) * scale), accent.darkened(0.15), 1.1, true)
 	ci.draw_circle(xf * (Vector2(34, 0) * scale), 1.2 * scale, accent)
@@ -331,4 +344,6 @@ static func _paint_beak(ci: CanvasItem, xf: Transform2D, scale: float, plate: Co
 
 static func _paint_small(ci: CanvasItem, xf: Transform2D, scale: float, plate: Color, accent: Color) -> void:
 	ci.draw_line(xf * (Vector2(10, 0) * scale), xf * (Vector2(-8, 0) * scale), plate.darkened(0.45), 1.0, true)
+	ci.draw_line(xf * (Vector2(8, 1.7) * scale), xf * (Vector2(-5, 1.7) * scale), plate.darkened(0.28), 1.0, true)
 	ci.draw_circle(xf * (Vector2(6, 0) * scale), 1.3 * scale, accent.darkened(0.1))
+	ci.draw_circle(xf * (Vector2(2.2, -0.4) * scale), 0.55 * scale, Color(0.85, 0.92, 0.88, 0.5))

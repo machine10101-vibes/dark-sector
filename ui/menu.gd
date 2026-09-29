@@ -192,6 +192,8 @@ class Backdrop extends Control:
 		draw_rect(Rect2(Vector2.ZERO, size), Color("07080c"), true)
 		draw_circle(size * 0.32, size.x * 0.28, Color(0.12, 0.16, 0.22, 0.45))
 		draw_circle(size * 0.7, size.x * 0.22, Color(0.18, 0.12, 0.08, 0.28))
+		draw_circle(size * 0.5, size.x * 0.12, Color(0.14, 0.1, 0.08, 0.2))
+		draw_line(size * Vector2(0.02, 0.46), size * Vector2(0.7, 0.3), Color(0.02, 0.025, 0.03, 0.55), 14.0)
 		for star in stars:
 			var temp: float = float(star.y)
 			var tint := Color(0.75, 0.82, 0.95, 0.35) if temp < 0.35 else Color(0.95, 0.88, 0.72, 0.28 + temp * 0.4)

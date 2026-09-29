@@ -137,9 +137,13 @@ func _draw() -> void:
 			col = Color("c9d7c4")
 		var bloom := col
 		bloom.a = 0.28
-		draw_circle(shot.pos, 4.0, bloom)
+		var haze := col
+		haze.a = 0.1
+		draw_circle(shot.pos, 11.0, haze)
+		draw_circle(shot.pos, 4.2, bloom)
 		draw_line(tail, shot.pos, Color(col.r, col.g, col.b, 0.45), 3.4, true)
 		draw_line(tail, shot.pos, col.lightened(0.35), 1.3, true)
+		draw_circle(shot.pos, 1.5, Color("fff6e4"))
 	var parked := 0
 	for item in sim.craft:
 		if str(item.state) == "docked":
@@ -290,6 +294,9 @@ func _draw_trash(sim) -> void:
 		var rust := world.duplicate()
 		rust.append(rust[0])
 		draw_polyline(rust, Color("6a4034"), 1.3, true)
+		var pit := Silhouette._centroid(world)
+		draw_circle(pit - lit * (1.8 * scale), 1.5 * scale, Color("241c16"))
+		draw_circle(pit + lit * (2.2 * scale), 0.8 * scale, Color(0.85, 0.78, 0.64, 0.45))
 		Silhouette._rim(self, world, lit, Color("d7cbb4"), 1.0)
 
 
@@ -430,6 +437,8 @@ func _draw_homestead(sim) -> void:
 	draw_circle(origin, 22.0, dome_col.darkened(0.28))
 	draw_circle(origin + dome_lit * 6.0, 14.0, dome_col.lightened(0.12))
 	draw_circle(origin + dome_lit * 9.0, 4.0, Color(1, 1, 1, 0.28))
+	var glass_a := dome_lit.angle()
+	draw_arc(origin + dome_lit * 3.0, 8.0, glass_a - 0.7, glass_a + 0.7, 8, Color(1, 1, 1, 0.4), 1.3, true)
 	draw_arc(origin, 22.0, 0.0, TAU, 24, Color("243020"), 1.4, true)
 	if not ruptured and not frozen:
 		for i in 5:
@@ -440,12 +449,16 @@ func _draw_homestead(sim) -> void:
 	draw_rect(Rect2(plot - Vector2(14, 8), Vector2(28, 16)), Color("6f8a48"))
 	draw_line(plot + Vector2(-12, -3), plot + Vector2(12, -3), Color("4a5c30"), 1.2, true)
 	draw_line(plot + Vector2(-12, 3), plot + Vector2(12, 3), Color("4a5c30"), 1.2, true)
+	for speck in 4:
+		draw_circle(plot + Vector2(-8.0 + float(speck) * 5.0, 0.5), 0.9, Color("2e3c1c"))
 	var pen := origin + Vector2(-62, 36)
 	draw_rect(Rect2(pen - Vector2(14, 12), Vector2(28, 24)), Color("5c4630"))
 	draw_rect(Rect2(pen - Vector2(12, 10), Vector2(24, 20)), Color("8a7048"))
+	draw_line(pen + Vector2(-12, -5), pen + Vector2(12, -5), Color("3a2a1c"), 1.5, true)
 	var crate := origin + Vector2(18, -64)
 	draw_rect(Rect2(crate - Vector2(9, 9), Vector2(18, 18)), Color("7a6a56"))
 	draw_rect(Rect2(crate - Vector2(7, 8), Vector2(14, 14)), Color("c4b49a"))
+	draw_line(crate + Vector2(-7, 0), crate + Vector2(7, 0), Color("6a5340"), 1.3, true)
 	var beacon := origin + Vector2(0, 108)
 	draw_circle(beacon, 5.0, Color("e7b15a") if not frozen else Color("5a5348"))
 	if bool(sim.claim.get("flare", false)):
@@ -481,7 +494,9 @@ func _draw_mark(sim) -> void:
 func _draw_beacon(sim) -> void:
 	var pos: Vector2 = sim.beacon_pos
 	draw_arc(pos, 36.0, 0.0, TAU, 28, Color("8aa896"), 1.6, true)
+	draw_circle(pos, 9.0, Color(0.45, 0.58, 0.48, 0.12))
 	draw_circle(pos, 6.5, Color(0.55, 0.7, 0.55, 0.25))
+	draw_arc(pos, 5.4, 0.0, TAU, 16, Color("8a7a62"), 1.3, true)
 	draw_circle(pos, 4.0, Color("d7e6c8"))
 	draw_circle(pos + Vector2(-1.2, -1.2), 1.4, Color("fff8e8"))
 	draw_line(pos + Vector2(-14, 0), pos + Vector2(14, 0), Color("cbb892"), 1.2, true)
@@ -544,6 +559,8 @@ func _draw_craft(sim, item: Dictionary) -> void:
 	draw_colored_polygon(Silhouette._inset_world(hull_pts, 1.2, lit * 0.8), col.darkened(0.1))
 	draw_colored_polygon(Silhouette._inset_world(hull_pts, 2.4, lit * 1.8), col.lightened(0.16))
 	Silhouette._rim(self, hull_pts, lit, col.lightened(0.35), 1.0)
+	draw_circle(pos + dir * 3.2, 1.35, Color(0.12, 0.16, 0.18))
+	draw_circle(pos + dir * 3.5 + lit * 0.5, 0.45, Color(1, 1, 1, 0.45))
 	if str(item.state) == "lost":
 		draw_line(pos + Vector2(-6, -6), pos + Vector2(6, 6), Color("c4512c"), 1.4, true)
 	if str(item.def_id) == "survey_probe" and str(item.state) == "working":
@@ -567,6 +584,8 @@ func _draw_wreck(wreck: Dictionary) -> void:
 	draw_colored_polygon(Silhouette._inset_world(pts, 2.8, lit * 2.0), col.lightened(0.1))
 	draw_line(pos + Vector2(-8, -6), pos + Vector2(8, 6), Color("1a0c0a"), 1.4, true)
 	draw_line(pos + Vector2(-2, 6), pos + Vector2(6, -4), Color("2a1814"), 1.0, true)
+	draw_line(pos + Vector2(-5, 1), pos + Vector2(3, -2), Color("8a3a22"), 1.7, true)
+	draw_circle(pos + Vector2(-2, 1), 2.1, Color(0.32, 0.1, 0.05, 0.7))
 	draw_circle(pos + lit * 3.0, 1.5, Color(0.85, 0.7, 0.5, 0.35))
 
 
