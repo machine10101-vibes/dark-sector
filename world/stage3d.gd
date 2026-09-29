@@ -36,6 +36,7 @@ void fragment() {
 var _bodies: Dictionary = {}
 var _ships: Dictionary = {}
 var _craft: Dictionary = {}
+var _props: Dictionary = {}
 var _mesh_cache: Dictionary = {}
 var tags: Array = []
 var _star_mesh: MeshInstance3D
@@ -69,14 +70,274 @@ func _process(_delta: float) -> void:
 	_sync_ships(Game.sim)
 	_sync_craft(Game.sim)
 	_sync_sky(Game.sim)
+	_sync_props(Game.sim)
 	_aim_sun(Game.sim)
 	_hide_stale(_bodies)
 	_hide_stale(_ships)
 	_hide_stale(_craft)
+	_hide_stale(_props)
 
 
 func chart(p: Vector2, height: float = 0.0) -> Vector3:
 	return Vector3(p.x, height, -p.y)
+
+
+func _sync_props(sim) -> void:
+	var index := 0
+	for rock in sim.asteroids:
+		var row: Dictionary = rock
+		var chunk := _prop("rock%d" % index)
+		index += 1
+		if str(chunk.get_meta("built", "")) != "yes":
+			var verts: PackedVector2Array = row.verts
+			var center := Vector2.ZERO
+			for point in verts:
+				center += point
+			if verts.size() > 0:
+				center /= float(verts.size())
+			var local := PackedVector2Array()
+			for point in verts:
+				local.append(point - center)
+			var span := float(row.get("size", 12.0))
+			chunk.mesh = _prism(local, maxf(8.0, span * 0.62))
+			chunk.transform = _flat_xform(center, float(absi(hash(str(index))) % 7) * 0.2, 0.0)
+			var stone := _metal(Color(str(row.get("tint", "#6a6258"))))
+			stone.metallic = 0.05
+			stone.roughness = 0.94
+			chunk.material_override = stone
+			chunk.set_meta("built", "yes")
+		chunk.visible = chunk.mesh != null
+	index = 0
+	for hull in sim.trash:
+		var row: Dictionary = hull
+		var scrap := _prop("trash%d" % index)
+		index += 1
+		if str(scrap.get_meta("built", "")) != "yes":
+			var scale := float(row.get("scale", 1.0))
+			var poly := _trash_poly(int(row.get("kind", 0)), scale)
+			scrap.mesh = _prism(poly, maxf(4.0, 5.5 * scale))
+			var rust := _metal(Color("6a5344"))
+			rust.metallic = 0.35
+			rust.roughness = 0.72
+			scrap.material_override = rust
+			scrap.set_meta("built", "yes")
+		scrap.transform = _flat_xform(row.pos, float(row.rot), 1.0)
+	index = 0
+	for gate in sim.gates:
+		var row: Dictionary = gate
+		var hoop := _prop("gate%d" % index)
+		index += 1
+		var radius := float(row.get("radius", 80.0))
+		if str(hoop.get_meta("built", "")) != "yes":
+			var torus := TorusMesh.new()
+			torus.inner_radius = maxf(radius - 7.0, 6.0)
+			torus.outer_radius = radius + 7.0
+			torus.rings = 28
+			torus.ring_segments = 10
+			hoop.mesh = torus
+			var tone := Color("7d9a86")
+			if str(row.get("color", "")) == "amber":
+				tone = Color("c4a15a")
+			elif str(row.get("color", "")) == "red":
+				tone = Color("a85a4a")
+			var mat := _metal(tone)
+			mat.emission_enabled = true
+			mat.emission = tone
+			mat.emission_energy_multiplier = 0.35
+			hoop.material_override = mat
+			hoop.set_meta("built", "yes")
+		hoop.position = chart(row.pos, 0.0)
+		_tag(str(row.get("name", "")), chart(row.pos, radius * 0.15 + 20.0), Color("e6d7a8"), 13)
+	var mast := _prop("beacon")
+	if str(mast.get_meta("built", "")) != "yes":
+		var pole := CylinderMesh.new()
+		pole.top_radius = 2.2
+		pole.bottom_radius = 3.4
+		pole.height = 36.0
+		mast.mesh = pole
+		mast.material_override = _metal(Color("8a7a62"))
+		mast.set_meta("built", "yes")
+	mast.position = chart(sim.beacon_pos, 18.0)
+	var lamp := _prop("beacon_lamp")
+	if str(lamp.get_meta("built", "")) != "yes":
+		var bulb := SphereMesh.new()
+		bulb.radius = 5.5
+		bulb.height = 11.0
+		lamp.mesh = bulb
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.albedo_color = Color("e7f2ea")
+		glow.emission_enabled = true
+		glow.emission = Color("d7e6c8")
+		glow.emission_energy_multiplier = 1.6
+		lamp.material_override = glow
+		lamp.set_meta("built", "yes")
+	lamp.position = chart(sim.beacon_pos, 40.0)
+	_tag("Dock beacon", chart(sim.beacon_pos, 52.0), Color("8aa896"), 13)
+	_sync_pocket(sim)
+	_sync_nebula()
+	_sync_shots(sim)
+	_sync_wrecks(sim)
+	_sync_meteors(sim)
+	_sync_claim(sim)
+
+
+func _sync_pocket(sim) -> void:
+	var hoop := _prop("pocket")
+	var radius := float(sim.defs.system.pocket.radius)
+	if str(hoop.get_meta("built", "")) != str(radius):
+		var torus := TorusMesh.new()
+		torus.inner_radius = maxf(radius - 4.0, 8.0)
+		torus.outer_radius = radius + 4.0
+		torus.rings = 36
+		torus.ring_segments = 8
+		hoop.mesh = torus
+		var mat := _metal(Color("9aaf8c"))
+		mat.emission_enabled = true
+		mat.emission = Color("9aaf8c")
+		mat.emission_energy_multiplier = 0.2
+		hoop.material_override = mat
+		hoop.set_meta("built", str(radius))
+	hoop.position = chart(sim.pocket_pos, 2.0)
+	_tag(str(sim.defs.system.pocket.name), chart(sim.pocket_pos, 18.0), Color("c5d2b4"), 14)
+
+
+func _sync_nebula() -> void:
+	var banks: Array[Vector3] = [
+		Vector3(-4600.0, 360.0, 2400.0),
+		Vector3(5600.0, 280.0, -2200.0),
+		Vector3(-2200.0, 420.0, -5200.0),
+		Vector3(3800.0, 240.0, 4800.0),
+	]
+	var radii: Array[float] = [520.0, 460.0, 400.0, 340.0]
+	var tints: Array[Color] = [Color(0.35, 0.48, 0.62, 0.08), Color(0.55, 0.32, 0.18, 0.07), Color(0.22, 0.4, 0.38, 0.06), Color(0.5, 0.4, 0.22, 0.05)]
+	for i in banks.size():
+		var cloud := _prop("nebula%d" % i)
+		if str(cloud.get_meta("built", "")) != "yes":
+			var ball := SphereMesh.new()
+			ball.radius = radii[i]
+			ball.height = radii[i] * 2.0
+			ball.radial_segments = 24
+			ball.rings = 12
+			cloud.mesh = ball
+			var mat := StandardMaterial3D.new()
+			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+			mat.albedo_color = tints[i]
+			cloud.material_override = mat
+			cloud.set_meta("built", "yes")
+		cloud.position = banks[i]
+
+
+func _sync_shots(sim) -> void:
+	var index := 0
+	for shot in sim.projectiles:
+		var row: Dictionary = shot
+		var bolt := _prop("shot%d" % index)
+		index += 1
+		if bolt.mesh == null:
+			var ball := SphereMesh.new()
+			ball.radius = 2.4
+			ball.height = 4.8
+			ball.radial_segments = 10
+			ball.rings = 6
+			bolt.mesh = ball
+			var mat := StandardMaterial3D.new()
+			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mat.albedo_color = Color("fff1d2")
+			mat.emission_enabled = true
+			mat.emission = Color("e7b15a")
+			mat.emission_energy_multiplier = 2.0
+			bolt.material_override = mat
+		bolt.position = chart(row.pos, 8.0)
+
+
+func _sync_wrecks(sim) -> void:
+	var index := 0
+	for wreck in sim.wrecks:
+		var row: Dictionary = wreck
+		var hulk := _prop("wreck%d" % index)
+		index += 1
+		if str(hulk.get_meta("built", "")) != "yes":
+			var poly := PackedVector2Array([Vector2(12, 2), Vector2(-6, 9), Vector2(-14, -2), Vector2(3, -8)])
+			hulk.mesh = _prism(poly, 7.0)
+			var mat := _metal(Color("5a4038"))
+			mat.roughness = 0.8
+			hulk.material_override = mat
+			hulk.set_meta("built", "yes")
+		hulk.transform = _flat_xform(row.pos, 0.4, 1.0)
+		_tag(str(row.get("name", "wreck")), chart(row.pos, 16.0), Color("a08070"), 12)
+
+
+func _sync_meteors(sim) -> void:
+	var index := 0
+	for rock in sim.meteors:
+		var row: Dictionary = rock
+		var node := _prop("meteor%d" % index)
+		index += 1
+		if node.mesh == null:
+			var ball := SphereMesh.new()
+			ball.radius = float(row.get("size", 4.0)) * 2.2
+			ball.height = ball.radius * 2.0
+			node.mesh = ball
+			var mat := _metal(Color("8a3c22"))
+			mat.emission_enabled = true
+			mat.emission = Color("e7b15a")
+			mat.emission_energy_multiplier = 0.45
+			node.material_override = mat
+		node.position = chart(row.pos, float(row.get("size", 4.0)))
+
+
+func _sync_claim(sim) -> void:
+	var show := bool(sim.claim.get("owned", false)) and str(sim.claim.get("system_id", "")) == str(sim.defs.system.id)
+	var dome := _prop("claim")
+	if not show:
+		dome.visible = false
+		_used.erase("prop:claim")
+		return
+	var origin := Vector2(float(sim.claim.get("x", 0.0)), float(sim.claim.get("y", 0.0)))
+	if dome.mesh == null:
+		var ball := SphereMesh.new()
+		ball.radius = 22.0
+		ball.height = 28.0
+		dome.mesh = ball
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.72, 0.84, 0.7, 0.72)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.roughness = 0.12
+		mat.emission_enabled = true
+		mat.emission = Color("d7e6c8")
+		mat.emission_energy_multiplier = 0.2
+		dome.material_override = mat
+	dome.position = chart(origin, 10.0)
+	dome.visible = true
+
+
+func _prop(key: String) -> MeshInstance3D:
+	_used["prop:" + key] = true
+	if _props.has(key):
+		var existing: MeshInstance3D = _props[key]
+		existing.visible = true
+		return existing
+	var node := MeshInstance3D.new()
+	node.name = key
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(node)
+	_props[key] = node
+	return node
+
+
+func _trash_poly(kind: int, scale: float) -> PackedVector2Array:
+	var src := PackedVector2Array([Vector2(18, 0), Vector2(-10, 4), Vector2(-14, 0), Vector2(-10, -4)])
+	if kind == 1:
+		src = PackedVector2Array([Vector2(12, 0), Vector2(8, 9), Vector2(-12, 8), Vector2(-14, -7), Vector2(6, -9)])
+	elif kind >= 2:
+		src = PackedVector2Array([Vector2(8, 6), Vector2(-16, 3), Vector2(-6, -2), Vector2(10, -7)])
+	var out := PackedVector2Array()
+	for point in src:
+		out.append(point * scale)
+	return out
 
 
 func _aim_sun(sim) -> void:
@@ -361,13 +622,10 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	holder.add_child(glass)
 	var bell := MeshInstance3D.new()
 	bell.name = "TrimBell"
-	var nozzle := CylinderMesh.new()
-	nozzle.top_radius = 1.1
-	nozzle.bottom_radius = 2.2
-	nozzle.height = 4.5
+	var nozzle := BoxMesh.new()
+	nozzle.size = Vector3(5.5, 3.2, 3.2)
 	bell.mesh = nozzle
-	bell.rotation_degrees = Vector3(0.0, 0.0, 90.0)
-	bell.position = Vector3(tail - 1.5, height * 0.42, 0.0)
+	bell.position = Vector3(tail - 2.4, height * 0.42, 0.0)
 	var hot := _metal(Color("2a2420"))
 	hot.emission_enabled = true
 	hot.emission = Color("e7b15a")
@@ -381,7 +639,7 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	plume.bottom_radius = 2.6
 	plume.height = maxf(18.0, height * 1.3)
 	flame.mesh = plume
-	flame.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+	flame.basis = Basis(Vector3(0.0, 0.0, 1.0), Vector3(-1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0))
 	flame.position = Vector3(tail - plume.height * 0.55, height * 0.42, 0.0)
 	var burn := StandardMaterial3D.new()
 	burn.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -573,6 +831,8 @@ func _hide_stale(pool: Dictionary) -> void:
 			kind = "ship"
 		elif pool == _craft:
 			kind = "craft"
+		elif pool == _props:
+			kind = "prop"
 		if _used.has(kind + ":" + str(key)) == false:
 			(pool[key] as Node3D).visible = false
 
