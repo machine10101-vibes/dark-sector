@@ -6,6 +6,7 @@ var sector: Node2D
 var hud: CanvasLayer
 var desk: CanvasLayer
 var tones: Node
+var origin_hud: CanvasLayer
 
 
 func _ready() -> void:
@@ -95,6 +96,11 @@ func _enter_sector() -> void:
 		hud.reset_overlays()
 	if sector != null and sector.has_method("snap"):
 		sector.snap()
+	if origin_hud == null:
+		origin_hud = preload("res://ui/OriginDebugHUD.gd").new()
+		origin_hud.name = "OriginDebug"
+		add_child(origin_hud)
+	origin_hud.show()
 
 
 func _on_quit() -> void:
@@ -110,5 +116,7 @@ func show_menu() -> void:
 		helm.set_live(false)
 	if hud != null:
 		hud.hide()
+	if origin_hud != null:
+		origin_hud.hide()
 	menu.show_root()
 	menu.show()

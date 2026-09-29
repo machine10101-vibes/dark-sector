@@ -11,6 +11,9 @@ func _ready() -> void:
 	cam = Camera2D.new()
 	cam.enabled = true
 	add_child(cam)
+	var bridge := preload("res://world/origin_bridge.gd").new()
+	bridge.name = "OriginBridge"
+	add_child(bridge)
 	snap()
 
 
@@ -22,6 +25,9 @@ func snap() -> void:
 		cam.position = _chase_pos()
 		cam.rotation = _chase_rot()
 		snapped = true
+	var bridge := get_node_or_null("OriginBridge")
+	if bridge != null and bridge.has_method("bind_sector"):
+		bridge.bind_sector()
 
 
 func _frame_dock() -> void:

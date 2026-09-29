@@ -441,7 +441,11 @@ func _process(delta: float) -> void:
 
 
 func chart(p: Vector2, height: float = 0.0) -> Vector3:
-	return Vector3(p.x, height, -p.y)
+	var render: Vector2 = p
+	var gate: Variant = WorldCoord.gate()
+	if gate != null:
+		render = gate.render_of_world(p)
+	return Vector3(render.x, height, -render.y)
 
 
 func _sync_props(sim) -> void:
