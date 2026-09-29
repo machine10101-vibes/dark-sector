@@ -1,0 +1,8 @@
+{
+  "id": "choir_ash_window",
+  "title": "Choir ash window",
+  "summary": "A stream is dropping ash. Bring salvage parts out before the window closes.",
+  "uses": "streams",
+  "success_mutations": ["rumor_choir_ash", "glass_standing_up"],
+  "failure_mutations": ["rumor_choir_ash_fail"]
+}

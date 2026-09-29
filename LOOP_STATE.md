@@ -1,61 +1,49 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: 9 Tools + atlas fill
+Slice just completed: Live-Ops 1
 Player-visible what works now:
-- Slice 1 helm still holds. New game picks Vesper Needle, Anvil Barn, or Kestrel Beak. Thrust coasts. Zoom runs from hull to system. The gun fires in the same view you fly.
-- Helion Dock (HC-V1-R1-S1) still has Helion, Aegis Prime, the ice ring, Seized Hold, the Helion Compact patrol, Hauler Holt, and The Unlet. The Unlet stays marked and closed. Green grace still arms here.
-- Slice 2 craft still holds. Probes orbit, scan, and return. Drones bring raw mass home. A lost craft stays lost until rebuild spends returned mass. The fighter stays in the rack.
-- The Salvage Tender launches when a wreck or a seized field is in reach, including the Swallow in Gyre. Away from a field it stays parked. The Livestock Lighter moves a hold-kine between the pen and the keel. Anvil can launch one bare. Any other hull wants the lighter dock.
-- Slice 3 modules still hold. Overload is still allowed. A keel stretch, extra hold, heavy turret, and missile rack make the reactor and the yaw complain. Two fits on the same starter no longer share an outline.
-- Drop a module JSON in modules/ and the yard can bolt it. Keel Cage lengthens any starter. F3 opens the data desk: reload, spawn a system by id, grant a module, crop, animal, or quest flag, and print why_visit with the rule color.
-- Slice 4 war still holds. Shots travel in the sector. Hull HP, module HP, and hangar HP still matter. Heat still hails, fines, and brings guns. Heat and standing survive a lane.
-- Slice 5 claim still holds. The Homestead Road still reaches First Soil. Quiet Hollow takes a Claim Core. Helion Dock and Aegis Prime refuse one. Glasswheat can ripen or fail. A hold-kine can live or starve. A raid can freeze the claim. The keel is not deleted.
-- Voidbean, ember kale, and ghost gourd can be sown on a living claim. Silkreed is data: motion kills it. Ember kale dies without heat or in the wet. Ghost gourd dies if the keeper leaves. Ash hens need grit. Rock crabs drink the plot. Ribbon goats are data: hunger or an open dome kills them.
-- Slice 6 quests still hold. Shakedown runs on any starter. Contracts still send you to Ledger, Towline, Gyre, and Brass Lantern. Aegis Prime inspection, Tallyrock fine print, Green Wound blight, and the Swallow recovery each move a price, a fee, or a rumor.
-- Authored quests and the meteor-window template load from JSON. The jurisdiction hole run is Dock, Not Ours, Empty Tithe. Spindle, Ash Hymn, Step, Quay, and the Swallow change standing, heat, prices, patrols, claim law, or rumors. They do not grant XP.
-- Slice 7 online still holds. Two captains can still contest Quiet Hollow. The loser is locked out. The keel is not the prize. Green, amber, and red still come from the system files. A bad JSON file is logged and skipped. It does not take down the host.
-- Slice 8 spine still holds: Brass Lantern, Writ, White Wake, Ledger, Quiet Sun, Lease, Towline, Ore Choir, Two Weathers, Broken Charter, Perimeter, and Gyre. Helion Dock and First Soil remain.
-- Municipal Skies, Glass Quarantine, the rest of the Drift, the Rimward Marches, and Black Sail Grounds are on the board as data. Each has a star, bodies, a belt or ring, junk or a stream, a legal color, a why_visit, scan layers, and one living use.
-- The red road runs Perimeter, Marchport, Black Quay. Black Quay is a red port. Choir Gate is a checkpoint: living cargo is taken unless the hold has Glass standing.
-- Claims sit only on filed slots: First Soil, Two Weathers, Broken Charter, Perimeter, and Claimwake. Not Ours does not take a core.
-- The listen board loads the new systems from the same data. Save and load keep discoveries, claims, flags, and market prices.
+- The spine still flies: Helion Dock, Brass Lantern, Lease, First Soil, Perimeter, Marchport, Black Quay. Each of those has a star and a body. The red road is not an empty chart.
+- A lane refuses while a craft is still out. If the lane is taken anyway, that craft is lost where it was. It does not appear on the new buoy.
+- Green capitals refuse a Claim Core. Helion Dock still refuses one by name. Quiet Hollow still takes one. A core crack still needs the full timer. Green grace still keeps a new Helion keel at one hull point. A criminal flag still reads on scan.
+- An overloaded Anvil yaws and accelerates like a barn. A naked Vesper that stays in a Red Keel pack and shoots breaks. A Kestrel wins a two-skiff fight. A claim with no fodder and no crate food loses the hold-kine. Starter fodder keeps it through the same window. Patrol heat at hail range brings a cutter in, and guns follow once the heat is hot.
+- Salvage, a dock fee, and a grain price each leave a world flag.
+- Drop JSON still loads with no script edit. This drop: Cheek Fin, Belly Spine, Lamp Jaw. Cinder millet. Lamp moth. Choir ash window and Unpaid tow. Glass coda on Choir Gate. Stolen coda for Black Sail. False Rain on Nameless Chart. Missed Windows on Clockstream.
+- Host the dock and Dedicated host are the same listen sim. Headless: godot --headless --path . --script res://scripts/headless_host.gd. The world log is user://dark_sector_host.json. A host restart keeps the claim, crop, animal, layout, lost craft, cargo, heat, warrant, quest flag, and discovery. A second client can join that host.
 What is next (ordered):
-1. Live-ops only — more modules, quests, balance, dedicated server, art-gate climb. First game is complete. Do not invent Veil 2 until HC-V1 stays full under real players.
+1. Live-Ops 2 — player count per system, insurance/wreck tuning, more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
-- Nothing in this repo blocks live-ops. Do not start a new region or a new rules pass.
+- Nothing in this repo blocks Live-Ops 2. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):
 - Planets stay on fixed positions until a later pass adds orbits.
-- The Unlet stays unplantable. Helion Dock and Aegis Prime refuse a Claim Core.
+- The Unlet stays unplantable. Helion Dock and green capitals refuse a Claim Core.
 - Helion Compact is the dock patrol. Vellum Compact is a different faction and was not renamed.
 - The farm cassette carries a hold-kine. It does not grow a crop. Crops grow on a claim plot.
 - A pocket takes a core only when claim_slots.json names it. The red box on First Soil keeps the Perimeter atlas id.
 Files touched:
 - claims/homestead.gd
-- craft/marker_buoy.json
-- factions/black_sail.json
-- factions/glass_choir.json
-- factions/municipal_navy.json
-- life/animals/ribbon_goats.json
-- life/crops/silkreed.json
-- modules/keel_cage.json
-- quests/authored/ash_hymn.json
-- quests/authored/jurisdiction_hole.json
-- quests/authored/quay.json
-- quests/authored/spindle.json
-- quests/authored/step.json
-- quests/authored/swallow.json
+- data/ships.json
+- life/animals/lamp_moth.json
+- life/crops/cinder_millet.json
+- modules/belly_spine.json
+- modules/cheek_fin.json
+- modules/fit.gd
+- modules/lamp_jaw.json
+- quests/authored/glass_coda.json
+- quests/authored/stolen_coda.json
 - quests/board.gd
-- quests/templates/meteor_window.json
+- quests/templates/choir_ash_window.json
+- quests/templates/unpaid_tow.json
 - scripts/game.gd
+- scripts/headless_host.gd
 - scripts/main.gd
-- tests/slice9_sim.gd
+- tests/liveops_sim.gd
 - tools/catalog.gd
-- ui/debug_pane.gd
-- world/hc_v1/claim_slots.json
-- world/hc_v1/lanes.json
+- ui/menu.gd
 - world/hc_v1/streams.json
-- world/hc_v1/systems/
+- world/hc_v1/systems/HC-V1-R6-S2.json
+- world/hc_v1/systems/HC-V1-R6-S3.json
 - world/hc_v1/trash_origins.json
 - world/sector_sim.gd
+- PLAYTEST.md
 - LOOP_STATE.md

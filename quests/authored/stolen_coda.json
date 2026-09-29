@@ -1,0 +1,9 @@
+{
+  "id": "authored_stolen_coda",
+  "title": "Stolen coda",
+  "kind": "authored",
+  "summary": "The Black Sail copied the Choir's rock. Stand on it. Heat and a false rumor follow.",
+  "body": "stolen_coda",
+  "system_id": "HC-V1-R8-S2",
+  "mutations": ["rumor_false_choir", "heat_black_sail"]
+}

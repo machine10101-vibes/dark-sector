@@ -75,18 +75,18 @@
     "heat": ""
   },
   "trash": {
-    "id": "none",
-    "name": "",
-    "origin": "",
-    "anchor": "",
-    "angle": 0,
-    "distance": 0,
-    "count": 0,
-    "spread": 0,
+    "id": "missed_windows",
+    "name": "Missed Windows",
+    "origin": "Probes that sat in the Clock Stream and were written off when the timer closed.",
+    "anchor": "clock_rock",
+    "angle": 1.9,
+    "distance": 540,
+    "count": 7,
+    "spread": 120,
     "resource_id": "scrap",
     "resource_name": "Scrap",
-    "amount": 0,
-    "legal": "",
+    "amount": 4,
+    "legal": "Probes that sat in the Clock Stream and were written off when the timer closed.",
     "heat": ""
   },
   "stream": {

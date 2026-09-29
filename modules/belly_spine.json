@@ -1,0 +1,19 @@
+{
+  "id": "belly_spine",
+  "name": "Belly Spine",
+  "family": "hull",
+  "size": "M",
+  "slot": "Utility",
+  "favored": "",
+  "mass": 11,
+  "power": 2,
+  "crew": 0,
+  "attach": {"x": 4, "y": -16},
+  "footprint": {"w": 36, "h": 30},
+  "shape": "spine",
+  "blurb": "A spine under the belly. The keel reads deeper from above.",
+  "layer": [
+    [[8, -6], [22, -38], [-6, -10]]
+  ],
+  "effects": {"radius": 2}
+}

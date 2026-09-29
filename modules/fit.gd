@@ -71,6 +71,9 @@ static func stats(defs: Dictionary, ship: Dictionary) -> Dictionary:
 	var inertia := 1.0 + com.length() * 0.012
 	var lateral := 1.0 + absf(com.y) * 0.008
 	var turn := float(hull.turn) * (float(hull.mass) / mass) / inertia + float(effects.turn)
+	var keel := float(hull.mass) * 1.12
+	if mass > keel:
+		turn *= keel / mass
 	var strafe_stat := float(hull.strafe) + float(effects.strafe)
 	var power := float(hull.power)
 	var draw := float(hull.power_draw) + float(effects.power_draw)
@@ -79,7 +82,6 @@ static func stats(defs: Dictionary, ship: Dictionary) -> Dictionary:
 	var sensor := float(hull.sensor) + float(effects.sensor)
 	var gun: Dictionary = hull.gun.duplicate(true)
 	gun.damage = float(gun.damage) + float(effects.gun_damage)
-	var keel := float(hull.mass) * 1.12
 	var radius := float(hull.radius) + float(bolted.radius)
 	var crew_budget := 0
 	if ship.has("crew"):

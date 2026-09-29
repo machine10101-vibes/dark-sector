@@ -438,8 +438,9 @@ static func _quest_error(spec: Dictionary) -> String:
 static func _template_error(spec: Dictionary) -> String:
 	if str(spec.get("id", "")) == "" or str(spec.get("title", "")) == "":
 		return "template needs an id and a title"
-	if str(spec.get("uses", "")) != "streams":
-		return "template must use streams"
+	var uses := str(spec.get("uses", ""))
+	if uses != "streams" and uses != "trash":
+		return "template must use streams or trash"
 	var success: Array = spec.get("success_mutations", [])
 	if typeof(spec.get("success_mutations", [])) != TYPE_ARRAY:
 		return "success_mutations must be a list"

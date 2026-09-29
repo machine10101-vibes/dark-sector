@@ -163,6 +163,12 @@
       "name": "First Deaths",
       "system_id": "HC-V1-R8-S6",
       "origin": "Couriers who believed the plywood was a Compact fort."
+    },
+    {
+      "id": "missed_windows",
+      "name": "Missed Windows",
+      "system_id": "HC-V1-R6-S2",
+      "origin": "Probes that sat in the Clock Stream and were written off when the timer closed."
     }
   ]
 }

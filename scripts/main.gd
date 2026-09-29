@@ -20,6 +20,12 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if Game.link != null and str(Game.link.role) == "host" and Game.sim != null:
+		var saved := float(get_meta("host_save_t", 0.0)) + _delta
+		if saved >= 2.0:
+			Game.write_host_log(true)
+			saved = 0.0
+		set_meta("host_save_t", saved)
 	if Game.sim == null or Game.mode != "sector":
 		return
 	if tones != null and tones.has_method("play"):
@@ -83,6 +89,8 @@ func _enter_sector() -> void:
 func _on_quit() -> void:
 	if OS.has_feature("web"):
 		return
+	if Game.link != null and str(Game.link.role) == "host":
+		Game.write_host_log(true)
 	get_tree().quit()
 
 

@@ -1,0 +1,9 @@
+{
+  "id": "unpaid_tow",
+  "title": "Unpaid tow",
+  "summary": "A trash field still has the tow's name on it. Bring salvage parts off that origin.",
+  "uses": "trash",
+  "need_cargo": "salvage_parts",
+  "success_mutations": ["rumor_unpaid_tow", "heat_black_sail"],
+  "failure_mutations": ["rumor_unpaid_tow_fail"]
+}

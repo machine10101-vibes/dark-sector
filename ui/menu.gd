@@ -41,6 +41,11 @@ func _ready() -> void:
 	new_game.pressed.connect(func(): _show_select("offline"))
 	var host := ThemeKit.button("Host the dock")
 	host.pressed.connect(func(): _show_select("host"))
+	var dedicated := ThemeKit.button("Dedicated host")
+	dedicated.pressed.connect(func():
+		set_note("Same sim. Headless: godot --headless --path . --script res://scripts/headless_host.gd")
+		_show_select("host")
+	)
 	address_line = LineEdit.new()
 	address_line.placeholder_text = "IP or code, 127.0.0.1:24565"
 	address_line.text = "127.0.0.1:24565"
@@ -53,6 +58,7 @@ func _ready() -> void:
 	quit.pressed.connect(func(): quit_game.emit())
 	root_box.add_child(new_game)
 	root_box.add_child(host)
+	root_box.add_child(dedicated)
 	root_box.add_child(address_line)
 	root_box.add_child(join)
 	root_box.add_child(continue_button)

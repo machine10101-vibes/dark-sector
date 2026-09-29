@@ -1,0 +1,19 @@
+{
+  "id": "lamp_jaw",
+  "name": "Lamp Jaw",
+  "family": "hull",
+  "size": "M",
+  "slot": "Utility",
+  "favored": "",
+  "mass": 9,
+  "power": 3,
+  "crew": 0,
+  "attach": {"x": 48, "y": 0},
+  "footprint": {"w": 54, "h": 16},
+  "shape": "jaw",
+  "blurb": "A lamp jaw ahead of the nose. The outline is longer without a cage.",
+  "layer": [
+    [[40, 5], [98, 0], [40, -5]]
+  ],
+  "effects": {"radius": 3}
+}

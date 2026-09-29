@@ -12,3 +12,9 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 ```bash
 godot --headless --path . --script res://tests/slice1_sim.gd
 ```
+
+Headless host, same sim as Host the dock. It listens on 24565 and keeps `user://dark_sector_host.json`. A second window joins `127.0.0.1:24565`.
+
+```bash
+godot --headless --path . --script res://scripts/headless_host.gd
+```

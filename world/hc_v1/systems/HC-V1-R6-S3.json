@@ -89,7 +89,23 @@
     "legal": "Tows that followed the chart and arrived in the gravel instead of the lane.",
     "heat": ""
   },
-  "stream": {},
+  "stream": {
+    "id": "false_rain",
+    "name": "False Rain",
+    "origin": "Nickel that follows the lying chart and lands on False Mark instead of the lane.",
+    "vector": 2.6,
+    "period": 13.0,
+    "speed": 58.0,
+    "span": 840.0,
+    "anchor": "false_mark",
+    "angle": 1.5,
+    "distance": 760,
+    "resource_id": "stream_mass",
+    "resource_name": "False Rain",
+    "amount": 4,
+    "legal": "Nickel that follows the lying chart and lands on False Mark instead of the lane.",
+    "heat": ""
+  },
   "pocket": {
     "id": "false_mark_pocket",
     "name": "Nameless Chart Pocket",
