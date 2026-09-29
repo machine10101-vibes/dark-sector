@@ -13,9 +13,10 @@ func _init() -> void:
 		"factions": Serde.load_json("res://data/factions.json"),
 		"quests": Serde.load_json("res://data/quests.json"),
 	}
-	_probe_and_harvest()
-	_mast()
-	_closed_pocket()
+	_racks()
+	_scan_harvest_heat()
+	_loss_and_save()
+	_helm()
 	if fails == 0:
 		print("SLICE2 PASS")
 	else:
@@ -31,59 +32,177 @@ func check(cond: bool, message: String) -> void:
 		print("FAIL: %s" % message)
 
 
-func _probe_and_harvest() -> void:
+func make(class_id: String) -> SectorSim:
 	var sim := SectorSim.new(defs)
-	sim.new_game("vesper")
+	sim.new_game(class_id)
 	sim.hold_npc = true
-	check(str(sim.defs.system.id) == "HC-V1-R1-S1", "survey happens in Helion Dock")
-	var launched := CraftOrders.launch(sim, "survey_probe")
-	check(launched == "", "probe launches")
+	return sim
+
+
+func _count(sim: SectorSim, def_id: String) -> int:
+	var total := 0
+	for item in sim.craft:
+		if str(item.def_id) == def_id:
+			total += 1
+	return total
+
+
+func _craft(sim: SectorSim, uid: String):
+	for item in sim.craft:
+		if str(item.uid) == uid:
+			return item
+	return null
+
+
+func _racks() -> void:
+	var vesper := make("vesper")
+	check(_count(vesper, "survey_probe") == 2, "Vesper racks two survey probes")
+	check(_count(vesper, "harvest_drone") == 1, "Vesper racks one harvest drone")
+	var anvil := make("anvil")
+	check(_count(anvil, "survey_probe") == 1, "Anvil racks one survey probe")
+	check(_count(anvil, "harvest_drone") == 1, "Anvil racks one harvest drone")
+	check(_count(anvil, "salvage_tender") == 1, "Anvil racks one salvage tender")
+	check("parked" in CraftOrders.launch(anvil, "salvage_tender").to_lower(), "the tender stays parked")
+	var kestrel := make("kestrel")
+	check(_count(kestrel, "survey_probe") == 1, "Kestrel racks one survey probe")
+	check(_count(kestrel, "fighter") == 1, "Kestrel racks one fighter")
+	check("parked" in CraftOrders.launch(kestrel, "fighter").to_lower(), "the fighter stays parked")
+	check(not bool(vesper.defs.system.pocket.plantable), "the pocket stays closed")
+
+
+func _scan_harvest_heat() -> void:
+	var sim := make("vesper")
+	check(sim.nodes.size() == 3, "Helion Dock has three scan nodes")
+	var probe = _craft(sim, "survey_probe_1")
+	check(CraftOrders.order(sim, str(probe.uid), "orbit", "aegis_prime") == "", "probe accepts an orbit order")
+	for _i in 50:
+		sim.tick(0.05, {})
+	check(str(probe.state) == "orbiting", "probe holds orbit")
+	check(not sim.dossier_complete("aegis_prime"), "orbit does not write the dossier")
+	check(CraftOrders.order(sim, str(probe.uid), "scan", "aegis_prime") == "", "probe accepts a scan order")
+	_seal(sim, "survey_probe_1", "aegis_prime")
+	check("Helion Compact protected" in str(sim.scans.aegis_prime.layers.legal.text), "Aegis Prime legal title")
+	_seal(sim, "survey_probe_1", "aegis_ring")
+	check("Compact lease, limited harvest" in str(sim.scans.aegis_ring.layers.legal.text), "ice ring legal title")
+	_seal(sim, "survey_probe_1", "seized_hold")
+	check("Compact seized property" in str(sim.scans.seized_hold.layers.legal.text), "trash field legal title")
+	var layers: Array = ["orbit", "atmosphere", "surface", "crust", "biosign", "ruins", "legal"]
+	var aegis: Dictionary = sim.scans.aegis_prime.layers
+	var sealed := true
+	for key in layers:
+		if not bool(aegis[key].known):
+			sealed = false
+	check(sealed, "Aegis Prime dossier has all seven layers")
+	var heat0 := float(sim.heat.helion_compact)
+	var mass0 := int(sim.player.cargo.get("raw_mass", 0))
+	check(CraftOrders.order(sim, "harvest_drone_1", "launch", "aegis_ring") == "", "drone launches to the ice ring")
 	var guard := 0
-	while not sim.dossier_complete("aegis_prime") and guard < 800:
+	while int(sim.player.cargo.get("raw_mass", 0)) == mass0 and guard < 900:
 		sim.tick(0.05, {})
 		guard += 1
-	check(sim.dossier_complete("aegis_prime"), "Aegis Prime dossier seals (%d)" % guard)
-	check("Helion Compact Guard" in str(sim.scans["aegis_prime"].layers.legal.text), "legal layer names the Guard")
-	check("Not a claim" in str(sim.scans["aegis_prime"].layers.legal.text), "the city is not a homestead")
-	sim.player.pos = sim.planet("aegis_prime").pos + Vector2(420, 0)
-	var before := int(sim.player.cargo.get("ring_ice", 0))
-	var dropped := CraftOrders.launch(sim, "harvest_drone")
-	check(dropped == "", "harvest drone drops")
+	check(int(sim.player.cargo.get("raw_mass", 0)) == mass0 + 1, "drone returns raw mass (%d)" % guard)
+	check(str(_craft(sim, "harvest_drone_1").state) == "docked" or _wait_state(sim, "harvest_drone_1", "docked", 400), "drone is back in the rack")
+	var lease := float(sim.heat.helion_compact) - heat0
+	check(lease > 0.0 and lease <= 8.0, "small lease cut adds little heat (%.0f)" % lease)
+	var heat1 := float(sim.heat.helion_compact)
+	var mass1 := int(sim.player.cargo.get("raw_mass", 0))
+	check(CraftOrders.order(sim, "harvest_drone_1", "launch", "aegis_prime") == "", "drone launches to Aegis Prime")
 	guard = 0
-	while int(sim.player.cargo.get("ring_ice", 0)) == before and guard < 800:
+	while int(sim.player.cargo.get("raw_mass", 0)) == mass1 and guard < 900:
 		sim.tick(0.05, {})
 		guard += 1
-	check(int(sim.player.cargo.get("ring_ice", 0)) == before + 1, "ring ice comes aboard")
-	check(int(sim.deposits.aegis_prime) == 3, "the ring seam depletes")
+	check(int(sim.player.cargo.get("raw_mass", 0)) == mass1 + 1, "protected crust still yields mass")
+	var illegal := float(sim.heat.helion_compact) - heat1
+	check(illegal > lease, "protected harvest adds more heat than the lease (%.0f)" % illegal)
+	var before_trash := float(sim.heat.helion_compact)
+	check(sim.try_extract("seized_hold") == "ok", "seized hold can be cut")
+	check(float(sim.heat.helion_compact) - before_trash >= 28.0, "seized property adds PDO heat")
 
 
-func _mast() -> void:
-	var sim := SectorSim.new(defs)
-	sim.new_game("vesper")
-	var bare := Silhouette.extent(Silhouette.parts("vesper", []))
-	var result: Dictionary = sim.install("sensor_mast")
-	check(bool(result.ok), "survey mast bolts")
-	var mast := Silhouette.extent(Silhouette.parts("vesper", ["mast"]))
-	check(mast.x > bare.x + 15.0, "mast lengthens the Needle")
-	check(sim.player.modules.has("sensor_mast"), "the log can see the mast")
-
-
-func _closed_pocket() -> void:
-	var sim := SectorSim.new(defs)
-	sim.new_game("kestrel")
-	sim.hold_npc = true
-	var launched := CraftOrders.launch(sim, "away_shuttle")
-	check(launched == "", "shuttle launches")
+func _seal(sim: SectorSim, uid: String, node_id: String) -> void:
+	if str(_craft(sim, uid).state) != "docked":
+		_wait_state(sim, uid, "docked", 900)
+	check(CraftOrders.order(sim, uid, "scan", node_id) == "", "scan order for %s" % node_id)
 	var guard := 0
-	while guard < 800 and not _said(sim, "closed"):
+	while not sim.dossier_complete(node_id) and guard < 900:
+		var item = _craft(sim, uid)
+		if str(item.state) == "lost":
+			break
 		sim.tick(0.05, {})
 		guard += 1
-	check(not bool(sim.claim.surveyed), "the shuttle does not open The Unlet")
-	check(_said(sim, "closed"), "the shuttle reports the mark is closed")
+	check(sim.dossier_complete(node_id), "%s dossier seals (%d)" % [node_id, guard])
+	if sim.dossier_complete(node_id):
+		_wait_state(sim, uid, "docked", 900)
 
 
-func _said(sim, needle: String) -> bool:
-	for line in sim.lines:
-		if needle in str(line.text).to_lower():
+func _loss_and_save() -> void:
+	var sim := make("vesper")
+	sim.player.cargo["raw_mass"] = 0
+	var probe = _craft(sim, "survey_probe_2")
+	probe.state = "outbound"
+	probe.order = "orbit"
+	probe.target = "aegis_prime"
+	probe.pos = sim.planet("aegis_prime").pos
+	sim.tick(0.05, {})
+	check(str(probe.state) == "lost", "a probe dies in the planet")
+	var other = _craft(sim, "survey_probe_1")
+	check(str(other.state) == "docked", "the other probe is still aboard")
+	var denied := CraftOrders.order(sim, str(probe.uid), "launch", "aegis_ring")
+	check("lost" in denied.to_lower(), "a lost probe does not launch")
+	var broke := CraftOrders.rebuild(sim, str(probe.uid))
+	check("returned mass" in broke.to_lower(), "rebuild refuses an empty hold")
+	sim._add_cargo("raw_mass", 1)
+	check(CraftOrders.rebuild(sim, str(probe.uid)) == "", "rebuild spends returned mass")
+	check(str(probe.state) == "docked", "rebuilt probe is in the rack")
+	check(int(sim.player.cargo.get("raw_mass", 0)) == 0, "the mass was spent")
+	probe.state = "lost"
+	probe.hp = 0.0
+	sim._add_cargo("raw_mass", 2)
+	sim.heat.helion_compact = 34.0
+	var data := sim.to_dict()
+	var copy := SectorSim.new(defs)
+	copy.from_dict(data)
+	var loaded = _craft(copy, "survey_probe_2")
+	check(str(loaded.state) == "lost", "reload keeps the lost probe")
+	check(int(copy.player.cargo.get("raw_mass", 0)) == 2, "reload keeps the cargo")
+	check(float(copy.heat.helion_compact) == 34.0, "reload keeps the heat")
+	var star = _craft(copy, "survey_probe_1")
+	star.state = "outbound"
+	star.pos = Vector2(0, 12)
+	copy.tick(0.05, {})
+	check(str(star.state) == "lost", "a probe dies in the star")
+	var patrol_pos := Vector2.ZERO
+	for actor in copy.actors:
+		if str(actor.team) == "helion_compact":
+			patrol_pos = actor.pos
+			break
+	var drone = _craft(copy, "harvest_drone_1")
+	drone.state = "outbound"
+	drone.pos = patrol_pos
+	copy.tick(0.05, {})
+	check(str(drone.state) == "lost", "a drone dies on the patrol")
+
+
+func _helm() -> void:
+	var sim := make("anvil")
+	var dock = sim.planet("aegis_prime")
+	sim.player.rot = (sim.player.pos - dock.pos).angle()
+	sim.tick(0.7, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
+	check(sim.player.vel.length() > 20.0, "helm thrust still builds speed")
+	sim.tick(0.4, {"thrust": 0.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
+	check(sim.player.vel.length() > 10.0, "helm still coasts")
+
+
+func _wait_state(sim: SectorSim, uid: String, state: String, limit: int) -> bool:
+	var guard := 0
+	while guard < limit:
+		var item = _craft(sim, uid)
+		if item == null:
+			return false
+		if str(item.state) == state:
 			return true
-	return false
+		if str(item.state) == "lost":
+			return false
+		sim.tick(0.05, {})
+		guard += 1
+	return str(_craft(sim, uid).state) == state

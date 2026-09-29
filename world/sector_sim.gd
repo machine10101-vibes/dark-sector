@@ -5,6 +5,7 @@ var defs: Dictionary = {}
 var seed_value = 0
 var time = 0.0
 var planets: Array = []
+var nodes: Array = []
 var asteroids: Array = []
 var trash: Array = []
 var stars: Array = []
@@ -147,6 +148,13 @@ func planet(id: String):
 	return null
 
 
+func survey_node(id: String):
+	for row in nodes:
+		if str(row.id) == id:
+			return row
+	return null
+
+
 func wreck_by_id(id: String):
 	for wreck in wrecks:
 		if str(wreck.id) == id:
@@ -174,28 +182,43 @@ func reveal_layer(planet_id: String, layer_name: String) -> bool:
 	return true
 
 
-func try_extract(planet_id: String) -> String:
-	var body = planet(planet_id)
-	if body == null:
+func try_extract(node_id: String) -> String:
+	var row = survey_node(node_id)
+	if row == null:
 		return "missing"
-	if int(deposits.get(planet_id, 0)) <= 0:
+	if int(deposits.get(node_id, 0)) <= 0:
 		return "empty"
 	var stats = Fit.stats(defs, player)
 	if Fit.cargo_used(player) >= int(stats.cargo_cap):
 		return "full"
-	deposits[planet_id] = int(deposits[planet_id]) - 1
-	var res: Dictionary = body.resource
+	var held := Fit.cargo_used(player)
+	deposits[node_id] = int(deposits[node_id]) - 1
+	var res: Dictionary = row.resource
 	_add_cargo(str(res.id), 1)
-	say("%s aboard from %s. %d left in the seam." % [res.name, body.name, int(deposits[planet_id])])
+	say("%s aboard from %s. %d left in the seam." % [res.name, row.name, int(deposits[node_id])])
 	sfx("extract")
-	if bool(body.protected):
+	_heat_for_cut(row, held)
+	return "ok"
+
+
+func _heat_for_cut(row: Dictionary, held_before: int) -> void:
+	var policy := str(row.get("heat", ""))
+	if policy == "pdo":
 		Ownership.add_heat(self, _pdo_id(), 28.0, "harvested_protected", player.agent_id)
 		pdo_alert = true
-		banner = "%s: \"You cut a protected crust.\"" % _pdo_name()
+		banner = "%s: \"That cut was not yours.\"" % _pdo_name()
 		banner_t = 0.0
-		say("The Compact has the extraction. Heat is on the slate.")
+		say("Illegal cut on %s. %s heat is on the slate." % [row.name, _pdo_name()])
 		sfx("hail")
-	return "ok"
+	elif policy == "lease":
+		var amount := 16.0
+		if held_before < 3:
+			amount = 6.0
+		Ownership.add_heat(self, _pdo_id(), amount, "lease_cut", player.agent_id)
+		if held_before < 3:
+			say("Lease cut on %s. The hold is still small, so the slate takes less." % row.name)
+		else:
+			say("Lease cut on %s. The hold is no longer small." % row.name)
 
 
 func try_salvage(wreck_id: String) -> String:
@@ -227,14 +250,28 @@ func try_salvage(wreck_id: String) -> String:
 
 
 func resource_name(id: String) -> String:
+	if id == "raw_mass":
+		return "raw mass"
 	if id == "salvage_parts":
 		return "keel salvage"
 	if id == "scrap":
 		return "scrap"
+	for row in nodes:
+		if str(row.resource.id) == id:
+			return str(row.resource.name)
 	for body in planets:
 		if str(body.resource.id) == id:
 			return str(body.resource.name)
 	return id
+
+
+func spend_cargo(id: String, count: int) -> bool:
+	if int(player.cargo.get(id, 0)) < count:
+		return false
+	player.cargo[id] = int(player.cargo[id]) - count
+	if int(player.cargo[id]) <= 0:
+		player.cargo.erase(id)
+	return true
 
 
 func nearest_hostile(pos: Vector2, radius: float):
@@ -624,8 +661,6 @@ func _build_static() -> void:
 		body.pos = Vector2.from_angle(float(body.angle)) * float(body.distance)
 		body.radius = float(body.radius)
 		planets.append(body)
-	for body in planets:
-		deposits[body.id] = int(body.resource.amount)
 	var anchor = planet(str(defs.system.pocket.anchor))
 	pocket_pos = anchor.pos + Vector2.from_angle(float(defs.system.pocket.angle)) * float(defs.system.pocket.distance)
 	nest_pos = Vector2.from_angle(float(defs.system.nest.angle)) * float(defs.system.nest.distance)
@@ -669,6 +704,36 @@ func _build_static() -> void:
 			"a": rng.randf_range(0.2, 0.85),
 			"r": rng.randf_range(0.8, 1.8),
 		})
+	_build_nodes()
+
+
+func _build_nodes() -> void:
+	nodes = []
+	for source in defs.system.get("nodes", []):
+		var row: Dictionary = source.duplicate(true)
+		var anchor_body = planet(str(row.get("anchor", "")))
+		var origin := Vector2.ZERO
+		if anchor_body != null:
+			origin = anchor_body.pos
+		var kind := str(row.get("kind", ""))
+		if kind == "planet" and anchor_body != null:
+			row.pos = anchor_body.pos
+			row.radius = float(anchor_body.radius)
+			row.solid = true
+		elif kind == "ring" and anchor_body != null:
+			var ang := float(row.get("angle", 0.15))
+			var band := float(row.get("band", 43.0))
+			row.pos = anchor_body.pos + Vector2.from_angle(ang) * (float(anchor_body.radius) + band)
+			row.radius = 28.0
+			row.solid = false
+		else:
+			var ang := float(row.get("angle", 0.0))
+			var dist := float(row.get("distance", 0.0))
+			row.pos = origin + Vector2.from_angle(ang) * dist
+			row.radius = float(row.get("radius", 40.0))
+			row.solid = false
+		nodes.append(row)
+		deposits[str(row.id)] = int(row.resource.amount)
 
 
 func _spawn_factions() -> void:
@@ -764,6 +829,7 @@ func _make_craft(def_id: String, index: int) -> Dictionary:
 		"work": 0.0,
 		"layers_done": 0,
 		"target": "",
+		"order": "",
 		"did_job": false,
 		"fire_cd": 0.0,
 		"gun": spec.get("gun", {}).duplicate(true),
@@ -771,23 +837,24 @@ func _make_craft(def_id: String, index: int) -> Dictionary:
 	}
 
 
-func _dossier(planet_id: String) -> Dictionary:
-	if scans.has(planet_id):
-		return scans[planet_id]
-	var body = planet(planet_id)
+func _dossier(node_id: String) -> Dictionary:
+	if scans.has(node_id):
+		return scans[node_id]
+	var row = survey_node(node_id)
 	var layers = {}
+	var source: Dictionary = row.layers
 	for key in ["orbit", "atmosphere", "surface", "crust", "biosign", "ruins", "legal"]:
-		layers[key] = {"known": false, "text": str(body.layers[key])}
-	scans[planet_id] = {
-		"planet_id": planet_id,
-		"name": body.name,
+		layers[key] = {"known": false, "text": str(source[key])}
+	scans[node_id] = {
+		"node_id": node_id,
+		"name": row.name,
 		"layers": layers,
 		"complete": false,
-		"legal": body.legal,
-		"resource_id": body.resource.id,
-		"resource_name": body.resource.name,
+		"legal": str(row.legal_title),
+		"resource_id": row.resource.id,
+		"resource_name": row.resource.name,
 	}
-	return scans[planet_id]
+	return scans[node_id]
 
 
 func _held(cmd: Dictionary) -> Dictionary:
@@ -843,6 +910,10 @@ func _craft_in(row: Dictionary) -> Dictionary:
 	item.hp = float(item.hp)
 	item.battery = float(item.battery)
 	item.rot = float(item.rot)
+	if not item.has("order"):
+		item.order = ""
+	if not item.has("max_hp"):
+		item.max_hp = int(item.hp)
 	return item
 
 

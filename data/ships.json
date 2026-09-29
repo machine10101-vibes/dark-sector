@@ -90,9 +90,8 @@
     "yard": ["gun_sponson"],
     "gun": { "damage": 9, "cooldown": 0.22, "speed": 840, "range": 640, "ttl": 1.1 },
     "starting_craft": [
-      { "id": "fighter", "count": 1 },
       { "id": "survey_probe", "count": 1 },
-      { "id": "away_shuttle", "count": 1 }
+      { "id": "fighter", "count": 1 }
     ],
     "crew": [
       { "name": "R. Pell", "skill": "helm" },

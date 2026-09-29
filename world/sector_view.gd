@@ -112,10 +112,19 @@ func _draw() -> void:
 		if str(shot_faction.get("kind", "")) == "pdo":
 			col = Color("c9d7c4")
 		draw_line(tail, shot.pos, col, 2.0, true)
+	var parked := 0
 	for item in sim.craft:
 		if str(item.state) == "docked":
-			continue
-		_draw_craft(sim, item)
+			var side := Vector2.from_angle(float(sim.player.rot) + PI * 0.5)
+			var back := Vector2.from_angle(float(sim.player.rot) + PI)
+			var spot: Vector2 = sim.player.pos + back * (34.0 + float(parked) * 16.0) + side * (18.0 if parked % 2 == 0 else -18.0)
+			var ghost: Dictionary = item.duplicate(true)
+			ghost.pos = spot
+			ghost.rot = sim.player.rot
+			_draw_craft(sim, ghost)
+			parked += 1
+		else:
+			_draw_craft(sim, item)
 	for actor in sim.actors:
 		if bool(actor.alive):
 			_draw_ship(sim, actor)
@@ -334,6 +343,10 @@ func _draw_names(sim, zoom: float) -> void:
 	if zoom < 0.55 and sim.trash.size() > 0:
 		var pile: Vector2 = sim.trash[0].pos
 		_text(pile + Vector2(-30, -28), str(sim.defs.system.trash.name), 14, Color("c2b49a"))
+	for place in sim.nodes:
+		if str(place.kind) == "planet":
+			continue
+		_text(place.pos + Vector2(12, -16), str(place.name), 13, Color("c5d4de"))
 	var player_name := str(sim.defs.ships[sim.player.class_id].callsign)
 	_text(sim.player.pos + Vector2(18, 18), player_name, 14, Color("e6d7bf"))
 	if zoom > 0.22:

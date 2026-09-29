@@ -36,6 +36,66 @@
       }
     }
   ],
+  "nodes": [
+    {
+      "id": "aegis_prime",
+      "name": "Aegis Prime",
+      "kind": "planet",
+      "anchor": "aegis_prime",
+      "legal_title": "Helion Compact protected",
+      "heat": "pdo",
+      "resource": { "id": "raw_mass", "name": "Raw mass", "amount": 3 },
+      "layers": {
+        "orbit": "Inspection lane. Traffic is counted. You are already on a slate.",
+        "atmosphere": "City air inside the orbital. The keel stays outside.",
+        "surface": "Dock rings and lamp rows. Not a landing for this hull.",
+        "crust": "City crust is closed. The Compact calls the stone protected.",
+        "biosign": "People and bonded livestock. Nothing wild the probe should chase.",
+        "ruins": "The first dock spine, still in use.",
+        "legal": "Helion Compact protected."
+      }
+    },
+    {
+      "id": "aegis_ring",
+      "name": "Aegis ice ring",
+      "kind": "ring",
+      "anchor": "aegis_prime",
+      "angle": 0.15,
+      "band": 43,
+      "legal_title": "Compact lease, limited harvest",
+      "heat": "lease",
+      "resource": { "id": "raw_mass", "name": "Raw mass", "amount": 4 },
+      "layers": {
+        "orbit": "Ice band outside the city lamps. Lease markers every few degrees.",
+        "atmosphere": "None. Open vacuum over the chips.",
+        "surface": "Sintered ice, lamp-cut faces, a few old drone scars.",
+        "crust": "The band is thin. Under it is the city's closed stone.",
+        "biosign": "None. Cold and sterile.",
+        "ruins": "Survey beacons from the first lease, still blinking.",
+        "legal": "Compact lease, limited harvest."
+      }
+    },
+    {
+      "id": "seized_hold",
+      "name": "Seized Hold",
+      "kind": "trash",
+      "anchor": "aegis_prime",
+      "angle": 2.2,
+      "distance": 560,
+      "legal_title": "Compact seized property",
+      "heat": "pdo",
+      "resource": { "id": "raw_mass", "name": "Raw mass", "amount": 3 },
+      "layers": {
+        "orbit": "A slow tumble of confiscated hulls. Tow tags still on the bows.",
+        "atmosphere": "None. The field is vacuum and paint flakes.",
+        "surface": "Plates, hatches, and inspection paint.",
+        "crust": "No crust. Hollow hulls and trapped air.",
+        "biosign": "None living. A few sealed lockers.",
+        "ruins": "Hull names scraped at inspection.",
+        "legal": "Compact seized property."
+      }
+    }
+  ],
   "belt": {
     "id": "none",
     "name": "",

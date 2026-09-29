@@ -2,75 +2,129 @@ class_name CraftOrders
 extends RefCounted
 
 const LAYERS = ["orbit", "atmosphere", "surface", "crust", "biosign", "ruins", "legal"]
+const PARKED = ["fighter", "salvage_tender"]
 
 
 static func launch(sim, def_id: String) -> String:
+	if def_id in PARKED:
+		return "%s stays parked in the rack." % _pretty(def_id)
 	var craft = _first_docked(sim, def_id)
 	if craft == null:
 		var any = _any_of(sim, def_id)
 		if any == null:
 			return "This keel has no %s." % _pretty(def_id)
 		if str(any.state) == "lost":
-			return "%s is a write-off. Nothing aboard can rebuild it yet." % any.name
+			return "%s is lost. Rebuild it from returned mass." % any.name
 		return "%s is already out." % any.name
 	match def_id:
 		"survey_probe":
-			var planet = _next_scan_target(sim)
-			if planet == null:
-				return "No world left to put a probe on."
-			_depart(sim, craft, str(planet.id))
-			sim.say("%s away for %s." % [craft.name, planet.name])
-			sim.sfx("launch")
-			return ""
+			var place = _next_scan_target(sim)
+			if place == null:
+				return "No node left to put a probe on."
+			return order(sim, str(craft.uid), "scan", str(place.id))
 		"harvest_drone":
-			var node = _next_harvest_target(sim)
-			if node == null:
+			var place = _next_harvest_target(sim)
+			if place == null:
 				return "No surveyed seam. Read a dossier before you drop the drone."
-			if sim.player.pos.distance_to(node.pos) > one_way_range(craft):
-				return "Harvester stays in the neighborhood. Bring the keel closer to %s." % node.name
-			_depart(sim, craft, str(node.id))
-			sim.say("Harvest drone dropped for %s." % node.name)
-			sim.sfx("launch")
-			return ""
-		"salvage_tender":
-			var wreck = _nearest_wreck(sim)
-			if wreck == null:
-				return "No wreck in the dark worth a tender."
-			if sim.player.pos.distance_to(wreck.pos) > one_way_range(craft) * 1.4:
-				return "Tender wants the wreck closer. The keel has to do the crossing."
-			_depart(sim, craft, str(wreck.id))
-			sim.say("Tender out to strip %s." % wreck.name)
-			sim.sfx("launch")
-			return ""
-		"fighter":
-			_depart(sim, craft, "")
-			craft.state = "escort"
-			sim.say("Fighter clear of the throat.")
-			sim.sfx("launch")
-			return ""
+			if sim.player.pos.distance_to(place.pos) > one_way_range(craft):
+				return "Harvester stays in the neighborhood. Bring the keel closer to %s." % place.name
+			return order(sim, str(craft.uid), "launch", str(place.id))
 		"away_shuttle":
 			_depart(sim, craft, str(sim.defs.system.pocket.id))
+			craft.order = "walk"
 			sim.say("Shuttle away to %s." % sim.defs.system.pocket.name)
 			sim.sfx("launch")
 			return ""
 	return "That craft has no order on the board."
 
 
+static func order(sim, uid: String, verb: String, node_id: String) -> String:
+	var craft = _by_uid(sim, uid)
+	if craft == null:
+		return "That rack slot is empty."
+	if verb == "rebuild":
+		return rebuild(sim, uid)
+	if verb == "return":
+		if str(craft.state) == "lost":
+			return "%s is lost. Rebuild it from returned mass." % craft.name
+		if str(craft.state) == "docked":
+			return "%s is already in the rack." % craft.name
+		craft.state = "returning"
+		craft.order = "return"
+		sim.say("%s recalled." % craft.name)
+		return ""
+	if str(craft.def_id) in PARKED:
+		return "%s stays parked in the rack." % craft.name
+	if str(craft.state) == "lost":
+		return "%s is lost. Rebuild it from returned mass." % craft.name
+	var place = sim.survey_node(node_id)
+	if place == null:
+		return "Pick a node first."
+	if str(craft.def_id) == "harvest_drone":
+		if not sim.dossier_complete(node_id):
+			return "Scan %s before the drone cuts it." % place.name
+		if int(sim.deposits.get(node_id, 0)) <= 0:
+			return "%s has nothing left to cut." % place.name
+		if str(craft.state) == "docked" and sim.player.pos.distance_to(place.pos) > one_way_range(craft):
+			return "Harvester stays in the neighborhood. Bring the keel closer to %s." % place.name
+		_send(sim, craft, place, "cut")
+		sim.say("Harvest drone dropped for %s." % place.name)
+		sim.sfx("launch")
+		return ""
+	if str(craft.def_id) != "survey_probe":
+		return "%s has no survey order." % craft.name
+	if verb == "orbit":
+		_send(sim, craft, place, "orbit")
+		sim.say("%s ordered to orbit %s." % [craft.name, place.name])
+		sim.sfx("launch")
+		return ""
+	if verb == "scan" or verb == "launch":
+		_send(sim, craft, place, "scan")
+		sim.say("%s away to scan %s." % [craft.name, place.name])
+		sim.sfx("launch")
+		return ""
+	return "That order is not on the board."
+
+
+static func rebuild(sim, uid: String) -> String:
+	var craft = _by_uid(sim, uid)
+	if craft == null:
+		return "That rack slot is empty."
+	if str(craft.state) != "lost":
+		return "%s is still on the board." % craft.name
+	if int(sim.player.cargo.get("raw_mass", 0)) < 1:
+		return "Rebuild wants one unit of returned mass."
+	sim.spend_cargo("raw_mass", 1)
+	craft.state = "docked"
+	craft.hp = float(craft.max_hp)
+	craft.battery = float(craft.max_battery)
+	craft.vel = Vector2.ZERO
+	craft.pos = sim.player.pos
+	craft.work = 0.0
+	craft.layers_done = 0
+	craft.did_job = false
+	craft.target = ""
+	craft.order = ""
+	sim.say("%s rebuilt from returned mass." % craft.name)
+	sim.sfx("install")
+	return ""
+
+
 static func recall(sim, uid: String) -> void:
-	for craft in sim.craft:
-		if str(craft.uid) == uid and str(craft.state) != "docked" and str(craft.state) != "lost":
-			craft.state = "returning"
-			sim.say("%s recalled." % craft.name)
-			return
+	order(sim, uid, "return", "")
 
 
 static func step(sim, craft, dt: float) -> void:
 	if str(craft.state) == "docked" or str(craft.state) == "lost":
 		return
+	_hazards(sim, craft)
+	if str(craft.state) == "lost":
+		return
 	craft.fire_cd = maxf(0.0, float(craft.fire_cd) - dt)
 	craft.battery = maxf(0.0, float(craft.battery) - float(craft.drain) * dt)
 	if float(craft.battery) <= 8.0 and str(craft.state) != "returning":
 		craft.state = "returning"
+		craft.order = "return"
 		sim.say("%s is short on battery and turning for the keel." % craft.name)
 	match str(craft.def_id):
 		"survey_probe":
@@ -83,10 +137,12 @@ static func step(sim, craft, dt: float) -> void:
 			_step_shuttle(sim, craft, dt)
 		"fighter":
 			_step_fighter(sim, craft, dt)
+	if str(craft.state) != "lost":
+		_hazards(sim, craft)
 	if float(craft.hp) <= 0.0 and str(craft.state) != "lost":
 		craft.state = "lost"
 		craft.hp = 0.0
-		sim.say("%s lost. Write it off the board." % craft.name)
+		sim.say("%s lost. Rebuild it from returned mass." % craft.name)
 		sim.sfx("destroyed")
 
 
@@ -99,60 +155,74 @@ static func one_way_range(craft) -> float:
 
 
 static func _step_probe(sim, craft, dt: float) -> void:
-	var planet = sim.planet(str(craft.target))
-	if planet == null:
+	var place = sim.survey_node(str(craft.target))
+	if place == null:
 		craft.state = "returning"
+		_return_home(sim, craft, dt)
+		return
+	var order_name := str(craft.order)
 	if str(craft.state) == "outbound":
-		var dist = _fly_toward(craft, _orbit_point(planet, craft.pos), dt, float(craft.speed))
+		var dist = _fly_safe(sim, craft, _work_point(place, craft.pos), dt, float(craft.speed))
 		if dist < 28.0:
+			if order_name == "scan":
+				craft.state = "working"
+				craft.work = 0.0
+				if sim.dossier_complete(str(place.id)):
+					craft.work = 100.0
+			else:
+				craft.state = "orbiting"
+	elif str(craft.state) == "orbiting":
+		_fly_safe(sim, craft, _orbit_point(place, sim.time), dt, float(craft.speed) * 0.45)
+		if order_name == "scan":
 			craft.state = "working"
 			craft.work = 0.0
-			if sim.dossier_complete(str(planet.id)):
-				craft.work = 100.0
 	elif str(craft.state) == "working":
-		_fly_toward(craft, _orbit_point(planet, sim.player.pos), dt, float(craft.speed) * 0.35)
-		if sim.dossier_complete(str(planet.id)) and float(craft.work) >= 100.0:
+		_fly_safe(sim, craft, _work_point(place, craft.pos), dt, float(craft.speed) * 0.35)
+		if order_name == "orbit":
+			craft.state = "orbiting"
+			return
+		if sim.dossier_complete(str(place.id)) and float(craft.work) >= 100.0:
 			craft.state = "returning"
-			sim.say("Survey of %s still holds." % planet.name)
+			sim.say("Survey of %s still holds." % place.name)
 			return
 		craft.work = float(craft.work) + dt
 		var step_time = float(craft.work_step)
 		var should = int(float(craft.work) / step_time)
 		while int(craft.layers_done) < should and int(craft.layers_done) < LAYERS.size():
 			var layer_name: String = LAYERS[int(craft.layers_done)]
-			var fresh: bool = sim.reveal_layer(str(planet.id), layer_name)
+			var fresh: bool = sim.reveal_layer(str(place.id), layer_name)
 			craft.layers_done = int(craft.layers_done) + 1
 			if fresh:
-				sim.say("%s — %s." % [planet.name, layer_name])
+				sim.say("%s — %s." % [place.name, layer_name])
 		if int(craft.layers_done) >= LAYERS.size():
 			craft.state = "returning"
-			sim.say("Dossier sealed: %s." % planet.name)
+			sim.say("Dossier sealed: %s." % place.name)
 			sim.sfx("scan_done")
 	elif str(craft.state) == "returning":
 		_return_home(sim, craft, dt)
 
 
 static func _step_harvest(sim, craft, dt: float) -> void:
-	var planet = sim.planet(str(craft.target))
-	if planet == null:
+	var place = sim.survey_node(str(craft.target))
+	if place == null:
 		craft.state = "returning"
 		_return_home(sim, craft, dt)
 		return
 	if str(craft.state) == "outbound":
-		var dist = _fly_toward(craft, _orbit_point(planet, craft.pos), dt, float(craft.speed))
+		var dist = _fly_safe(sim, craft, _work_point(place, craft.pos), dt, float(craft.speed))
 		if dist < 30.0:
 			craft.state = "working"
 			craft.work = 0.0
 	elif str(craft.state) == "working":
-		_fly_toward(craft, _orbit_point(planet, craft.pos), dt, float(craft.speed) * 0.25)
+		_fly_safe(sim, craft, _work_point(place, craft.pos), dt, float(craft.speed) * 0.25)
 		craft.work = float(craft.work) + dt
 		if float(craft.work) >= float(craft.work_step) and not bool(craft.did_job):
 			craft.did_job = true
-			var result = str(sim.try_extract(str(planet.id)))
+			var result = str(sim.try_extract(str(place.id)))
 			if result == "full":
 				sim.say("Hold is full. The drone is coming home empty.")
 			elif result == "empty":
-				sim.say("%s's seam is worked out." % planet.name)
+				sim.say("%s's seam is worked out." % place.name)
 			craft.state = "returning"
 	elif str(craft.state) == "returning":
 		_return_home(sim, craft, dt)
@@ -165,12 +235,12 @@ static func _step_tender(sim, craft, dt: float) -> void:
 		_return_home(sim, craft, dt)
 		return
 	if str(craft.state) == "outbound":
-		var dist = _fly_toward(craft, wreck.pos, dt, float(craft.speed))
+		var dist = _fly_safe(sim, craft, wreck.pos, dt, float(craft.speed))
 		if dist < 28.0:
 			craft.state = "working"
 			craft.work = 0.0
 	elif str(craft.state) == "working":
-		_fly_toward(craft, wreck.pos, dt, float(craft.speed) * 0.2)
+		_fly_safe(sim, craft, wreck.pos, dt, float(craft.speed) * 0.2)
 		craft.work = float(craft.work) + dt
 		if float(craft.work) >= float(craft.work_step) and not bool(craft.did_job):
 			craft.did_job = true
@@ -185,12 +255,12 @@ static func _step_tender(sim, craft, dt: float) -> void:
 
 static func _step_shuttle(sim, craft, dt: float) -> void:
 	if str(craft.state) == "outbound":
-		var dist = _fly_toward(craft, sim.pocket_pos, dt, float(craft.speed))
+		var dist = _fly_safe(sim, craft, sim.pocket_pos, dt, float(craft.speed))
 		if dist < 24.0:
 			craft.state = "working"
 			craft.work = 0.0
 	elif str(craft.state) == "working":
-		_fly_toward(craft, sim.pocket_pos, dt, 30.0)
+		_fly_safe(sim, craft, sim.pocket_pos, dt, 30.0)
 		craft.work = float(craft.work) + dt
 		if float(craft.work) >= float(craft.work_step) and not bool(craft.did_job):
 			craft.did_job = true
@@ -208,21 +278,21 @@ static func _step_fighter(sim, craft, dt: float) -> void:
 	var hostile = sim.nearest_hostile(craft.pos, 1100.0)
 	if hostile == null:
 		var aim = sim.player.pos + Vector2.from_angle(sim.time * 1.15) * 160.0
-		_fly_toward(craft, aim, dt, float(craft.speed))
+		_fly_safe(sim, craft, aim, dt, float(craft.speed))
 		return
-	var dist = _fly_toward(craft, hostile.pos, dt, float(craft.speed))
+	var dist = _fly_safe(sim, craft, hostile.pos, dt, float(craft.speed))
 	if dist < float(craft.gun.range) and _facing(craft, hostile.pos) < 0.45:
 		sim.try_fire(craft, craft.gun)
 
 
 static func _return_home(sim, craft, dt: float) -> void:
 	if not sim.player.alive:
-		_fly_toward(craft, sim.player.pos, dt, float(craft.speed))
+		_fly_safe(sim, craft, sim.player.pos, dt, float(craft.speed))
 		return
 	var catch = maxf(float(craft.speed), sim.player.vel.length() + 90.0)
 	if float(craft.battery) <= 0.0:
 		catch = 70.0
-	var dist = _fly_toward(craft, sim.player.pos, dt, catch)
+	var dist = _fly_safe(sim, craft, sim.player.pos, dt, catch)
 	if dist < 46.0:
 		_dock(sim, craft)
 		sim.say("%s is back in the rack." % craft.name)
@@ -238,6 +308,7 @@ static func _dock(sim, craft) -> void:
 	craft.layers_done = 0
 	craft.did_job = false
 	craft.target = ""
+	craft.order = ""
 
 
 static func _depart(sim, craft, target: String) -> void:
@@ -249,6 +320,102 @@ static func _depart(sim, craft, target: String) -> void:
 	craft.work = 0.0
 	craft.layers_done = 0
 	craft.did_job = false
+
+
+static func _send(sim, craft, place, order_name: String) -> void:
+	var same := str(craft.target) == str(place.id) and str(craft.state) != "docked"
+	if str(craft.state) == "docked":
+		_depart(sim, craft, str(place.id))
+	elif not same:
+		craft.target = str(place.id)
+		craft.layers_done = 0
+		craft.work = 0.0
+		craft.did_job = false
+		craft.state = "outbound"
+	craft.order = order_name
+	craft.target = str(place.id)
+	if same and order_name == "scan" and str(craft.state) == "orbiting":
+		craft.state = "working"
+		craft.work = 0.0
+	elif same and order_name == "orbit" and str(craft.state) == "working":
+		craft.state = "orbiting"
+	elif same and order_name == "cut" and str(craft.state) == "returning":
+		craft.state = "outbound"
+		craft.did_job = false
+		craft.work = 0.0
+
+
+static func _fly_safe(sim, craft, target: Vector2, dt: float, speed: float) -> float:
+	return _fly_toward(craft, _avoid(sim, craft, target), dt, speed)
+
+
+static func _avoid(sim, craft, target: Vector2) -> Vector2:
+	var pos: Vector2 = craft.pos
+	var pad := float(craft.radius) + 18.0
+	for body in sim.planets:
+		if _segment_hits(pos, target, body.pos, float(body.radius) + pad):
+			return _slide(pos, target, body.pos)
+	var star_r := float(sim.defs.system.star.radius) + pad
+	if _segment_hits(pos, target, Vector2.ZERO, star_r):
+		return _slide(pos, target, Vector2.ZERO)
+	for actor in sim.actors:
+		if not bool(actor.get("alive", false)):
+			continue
+		if str(actor.team) != sim._pdo_id():
+			continue
+		var hull := float(Fit.stats(sim.defs, actor).hit_radius) + float(craft.radius) + 20.0
+		if _segment_hits(pos, target, actor.pos, hull):
+			return _slide(pos, target, actor.pos)
+	return target
+
+
+static func _slide(pos: Vector2, target: Vector2, center: Vector2) -> Vector2:
+	var away := pos - center
+	if away.length() < 1.0:
+		away = Vector2.RIGHT
+	var tangent := Vector2(-away.y, away.x).normalized()
+	if tangent.dot(target - pos) < 0.0:
+		tangent = -tangent
+	return pos + tangent * 180.0 + away.normalized() * 36.0
+
+
+static func _segment_hits(a: Vector2, b: Vector2, center: Vector2, radius: float) -> bool:
+	var ab := b - a
+	var len2 := ab.length_squared()
+	if len2 < 1.0:
+		return a.distance_to(center) < radius
+	var t := clampf((center - a).dot(ab) / len2, 0.0, 1.0)
+	var closest := a + ab * t
+	return closest.distance_to(center) < radius
+
+
+static func _hazards(sim, craft) -> void:
+	var pos: Vector2 = craft.pos
+	var reach := float(craft.radius)
+	if pos.length() < float(sim.defs.system.star.radius) + reach:
+		_lose(sim, craft, "star")
+		return
+	for body in sim.planets:
+		if pos.distance_to(body.pos) < float(body.radius) + reach:
+			_lose(sim, craft, "planet")
+			return
+	for actor in sim.actors:
+		if not bool(actor.get("alive", false)):
+			continue
+		if str(actor.team) != sim._pdo_id():
+			continue
+		var hull := float(Fit.stats(sim.defs, actor).hit_radius)
+		if pos.distance_to(actor.pos) < hull + reach:
+			_lose(sim, craft, "patrol")
+			return
+
+
+static func _lose(sim, craft, why: String) -> void:
+	craft.hp = 0.0
+	craft.state = "lost"
+	craft.vel = Vector2.ZERO
+	sim.say("%s lost in the %s. Rebuild it from returned mass." % [craft.name, why])
+	sim.sfx("destroyed")
 
 
 static func _fly_toward(craft, target: Vector2, dt: float, speed: float) -> float:
@@ -270,11 +437,20 @@ static func _fly_toward(craft, target: Vector2, dt: float, speed: float) -> floa
 	return dist - step
 
 
-static func _orbit_point(planet, from: Vector2) -> Vector2:
-	var dir = from - planet.pos
-	if dir.length() < 1.0:
-		dir = Vector2.RIGHT
-	return planet.pos + dir.normalized() * (float(planet.radius) + 56.0)
+static func _work_point(place, from: Vector2) -> Vector2:
+	if bool(place.get("solid", false)):
+		var dir: Vector2 = from - place.pos
+		if dir.length() < 1.0:
+			dir = Vector2.RIGHT
+		return place.pos + dir.normalized() * (float(place.radius) + 72.0)
+	return place.pos
+
+
+static func _orbit_point(place, time: float) -> Vector2:
+	var spin := Vector2.from_angle(time * 0.7)
+	if bool(place.get("solid", false)):
+		return place.pos + spin * (float(place.radius) + 72.0)
+	return place.pos + spin * 22.0
 
 
 static func _facing(craft, target: Vector2) -> float:
@@ -295,43 +471,50 @@ static func _any_of(sim, def_id: String):
 	return null
 
 
+static func _by_uid(sim, uid: String):
+	for craft in sim.craft:
+		if str(craft.uid) == uid:
+			return craft
+	return null
+
+
 static func _next_scan_target(sim):
 	var best = null
 	var best_dist = 1.0e12
-	for planet in sim.planets:
-		if _targeted(sim, str(planet.id)):
+	for place in sim.nodes:
+		if _targeted(sim, str(place.id)):
 			continue
-		if sim.dossier_complete(str(planet.id)):
+		if sim.dossier_complete(str(place.id)):
 			continue
-		var dist = sim.player.pos.distance_to(planet.pos)
+		var dist = sim.player.pos.distance_to(place.pos)
 		if dist < best_dist:
 			best_dist = dist
-			best = planet
+			best = place
 	if best != null:
 		return best
 	best_dist = 1.0e12
-	for planet in sim.planets:
-		if _targeted(sim, str(planet.id)):
+	for place in sim.nodes:
+		if _targeted(sim, str(place.id)):
 			continue
-		var dist = sim.player.pos.distance_to(planet.pos)
+		var dist = sim.player.pos.distance_to(place.pos)
 		if dist < best_dist:
 			best_dist = dist
-			best = planet
+			best = place
 	return best
 
 
 static func _next_harvest_target(sim):
 	var best = null
 	var best_dist = 1.0e12
-	for planet in sim.planets:
-		if not sim.dossier_complete(str(planet.id)):
+	for place in sim.nodes:
+		if not sim.dossier_complete(str(place.id)):
 			continue
-		if int(sim.deposits.get(planet.id, 0)) <= 0:
+		if int(sim.deposits.get(place.id, 0)) <= 0:
 			continue
-		var dist = sim.player.pos.distance_to(planet.pos)
+		var dist = sim.player.pos.distance_to(place.pos)
 		if dist < best_dist:
 			best_dist = dist
-			best = planet
+			best = place
 	return best
 
 
@@ -348,13 +531,13 @@ static func _nearest_wreck(sim):
 	return best
 
 
-static func _targeted(sim, planet_id: String) -> bool:
+static func _targeted(sim, node_id: String) -> bool:
 	for craft in sim.craft:
 		if str(craft.def_id) != "survey_probe":
 			continue
 		if str(craft.state) == "docked" or str(craft.state) == "lost":
 			continue
-		if str(craft.target) == planet_id:
+		if str(craft.target) == node_id:
 			return true
 	return false
 

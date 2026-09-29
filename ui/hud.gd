@@ -18,6 +18,9 @@ var pause_box: PanelContainer
 var dead_box: PanelContainer
 var panel_kind := ""
 var hangar_rows: Dictionary = {}
+var hangar_node := "aegis_prime"
+var hangar_target: Label
+var hangar_sig := ""
 var bay_preview: Control
 var install_button: Button
 var bay_detail: Label
@@ -36,7 +39,7 @@ func _ready() -> void:
 	_build_pause()
 	_build_dead()
 	var hint := ThemeKit.label(
-		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   wheel zoom     1 probe   2 harvest   3 boat     B bay   H hangar   D dossier   F heat   J quests   K claim     Hold / Esc pause   F5 save   F9 load",
+		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   wheel zoom     1 probe   2 harvest     B bay   H hangar   D dossier   F heat   J quests   K claim     Hold / Esc pause   F5 save   F9 load",
 		12,
 		Color("8d826c")
 	)
@@ -278,8 +281,8 @@ func _refresh_helm() -> void:
 		keel,
 		zoom_word,
 	]
-	var heat := float(sim.heat.get("vellum_compact", 0.0))
-	helm_zone.text = "%s    Compact heat %s (%.0f)" % [sim.zone_label(zone), HeatWords.word(heat), heat]
+	var heat := float(sim.heat.get(sim._pdo_id(), 0.0))
+	helm_zone.text = "%s    %s heat %s (%.0f)" % [sim.zone_label(zone), sim._pdo_name(), HeatWords.word(heat), heat]
 	helm_cargo.text = _cargo_line(sim, stats)
 	helm_craft.text = _craft_line(sim)
 	var bits: Array = []
@@ -440,7 +443,16 @@ func _build_hangar() -> void:
 		child.queue_free()
 	hangar_rows = {}
 	var sim = Game.sim
-	hangar_box.add_child(ThemeKit.label("Craft do the dirty work. The keel stays off the crust.", 13, Color("8d826c")))
+	hangar_box.add_child(ThemeKit.label("Launch, orbit, scan, recall. A lost craft stays lost until rebuild spends raw mass.", 13, Color("8d826c")))
+	hangar_target = ThemeKit.label("", 14, Color("d7e6c8"))
+	hangar_box.add_child(hangar_target)
+	var picks := HBoxContainer.new()
+	picks.add_theme_constant_override("separation", 8)
+	for place in sim.nodes:
+		var pick := ThemeKit.button(str(place.name))
+		pick.pressed.connect(_pick_node.bind(str(place.id)))
+		picks.add_child(pick)
+	hangar_box.add_child(picks)
 	for item in sim.craft:
 		var spec: Dictionary = sim.defs.craft[item.def_id]
 		var block := VBoxContainer.new()
@@ -450,27 +462,88 @@ func _build_hangar() -> void:
 		block.add_child(state)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
-		var launch := ThemeKit.button("Launch")
-		launch.pressed.connect(_launch.bind(str(item.def_id)))
-		var recall := ThemeKit.button("Recall")
-		recall.pressed.connect(_recall_uid.bind(str(item.uid)))
-		row.add_child(launch)
-		row.add_child(recall)
-		block.add_child(row)
+		var uid := str(item.uid)
+		var parked := str(item.def_id) in ["fighter", "salvage_tender"]
+		var lost := str(item.state) == "lost"
+		if lost:
+			var rebuild := ThemeKit.button("Rebuild")
+			rebuild.pressed.connect(_order_uid.bind(uid, "rebuild"))
+			row.add_child(rebuild)
+			block.add_child(ThemeKit.label("Loss is permanent until rebuild spends 1 raw mass.", 13, Color("c4512c")))
+		elif parked:
+			block.add_child(ThemeKit.label("Parked. It stays in the rack this slice.", 13, Color("8d826c")))
+		elif str(item.def_id) == "survey_probe":
+			row.add_child(_order_button("Launch", uid, "launch"))
+			row.add_child(_order_button("Orbit", uid, "orbit"))
+			row.add_child(_order_button("Scan", uid, "scan"))
+			row.add_child(_order_button("Return", uid, "return"))
+		elif str(item.def_id) == "harvest_drone":
+			row.add_child(_order_button("Launch", uid, "launch"))
+			row.add_child(_order_button("Return", uid, "return"))
+		else:
+			row.add_child(_order_button("Launch", uid, "launch"))
+			row.add_child(_order_button("Return", uid, "return"))
+		if row.get_child_count() > 0:
+			block.add_child(row)
 		hangar_box.add_child(block)
-		hangar_rows[str(item.uid)] = state
+		hangar_rows[uid] = state
+	hangar_sig = _craft_sig()
 	_refresh_hangar()
+
+
+func _craft_sig() -> String:
+	if Game.sim == null:
+		return ""
+	var bits: PackedStringArray = PackedStringArray()
+	for item in Game.sim.craft:
+		bits.append("%s:%s" % [str(item.uid), str(item.state)])
+	return "|".join(bits)
+
+
+func _order_button(text: String, uid: String, verb: String) -> Button:
+	var button := ThemeKit.button(text)
+	button.pressed.connect(_order_uid.bind(uid, verb))
+	return button
+
+
+func _pick_node(node_id: String) -> void:
+	hangar_node = node_id
+	if panel_kind == "hangar":
+		_build_hangar()
+
+
+func _order_uid(uid: String, verb: String) -> void:
+	if Game.sim == null:
+		return
+	var message := CraftOrders.order(Game.sim, uid, verb, hangar_node)
+	if message != "":
+		Game.sim.say(message)
+	if panel_kind == "hangar":
+		_build_hangar()
 
 
 func _refresh_hangar() -> void:
 	var sim = Game.sim
+	if sim == null:
+		return
+	var sig := _craft_sig()
+	if sig != hangar_sig:
+		_build_hangar()
+		return
+	if hangar_target != null:
+		var place = sim.survey_node(hangar_node)
+		var name := hangar_node if place == null else str(place.name)
+		hangar_target.text = "Orders use %s." % name
 	for item in sim.craft:
 		var state: Label = hangar_rows.get(item.uid)
 		if state == null:
 			continue
 		var hp := int(item.hp)
 		var bat := int(item.battery)
-		state.text = "%s    hp %d    battery %d" % [item.state, hp, bat]
+		var extra := ""
+		if str(item.order) != "":
+			extra = "    %s" % str(item.order)
+		state.text = "%s%s    hp %d    battery %d" % [item.state, extra, hp, bat]
 
 
 func _fill_dossier() -> void:
@@ -478,10 +551,10 @@ func _fill_dossier() -> void:
 		child.queue_free()
 	var sim = Game.sim
 	var order := ["orbit", "atmosphere", "surface", "crust", "biosign", "ruins", "legal"]
-	for body in sim.planets:
-		var title := "%s    %d m" % [body.name, int(sim.player.pos.distance_to(body.pos))]
+	for place in sim.nodes:
+		var title := "%s    %d m" % [place.name, int(sim.player.pos.distance_to(place.pos))]
 		dossier_box.add_child(ThemeKit.label(title, 16))
-		var dossier: Dictionary = sim.scans.get(body.id, {})
+		var dossier: Dictionary = sim.scans.get(place.id, {})
 		var layers: Dictionary = dossier.get("layers", {})
 		for key in order:
 			var known := false
@@ -492,11 +565,11 @@ func _fill_dossier() -> void:
 			var col := Color("e6d7bf") if known else Color("6d6558")
 			dossier_box.add_child(ThemeKit.label("%s — %s" % [key, text], 13, col))
 		if bool(dossier.get("complete", false)):
-			var left := int(sim.deposits.get(body.id, 0))
-			var legal := str(body.legal)
-			dossier_box.add_child(ThemeKit.label("Seam: %s, %d crates. Title: %s." % [body.resource.name, left, legal], 14, Color("d7e6c8")))
+			var left := int(sim.deposits.get(place.id, 0))
+			var legal := str(place.legal_title)
+			dossier_box.add_child(ThemeKit.label("Seam: %s, %d left. Title: %s." % [place.resource.name, left, legal], 14, Color("d7e6c8")))
 		else:
-			dossier_box.add_child(ThemeKit.label("Probe has not sealed this world.", 13, Color("8d826c")))
+			dossier_box.add_child(ThemeKit.label("Probe has not sealed this node.", 13, Color("8d826c")))
 		dossier_box.add_child(ThemeKit.label(" ", 8))
 
 
