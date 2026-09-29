@@ -290,6 +290,7 @@ func _draw_belt(sim) -> void:
 		center /= float(verts.size())
 		var lit := _light_at(center)
 		var colors := PackedColorArray()
+		var span := 0.0
 		for point in verts:
 			var n: Vector2 = point - center
 			var face := 0.5
@@ -297,19 +298,24 @@ func _draw_belt(sim) -> void:
 				face = clampf(n.normalized().dot(lit) * 0.5 + 0.5, 0.15, 1.0)
 			var shade := tint.darkened(0.45).lerp(tint.lightened(0.18), face)
 			colors.append(shade)
+			span = maxf(span, n.length())
+		if span > 6.0:
+			var cast := PackedVector2Array()
+			for point in verts:
+				cast.append(point - lit * span * 0.16)
+			draw_colored_polygon(cast, Color(0, 0, 0, 0.16))
 		draw_polygon(verts, colors)
 		var outline := verts.duplicate()
 		outline.append(verts[0])
 		draw_polyline(outline, tint.lightened(0.12), 1.0, true)
-		var span := 0.0
-		for point in verts:
-			span = maxf(span, point.distance_to(center))
 		if span > 6.0:
 			var ridge := Vector2(-lit.y, lit.x)
 			draw_circle(center - lit * span * 0.28, span * 0.22, tint.darkened(0.4))
 			draw_circle(center + ridge * span * 0.22, span * 0.1, tint.darkened(0.32))
 			draw_line(center - ridge * span * 0.45, center + ridge * span * 0.3, tint.darkened(0.22), 1.2, true)
+			draw_arc(center - lit * span * 0.05, span * 0.28, 0.4, 2.4, 8, tint.darkened(0.15), 1.1, true)
 			draw_circle(center + lit * span * 0.35, span * 0.12, tint.lightened(0.22))
+			draw_circle(center + lit * span * 0.42, span * 0.045, Color(1, 0.96, 0.9, 0.35))
 
 
 func _draw_meteors(sim) -> void:
@@ -318,14 +324,20 @@ func _draw_meteors(sim) -> void:
 	for rock in sim.meteors:
 		var pos: Vector2 = rock.pos
 		var size := float(rock.get("size", 4.0)) * 3.4
-		var tail := pos + back * (18.0 + size * 2.0)
-		draw_line(pos, tail, Color(0.78, 0.42, 0.22, 0.35), size * 0.7, true)
-		draw_line(pos, pos + back * 10.0, Color("e7b15a"), 1.4, true)
-		draw_circle(pos, size * 2.2, Color(0.85, 0.4, 0.16, 0.12))
-		draw_circle(pos, size * 1.6, Color(0.85, 0.4, 0.16, 0.28))
-		draw_circle(pos, size, Color("8a3c22"))
-		draw_circle(pos - back * size * 0.25, size * 0.72, Color("c46a3a"))
-		draw_circle(pos - back * size * 0.45, size * 0.28, Color("fff0d2"))
+		var tail := pos + back * (22.0 + size * 2.4)
+		var side := Vector2(-back.y, back.x)
+		draw_line(pos, tail, Color(0.78, 0.42, 0.22, 0.28), size * 0.85, true)
+		draw_line(pos, pos + back * 12.0, Color("e7b15a"), 1.3, true)
+		draw_circle(pos, size * 2.4, Color(0.85, 0.4, 0.16, 0.1))
+		var chunk := PackedVector2Array([
+			pos + side * size * 0.7 - back * size * 0.2,
+			pos + side * size * 0.2 + back * size * 0.85,
+			pos - side * size * 0.65 + back * size * 0.15,
+			pos - side * size * 0.25 - back * size * 0.8,
+		])
+		draw_colored_polygon(chunk, Color("6a301c"))
+		draw_colored_polygon(Silhouette._inset_world(chunk, size * 0.35, -back * size * 0.2), Color("c46a3a"))
+		draw_circle(pos - back * size * 0.45, size * 0.22, Color("fff0d2"))
 
 
 func _draw_trash(sim) -> void:
@@ -356,6 +368,8 @@ func _draw_trash(sim) -> void:
 		draw_circle(pit + lit * (2.2 * scale), 0.8 * scale, Color(0.85, 0.78, 0.64, 0.45))
 		draw_line(xf * (Vector2(-6, 1) * scale), xf * (Vector2(-16, 6) * scale), Color("5a4034"), 1.5, true)
 		draw_line(xf * (Vector2(4, -2) * scale), xf * (Vector2(2, 3) * scale), Color("2a221c"), 1.2, true)
+		draw_line(xf * (Vector2(-2, 2.2) * scale), xf * (Vector2(8, 2.2) * scale), Color("c4a15a"), 1.3, true)
+		draw_line(xf * (Vector2(6, -1) * scale), xf * (Vector2(14, 3) * scale), Color("8a8174"), 1.1, true)
 		Silhouette._rim(self, world, lit, Color("d7cbb4"), 1.0)
 
 
@@ -541,14 +555,21 @@ func _draw_gates(sim) -> void:
 		draw_circle(pos, radius * 1.22, halo)
 		draw_circle(pos, radius, wash)
 		draw_circle(pos, radius * 0.35, Color(buoy.r, buoy.g, buoy.b, 0.12))
-		draw_arc(pos, radius, 0.0, TAU, 48, buoy, 1.8, true)
+		draw_arc(pos, radius, 0.0, TAU, 48, buoy.darkened(0.35), 3.2, true)
+		draw_arc(pos, radius, 0.0, TAU, 48, buoy, 1.5, true)
 		draw_arc(pos, radius * 0.72, 0.0, TAU, 36, buoy.lightened(0.15), 1.0, true)
 		draw_arc(pos, radius * 0.55, 0.0, TAU, 32, Color("f0e2b0"), 1.2, true)
+		for spoke in 4:
+			var arm := Vector2.from_angle(float(spoke) * TAU / 4.0 + 0.4)
+			draw_line(pos + arm * radius * 0.2, pos + arm * radius * 0.7, buoy.darkened(0.2), 1.2, true)
 		for cardinal in 4:
 			var buoy_pos := pos + Vector2.from_angle(float(cardinal) * TAU / 4.0) * radius
-			draw_circle(buoy_pos, 3.4, buoy.darkened(0.25))
-			draw_circle(buoy_pos, 1.6, buoy.lightened(0.35))
-		draw_circle(pos, 3.2, Color("fff6e0"))
+			draw_line(buoy_pos, buoy_pos + Vector2(0, 7), buoy.darkened(0.4), 1.4, true)
+			draw_circle(buoy_pos, 4.2, Color(buoy.r, buoy.g, buoy.b, 0.18))
+			draw_circle(buoy_pos, 3.2, buoy.darkened(0.3))
+			draw_circle(buoy_pos + Vector2(-0.8, -0.8), 1.3, buoy.lightened(0.4))
+		draw_circle(pos, 5.0, Color(1.0, 0.94, 0.8, 0.16))
+		draw_circle(pos, 2.6, Color("fff6e0"))
 
 
 func _draw_homestead(sim) -> void:
@@ -565,21 +586,29 @@ func _draw_homestead(sim) -> void:
 	if ruptured or frozen:
 		dome_col = Color("5c4038")
 	var dome_lit := _light_at(origin)
-	draw_circle(origin, 22.0, dome_col.darkened(0.28))
-	draw_circle(origin + dome_lit * 6.0, 14.0, dome_col.lightened(0.12))
-	draw_circle(origin + dome_lit * 9.0, 4.0, Color(1, 1, 1, 0.28))
+	draw_circle(origin, 26.0, Color(0, 0, 0, 0.18))
+	draw_circle(origin, 22.0, dome_col.darkened(0.35))
+	draw_circle(origin + dome_lit * 5.0, 16.0, dome_col.darkened(0.08))
+	draw_circle(origin + dome_lit * 9.0, 8.0, dome_col.lightened(0.16))
+	draw_circle(origin + dome_lit * 11.0, 3.2, Color(1, 1, 1, 0.4))
 	var glass_a := dome_lit.angle()
-	draw_arc(origin + dome_lit * 3.0, 8.0, glass_a - 0.7, glass_a + 0.7, 8, Color(1, 1, 1, 0.4), 1.3, true)
-	draw_arc(origin, 22.0, 0.0, TAU, 24, Color("243020"), 1.4, true)
+	draw_arc(origin + dome_lit * 3.0, 8.0, glass_a - 0.7, glass_a + 0.7, 8, Color(1, 1, 1, 0.45), 1.3, true)
+	for rib in 4:
+		var rib_a := float(rib) * TAU / 4.0
+		draw_arc(origin, 16.0, rib_a, rib_a + 0.9, 6, Color(0.2, 0.28, 0.18, 0.55), 1.2, true)
+	draw_arc(origin, 22.0, 0.0, TAU, 28, Color("243020"), 1.6, true)
 	if not ruptured and not frozen:
 		for i in 5:
 			var lamp: Vector2 = origin + Vector2.from_angle(float(i) * TAU / 5.0 + sim.time) * 16.0
 			draw_circle(lamp, 2.2, Color("f4e2a1"))
 	var plot := origin + Vector2(70, 18)
-	draw_rect(Rect2(plot - Vector2(16, 10), Vector2(32, 20)), Color("3e4a28"))
+	draw_rect(Rect2(plot - Vector2(16, 10) + Vector2(2, 3), Vector2(32, 20)), Color(0, 0, 0, 0.28))
+	draw_rect(Rect2(plot - Vector2(16, 10), Vector2(32, 20)), Color("2c3820"))
 	draw_rect(Rect2(plot - Vector2(14, 8), Vector2(28, 16)), Color("6f8a48"))
-	draw_line(plot + Vector2(-12, -3), plot + Vector2(12, -3), Color("4a5c30"), 1.2, true)
-	draw_line(plot + Vector2(-12, 3), plot + Vector2(12, 3), Color("4a5c30"), 1.2, true)
+	for furrow in 4:
+		var fy := -6.0 + float(furrow) * 4.0
+		draw_line(plot + Vector2(-12, fy + 1.2), plot + Vector2(12, fy + 1.2), Color(0.15, 0.2, 0.08, 0.45), 1.4, true)
+		draw_line(plot + Vector2(-12, fy), plot + Vector2(12, fy), Color("8eae62"), 1.1, true)
 	for speck in 4:
 		draw_circle(plot + Vector2(-8.0 + float(speck) * 5.0, 0.5), 0.9, Color("2e3c1c"))
 	draw_line(plot + Vector2(-14, -8), plot + Vector2(-14, 8), Color("cbb892"), 1.1, true)
@@ -630,11 +659,13 @@ func _draw_mark(sim) -> void:
 func _draw_beacon(sim) -> void:
 	var pos: Vector2 = sim.beacon_pos
 	draw_arc(pos, 36.0, 0.0, TAU, 28, Color("8aa896"), 1.6, true)
+	draw_circle(pos + Vector2(2, 3), 8.0, Color(0, 0, 0, 0.22))
 	draw_circle(pos, 9.0, Color(0.45, 0.58, 0.48, 0.12))
-	draw_circle(pos, 6.5, Color(0.55, 0.7, 0.55, 0.25))
-	draw_arc(pos, 5.4, 0.0, TAU, 16, Color("8a7a62"), 1.3, true)
-	draw_circle(pos, 4.0, Color("d7e6c8"))
-	draw_circle(pos + Vector2(-1.2, -1.2), 1.4, Color("fff8e8"))
+	draw_circle(pos, 7.2, Color("3d4a40"))
+	draw_circle(pos + Vector2(-1.4, -1.6), 5.2, Color("8aa896"))
+	draw_circle(pos + Vector2(-2.2, -2.4), 2.2, Color("e7f2ea"))
+	draw_arc(pos, 7.2, 0.4, 2.2, 10, Color("243028"), 1.4, true)
+	draw_circle(pos, 6.0, Color(1.0, 0.95, 0.8, 0.08))
 	draw_line(pos + Vector2(-14, 0), pos + Vector2(14, 0), Color("cbb892"), 1.2, true)
 	draw_line(pos + Vector2(0, -14), pos + Vector2(0, 14), Color("cbb892"), 1.2, true)
 
@@ -732,8 +763,13 @@ func _draw_craft(sim, item: Dictionary) -> void:
 	var kind := str(item.def_id)
 	var hull_pts := _craft_hull(kind, pos, dir, side)
 	var lit := _light_at(pos)
-	draw_colored_polygon(PackedVector2Array([nose - lit * 5.0, left - lit * 5.0, right - lit * 5.0]), Color(0, 0, 0, 0.14))
-	draw_colored_polygon(PackedVector2Array([nose - lit * 2.0, left - lit * 2.0, right - lit * 2.0]), Color(0, 0, 0, 0.34))
+	var far := PackedVector2Array()
+	var near := PackedVector2Array()
+	for point in hull_pts:
+		far.append(point - lit * 5.0)
+		near.append(point - lit * 2.0)
+	draw_colored_polygon(far, Color(0, 0, 0, 0.14))
+	draw_colored_polygon(near, Color(0, 0, 0, 0.34))
 	draw_colored_polygon(hull_pts, col.darkened(0.46))
 	draw_colored_polygon(Silhouette._inset_world(hull_pts, 1.2, lit * 0.8), col.darkened(0.1))
 	draw_colored_polygon(Silhouette._inset_world(hull_pts, 2.4, lit * 1.8), col.lightened(0.16))
@@ -788,7 +824,12 @@ func _draw_wreck(wreck: Dictionary) -> void:
 	draw_line(pos + Vector2(-8, -6), pos + Vector2(8, 6), Color("1a0c0a"), 1.4, true)
 	draw_line(pos + Vector2(-2, 6), pos + Vector2(6, -4), Color("2a1814"), 1.0, true)
 	draw_line(pos + Vector2(-5, 1), pos + Vector2(3, -2), Color("8a3a22"), 1.7, true)
-	draw_circle(pos + Vector2(-2, 1), 2.1, Color(0.32, 0.1, 0.05, 0.7))
+	draw_circle(pos + Vector2(-2, 1), 2.1, Color(0.55, 0.22, 0.08, 0.55))
+	draw_circle(pos + Vector2(-2, 1), 0.8, Color(1.0, 0.72, 0.35, 0.45))
+	draw_line(pos + Vector2(-14, 5), pos + Vector2(-9, 2), Color("4a4038"), 1.2, true)
+	draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(16, 6), pos + Vector2(11, 3), pos + Vector2(15, 1)
+	]), col.lightened(0.05))
 	draw_colored_polygon(PackedVector2Array([
 		pos + Vector2(13, -3), pos + Vector2(6, 0), pos + Vector2(10, 4)
 	]), col.lightened(0.08))
