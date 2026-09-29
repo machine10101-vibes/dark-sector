@@ -280,6 +280,7 @@ func _build_helm() -> void:
 	root.add_child(banner)
 	log_label = ThemeKit.label("", 14, Color("b7ab96"))
 	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	log_label.clip_text = true
 	root.add_child(log_label)
 
 
@@ -499,7 +500,10 @@ func _refresh_helm() -> void:
 	var bits: Array = []
 	for line in sim.lines:
 		bits.append(str(line.text))
+	if compact and bits.size() > 2:
+		bits = bits.slice(bits.size() - 2, bits.size())
 	log_label.text = "\n".join(bits)
+	log_label.max_lines_visible = 2 if compact else 5
 
 
 func _mass_line(stats: Dictionary) -> String:

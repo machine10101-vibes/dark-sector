@@ -110,7 +110,12 @@ func _fit() -> void:
 	select_box.position = Vector2(12, 12)
 	select_box.size = screen - Vector2(24, 24)
 	if keel_row != null:
-		keel_row.columns = 1 if screen.x < 860.0 else 3
+		var stacked := screen.x < 860.0
+		keel_row.columns = 1 if stacked else 3
+		for card in keel_row.get_children():
+			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var card_w := screen.x - 36.0 if stacked else 240.0
+			card.custom_minimum_size = Vector2(card_w, 0)
 	backdrop.queue_redraw()
 
 
