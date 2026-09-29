@@ -139,7 +139,7 @@
     "radius": 620,
     "home": "aegis_prime"
   },
-  "pirates": { "count": 0 },
+  "pirates": { "count": 3, "angle": 2.2, "standoff": 620 },
   "haulers": [
     {
       "id": "hauler_holt",

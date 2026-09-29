@@ -103,6 +103,7 @@ func _draw() -> void:
 	for body in sim.planets:
 		_draw_planet(sim, body)
 	_draw_pocket(sim)
+	_draw_beacon(sim)
 	for wreck in sim.wrecks:
 		_draw_wreck(wreck)
 	for shot in sim.projectiles:
@@ -247,6 +248,14 @@ func _draw_pocket(sim) -> void:
 	draw_line(sim.pocket_pos + Vector2(0, -14), sim.pocket_pos + Vector2(0, 14), Color("cbb892"), 1.2, true)
 
 
+func _draw_beacon(sim) -> void:
+	var pos: Vector2 = sim.beacon_pos
+	draw_arc(pos, 36.0, 0.0, TAU, 28, Color("8aa896"), 1.6, true)
+	draw_circle(pos, 4.0, Color("d7e6c8"))
+	draw_line(pos + Vector2(-14, 0), pos + Vector2(14, 0), Color("cbb892"), 1.2, true)
+	draw_line(pos + Vector2(0, -14), pos + Vector2(0, 14), Color("cbb892"), 1.2, true)
+
+
 func _draw_ship(sim, ship: Dictionary) -> void:
 	var hull: Dictionary = sim.defs.ships[ship.class_id]
 	var shapes: Array = Silhouette.shapes_of(sim.defs, ship.modules)
@@ -271,6 +280,8 @@ func _draw_ship(sim, ship: Dictionary) -> void:
 	draw_rect(Rect2(origin, Vector2(bar * 2.0, 3.0)), Color(0, 0, 0, 0.55))
 	var fill := Color("d7e6c8") if frac > 0.35 else Color("c4512c")
 	draw_rect(Rect2(origin, Vector2(bar * 2.0 * frac, 3.0)), fill)
+	if str(ship.agent_id) == "agent:captain" and sim.hangar_down():
+		draw_circle(ship.pos + Vector2(0, -bar - 22.0), 3.5, Color("d27a6a"))
 
 
 func _draw_craft(sim, item: Dictionary) -> void:
@@ -342,6 +353,7 @@ func _draw_names(sim, zoom: float) -> void:
 	_text(sim.pocket_pos + Vector2(-70, -float(sim.defs.system.pocket.radius) - 16.0), pocket_name, 15, Color("c5d2b4"))
 	if zoom < 0.4 and float(sim.defs.system.zones.amber.radius) > 1.0:
 		_text(sim.nest_pos + Vector2(-40, -float(sim.defs.system.zones.amber.radius) - 12.0), "The Slat — amber", 14, Color("c4923a"))
+	_text(sim.beacon_pos + Vector2(-46, -22), "Dock beacon", 13, Color("8aa896"))
 	if zoom < 0.55 and sim.trash.size() > 0:
 		var pile: Vector2 = sim.trash[0].pos
 		_text(pile + Vector2(-30, -28), str(sim.defs.system.trash.name), 14, Color("c2b49a"))

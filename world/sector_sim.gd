@@ -11,6 +11,10 @@ var trash: Array = []
 var stars: Array = []
 var pocket_pos = Vector2.ZERO
 var nest_pos = Vector2.ZERO
+var beacon_pos = Vector2.ZERO
+var trash_pos = Vector2.ZERO
+var pack_pos = Vector2.ZERO
+var fined := false
 var player: Dictionary = {}
 var actors: Array = []
 var craft: Array = []
@@ -48,6 +52,7 @@ func new_game(class_id: String) -> void:
 	banner_t = 0.0
 	pdo_alert = false
 	hailed = false
+	fined = false
 	sfx_queue = []
 	hold_npc = false
 	heat = {}
@@ -65,6 +70,10 @@ func new_game(class_id: String) -> void:
 	fresh.slots = hull.slots.duplicate()
 	fresh.crew = hull.crew.duplicate(true)
 	player = fresh
+	player.hangar_hp = 22.0
+	player.hangar_max = 22.0
+	player.module_hp = {}
+	player.fight_cd = 0.0
 	craft = []
 	var running = {}
 	for entry in hull.starting_craft:
@@ -106,6 +115,9 @@ func install(module_id: String) -> Dictionary:
 	var result = Fit.try_install(defs, player, module_id)
 	say(str(result.reason))
 	if result.ok:
+		if not player.has("module_hp"):
+			player.module_hp = {}
+		player.module_hp[module_id] = 22.0
 		sfx("install")
 	return result
 
@@ -118,6 +130,8 @@ func uninstall(module_id: String) -> Dictionary:
 	var result = Fit.try_remove(defs, player, module_id)
 	say(str(result.reason))
 	if result.ok:
+		if player.has("module_hp"):
+			player.module_hp.erase(module_id)
 		sfx("install")
 	return result
 
@@ -305,9 +319,13 @@ func nearest_hostile(pos: Vector2, radius: float):
 	for actor in actors:
 		if not bool(actor.alive):
 			continue
-		if str(actor.team) == "captain":
+		var team := str(actor.team)
+		if team == "captain" or team == "civilian":
 			continue
-		if str(actor.team) == "vellum_compact" and not pdo_alert and float(heat.get("vellum_compact", 0.0)) < 40.0:
+		var engage_at := 40.0
+		if defs.factions.has(team):
+			engage_at = float(defs.factions[team].get("heat_to_engage", 40.0))
+		if (team == "vellum_compact" or team == _pdo_id()) and not pdo_alert and float(heat.get(team, 0.0)) < engage_at:
 			continue
 		var dist = pos.distance_to(actor.pos)
 		if dist < best_dist:
@@ -332,12 +350,14 @@ func try_fire(unit: Dictionary, gun: Dictionary) -> bool:
 		"agent_id": unit.agent_id,
 	})
 	sfx("gun")
-	if str(unit.team) == "captain":
+	if str(unit.agent_id) == "agent:captain":
+		unit.fight_cd = 2.4
 		Ownership.on_captain_shot(self, unit.pos)
 	return true
 
 
 func damage_unit(unit: Dictionary, amount: float, attacker: String) -> void:
+	_note_hit(attacker, unit)
 	if unit.has("state"):
 		if str(unit.state) == "docked" or str(unit.state) == "lost":
 			return
@@ -354,6 +374,15 @@ func damage_unit(unit: Dictionary, amount: float, attacker: String) -> void:
 		var belt := float(Fit.stats(defs, unit).armor)
 		if belt > 0.0:
 			amount = maxf(0.35, amount * (1.0 - belt))
+	if str(unit.get("agent_id", "")) == "agent:captain":
+		_chip_capital(unit, amount)
+	if str(unit.get("team", "")) == _pdo_id() and attacker == "agent:captain":
+		Ownership.add_heat(self, _pdo_id(), 28.0, "shot_patrol", attacker)
+		pdo_alert = true
+		banner = "%s: \"You fired on the Guard.\"" % _pdo_name()
+		banner_t = 0.0
+		say("The patrol is hostile. Heat spikes.")
+		sfx("hail")
 	unit.hp = float(unit.hp) - amount
 	unit.hurt_cd = 0.4
 	if float(unit.hp) <= 0.0:
@@ -413,6 +442,7 @@ func to_dict() -> Dictionary:
 		"banner": banner,
 		"pdo_alert": pdo_alert,
 		"hailed": hailed,
+		"fined": fined,
 	}
 
 
@@ -454,6 +484,7 @@ func from_dict(data: Dictionary) -> void:
 	banner_t = 0.0
 	pdo_alert = bool(data.get("pdo_alert", false))
 	hailed = bool(data.get("hailed", false))
+	fined = bool(data.get("fined", false))
 	sfx_queue = []
 	hold_npc = false
 
@@ -478,11 +509,13 @@ func _step(dt: float, cmd: Dictionary) -> void:
 	banner_t += dt
 	if banner_t > 9.0:
 		banner = ""
+	_step_compact()
 
 
 func _step_player(dt: float, cmd: Dictionary) -> void:
 	player.fire_cd = maxf(0.0, float(player.fire_cd) - dt)
 	player.hurt_cd = maxf(0.0, float(player.hurt_cd) - dt)
+	player.fight_cd = maxf(0.0, float(player.get("fight_cd", 0.0)) - dt)
 	if not bool(player.alive):
 		player.thrusting = false
 		player.pos += player.vel * dt
@@ -516,13 +549,8 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 	var dest: Vector2 = actor.pos
 	var target = null
 	if str(actor.team) == "red_keel":
-		var enraged = bool(actor.ai.get("enraged", false)) or memory.get("red_keel", []).has("killed_a_skiff")
-		var leash = 1500.0 if enraged else 980.0
-		if player.alive and player.pos.distance_to(actor.pos) < leash and player.pos.distance_to(actor.home) < leash + 520.0:
-			target = player
-		else:
-			var ang = time * 0.22 + float(actor.ai.phase)
-			dest = actor.home + Vector2.from_angle(ang) * 170.0
+		_step_pirate(actor, dt)
+		return
 	elif str(actor.team) == "civilian":
 		var coast = time * 0.07 + float(actor.ai.phase)
 		dest = actor.home + Vector2.from_angle(coast) * float(actor.ai.radius)
@@ -642,24 +670,251 @@ func _bump_circle(ship: Dictionary, center: Vector2, radius: float, dmg: float) 
 			say("The keel scrapes. Capital ships stay off the crust.")
 
 
+func hangar_down() -> bool:
+	return float(player.get("hangar_hp", 22.0)) <= 0.0
+
+
+func heat_stage() -> String:
+	var h := float(heat.get(_pdo_id(), 0.0))
+	var guns := float(defs.factions[_pdo_id()].get("heat_to_engage", 40.0))
+	if h >= guns or pdo_alert:
+		return "guns"
+	if fined or h >= 26.0:
+		return "fine"
+	if hailed or h >= 12.0:
+		return "hail"
+	return "clear"
+
+
+func try_repair() -> String:
+	if player.pos.distance_to(beacon_pos) > 170.0:
+		return "The dock beacon is the crane. Bring the keel in."
+	var hurt := float(player.hp) < float(player.max_hp) - 0.5
+	if float(player.get("hangar_hp", 22.0)) < float(player.get("hangar_max", 22.0)) - 0.5:
+		hurt = true
+	var hpmap: Dictionary = player.get("module_hp", {})
+	for module_id in player.modules:
+		if float(hpmap.get(str(module_id), 22.0)) < 21.5:
+			hurt = true
+			break
+	if not hurt:
+		return "Nothing to weld."
+	if int(player.cargo.get("raw_mass", 0)) < 1:
+		return "Repair wants one unit of harvested mass."
+	spend_cargo("raw_mass", 1)
+	player.hp = minf(float(player.max_hp), float(player.hp) + 28.0)
+	player.hangar_hp = float(player.get("hangar_max", 22.0))
+	if not player.has("module_hp"):
+		player.module_hp = {}
+	for module_id in player.modules:
+		player.module_hp[str(module_id)] = 22.0
+	say("Welds hold. The hangar answers.")
+	sfx("install")
+	return ""
+
+
+func _step_compact() -> void:
+	var faction_id := _pdo_id()
+	var h := float(heat.get(faction_id, 0.0))
+	if h >= 12.0 and not hailed:
+		hailed = true
+		banner = "%s: \"Heave to. The slate has you.\"" % _pdo_name()
+		banner_t = 0.0
+		sfx("hail")
+		say("The patrol hails.")
+	if h >= 26.0 and not fined:
+		_fine_cargo()
+	var guns := float(defs.factions[faction_id].get("heat_to_engage", 40.0))
+	if h >= guns:
+		pdo_alert = true
+
+
+func _fine_cargo() -> void:
+	fined = true
+	var taken := ""
+	if int(player.cargo.get("raw_mass", 0)) > 0:
+		spend_cargo("raw_mass", 1)
+		taken = "raw mass"
+	else:
+		for key in player.cargo.keys():
+			if int(player.cargo[key]) <= 0:
+				continue
+			spend_cargo(str(key), 1)
+			taken = resource_name(str(key))
+			break
+	if taken == "":
+		say("The hold is empty. The fine is written anyway.")
+		banner = "%s: \"Empty hold. The fine stands.\"" % _pdo_name()
+	else:
+		say("The patrol fines one %s." % taken)
+		banner = "%s: \"Cargo for the slate.\"" % _pdo_name()
+	banner_t = 0.0
+	sfx("hail")
+
+
+func _note_hit(attacker: String, unit: Dictionary) -> void:
+	var victim := str(unit.get("agent_id", "")) == "agent:captain" or str(unit.get("team", "")) == "captain"
+	if not victim:
+		return
+	if not attacker.begins_with("agent:red_keel"):
+		return
+	for actor in actors:
+		if str(actor.agent_id) != attacker:
+			continue
+		actor.ai.fired_on_captain = true
+		return
+
+
+func _chip_capital(unit: Dictionary, amount: float) -> void:
+	var before := float(unit.get("hangar_hp", 22.0))
+	var now := before - amount
+	if now < 0.0:
+		now = 0.0
+	unit.hangar_hp = now
+	if before > 0.0 and now <= 0.0:
+		say("The hangar is down. Craft cannot come aboard.")
+	if not unit.has("module_hp"):
+		unit.module_hp = {}
+	var hpmap: Dictionary = unit.module_hp
+	for module_id in unit.modules:
+		var mid := str(module_id)
+		var part := float(hpmap.get(mid, 22.0))
+		if part <= 0.0:
+			continue
+		part -= amount
+		if part < 0.0:
+			part = 0.0
+		hpmap[mid] = part
+		if part <= 0.0:
+			var mod: Dictionary = defs.modules.get(mid, {})
+			say("%s is dark until the dock beacon." % str(mod.get("name", mid)))
+		break
+
+
+func _step_pirate(actor: Dictionary, dt: float) -> void:
+	var quarry := _pirate_quarry(actor)
+	if quarry.is_empty():
+		var spin: float = time * 0.22 + float(actor.ai.get("phase", 0.0))
+		_fly_ship(actor, actor.home + Vector2.from_angle(spin) * 140.0, dt, false)
+		return
+	var pressing := float(player.get("fight_cd", 0.0)) > 0.0
+	var far: bool = quarry.pos.distance_to(actor.home) > 780.0
+	if far and not pressing:
+		actor.ai.chase = float(actor.ai.get("chase", 0.0)) + dt
+	elif not far:
+		actor.ai.chase = 0.0
+	var deep := _deep_green(quarry.pos) and not pressing
+	if float(actor.ai.get("chase", 0.0)) > 5.0 or deep:
+		actor.ai.chase = 0.0
+		var spin: float = time * 0.22 + float(actor.ai.get("phase", 0.0))
+		_fly_ship(actor, actor.home + Vector2.from_angle(spin) * 140.0, dt, false)
+		return
+	var aim: Vector2 = quarry.pos
+	var offset: Vector2 = aim - actor.pos
+	var dist: float = offset.length()
+	var dest := aim
+	var role := str(actor.ai.get("role", "interceptor"))
+	if role == "kite":
+		if dist < 340.0 and dist > 1.0:
+			dest = actor.pos - offset.normalized() * 240.0
+		elif dist > 460.0:
+			dest = aim
+		else:
+			var side := Vector2(-offset.y, offset.x).normalized()
+			dest = actor.pos + side * 90.0
+	elif dist < 150.0 and dist > 1.0:
+		dest = actor.pos - offset.normalized() * 40.0
+	var stats := Fit.stats(defs, actor)
+	var gun: Dictionary = stats.gun
+	var aligned := absf(wrapf((aim - actor.pos).angle() - actor.rot, -PI, PI)) < 0.42
+	if dist < float(gun.range) and aligned:
+		try_fire(actor, gun)
+	_fly_ship(actor, dest, dt, true)
+
+
+func _pirate_quarry(actor: Dictionary) -> Dictionary:
+	var best: Dictionary = {}
+	var best_d := 1400.0
+	for item in craft:
+		if str(item.state) == "docked" or str(item.state) == "lost":
+			continue
+		if str(item.team) != "captain":
+			continue
+		var row: Dictionary = item
+		var dist: float = actor.pos.distance_to(row.pos)
+		if dist < best_d:
+			best = row
+			best_d = dist
+	if not best.is_empty():
+		return best
+	if not bool(player.alive):
+		return {}
+	var enraged: bool = bool(actor.ai.get("enraged", false)) or memory.get("red_keel", []).has("killed_a_skiff")
+	var reach := 620.0
+	var sight := 700.0
+	if enraged:
+		reach = 900.0
+		sight = 1000.0
+	if player.pos.distance_to(actor.home) < reach or player.pos.distance_to(actor.pos) < sight:
+		return player
+	return {}
+
+
+func _deep_green(pos: Vector2) -> bool:
+	var body = planet(str(defs.system.zones.green.anchor))
+	if body == null:
+		return false
+	return pos.distance_to(body.pos) < float(defs.system.zones.green.radius) - 260.0
+
+
+func _in_trash(pos: Vector2) -> bool:
+	var spread := float(defs.system.trash.get("spread", 150.0))
+	return pos.distance_to(trash_pos) <= spread + 40.0
+
+
 func _kill(unit: Dictionary, attacker: String) -> void:
+	sfx("destroyed")
+	if str(unit.agent_id) == "agent:captain":
+		var dropped := _split_cargo(unit)
+		wrecks.append({
+			"id": "wreck_%d" % wrecks.size(),
+			"agent_id": unit.agent_id,
+			"controller": unit.controller,
+			"team": unit.team,
+			"class_id": unit.class_id,
+			"pos": unit.pos,
+			"cargo": dropped,
+			"stripped": false,
+			"name": unit.name,
+		})
+		_respawn_captain(unit)
+		return
 	unit.alive = false
 	unit.hp = 0.0
 	unit.thrusting = false
-	var wreck = {
+	var cargo: Dictionary = {}
+	if unit.has("cargo"):
+		cargo = unit.cargo.duplicate(true)
+	wrecks.append({
 		"id": "wreck_%d" % wrecks.size(),
 		"agent_id": unit.agent_id,
 		"controller": unit.controller,
 		"team": unit.team,
 		"class_id": unit.class_id,
 		"pos": unit.pos,
-		"cargo": unit.cargo.duplicate(true) if unit.has("cargo") else {},
+		"cargo": cargo,
 		"stripped": false,
 		"name": unit.name,
-	}
-	wrecks.append(wreck)
-	sfx("destroyed")
+	})
 	if str(unit.team) == "red_keel":
+		var provoked := bool(unit.ai.get("fired_on_captain", false))
+		if provoked:
+			var eased := maxf(0.0, float(heat.get(_pdo_id(), 0.0)) - 5.0)
+			heat[_pdo_id()] = eased
+			say("They fired first. The slate eases.")
+		elif _in_trash(unit.pos):
+			Ownership.add_heat(self, _pdo_id(), 6.0, "killed_in_seized", attacker)
+			say("That wreck was seized property. The slate takes a little.")
 		Ownership.add_heat(self, "red_keel", 10.0, "killed_a_skiff", attacker)
 		for actor in actors:
 			if str(actor.team) == "red_keel" and bool(actor.alive):
@@ -671,10 +926,40 @@ func _kill(unit: Dictionary, attacker: String) -> void:
 		banner = "%s: \"Patrol blood. The lane is closed to you.\"" % _pdo_name()
 		banner_t = 0.0
 		say("A Compact cutter is gone. The slate does not forget.")
-	elif str(unit.agent_id) == "agent:captain":
-		banner = "Hull lost. The wreck keeps your name. Load the log, or leave the dock."
-		banner_t = 0.0
-		say("The keel is broken. What is left is a wreck with your agent id on it.")
+
+
+func _split_cargo(unit: Dictionary) -> Dictionary:
+	var dropped := {}
+	var kept := {}
+	for key in unit.cargo.keys():
+		var n := int(unit.cargo[key])
+		if n <= 0:
+			continue
+		var lose := int(n / 2)
+		if lose < 1:
+			lose = 1
+		if lose > n:
+			lose = n
+		dropped[str(key)] = lose
+		var remain := n - lose
+		if remain > 0:
+			kept[str(key)] = remain
+	unit.cargo = kept
+	return dropped
+
+
+func _respawn_captain(unit: Dictionary) -> void:
+	var dock = planet(str(defs.system.pdo.home))
+	unit.alive = true
+	unit.thrusting = false
+	unit.vel = Vector2.ZERO
+	unit.hp = maxf(1.0, float(unit.max_hp) * 0.45)
+	if dock != null:
+		unit.pos = dock.pos + Vector2(float(dock.radius) + 560.0, 40.0)
+		unit.rot = (unit.pos - dock.pos).angle()
+	banner = "You wake at Helion Dock. The wreck still has your name, and some of the hold."
+	banner_t = 0.0
+	say("The keel broke. Layout kept. You are back on the dock.")
 
 
 func _add_cargo(id: String, count: int) -> void:
@@ -696,11 +981,13 @@ func _build_static() -> void:
 	asteroids = []
 	trash = []
 	var field: Dictionary = defs.system.get("trash", {})
+	trash_pos = Vector2.ZERO
 	if int(field.get("count", 0)) > 0:
 		var anchor_body = planet(str(field.get("anchor", "")))
 		var origin := Vector2.ZERO
 		if anchor_body != null:
 			origin = anchor_body.pos + Vector2.from_angle(float(field.angle)) * float(field.distance)
+		trash_pos = origin
 		var spread := float(field.get("spread", 120.0))
 		for i in int(field.count):
 			var jitter := Vector2(rng.randf_range(-spread, spread), rng.randf_range(-spread * 0.55, spread * 0.55))
@@ -733,6 +1020,18 @@ func _build_static() -> void:
 			"a": rng.randf_range(0.2, 0.85),
 			"r": rng.randf_range(0.8, 1.8),
 		})
+	var dock = planet(str(defs.system.pdo.get("home", "")))
+	beacon_pos = Vector2.ZERO
+	if dock != null:
+		beacon_pos = dock.pos + Vector2(float(dock.radius) + 430.0, -160.0)
+	var green_body = planet(str(defs.system.zones.green.anchor))
+	var pirates: Dictionary = defs.system.get("pirates", {})
+	var stand := float(pirates.get("standoff", 620.0))
+	var pang := float(pirates.get("angle", 2.2))
+	var green_r := float(defs.system.zones.green.radius)
+	pack_pos = Vector2.from_angle(pang) * (green_r + stand)
+	if green_body != null:
+		pack_pos = green_body.pos + Vector2.from_angle(pang) * (green_r + stand)
 	_build_nodes()
 
 
@@ -792,13 +1091,26 @@ func _spawn_factions() -> void:
 		hauler.rot = phase + PI * 0.5
 		hauler.ai = {"phase": phase, "radius": orbit, "enraged": false}
 		actors.append(hauler)
-	for i in int(defs.system.pirates.count):
+	var pack_count := int(defs.system.pirates.count)
+	var roles := ["interceptor", "kite", "raider"]
+	var bolted := ["gun_sponson", "sensor_mast", "cargo_blister"]
+	for i in pack_count:
 		var actor = _blank_ship("skiff", "Red Keel %d" % (i + 1), "agent:red_keel:%d" % i, "npc", "red_keel")
-		var ang = float(i) / float(defs.system.pirates.count) * TAU
-		actor.home = nest_pos
-		actor.pos = nest_pos + Vector2.from_angle(ang) * 150.0
+		var ang = float(i) / float(maxi(pack_count, 1)) * TAU
+		var part: String = bolted[i % bolted.size()]
+		actor.home = pack_pos
+		actor.pos = pack_pos + Vector2.from_angle(ang) * 90.0
 		actor.rot = ang
-		actor.ai = {"phase": ang, "radius": 180.0, "enraged": false}
+		actor.modules = [part]
+		actor.module_hp = {part: 22.0}
+		actor.ai = {
+			"phase": ang,
+			"radius": 140.0,
+			"enraged": false,
+			"role": roles[i % roles.size()],
+			"chase": 0.0,
+			"fired_on_captain": false,
+		}
 		actor.cargo = {"scrap": 1}
 		actors.append(actor)
 
@@ -824,6 +1136,10 @@ func _blank_ship(class_id: String, ship_name: String, agent_id: String, controll
 		"crew": [],
 		"fire_cd": 0.0,
 		"hurt_cd": 0.0,
+		"fight_cd": 0.0,
+		"hangar_hp": 22.0,
+		"hangar_max": 22.0,
+		"module_hp": {},
 		"alive": true,
 		"thrusting": false,
 		"home": Vector2.ZERO,
@@ -916,6 +1232,11 @@ func _ship_in(row: Dictionary) -> Dictionary:
 	ship.rot = float(ship.rot)
 	ship.fire_cd = float(ship.get("fire_cd", 0.0))
 	ship.hurt_cd = float(ship.get("hurt_cd", 0.0))
+	ship.fight_cd = float(ship.get("fight_cd", 0.0))
+	ship.hangar_hp = float(ship.get("hangar_hp", 22.0))
+	ship.hangar_max = float(ship.get("hangar_max", 22.0))
+	if not ship.has("module_hp"):
+		ship.module_hp = {}
 	ship.alive = bool(ship.alive)
 	ship.thrusting = false
 	if not ship.has("muzzle"):

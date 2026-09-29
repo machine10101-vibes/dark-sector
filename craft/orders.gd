@@ -49,6 +49,8 @@ static func order(sim, uid: String, verb: String, node_id: String) -> String:
 			return "%s is lost. Rebuild it from returned mass." % craft.name
 		if str(craft.state) == "docked":
 			return "%s is already in the rack." % craft.name
+		if sim.hangar_down():
+			return "The hangar is down. Craft cannot come aboard."
 		craft.state = "returning"
 		craft.order = "return"
 		sim.say("%s recalled." % craft.name)
@@ -111,7 +113,9 @@ static func rebuild(sim, uid: String) -> String:
 
 
 static func recall(sim, uid: String) -> void:
-	order(sim, uid, "return", "")
+	var message := order(sim, uid, "return", "")
+	if message != "":
+		sim.say(message)
 
 
 static func step(sim, craft, dt: float) -> void:
@@ -294,6 +298,11 @@ static func _return_home(sim, craft, dt: float) -> void:
 		catch = 70.0
 	var dist = _fly_safe(sim, craft, sim.player.pos, dt, catch)
 	if dist < 46.0:
+		if sim.hangar_down():
+			if not bool(craft.get("hangar_said", false)):
+				craft.hangar_said = true
+				sim.say("The hangar is down. %s cannot come aboard." % craft.name)
+			return
 		_dock(sim, craft)
 		sim.say("%s is back in the rack." % craft.name)
 		sim.sfx("dock")
