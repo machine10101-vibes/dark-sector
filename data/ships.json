@@ -306,7 +306,7 @@
     "slots": [],
     "yard": [],
     "gun": {
-      "damage": 6,
+      "damage": 9,
       "cooldown": 0.85,
       "speed": 620,
       "range": 430,

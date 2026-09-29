@@ -1,0 +1,19 @@
+{
+  "id": "cheek_fin",
+  "name": "Cheek Fin",
+  "family": "hull",
+  "size": "M",
+  "slot": "Utility",
+  "favored": "",
+  "mass": 8,
+  "power": 2,
+  "crew": 0,
+  "attach": {"x": 12, "y": 18},
+  "footprint": {"w": 28, "h": 40},
+  "shape": "fin",
+  "blurb": "A fin bolted off the cheek. The silhouette is wider the moment it is on.",
+  "layer": [
+    [[18, 8], [28, 46], [6, 12]]
+  ],
+  "effects": {"radius": 2}
+}

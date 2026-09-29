@@ -693,6 +693,7 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 		return
 	var dest: Vector2 = actor.pos
 	var target = null
+	var guns_at := 40.0
 	if str(actor.team) == "red_keel":
 		_step_pirate(actor, dt)
 		return
@@ -702,7 +703,10 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 		_fly_ship(actor, dest, dt, false)
 		return
 	elif str(actor.team) == _pdo_id():
-		var engage = pdo_alert or float(heat.get(_pdo_id(), 0.0)) >= 40.0
+		var heat_now := float(heat.get(_pdo_id(), 0.0))
+		if defs.factions.has(_pdo_id()):
+			guns_at = float(defs.factions[_pdo_id()].get("heat_to_engage", 40.0))
+		var engage := pdo_alert or heat_now >= 12.0
 		var blooded = memory.get(_pdo_id(), []).has("killed_patrol")
 		var quarry = _law_quarry()
 		if quarry == null and engage and player.alive:
@@ -723,7 +727,7 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 		var gun: Dictionary = stats.gun
 		var aligned = absf(wrapf((target.pos - actor.pos).angle() - actor.rot, -PI, PI)) < 0.42
 		var heat_v = _heat_for(target)
-		var hailing = str(actor.team) == _pdo_id() and heat_v < 40.0 and not memory.get(_pdo_id(), []).has("killed_patrol")
+		var hailing = str(actor.team) == _pdo_id() and heat_v < guns_at and not memory.get(_pdo_id(), []).has("killed_patrol")
 		if hailing and dist < 780.0 and not bool(actor.ai.get("said_hail", false)):
 			actor.ai.said_hail = true
 			banner = "%s cutter: \"You are in the green. Stow the guns.\"" % _pdo_name()
@@ -762,8 +766,9 @@ func _step_projectiles(dt: float) -> void:
 		shot.ttl = float(shot.ttl) - dt
 		if float(shot.ttl) <= 0.0:
 			continue
+		var origin := Vector2(shot.pos)
 		shot.pos += shot.vel * dt
-		var hit = _projectile_hit(shot)
+		var hit = _projectile_hit(shot, origin)
 		if hit != null:
 			damage_unit(hit, float(shot.damage), str(shot.agent_id))
 			sfx("hit")
@@ -772,7 +777,8 @@ func _step_projectiles(dt: float) -> void:
 	projectiles = kept
 
 
-func _projectile_hit(shot: Dictionary):
+func _projectile_hit(shot: Dictionary, origin: Vector2):
+	var dest := Vector2(shot.pos)
 	var bodies: Array = []
 	if player.alive:
 		bodies.append(player)
@@ -786,16 +792,26 @@ func _projectile_hit(shot: Dictionary):
 		if _friendly_fire(shot, unit):
 			continue
 		var radius = float(Fit.stats(defs, unit).hit_radius)
-		if shot.pos.distance_to(unit.pos) <= radius:
+		if _shot_reaches(origin, dest, unit.pos, radius):
 			return unit
 	for item in craft:
 		if str(item.state) == "docked" or str(item.state) == "lost":
 			continue
 		if str(item.team) == str(shot.team):
 			continue
-		if shot.pos.distance_to(item.pos) <= float(item.radius) + 4.0:
+		if _shot_reaches(origin, dest, item.pos, float(item.radius) + 4.0):
 			return item
 	return null
+
+
+func _shot_reaches(origin: Vector2, dest: Vector2, center: Vector2, radius: float) -> bool:
+	var span := dest - origin
+	var span_len := span.length_squared()
+	var along := 0.0
+	if span_len > 0.0001:
+		along = clampf((center - origin).dot(span) / span_len, 0.0, 1.0)
+	var closest := origin + span * along
+	return closest.distance_to(center) <= radius
 
 
 func _bump_world(ship: Dictionary) -> void:
@@ -969,9 +985,13 @@ func _step_pirate(actor: Dictionary, dt: float) -> void:
 	var aim: Vector2 = quarry.pos
 	var offset: Vector2 = aim - actor.pos
 	var dist: float = offset.length()
+	var stats := Fit.stats(defs, actor)
+	var gun: Dictionary = stats.gun
 	var dest := aim
 	var role := str(actor.ai.get("role", "interceptor"))
-	if role == "kite":
+	if pressing and dist < float(gun.range) and dist > 1.0:
+		dest = aim
+	elif role == "kite":
 		if dist < 340.0 and dist > 1.0:
 			dest = actor.pos - offset.normalized() * 240.0
 		elif dist > 460.0:
@@ -981,11 +1001,11 @@ func _step_pirate(actor: Dictionary, dt: float) -> void:
 			dest = actor.pos + side * 90.0
 	elif dist < 150.0 and dist > 1.0:
 		dest = actor.pos - offset.normalized() * 40.0
-	var stats := Fit.stats(defs, actor)
-	var gun: Dictionary = stats.gun
 	var aligned := absf(wrapf((aim - actor.pos).angle() - actor.rot, -PI, PI)) < 0.42
 	if dist < float(gun.range) and aligned:
 		try_fire(actor, gun)
+	if pressing and dist < 280.0:
+		actor.vel *= 1.0 - 2.4 * dt
 	_fly_ship(actor, dest, dt, true)
 
 
@@ -1227,11 +1247,10 @@ func try_lane() -> String:
 	var gate := nearby_gate()
 	if gate.is_empty():
 		return "No lane buoy in reach."
-	if hangar_down():
-		for item in craft:
-			var state := str(item.state)
-			if state != "docked" and state != "lost":
-				return "The hangar is down and a craft is still out. The lane will not take an open bay."
+	for item in craft:
+		var state := str(item.state)
+		if state != "docked" and state != "lost":
+			return "Recall %s. The lane does not carry craft home." % str(item.name)
 	var dest := str(gate.get("to", ""))
 	var chart: Dictionary = defs.get("systems", {})
 	if not chart.has(dest):
@@ -1261,24 +1280,24 @@ func _arrive(system_id: String, gate_id: String) -> void:
 		player.rot = ang + PI
 	else:
 		player.vel = Vector2.ZERO
+		if not planets.is_empty():
+			var body = planets[0]
+			player.pos = body.pos + Vector2(float(body.radius) + 280.0, -40.0)
 	var seat := 1
 	for mate in captains:
 		mate.pos = player.pos + Vector2(80.0 * float(seat), 24.0)
 		mate.vel = Vector2.ZERO
 		seat += 1
-	var buttoned := false
 	for item in craft:
 		var state := str(item.state)
 		if state == "lost" or state == "docked":
 			continue
-		item.state = "docked"
-		item.pos = player.pos
+		item.state = "lost"
+		item.hp = 0.0
 		item.vel = Vector2.ZERO
 		item.order = ""
 		item.target = ""
-		buttoned = true
-	if buttoned:
-		say("Craft buttoned up for the lane.")
+		say("%s was left behind the lane. It did not jump home." % str(item.name))
 	if not visited.has(system_id):
 		visited.append(system_id)
 	say("The lane opens on %s." % str(defs.system.name))

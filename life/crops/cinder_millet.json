@@ -1,0 +1,10 @@
+{
+  "id": "cinder_millet",
+  "name": "Cinder millet",
+  "dies_if": "drought",
+  "need": "water under the dome",
+  "water": 6,
+  "yield": "cinder_millet",
+  "open_dome_kills": true,
+  "line": "Cinder millet is sown. Drought kills it. An open dome kills it."
+}

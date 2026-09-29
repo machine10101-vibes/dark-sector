@@ -1,0 +1,11 @@
+{
+  "id": "lamp_moth",
+  "name": "Lamp moth",
+  "dies_if": "hunger",
+  "hunger_death": 8,
+  "need": "a little food and a closed dome",
+  "yield": "lamp_dust",
+  "yield_after": 10,
+  "open_dome_kills": true,
+  "line": "A lamp moth is in the pen. Hunger kills it. An open dome kills it."
+}

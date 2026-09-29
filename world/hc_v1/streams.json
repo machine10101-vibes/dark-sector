@@ -25,6 +25,14 @@
       "origin": "Nickel on a hard vector. Fighters hate it. Anvils invoice it.",
       "vector": 2.2,
       "period": 11.0
+    },
+    {
+      "id": "false_rain",
+      "name": "False Rain",
+      "system_id": "HC-V1-R6-S3",
+      "origin": "Nickel that follows the lying chart and lands on False Mark instead of the lane.",
+      "vector": 2.6,
+      "period": 13.0
     }
   ]
 }

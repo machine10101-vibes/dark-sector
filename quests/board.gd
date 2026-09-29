@@ -224,24 +224,39 @@ static func _template_offer(sim) -> Dictionary:
 	var book = sim.defs.get("templates", {})
 	if typeof(book) != TYPE_DICTIONARY or book.is_empty():
 		return {}
+	var streams: Array = []
 	var streams_doc = sim.defs.get("streams", {})
-	if typeof(streams_doc) != TYPE_DICTIONARY:
-		return {}
-	var list: Array = streams_doc.get("streams", [])
-	if list.is_empty():
-		return {}
-	for key in book.keys():
+	if typeof(streams_doc) == TYPE_DICTIONARY and typeof(streams_doc.get("streams", [])) == TYPE_ARRAY:
+		streams = streams_doc.get("streams", [])
+	var trash: Array = []
+	var origins_doc = sim.defs.get("trash_origins", {})
+	if typeof(origins_doc) == TYPE_DICTIONARY and typeof(origins_doc.get("origins", [])) == TYPE_ARRAY:
+		trash = origins_doc.get("origins", [])
+	var keys: Array = book.keys()
+	if keys.has("meteor_window"):
+		keys.erase("meteor_window")
+		keys.push_front("meteor_window")
+	for key in keys:
 		var spec: Dictionary = book[key]
 		var tid := str(spec.get("id", key))
 		if bool(sim.quest_flags.get("did_%s" % tid, false)):
 			continue
-		if str(spec.get("uses", "")) != "streams":
+		var uses := str(spec.get("uses", ""))
+		var list: Array = []
+		if uses == "streams":
+			list = streams
+		elif uses == "trash":
+			list = trash
+		else:
+			continue
+		if list.is_empty():
 			continue
 		var pick: Dictionary = list[int(abs(hash(tid))) % list.size()]
 		var made := _contract(tid, "rimward_charter", str(spec.get("title", tid)), str(spec.get("summary", "")), [str(pick.get("system_id", "")), str(pick.get("id", ""))], str(pick.get("id", "")), 0.0, 0.0, str(pick.get("system_id", "")))
 		made.success_mutations = spec.get("success_mutations", [])
 		made.failure_mutations = spec.get("failure_mutations", [])
 		made.template = tid
+		made.need_cargo = str(spec.get("need_cargo", "salvage_parts"))
 		return made
 	return {}
 
@@ -252,9 +267,11 @@ static func _template_done(sim, contract: Dictionary) -> bool:
 	if typeof(book) != TYPE_DICTIONARY or not book.has(template):
 		return false
 	var spec: Dictionary = book[template]
-	if str(spec.get("uses", "")) != "streams":
+	var uses := str(spec.get("uses", ""))
+	if uses != "streams" and uses != "trash":
 		return false
-	return str(sim.defs.system.id) == str(contract.get("system_id", "")) and int(sim.player.cargo.get("salvage_parts", 0)) > 0
+	var need := str(spec.get("need_cargo", "salvage_parts"))
+	return str(sim.defs.system.id) == str(contract.get("system_id", "")) and int(sim.player.cargo.get(need, 0)) > 0
 
 
 static func _data_hooks(sim) -> void:
@@ -572,6 +589,7 @@ static func _apply(sim, mutation: String) -> void:
 			_rumor(sim, "A lost craft came out of the Swallow.")
 		"dock_fee":
 			sim.market["dock_fee"] = int(sim.market.get("dock_fee", 2)) + 1
+			sim.quest_flags.world_dock_fee = true
 		"rumor_survey":
 			_rumor(sim, "The survey office has a new sealed layer.")
 		"rumor_survey_fail":
@@ -588,10 +606,13 @@ static func _apply(sim, mutation: String) -> void:
 			_rumor(sim, "A grain delivery never arrived.")
 		"glasswheat_cheaper":
 			sim.market.glasswheat = maxi(1, int(sim.market.get("glasswheat", 4)) - 2)
+			sim.quest_flags.world_glasswheat = "cheaper"
 		"glasswheat_dearer":
 			sim.market.glasswheat = int(sim.market.get("glasswheat", 4)) + 2
+			sim.quest_flags.world_glasswheat = "dearer"
 		"salvage_grant":
 			sim._add_cargo("salvage_parts", 1)
+			sim.quest_flags.world_salvage = true
 		"rumor_recover":
 			_rumor(sim, "Wreck parts came back aboard.")
 		"rumor_recover_fail":

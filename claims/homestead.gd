@@ -264,6 +264,8 @@ static func text(sim) -> String:
 static func _block_reason(sim) -> String:
 	if str(sim.defs.system.id) == "HC-V1-R1-S1":
 		return "Helion Compact law. A core does not go down on Aegis Prime or anywhere in Helion Dock."
+	if str(sim.defs.system.get("law_color", "")) == "green":
+		return "Green capital. A core does not go down in %s." % str(sim.defs.system.name)
 	var pocket: Dictionary = sim.defs.system.pocket
 	if not bool(pocket.get("plantable", false)):
 		return "%s is closed. Compact exclusion. The core stays in the hold." % str(pocket.get("name", "This pocket"))
@@ -463,6 +465,15 @@ static func _step_kine(sim, dt: float) -> void:
 	if not bool(pen.get("alive", false)):
 		return
 	pen.hunger = float(pen.get("hunger", 0.0)) + dt
+	if float(pen.hunger) > 4.0:
+		if int(pen.get("fodder", 0)) > 0:
+			pen.fodder = int(pen.fodder) - 1
+			pen.hunger = 0.0
+			sim.say("The hold-kine takes starter fodder.")
+		elif int(sim.claim.get("crate", {}).get("food", 0)) > 0:
+			sim.claim.crate.food = int(sim.claim.crate.food) - 1
+			pen.hunger = 0.0
+			sim.say("The hold-kine takes food from the crate.")
 	if float(pen.hunger) >= STARVE:
 		pen.alive = false
 		pen.aboard = false

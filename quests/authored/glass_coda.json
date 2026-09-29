@@ -1,0 +1,9 @@
+{
+  "id": "authored_glass_coda",
+  "title": "Glass coda",
+  "kind": "authored",
+  "summary": "Stand on Coda. The Glass Choir writes standing and a rumor. The gate still confiscates what it wants.",
+  "body": "coda",
+  "system_id": "HC-V1-R4-S1",
+  "mutations": ["rumor_glass_coda", "glass_standing_up"]
+}

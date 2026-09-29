@@ -17,6 +17,10 @@ func save_path() -> String:
 	return "user://dark_sector_save.json"
 
 
+func host_path() -> String:
+	return "user://dark_sector_host.json"
+
+
 func has_save() -> bool:
 	return FileAccess.file_exists(save_path())
 
@@ -32,13 +36,24 @@ func begin_new(class_id: String) -> void:
 
 
 func begin_host(class_id: String) -> String:
-	begin_new(class_id)
+	_drop_link()
+	sim = SectorSim.new(defs)
+	var resumed := _resume_host_log()
+	if not resumed:
+		sim.new_game(class_id)
+	Catalog.arm_yards(sim)
+	zoom = 0.9
+	paused = false
+	mode = "sector"
 	link = ListenLink.new()
 	var err := link.open_host()
 	if err != "":
 		link = null
 		return err
-	sim.say("Host is up on port %s. The spine is on this board: Helion Dock, Brass Lantern, Lease, Towline, First Soil, Perimeter. Gyre is the hatch. A second captain joins with that code." % link.code)
+	if resumed:
+		sim.say("Host is back on port %s. The world log kept the claim. A second captain joins with that code." % link.code)
+	else:
+		sim.say("Host is up on port %s. The spine is on this board: Helion Dock, Brass Lantern, Lease, Towline, First Soil, Perimeter, Marchport, Black Quay. Gyre is the hatch. A second captain joins with that code." % link.code)
 	return ""
 
 
@@ -70,6 +85,40 @@ func _drop_link() -> void:
 		link.close()
 	link = null
 	verbs = {}
+
+
+func write_host_log(quiet: bool = true) -> String:
+	if sim == null:
+		return ""
+	if link != null and str(link.role) == "client":
+		return ""
+	var data: Dictionary = sim.to_dict()
+	var file := FileAccess.open(host_path(), FileAccess.WRITE)
+	if file == null:
+		return "The world log would not take."
+	file.store_string(JSON.stringify(data, "\t"))
+	file.close()
+	if not quiet:
+		sim.say("World log written.")
+	return ""
+
+
+func _resume_host_log() -> bool:
+	if not FileAccess.file_exists(host_path()):
+		return false
+	var file := FileAccess.open(host_path(), FileAccess.READ)
+	if file == null:
+		return false
+	var data = JSON.parse_string(file.get_as_text())
+	file.close()
+	if typeof(data) != TYPE_DICTIONARY:
+		return false
+	if int(data.get("version", 0)) != 1:
+		return false
+	if not data.has("player") or not data.has("claim") or not data.has("system_id"):
+		return false
+	sim.from_dict(data)
+	return true
 
 
 func write_save() -> String:
