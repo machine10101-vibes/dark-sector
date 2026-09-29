@@ -1,0 +1,18 @@
+{
+  "region_id": "R2",
+  "name": "Charter Belt",
+  "authority": "Rimward Charter Authority",
+  "law": "amber",
+  "job": "First legal extract, first escort pay, first time paper does not match the sky.",
+  "palette": "#c4843a",
+  "flagship": "Tallyrock",
+  "flagship_kind": "world",
+  "system_ids": ["HC-V1-R2-S1", "HC-V1-R2-S2", "HC-V1-R2-S3", "HC-V1-R2-S4", "HC-V1-R2-S5", "HC-V1-R2-S6"],
+  "status": "placed",
+  "map": {
+    "placed": true,
+    "x": 2,
+    "y": 0,
+    "unit": "catalog_span"
+  }
+}

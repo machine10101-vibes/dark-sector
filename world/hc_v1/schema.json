@@ -1,9 +1,9 @@
 {
-  "schema": "hc_v1_g0",
+  "schema": "hc_v1_g1",
   "catalog": "HC-V1",
   "player_name": "The Dark Sector",
-  "status": "template",
-  "notes": "G0 locks the folder, the ID grammar, and the empty shapes. Stars, rule colors, jobs, and full system files are later slices. A file with status template is not a system.",
+  "status": "placed",
+  "notes": "G0 locked the folder and the ID grammar. G1 places the eight regions and the atlas spine. Travel times, markets, stars, and system files are later slices. A file with status template is not a system.",
   "id_grammar": {
     "region": "R1 through R8",
     "system": "HC-V1-R#-S#",

@@ -2,14 +2,13 @@ GALAXY LOOP STATE
 =================
 Project: DARK SECTOR ONLINE
 Galaxy: HC-V1 The Dark Sector
-Slice just completed: G0 folder schema and empty JSON templates
+Slice just completed: G1 region map and spine lanes
 
 Player-visible what works now:
 - Nothing in-engine. Ashen Reach is still the only flyable system.
-- HC-V1 has a folder, a locked ID list (8 regions, 48 system names), and empty templates. No system is authored.
+- Eight regions have coordinates. The atlas spine is a lane graph from Helion Dock to every region, including Black Quay. Travel times are blank.
 
 What is next (ordered):
-G1  Place 8 regions and the spine lanes on a map
 G2  Write systems index (all 48 IDs, stars, rule colors, jobs)
 G3  Fill Compact Core (R1) — 6 full system files
 G4  Fill Charter Belt (R2)
@@ -36,18 +35,21 @@ Open design decisions (max 5):
 - Whether Municipal Skies city interiors are dock menus or flyable
 - Claim slot cap per player in HC-V1
 
+Map:
+- Unit is catalog_span. x runs Compact Core toward Municipal Skies. y runs rimward toward Black Sail Grounds.
+- Glass Quarantine sits off Haven Wheel at (4, -2). Drift sits under the Core at (0, 2). The red road is Perimeter to Marchport to Black Quay.
+- Spine colors: green through R1–R3 and the Choir checkpoint, amber on the homestead road and the Writ–Gyre hatch, mixed on the two border hops, red from Marchport to Black Quay.
+
 Files touched:
 - world/hc_v1/schema.json
-- world/hc_v1/ids.json
-- world/hc_v1/systems/_template.json
-- world/hc_v1/regions/_template.json
 - world/hc_v1/lanes.json
-- world/hc_v1/streams.json
-- world/hc_v1/trash_origins.json
-- world/hc_v1/claim_slots.json
-- world/hc_v1/atlas.md
-- world/hc_v1/HC_V1_FIRST_GALAXY_ATLAS.md
-- world/hc_v1/DARK_SECTOR_ONLINE_GALAXY_LOOP.md
-- world/hc_v1/GALAXY_LOOP_HOW_TO.md
+- world/hc_v1/regions/R1.json
+- world/hc_v1/regions/R2.json
+- world/hc_v1/regions/R3.json
+- world/hc_v1/regions/R4.json
+- world/hc_v1/regions/R5.json
+- world/hc_v1/regions/R6.json
+- world/hc_v1/regions/R7.json
+- world/hc_v1/regions/R8.json
 - world/hc_v1/GALAXY_LOOP_STATE.md
 - tools/validate_hc_v1.py

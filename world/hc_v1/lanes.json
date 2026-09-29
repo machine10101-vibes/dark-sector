@@ -1,7 +1,116 @@
 {
-  "schema": "hc_v1_g0",
-  "status": "template",
-  "placed": false,
-  "regions": [],
-  "lanes": []
+  "schema": "hc_v1_g1",
+  "status": "placed",
+  "placed": true,
+  "unit": "catalog_span",
+  "axes": "x increases along the green spine from Compact Core toward Municipal Skies. y increases rimward toward Black Sail Grounds.",
+  "notes": "Spine only, arrows copied from the atlas. Spindle is the flagship world of Haven Wheel, so that hop leaves from HC-V1-R3-S1. Lanes are traversable both ways. Travel times and markets stay empty until G11.",
+  "regions": [
+    {"id": "R1", "x": 0, "y": 0},
+    {"id": "R2", "x": 2, "y": 0},
+    {"id": "R3", "x": 4, "y": 0},
+    {"id": "R4", "x": 4, "y": -2},
+    {"id": "R5", "x": 2, "y": 2},
+    {"id": "R6", "x": 0, "y": 2},
+    {"id": "R7", "x": 2, "y": 4},
+    {"id": "R8", "x": 2, "y": 6}
+  ],
+  "lanes": [
+    {
+      "id": "spine-helion-brass",
+      "from": "HC-V1-R1-S1",
+      "to": "HC-V1-R1-S2",
+      "rule_color": "green",
+      "traffic": "green spine",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "spine-brass-lease",
+      "from": "HC-V1-R1-S2",
+      "to": "HC-V1-R2-S1",
+      "rule_color": "green",
+      "traffic": "green spine",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "spine-lease-towline",
+      "from": "HC-V1-R2-S1",
+      "to": "HC-V1-R2-S2",
+      "rule_color": "green",
+      "traffic": "green spine",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "spine-towline-haven",
+      "from": "HC-V1-R2-S2",
+      "to": "HC-V1-R3-S1",
+      "rule_color": "green",
+      "traffic": "green spine",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "spine-haven-choir",
+      "from": "HC-V1-R3-S1",
+      "to": "HC-V1-R4-S1",
+      "rule_color": "green",
+      "traffic": "checkpoint",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "spine-lease-first-soil",
+      "from": "HC-V1-R2-S1",
+      "to": "HC-V1-R5-S1",
+      "rule_color": "amber",
+      "traffic": "homestead road",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "spine-first-soil-perimeter",
+      "from": "HC-V1-R5-S1",
+      "to": "HC-V1-R5-S6",
+      "rule_color": "amber",
+      "traffic": "homestead road",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "spine-perimeter-marchport",
+      "from": "HC-V1-R5-S6",
+      "to": "HC-V1-R7-S1",
+      "rule_color": "mixed",
+      "traffic": "red road",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "spine-marchport-black-quay",
+      "from": "HC-V1-R7-S1",
+      "to": "HC-V1-R8-S1",
+      "rule_color": "red",
+      "traffic": "red road",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "spine-writ-gyre",
+      "from": "HC-V1-R1-S3",
+      "to": "HC-V1-R6-S1",
+      "rule_color": "amber",
+      "traffic": "confiscated hulls",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "spine-haven-not-ours",
+      "from": "HC-V1-R3-S1",
+      "to": "HC-V1-R3-S4",
+      "rule_color": "green",
+      "traffic": "jurisdiction hole",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "spine-not-ours-empty-tithe",
+      "from": "HC-V1-R3-S4",
+      "to": "HC-V1-R7-S3",
+      "rule_color": "mixed",
+      "traffic": "jurisdiction hole",
+      "pdo_response_time": ""
+    }
+  ]
 }
