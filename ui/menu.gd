@@ -209,9 +209,17 @@ class Backdrop extends Control:
 
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color("07080c"), true)
-		draw_circle(size * 0.32, size.x * 0.28, Color(0.12, 0.16, 0.22, 0.45))
-		draw_circle(size * 0.7, size.x * 0.22, Color(0.18, 0.12, 0.08, 0.28))
-		draw_circle(size * 0.5, size.x * 0.12, Color(0.14, 0.1, 0.08, 0.2))
+		var globe := size * 0.3
+		var gr := size.x * 0.2
+		var lit := Vector2(-0.62, -0.42).normalized()
+		draw_circle(globe, gr * 1.18, Color(0.35, 0.48, 0.52, 0.08))
+		draw_circle(globe, gr, Color(0.07, 0.09, 0.11))
+		draw_circle(globe + lit * gr * 0.2, gr * 0.7, Color(0.16, 0.2, 0.22))
+		draw_circle(globe + lit * gr * 0.38, gr * 0.38, Color(0.32, 0.38, 0.4))
+		draw_arc(globe, gr * 0.96, lit.angle() - 1.05, lit.angle() + 1.05, 18, Color(0.72, 0.84, 0.88, 0.4), 2.4, true)
+		var ember := size * 0.78
+		draw_circle(ember, size.x * 0.16, Color(0.22, 0.1, 0.05, 0.22))
+		draw_circle(ember + Vector2(-18, -10), size.x * 0.06, Color(0.55, 0.32, 0.14, 0.18))
 		draw_line(size * Vector2(0.02, 0.46), size * Vector2(0.7, 0.3), Color(0.02, 0.025, 0.03, 0.55), 14.0)
 		draw_line(size * Vector2(0.12, 0.74), size * Vector2(0.92, 0.58), Color(0.07, 0.08, 0.11, 0.4), 7.0)
 		for cluster in 6:

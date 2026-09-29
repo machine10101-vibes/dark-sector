@@ -154,8 +154,13 @@ func _draw() -> void:
 			var tint := Color(0.72, 0.8, 0.95, temp) if temp < 0.4 else Color(0.95, 0.9, 0.78, temp)
 			if temp > 0.7:
 				tint = Color(1.0, 0.82, 0.62, temp)
-			draw_circle(pos, float(star.r) * 2.4, Color(tint.r, tint.g, tint.b, temp * 0.18))
+			draw_circle(pos, float(star.r) * 2.8, Color(tint.r, tint.g, tint.b, temp * 0.16))
 			draw_circle(pos, float(star.r), tint)
+			if temp > 0.72:
+				var spark := Color(tint.r, tint.g, tint.b, 0.4)
+				var arm := float(star.r) * 3.4
+				draw_line(pos + Vector2(-arm, 0.0), pos + Vector2(arm, 0.0), spark, 0.7, true)
+				draw_line(pos + Vector2(0.0, -arm), pos + Vector2(0.0, arm), spark, 0.7, true)
 	_draw_zones(sim)
 	_draw_belt(sim)
 	_draw_meteors(sim)
@@ -213,12 +218,18 @@ func _draw() -> void:
 
 
 func _draw_nebula() -> void:
-	draw_circle(Vector2(-2400, -1600), 1800.0, Color(0.1, 0.14, 0.2, 0.32))
-	draw_circle(Vector2(2800, 500), 1600.0, Color(0.18, 0.1, 0.07, 0.18))
-	draw_circle(Vector2(-500, 3000), 1300.0, Color(0.07, 0.12, 0.13, 0.16))
-	draw_circle(Vector2(1100, -2400), 800.0, Color(0.16, 0.13, 0.08, 0.1))
-	draw_line(Vector2(-2000, -200), Vector2(1800, 1100), Color(0.14, 0.11, 0.09, 0.1), 36.0)
-	draw_line(Vector2(-800, 1200), Vector2(600, -1600), Color(0.07, 0.1, 0.14, 0.12), 22.0)
+	draw_circle(Vector2(-2400, -1600), 1800.0, Color(0.08, 0.12, 0.18, 0.26))
+	draw_circle(Vector2(-1700, -980), 720.0, Color(0.14, 0.18, 0.26, 0.1))
+	draw_circle(Vector2(2800, 500), 1600.0, Color(0.16, 0.09, 0.06, 0.15))
+	draw_circle(Vector2(2200, 980), 560.0, Color(0.26, 0.12, 0.07, 0.07))
+	draw_circle(Vector2(-500, 3000), 1300.0, Color(0.06, 0.11, 0.12, 0.13))
+	draw_circle(Vector2(1100, -2400), 800.0, Color(0.15, 0.12, 0.07, 0.09))
+	draw_line(Vector2(-2000, -200), Vector2(1800, 1100), Color(0.12, 0.09, 0.07, 0.07), 26.0)
+	draw_line(Vector2(-800, 1200), Vector2(600, -1600), Color(0.06, 0.09, 0.13, 0.09), 16.0)
+	for puff in 8:
+		var n := absi(hash("dust" + str(puff)))
+		var at := Vector2(float(n % 5200) - 2600.0, float((n / 17) % 4800) - 2100.0)
+		draw_circle(at, 160.0 + float(n % 240), Color(0.22, 0.16, 0.12, 0.03))
 
 
 func _draw_grid(view: Rect2, zoom: float) -> void:
@@ -352,27 +363,53 @@ func _draw_star(sim) -> void:
 	var radius := float(sim.star_radius)
 	var core := Color(str(sim.defs.system.star.color))
 	var glow := core
-	glow.a = 0.05
+	glow.a = 0.04
 	var mid := core
-	mid.a = 0.12
+	mid.a = 0.09
 	var limb := core
-	limb.a = 0.22
-	draw_circle(Vector2.ZERO, radius * 3.1, glow)
-	draw_circle(Vector2.ZERO, radius * 1.9, mid)
-	draw_circle(Vector2.ZERO, radius * 1.15, limb)
-	draw_circle(Vector2.ZERO, radius, core.darkened(0.08))
-	draw_circle(Vector2.ZERO, radius * 0.62, core.lightened(0.18))
-	draw_circle(Vector2.ZERO, radius * 0.28, Color("fff8ee"))
-	for grain in 8:
-		var spot := Vector2.from_angle(float(grain) * 0.85 + 0.4) * radius * (0.22 + float(grain % 3) * 0.08)
-		var fleck := core.lightened(0.06) if grain % 2 == 0 else core.darkened(0.16)
-		draw_circle(spot, radius * 0.09, fleck)
+	limb.a = 0.18
+	draw_circle(Vector2.ZERO, radius * 3.5, glow)
+	draw_circle(Vector2.ZERO, radius * 2.1, mid)
+	draw_circle(Vector2.ZERO, radius * 1.25, limb)
+	draw_circle(Vector2.ZERO, radius, core.darkened(0.24))
+	draw_circle(Vector2.ZERO, radius * 0.84, core.darkened(0.08))
+	draw_circle(Vector2.ZERO, radius * 0.56, core.lightened(0.06))
+	draw_circle(Vector2.ZERO, radius * 0.28, core.lightened(0.2))
+	draw_circle(Vector2.ZERO, radius * 0.11, Color("fffaf2"))
+	for grain in 18:
+		var n := absi(hash("helion-grain" + str(grain)))
+		var ang := float(n % 628) / 100.0
+		var dist := radius * (0.1 + float((n / 9) % 72) / 100.0)
+		var spot := Vector2.from_angle(ang) * dist
+		var fleck := core.lightened(0.14) if grain % 3 != 0 else core.darkened(0.22)
+		fleck.a = 0.28 + float(grain % 4) * 0.08
+		draw_circle(spot, radius * (0.03 + float(grain % 3) * 0.012), fleck)
 	for ray in 4:
-		var spike_dir := Vector2.from_angle(float(ray) * TAU / 4.0 + 0.35)
+		var spike_dir := Vector2.from_angle(float(ray) * TAU / 4.0 + 0.2)
 		var spike := core
-		spike.a = 0.16
-		draw_line(-spike_dir * radius * 1.7, spike_dir * radius * 1.7, spike, maxf(1.0, radius * 0.035), true)
-	draw_arc(Vector2.ZERO, radius * 0.94, 0.0, TAU, 72, core.darkened(0.35), radius * 0.1, true)
+		spike.a = 0.13
+		draw_line(-spike_dir * radius * 2.15, spike_dir * radius * 2.15, spike, maxf(1.0, radius * 0.018), true)
+	draw_arc(Vector2.ZERO, radius * 0.97, 0.0, TAU, 96, core.darkened(0.45), maxf(2.0, radius * 0.07), true)
+	for tongue in 5:
+		var a0 := float(tongue) * 1.25 + 0.35
+		var prom := core.lightened(0.04)
+		prom.a = 0.2
+		draw_arc(Vector2.ZERO, radius * (1.06 + float(tongue % 2) * 0.05), a0, a0 + 0.5, 8, prom, maxf(1.3, radius * 0.02), true)
+
+
+func _shade_sphere(center: Vector2, radius: float, base: Color, lit: Vector2) -> void:
+	draw_circle(center, radius, base.darkened(0.7))
+	var shifts: Array[float] = [0.08, 0.18, 0.3, 0.42, 0.52]
+	var radii: Array[float] = [0.9, 0.72, 0.54, 0.36, 0.18]
+	var lift: Array[float] = [0.2, 0.38, 0.56, 0.74, 0.92]
+	for i in shifts.size():
+		var tone := base.darkened(0.52 * (1.0 - lift[i])).lerp(base.lightened(0.12), lift[i])
+		draw_circle(center + lit * radius * shifts[i], radius * radii[i], tone)
+
+
+func _roll(key: String, salt: int) -> float:
+	var n := absi(hash(key + ":" + str(salt)))
+	return float(n % 1000) / 1000.0
 
 
 func _light_at(pos: Vector2) -> Vector2:
@@ -388,36 +425,54 @@ func _draw_planet(sim, body: Dictionary) -> void:
 	var base := Color(colors[0])
 	var lit := _light_at(pos)
 	var air := Color(colors[2])
-	var haze := air
-	haze.a = 0.07
-	air.a = 0.18
-	draw_circle(pos, radius + maxf(36.0, radius * 0.08), haze)
-	draw_circle(pos, radius + maxf(14.0, radius * 0.03), air)
-	draw_circle(pos, radius, base.darkened(0.62))
-	draw_circle(pos + lit * radius * 0.1, radius * 0.84, base.darkened(0.3))
-	draw_circle(pos + lit * radius * 0.26, radius * 0.58, base)
-	draw_circle(pos + lit * radius * 0.4, radius * 0.32, base.lightened(0.1))
-	var spin := float(body.get("spin", 0.1))
-	var band_w := maxf(1.6, radius * 0.006)
-	for i in 4:
-		var a0: float = float(sim.time) * spin + float(i) * 1.35
-		draw_arc(pos, radius * (0.34 + float(i) * 0.14), a0, a0 + 1.15, 20, Color(colors[1]), band_w, true)
 	var land := Color(colors[1])
-	var spin_mark := float(body.get("angle", 0.4))
-	for patch in 3:
-		var spot := pos + Vector2.from_angle(spin_mark + float(patch) * 2.05) * radius * 0.28
-		draw_circle(spot, radius * (0.055 + float(patch) * 0.012), land.darkened(0.08 + float(patch) * 0.05))
-	draw_circle(pos + Vector2(0, -radius * 0.62), radius * 0.07, Color(0.92, 0.94, 0.96, 0.22))
-	var cloud := Color(1, 1, 1, 0.12)
-	for wisp in 3:
-		var w0 := float(sim.time) * spin * 0.45 + float(wisp) * 1.7
-		draw_arc(pos + lit * radius * 0.12, radius * (0.4 + float(wisp) * 0.12), w0, w0 + 0.7, 8, cloud, maxf(1.4, radius * 0.004), true)
-	draw_circle(pos - lit * radius * 0.38, radius * 0.66, Color(0.012, 0.016, 0.024, 0.42))
-	var limb := base.lightened(0.45)
-	limb.a = 0.5
+	var haze := air
+	haze.a = 0.08
+	air.a = 0.15
+	draw_circle(pos, radius + maxf(48.0, radius * 0.11), haze)
+	draw_circle(pos, radius + maxf(18.0, radius * 0.04), air)
+	_shade_sphere(pos, radius, base, lit)
+	var spin := float(body.get("spin", 0.1))
+	var band_w := maxf(1.6, radius * 0.007)
+	var body_id := str(body.get("id", "body"))
+	for i in 5:
+		var a0: float = float(sim.time) * spin + float(i) * 1.2
+		var band := land
+		band.a = 0.5
+		draw_arc(pos, radius * (0.26 + float(i) * 0.12), a0, a0 + 1.4, 18, band, band_w, true)
+	for patch in 6:
+		var ang := _roll(body_id, patch) * TAU
+		var dist := radius * (0.12 + _roll(body_id, patch + 30) * 0.45)
+		var spot := pos + Vector2.from_angle(ang) * dist
+		var face := clampf((spot - pos).normalized().dot(lit) * 0.5 + 0.5, 0.15, 1.0)
+		var tone := land.darkened(0.4).lerp(land.lightened(0.06), face)
+		draw_circle(spot, radius * (0.035 + _roll(body_id, patch + 60) * 0.045), tone)
+	draw_circle(pos - lit * radius * 0.18, radius * 0.58, Color(0.008, 0.012, 0.02, 0.4))
+	var legal := str(body.get("legal", ""))
+	if legal.contains("capital") or legal.contains("pdo") or bool(body.get("junk", false)):
+		for lamp in 16:
+			var lamp_ang := _roll(body_id, 90 + lamp) * TAU
+			var lamp_dist := radius * (0.16 + _roll(body_id, 140 + lamp) * 0.5)
+			var lamp_spot := pos + Vector2.from_angle(lamp_ang) * lamp_dist
+			var night := clampf(-(lamp_spot - pos).normalized().dot(lit), 0.0, 1.0)
+			if night < 0.2:
+				continue
+			draw_circle(lamp_spot, maxf(1.3, radius * 0.014), Color(1.0, 0.84, 0.5, 0.12 + night * 0.5))
+	var pole := Vector2(-lit.y, lit.x)
+	draw_circle(pos + pole * radius * 0.58, radius * 0.07, Color(0.92, 0.95, 0.97, 0.22))
+	var cloud := Color(1, 1, 1, 0.11)
+	for wisp in 4:
+		var w0 := float(sim.time) * spin * 0.4 + float(wisp) * 1.55
+		draw_arc(pos + lit * radius * 0.08, radius * (0.34 + float(wisp) * 0.11), w0, w0 + 0.9, 10, cloud, maxf(1.6, radius * 0.005), true)
+	var limb_col := base.lightened(0.55)
+	limb_col.a = 0.55
 	var limb_a := lit.angle()
-	draw_arc(pos, radius * 0.97, limb_a - 1.05, limb_a + 1.05, 22, limb, maxf(2.0, radius * 0.04), true)
-	draw_circle(pos + lit * radius * 0.48, maxf(2.0, radius * 0.09), Color(1, 1, 1, 0.22))
+	draw_arc(pos, radius * 0.985, limb_a - 1.2, limb_a + 1.2, 26, limb_col, maxf(2.4, radius * 0.05), true)
+	var air_limb := air
+	air_limb.a = 0.32
+	draw_arc(pos, radius * 1.025, limb_a - 0.85, limb_a + 0.85, 16, air_limb, maxf(2.0, radius * 0.028), true)
+	draw_circle(pos + lit * radius * 0.56, maxf(1.5, radius * 0.04), Color(1, 1, 1, 0.5))
+	draw_circle(pos + lit * radius * 0.4, maxf(2.2, radius * 0.08), Color(1, 1, 1, 0.12))
 	if bool(body.ring):
 		var ice := Color("d5e4ee") if str(body.get("ring_kind", "")) == "ice" else Color(colors[2])
 		var band := maxf(36.0, radius * 0.085)
@@ -430,6 +485,9 @@ func _draw_planet(sim, body: Dictionary) -> void:
 			ring_col.a = 0.45 + facing * 0.5
 			draw_arc(pos, radius + band, a0, a0 + 0.18, 4, ring_col, ring_w + facing, true)
 			draw_arc(pos, radius + band * 1.38, a0 + 0.04, a0 + 0.14, 3, ring_col.darkened(0.18), ring_w * 0.4, true)
+			if seg % 4 == 0:
+				var chunk := pos + Vector2.from_angle(a0 + 0.08) * (radius + band)
+				draw_circle(chunk, maxf(1.6, radius * 0.012), ring_col.lightened(0.15))
 		draw_arc(pos, radius + band * 1.16, 0.0, TAU, 64, Color(0.02, 0.025, 0.03, 0.55), ring_w, true)
 		draw_arc(pos, radius + band * 1.5, 0.0, TAU, 72, Color("9eb4c4"), ring_w * 0.35, true)
 	if bool(body.moon):
