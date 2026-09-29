@@ -74,7 +74,7 @@ func _fit() -> void:
 		log_label.position = Vector2(16, screen.y - 168)
 		log_label.size = Vector2(700, 120)
 	if banner != null:
-		banner.position = Vector2(16, 118)
+		banner.position = Vector2(16, 156)
 		banner.size = Vector2(860, 48)
 
 
