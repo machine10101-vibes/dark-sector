@@ -32,19 +32,175 @@
     "title": "Shakedown",
     "state": "active",
     "prerequisites": [],
-    "location_ids": ["HC-V1-R1-S1", "aegis_prime", "aegis_ring", "seized_hold", "red_keel", "HC-V1-R5-S1", "quiet_hollow"],
+    "location_ids": [
+      "HC-V1-R1-S1",
+      "aegis_prime",
+      "aegis_ring",
+      "seized_hold",
+      "red_keel",
+      "HC-V1-R5-S1",
+      "quiet_hollow"
+    ],
     "timers": {},
     "beats": [
-      {"id": "undock", "location_ids": ["HC-V1-R1-S1"], "mutations": []},
-      {"id": "scan", "location_ids": ["aegis_prime"], "mutations": ["origin_vesper"]},
-      {"id": "harvest", "location_ids": ["aegis_ring", "seized_hold"], "mutations": ["harvest_choice"]},
-      {"id": "module", "location_ids": ["keel"], "mutations": []},
-      {"id": "pirate", "location_ids": ["red_keel"], "mutations": ["origin_kestrel"]},
-      {"id": "claim", "location_ids": ["HC-V1-R5-S1", "quiet_hollow"], "mutations": ["rumor_homestead"]},
-      {"id": "garden", "location_ids": ["quiet_hollow"], "mutations": ["origin_anvil"]}
+      {
+        "id": "undock",
+        "location_ids": [
+          "HC-V1-R1-S1"
+        ],
+        "mutations": []
+      },
+      {
+        "id": "scan",
+        "location_ids": [
+          "aegis_prime"
+        ],
+        "mutations": [
+          "origin_vesper"
+        ]
+      },
+      {
+        "id": "harvest",
+        "location_ids": [
+          "aegis_ring",
+          "seized_hold"
+        ],
+        "mutations": [
+          "harvest_choice"
+        ]
+      },
+      {
+        "id": "module",
+        "location_ids": [
+          "keel"
+        ],
+        "mutations": []
+      },
+      {
+        "id": "pirate",
+        "location_ids": [
+          "red_keel"
+        ],
+        "mutations": [
+          "origin_kestrel"
+        ]
+      },
+      {
+        "id": "claim",
+        "location_ids": [
+          "HC-V1-R5-S1",
+          "quiet_hollow"
+        ],
+        "mutations": [
+          "rumor_homestead"
+        ]
+      },
+      {
+        "id": "garden",
+        "location_ids": [
+          "quiet_hollow"
+        ],
+        "mutations": [
+          "origin_anvil"
+        ]
+      }
     ],
-    "success_mutations": ["blueprint", "npc_memory"],
-    "failure_mutations": ["compact_standing_down", "rumor_shakedown_fail"],
+    "success_mutations": [
+      "blueprint",
+      "npc_memory"
+    ],
+    "failure_mutations": [
+      "compact_standing_down",
+      "rumor_shakedown_fail"
+    ],
     "summary": "Undock in Helion Dock. Scan Aegis Prime. Cut the ice ring or the seized hold. Bolt one module. Meet the Red Keel and live. Plant a core on Quiet Hollow. Cut glasswheat and keep the hold-kine alive."
+  },
+  "authored_aegis_01": {
+    "id": "authored_aegis_01",
+    "type": "authored",
+    "kind": "authored",
+    "giver": "helion_compact",
+    "ship": "",
+    "title": "Aegis Prime Inspection",
+    "state": "dormant",
+    "prerequisites": [],
+    "location_ids": [
+      "HC-V1-R1-S1",
+      "aegis_prime"
+    ],
+    "timers": {},
+    "beats": [],
+    "success_mutations": [
+      "dock_fee",
+      "rumor_inspection"
+    ],
+    "failure_mutations": [],
+    "summary": "Seal Aegis Prime and stand the beacon. The inspection writes a dock fee and a rumor."
+  },
+  "authored_tallyrock_01": {
+    "id": "authored_tallyrock_01",
+    "type": "authored",
+    "kind": "authored",
+    "giver": "rimward_charter",
+    "ship": "",
+    "title": "Tallyrock Fine Print",
+    "state": "dormant",
+    "prerequisites": [],
+    "location_ids": [
+      "HC-V1-R2-S1",
+      "tallyrock"
+    ],
+    "timers": {},
+    "beats": [],
+    "success_mutations": [
+      "glasswheat_dearer",
+      "rumor_fine_print"
+    ],
+    "failure_mutations": [],
+    "summary": "Read Tallyrock up close. The charter fine print moves the grain price."
+  },
+  "authored_blight_01": {
+    "id": "authored_blight_01",
+    "type": "authored",
+    "kind": "authored",
+    "giver": "homestead",
+    "ship": "",
+    "title": "Green Wound Blight",
+    "state": "dormant",
+    "prerequisites": [],
+    "location_ids": [
+      "HC-V1-R5-S1",
+      "quiet_hollow",
+      "green_wound"
+    ],
+    "timers": {},
+    "beats": [],
+    "success_mutations": [
+      "rumor_blight"
+    ],
+    "failure_mutations": [],
+    "summary": "A failed crop or a stolen hold-kine on Green Wound changes the price and the rumor."
+  },
+  "authored_swallow_01": {
+    "id": "authored_swallow_01",
+    "type": "authored",
+    "kind": "authored",
+    "giver": "red_keel",
+    "ship": "",
+    "title": "The Swallow Recovery",
+    "state": "dormant",
+    "prerequisites": [],
+    "location_ids": [
+      "HC-V1-R6-S1",
+      "the_swallow"
+    ],
+    "timers": {},
+    "beats": [],
+    "success_mutations": [
+      "rumor_swallow",
+      "salvage_grant"
+    ],
+    "failure_mutations": [],
+    "summary": "Bring keel salvage out of the Swallow. A lost craft in that cyclone is a rumor with a price."
   }
 }

@@ -1,0 +1,1999 @@
+{
+  "schema": "density_slice8",
+  "systems": [
+    {
+      "id": "HC-V1-R1-S2",
+      "name": "Brass Lantern",
+      "seed": 12002,
+      "why_visit": "Fuel and ammo on honest scales. The PDO gunnery range sells what it shoots.",
+      "law_color": "green",
+      "star": {
+        "id": "hc-v1-r1-s2-star",
+        "name": "Lantern",
+        "class": "K-orange",
+        "radius": 150,
+        "color": "#e39a45"
+      },
+      "bodies": [
+        {
+          "id": "lamp_yard",
+          "name": "Lamp Yard",
+          "angle": 0.5,
+          "distance": 1500,
+          "radius": 120,
+          "color": "#c9843a",
+          "accent": "#c9843a",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": true,
+          "heat": "lease",
+          "legal": "Helion Compact market lease. Fuel and ammo, weighed in public.",
+          "blurb": "The fuel market orbits inside a lamp cage. Scales are bolted to the deck.",
+          "air": "Lamp smoke vented on a schedule, not a sky.",
+          "face": "Scale plates, brass rails, no ice.",
+          "crust": "Fuel bladder rock under the market floor.",
+          "life": "Clerks and range crews. No wild stock.",
+          "ruins": "The first lamp tower, still burning as a price board.",
+          "resource_id": "fuel_mass",
+          "resource_name": "Fuel mass",
+          "amount": 8
+        },
+        {
+          "id": "range_moon",
+          "name": "Range Moon",
+          "angle": 2.4,
+          "distance": 2300,
+          "radius": 70,
+          "color": "#8d5a32",
+          "accent": "#8d5a32",
+          "moon": true,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "PDO range. Spent rounds are salvage if the range officer is off watch.",
+          "blurb": "A gunnery moon. The craters are numbered, not natural.",
+          "air": "Vacuum. The range is open to the guns.",
+          "face": "Scorched brass and numbered pits.",
+          "crust": "Nickel plug under the target face.",
+          "life": "None. The targets are hollow.",
+          "ruins": "Retired cutter silhouettes used as marks.",
+          "resource_id": "ammo_mass",
+          "resource_name": "Ammo mass",
+          "amount": 6
+        }
+      ],
+      "belt": {
+        "id": "slag_belt",
+        "name": "Lamp Slag",
+        "composition": "brass slag and lamp glass, shed by the gunnery range",
+        "radius": 2900,
+        "width": 160,
+        "count": 16,
+        "resource_id": "slag_mass",
+        "resource_name": "Slag mass",
+        "amount": 7,
+        "legal": "Range scrap. Not a Compact exclusion.",
+        "heat": ""
+      },
+      "trash": {
+        "id": "range_scrap",
+        "name": "Range Scrap",
+        "origin": "Spent gunnery targets towed off Range Moon after each watch.",
+        "anchor": "range_moon",
+        "angle": 1.1,
+        "distance": 420,
+        "count": 9,
+        "spread": 130,
+        "resource_id": "scrap",
+        "resource_name": "Scrap",
+        "amount": 5,
+        "legal": "Range scrap. Wreck rights if the officer is gone.",
+        "heat": ""
+      },
+      "stream": {},
+      "pocket": {
+        "id": "lamp_pocket",
+        "name": "Lamp Pocket",
+        "anchor": "lamp_yard",
+        "angle": -1.2,
+        "distance": 640,
+        "radius": 200,
+        "plantable": false,
+        "why": "A fuel pocket. Compact scales. Not a homestead."
+      },
+      "gates": [
+        {
+          "id": "brass_from_dock",
+          "name": "Green Spine",
+          "to": "HC-V1-R1-S1",
+          "arrive": "brass_lane",
+          "anchor": "lamp_yard",
+          "angle": 2.6,
+          "distance": 1100,
+          "radius": 120,
+          "color": "green"
+        },
+        {
+          "id": "brass_to_lease",
+          "name": "Green Spine",
+          "to": "HC-V1-R2-S1",
+          "arrive": "lease_from_brass",
+          "anchor": "lamp_yard",
+          "angle": 0.25,
+          "distance": 1280,
+          "radius": 120,
+          "color": "green"
+        },
+        {
+          "id": "brass_to_wake",
+          "name": "Wake Lane",
+          "to": "HC-V1-R1-S4",
+          "arrive": "wake_from_brass",
+          "anchor": "lamp_yard",
+          "angle": 1.5,
+          "distance": 1360,
+          "radius": 120,
+          "color": "green"
+        }
+      ],
+      "pdo": {
+        "faction": "helion_compact",
+        "count": 2,
+        "radius": 540,
+        "home": "lamp_yard"
+      },
+      "pirates": {
+        "count": 0,
+        "angle": 0.0,
+        "standoff": 0
+      },
+      "haulers": [
+        {
+          "id": "scale_clerk",
+          "name": "Scale Clerk",
+          "class_id": "anvil",
+          "home": "lamp_yard",
+          "radius": 760
+        }
+      ],
+      "nest": {
+        "id": "nest",
+        "name": "",
+        "angle": 1.2,
+        "distance": 9000
+      },
+      "zones": {
+        "green": {
+          "anchor": "lamp_yard",
+          "radius": 860
+        },
+        "amber": {
+          "anchor": "nest",
+          "radius": 0
+        }
+      }
+    },
+    {
+      "id": "HC-V1-R1-S3",
+      "name": "Writ",
+      "seed": 12003,
+      "why_visit": "Courts, the warrant office, and a yard of hulls the Compact already took.",
+      "law_color": "green",
+      "star": {
+        "id": "hc-v1-r1-s3-star",
+        "name": "Writ Prime",
+        "class": "G-binary",
+        "radius": 130,
+        "color": "#f2e2a8"
+      },
+      "bodies": [
+        {
+          "id": "warrant_house",
+          "name": "Warrant House",
+          "angle": 0.9,
+          "distance": 1400,
+          "radius": 100,
+          "color": "#d9d2b0",
+          "accent": "#d9d2b0",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": true,
+          "heat": "pdo",
+          "legal": "Helion Compact court. No claims. Seized hulls leave for Gyre.",
+          "blurb": "The court orbital. Warrants are posted on the outer ring.",
+          "air": "Paper air in the court. Vacuum outside the glass.",
+          "face": "White stone and warrant ink, not ice.",
+          "crust": "Archive stone. The warrants are the ore.",
+          "life": "Clerks, bailiffs, no stock.",
+          "ruins": "The first writ nail, still in the lintel.",
+          "resource_id": "writ_paper",
+          "resource_name": "Writ paper",
+          "amount": 4
+        },
+        {
+          "id": "court_twin",
+          "name": "Court Twin",
+          "angle": 3.4,
+          "distance": 2100,
+          "radius": 80,
+          "color": "#efe6c4",
+          "accent": "#efe6c4",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "lease",
+          "legal": "Sealed docket. Reading it is a scan, not a cut.",
+          "blurb": "The dim half of the binary. It holds the sealed docket.",
+          "air": "Thin noble gas, useless to a lung.",
+          "face": "Pale court glass.",
+          "crust": "Docket crystal, brittle.",
+          "life": "None wild.",
+          "ruins": "A burned gallery from the last amnesty.",
+          "resource_id": "docket_glass",
+          "resource_name": "Docket glass",
+          "amount": 5
+        }
+      ],
+      "belt": {
+        "id": "docket_belt",
+        "name": "Docket Chaff",
+        "composition": "shredded warrant foil and court glass, not stone ice",
+        "radius": 2700,
+        "width": 140,
+        "count": 12,
+        "resource_id": "foil_mass",
+        "resource_name": "Foil mass",
+        "amount": 5,
+        "legal": "Court chaff. A lease cut.",
+        "heat": ""
+      },
+      "trash": {
+        "id": "seized_yard",
+        "name": "Seized Yard",
+        "origin": "Hulls confiscated at Helion Dock and parked here until the tow to Gyre.",
+        "anchor": "warrant_house",
+        "angle": 2.0,
+        "distance": 700,
+        "count": 14,
+        "spread": 180,
+        "resource_id": "salvage_parts",
+        "resource_name": "Keel salvage",
+        "amount": 8,
+        "legal": "Compact seized property. The tender may strip what the court has tagged.",
+        "heat": "pdo"
+      },
+      "stream": {},
+      "pocket": {
+        "id": "writ_pocket",
+        "name": "Docket Pocket",
+        "anchor": "warrant_house",
+        "angle": -0.8,
+        "distance": 520,
+        "radius": 180,
+        "plantable": false,
+        "why": "The court pocket. A core would be contempt."
+      },
+      "gates": [
+        {
+          "id": "writ_from_dock",
+          "name": "Writ Lane",
+          "to": "HC-V1-R1-S1",
+          "arrive": "writ_lane",
+          "anchor": "warrant_house",
+          "angle": 2.8,
+          "distance": 1180,
+          "radius": 120,
+          "color": "green"
+        },
+        {
+          "id": "writ_to_ledger",
+          "name": "Ledger Lane",
+          "to": "HC-V1-R1-S5",
+          "arrive": "ledger_from_writ",
+          "anchor": "warrant_house",
+          "angle": 0.4,
+          "distance": 1240,
+          "radius": 120,
+          "color": "green"
+        },
+        {
+          "id": "writ_to_gyre",
+          "name": "Swallow Hatch",
+          "to": "HC-V1-R6-S1",
+          "arrive": "gyre_from_writ",
+          "anchor": "warrant_house",
+          "angle": 1.6,
+          "distance": 1500,
+          "radius": 120,
+          "color": "amber"
+        }
+      ],
+      "pdo": {
+        "faction": "helion_compact",
+        "count": 2,
+        "radius": 540,
+        "home": "warrant_house"
+      },
+      "pirates": {
+        "count": 0,
+        "angle": 0.0,
+        "standoff": 0
+      },
+      "haulers": [
+        {
+          "id": "bailiff_holt",
+          "name": "Bailiff Holt",
+          "class_id": "cutter",
+          "home": "warrant_house",
+          "radius": 700
+        }
+      ],
+      "nest": {
+        "id": "nest",
+        "name": "",
+        "angle": 1.2,
+        "distance": 9000
+      },
+      "zones": {
+        "green": {
+          "anchor": "warrant_house",
+          "radius": 860
+        },
+        "amber": {
+          "anchor": "nest",
+          "radius": 0
+        }
+      }
+    },
+    {
+      "id": "HC-V1-R1-S4",
+      "name": "White Wake",
+      "seed": 12004,
+      "why_visit": "Training patrols and a clean ice ring. The salvage here is bad on purpose.",
+      "law_color": "green",
+      "star": {
+        "id": "hc-v1-r1-s4-star",
+        "name": "Wake",
+        "class": "F-white",
+        "radius": 160,
+        "color": "#f7f4ee"
+      },
+      "bodies": [
+        {
+          "id": "cadet_yard",
+          "name": "Cadet Yard",
+          "angle": 0.2,
+          "distance": 1600,
+          "radius": 90,
+          "color": "#e7eef2",
+          "accent": "#e7eef2",
+          "moon": false,
+          "junk": false,
+          "ring": true,
+          "ring_kind": "ice",
+          "protected": true,
+          "heat": "lease",
+          "legal": "Helion Compact training lease. The ice ring is a counted cut.",
+          "blurb": "A training orbital. The patrols shoot paint, then real guns.",
+          "air": "Sterile drill air inside. None outside.",
+          "face": "White plate and drill lamps.",
+          "crust": "Training ice under a metal skin. The ring is the real ice.",
+          "life": "Cadets. No wild life.",
+          "ruins": "The first school buoy, still grading you.",
+          "resource_id": "drill_ice",
+          "resource_name": "Drill ice",
+          "amount": 4
+        },
+        {
+          "id": "wash_rock",
+          "name": "Wash Rock",
+          "angle": 2.7,
+          "distance": 2400,
+          "radius": 60,
+          "color": "#c5d0d4",
+          "accent": "#c5d0d4",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "Training mark. Not a claim.",
+          "blurb": "A pale rock the cadets use as a turning mark.",
+          "air": "None.",
+          "face": "Scoured white dust, not a second ice ball.",
+          "crust": "Chalk and old paint.",
+          "life": "None.",
+          "ruins": "Painted numbers from a retired syllabus.",
+          "resource_id": "chalk_mass",
+          "resource_name": "Chalk mass",
+          "amount": 4
+        }
+      ],
+      "belt": {
+        "id": "wake_chaff",
+        "name": "Cadet Chaff",
+        "composition": "training chaff and paint chips, deliberately poor salvage",
+        "radius": 3000,
+        "width": 120,
+        "count": 10,
+        "resource_id": "paint_chips",
+        "resource_name": "Paint chips",
+        "amount": 3,
+        "legal": "Training chaff. Bad salvage, legal to read.",
+        "heat": ""
+      },
+      "trash": {
+        "id": "bad_salvage",
+        "name": "Bad Salvage",
+        "origin": "Cadet wrecks the instructors marked worthless and left as a lesson.",
+        "anchor": "cadet_yard",
+        "angle": 1.8,
+        "distance": 640,
+        "count": 8,
+        "spread": 110,
+        "resource_id": "scrap",
+        "resource_name": "Scrap",
+        "amount": 3,
+        "legal": "Instructor-marked scrap. The lesson is that it is not worth the hold.",
+        "heat": ""
+      },
+      "stream": {},
+      "pocket": {
+        "id": "wake_pocket",
+        "name": "Drill Pocket",
+        "anchor": "cadet_yard",
+        "angle": -1.4,
+        "distance": 500,
+        "radius": 170,
+        "plantable": false,
+        "why": "A drill pocket. The Compact will not lease a core here."
+      },
+      "gates": [
+        {
+          "id": "wake_from_brass",
+          "name": "Wake Lane",
+          "to": "HC-V1-R1-S2",
+          "arrive": "brass_to_wake",
+          "anchor": "cadet_yard",
+          "angle": 3.0,
+          "distance": 1100,
+          "radius": 120,
+          "color": "green"
+        }
+      ],
+      "pdo": {
+        "faction": "helion_compact",
+        "count": 2,
+        "radius": 540,
+        "home": "cadet_yard"
+      },
+      "pirates": {
+        "count": 0,
+        "angle": 0.0,
+        "standoff": 0
+      },
+      "haulers": [],
+      "nest": {
+        "id": "nest",
+        "name": "",
+        "angle": 1.2,
+        "distance": 9000
+      },
+      "zones": {
+        "green": {
+          "anchor": "cadet_yard",
+          "radius": 860
+        },
+        "amber": {
+          "anchor": "nest",
+          "radius": 0
+        }
+      }
+    },
+    {
+      "id": "HC-V1-R1-S5",
+      "name": "Ledger",
+      "seed": 12005,
+      "why_visit": "Bonded warehouses and grain futures from the Garden. The temptation is to skip the bond.",
+      "law_color": "green",
+      "star": {
+        "id": "hc-v1-r1-s5-star",
+        "name": "Ledger",
+        "class": "K-dwarf",
+        "radius": 110,
+        "color": "#e7b56a"
+      },
+      "bodies": [
+        {
+          "id": "bonded_loft",
+          "name": "Bonded Loft",
+          "angle": 1.1,
+          "distance": 1450,
+          "radius": 110,
+          "color": "#c4a36a",
+          "accent": "#c4a36a",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": true,
+          "heat": "pdo",
+          "legal": "Helion Compact bond. Garden grain may sit here. It may not be cut free.",
+          "blurb": "A warehouse orbital. Grain futures are painted on the hull.",
+          "air": "Dry warehouse air. The holds are colder than the star.",
+          "face": "Bond paint and crate stamps.",
+          "crust": "The loft is hollow. The mass is other people's grain.",
+          "life": "Bonded mold, watched. Not a crop of yours.",
+          "ruins": "The first futures board, still wrong by a day.",
+          "resource_id": "bonded_grain",
+          "resource_name": "Bonded grain",
+          "amount": 9
+        },
+        {
+          "id": "futures_moon",
+          "name": "Futures Moon",
+          "angle": 3.6,
+          "distance": 2200,
+          "radius": 64,
+          "color": "#a88455",
+          "accent": "#a88455",
+          "moon": true,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "lease",
+          "legal": "Futures annex. Scanning is legal. Loading is not.",
+          "blurb": "A small moon that stores the paper the loft will not show.",
+          "air": "None.",
+          "face": "Stamped crate stone.",
+          "crust": "Dry grain dust packed into rock.",
+          "life": "Weevils in bond. They are inventory.",
+          "ruins": "A cracked silo from a bad year.",
+          "resource_id": "futures_dust",
+          "resource_name": "Futures dust",
+          "amount": 5
+        }
+      ],
+      "belt": {
+        "id": "grain_dust",
+        "name": "Bond Dust",
+        "composition": "spilled garden grain dust and stamp wax, not ice",
+        "radius": 2750,
+        "width": 150,
+        "count": 13,
+        "resource_id": "stamp_wax",
+        "resource_name": "Stamp wax",
+        "amount": 5,
+        "legal": "Bond dust. A lease if the stamp is broken.",
+        "heat": ""
+      },
+      "trash": {
+        "id": "skipped_bond",
+        "name": "Skipped Bond",
+        "origin": "Crates that left the Garden bond and were dragged back by a cutter.",
+        "anchor": "bonded_loft",
+        "angle": 2.3,
+        "distance": 680,
+        "count": 8,
+        "spread": 140,
+        "resource_id": "food_mass",
+        "resource_name": "Food mass",
+        "amount": 4,
+        "legal": "Recovered bond. Cutting it is a Compact heat.",
+        "heat": ""
+      },
+      "stream": {},
+      "pocket": {
+        "id": "ledger_pocket",
+        "name": "Bond Pocket",
+        "anchor": "bonded_loft",
+        "angle": -0.9,
+        "distance": 560,
+        "radius": 190,
+        "plantable": false,
+        "why": "A bonded pocket. Grain sits. A core does not."
+      },
+      "gates": [
+        {
+          "id": "ledger_from_writ",
+          "name": "Ledger Lane",
+          "to": "HC-V1-R1-S3",
+          "arrive": "writ_to_ledger",
+          "anchor": "bonded_loft",
+          "angle": 2.7,
+          "distance": 1160,
+          "radius": 120,
+          "color": "green"
+        },
+        {
+          "id": "ledger_to_quiet",
+          "name": "Quiet Lane",
+          "to": "HC-V1-R1-S6",
+          "arrive": "quiet_from_ledger",
+          "anchor": "bonded_loft",
+          "angle": 0.55,
+          "distance": 1300,
+          "radius": 120,
+          "color": "green"
+        }
+      ],
+      "pdo": {
+        "faction": "helion_compact",
+        "count": 1,
+        "radius": 540,
+        "home": "bonded_loft"
+      },
+      "pirates": {
+        "count": 0,
+        "angle": 0.0,
+        "standoff": 0
+      },
+      "haulers": [
+        {
+          "id": "bond_factor",
+          "name": "Bond Factor",
+          "class_id": "anvil",
+          "home": "bonded_loft",
+          "radius": 800
+        }
+      ],
+      "nest": {
+        "id": "nest",
+        "name": "",
+        "angle": 1.2,
+        "distance": 9000
+      },
+      "zones": {
+        "green": {
+          "anchor": "bonded_loft",
+          "radius": 860
+        },
+        "amber": {
+          "anchor": "nest",
+          "radius": 0
+        }
+      }
+    },
+    {
+      "id": "HC-V1-R1-S6",
+      "name": "Quiet Sun",
+      "seed": 12006,
+      "why_visit": "A suburb that looks safe. The amber pocket is a gyre of decommissioned buoys.",
+      "law_color": "green",
+      "star": {
+        "id": "hc-v1-r1-s6-star",
+        "name": "Gutter Lamp",
+        "class": "Gutter-orange",
+        "radius": 100,
+        "color": "#d98a45"
+      },
+      "bodies": [
+        {
+          "id": "suburb_lamp",
+          "name": "Suburb Lamp",
+          "angle": 0.3,
+          "distance": 1300,
+          "radius": 80,
+          "color": "#e0a060",
+          "accent": "#e0a060",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "lease",
+          "legal": "Helion Compact suburb. The lamp is green. The buoy gyre is not.",
+          "blurb": "A quiet orbital for crews who do not want the dock.",
+          "air": "Domestic venting. Thin and tired.",
+          "face": "Porch plate and garden paint.",
+          "crust": "Ordinary rock under the porch.",
+          "life": "A few caged birds. Not stock you can buy.",
+          "ruins": "The suburb's first lamp, dimmed on purpose.",
+          "resource_id": "porch_scrap",
+          "resource_name": "Porch scrap",
+          "amount": 3
+        },
+        {
+          "id": "buoy_keeper",
+          "name": "Buoy Keeper",
+          "angle": 2.2,
+          "distance": 2500,
+          "radius": 55,
+          "color": "#b56b38",
+          "accent": "#b56b38",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "Decommission pocket. Amber once the Compact cutter leaves.",
+          "blurb": "The keeper rock behind the buoy gyre. It is not on the suburb brochure.",
+          "air": "None. The keeper is a rock.",
+          "face": "Buoy rust and old green paint.",
+          "crust": "Hollow. The buoys were the product.",
+          "life": "None.",
+          "ruins": "A keeper shack with the last duty log.",
+          "resource_id": "buoy_rust",
+          "resource_name": "Buoy rust",
+          "amount": 5
+        }
+      ],
+      "belt": {
+        "id": "suburb_gravel",
+        "name": "Porch Gravel",
+        "composition": "suburb construction gravel and lamp clinker",
+        "radius": 3100,
+        "width": 130,
+        "count": 11,
+        "resource_id": "clinker",
+        "resource_name": "Clinker",
+        "amount": 4,
+        "legal": "Suburb gravel. A small lease.",
+        "heat": ""
+      },
+      "trash": {
+        "id": "buoy_gyre",
+        "name": "Buoy Gyre",
+        "origin": "Decommissioned Compact buoys, towed off the dock lanes and left to circle.",
+        "anchor": "buoy_keeper",
+        "angle": 0.8,
+        "distance": 480,
+        "count": 12,
+        "spread": 160,
+        "resource_id": "buoy_mass",
+        "resource_name": "Buoy mass",
+        "amount": 6,
+        "legal": "Decommissioned buoys. Amber when the cutter is not standing on them.",
+        "heat": ""
+      },
+      "stream": {
+        "id": "buoy_flakes",
+        "name": "Buoy Flakes",
+        "origin": "Flakes shed by the decommissioned buoy gyre on a down-spin timer.",
+        "vector": 0.9,
+        "period": 16.0,
+        "speed": 70.0,
+        "span": 1120.0,
+        "anchor": "buoy_keeper",
+        "angle": 1.7,
+        "distance": 700,
+        "resource_id": "flake_mass",
+        "resource_name": "Flake mass",
+        "amount": 4,
+        "legal": "Timed buoy flakes. They move. They are not a belt.",
+        "heat": ""
+      },
+      "pocket": {
+        "id": "quiet_pocket",
+        "name": "Hidden Porch",
+        "anchor": "buoy_keeper",
+        "angle": 1.4,
+        "distance": 360,
+        "radius": 210,
+        "plantable": false,
+        "why": "The amber pocket behind the buoys. Still not a homestead."
+      },
+      "gates": [
+        {
+          "id": "quiet_from_ledger",
+          "name": "Quiet Lane",
+          "to": "HC-V1-R1-S5",
+          "arrive": "ledger_to_quiet",
+          "anchor": "suburb_lamp",
+          "angle": 2.9,
+          "distance": 1120,
+          "radius": 120,
+          "color": "green"
+        }
+      ],
+      "pdo": {
+        "faction": "helion_compact",
+        "count": 1,
+        "radius": 540,
+        "home": "suburb_lamp"
+      },
+      "pirates": {
+        "count": 0,
+        "angle": 0.0,
+        "standoff": 0
+      },
+      "haulers": [
+        {
+          "id": "porch_hauler",
+          "name": "Porch Hauler",
+          "class_id": "anvil",
+          "home": "suburb_lamp",
+          "radius": 640
+        }
+      ],
+      "nest": {
+        "id": "nest",
+        "name": "",
+        "angle": 1.2,
+        "distance": 9000
+      },
+      "zones": {
+        "green": {
+          "anchor": "suburb_lamp",
+          "radius": 860
+        },
+        "amber": {
+          "anchor": "nest",
+          "radius": 0
+        }
+      }
+    },
+    {
+      "id": "HC-V1-R2-S1",
+      "name": "Lease",
+      "seed": 22001,
+      "why_visit": "Buy harvest paper from Tallyrock. The world is mined out and still sells the license.",
+      "law_color": "amber",
+      "star": {
+        "id": "hc-v1-r2-s1-star",
+        "name": "Tally",
+        "class": "K-orange",
+        "radius": 140,
+        "color": "#e08a3a"
+      },
+      "bodies": [
+        {
+          "id": "tallyrock",
+          "name": "Tallyrock",
+          "angle": 0.6,
+          "distance": 1600,
+          "radius": 130,
+          "color": "#c46a28",
+          "accent": "#c46a28",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "lease",
+          "legal": "Rimward Charter Authority. The paper is the product. The rock is spent.",
+          "blurb": "A mined-out world that still sells harvest paper from a shuttered pit.",
+          "air": "Pit vent. Sulfur and ink.",
+          "face": "Open pit terraces, not ice.",
+          "crust": "The ore is gone. The charter office is the crust.",
+          "life": "None wild. The clerks brought their own water.",
+          "ruins": "The first pit head, now a license window.",
+          "resource_id": "charter_paper",
+          "resource_name": "Charter paper",
+          "amount": 6
+        },
+        {
+          "id": "paper_moon",
+          "name": "Paper Moon",
+          "angle": 2.8,
+          "distance": 2300,
+          "radius": 58,
+          "color": "#a86a40",
+          "accent": "#a86a40",
+          "moon": true,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "Charter archive. The fine print lives here.",
+          "blurb": "The moon where signed leases are stored because Tallyrock ran out of shelves.",
+          "air": "None.",
+          "face": "Stacked seal-stone.",
+          "crust": "Wax and fiber, pressed until it acts like rock.",
+          "life": "None.",
+          "ruins": "A vault door from a lease that expired mid-shift.",
+          "resource_id": "seal_wax",
+          "resource_name": "Seal wax",
+          "amount": 5
+        }
+      ],
+      "belt": {
+        "id": "pit_tailings",
+        "name": "Pit Tailings",
+        "composition": "mined-out nickel tailings and charter slag from Tallyrock's pits",
+        "radius": 3000,
+        "width": 200,
+        "count": 18,
+        "resource_id": "tailings",
+        "resource_name": "Tailings",
+        "amount": 8,
+        "legal": "Charter tailings. Paper required.",
+        "heat": ""
+      },
+      "trash": {
+        "id": "expired_leases",
+        "name": "Expired Leases",
+        "origin": "Haulers that worked a Tallyrock lease a day past the stamp and were cut loose.",
+        "anchor": "tallyrock",
+        "angle": 1.9,
+        "distance": 760,
+        "count": 8,
+        "spread": 150,
+        "resource_id": "scrap",
+        "resource_name": "Scrap",
+        "amount": 5,
+        "legal": "Expired-lease wrecks. The Charter will sell you the story.",
+        "heat": ""
+      },
+      "stream": {},
+      "pocket": {
+        "id": "lease_pocket",
+        "name": "License Pocket",
+        "anchor": "tallyrock",
+        "angle": -1.1,
+        "distance": 600,
+        "radius": 200,
+        "plantable": false,
+        "why": "You buy paper here. You do not plant a core on Tallyrock."
+      },
+      "gates": [
+        {
+          "id": "lease_from_brass",
+          "name": "Green Spine",
+          "to": "HC-V1-R1-S2",
+          "arrive": "brass_to_lease",
+          "anchor": "tallyrock",
+          "angle": 2.5,
+          "distance": 1200,
+          "radius": 120,
+          "color": "green"
+        },
+        {
+          "id": "lease_to_towline",
+          "name": "Green Spine",
+          "to": "HC-V1-R2-S2",
+          "arrive": "towline_from_lease",
+          "anchor": "tallyrock",
+          "angle": 0.15,
+          "distance": 1320,
+          "radius": 120,
+          "color": "green"
+        },
+        {
+          "id": "lease_to_choir",
+          "name": "Choir Road",
+          "to": "HC-V1-R2-S3",
+          "arrive": "choir_from_lease",
+          "anchor": "tallyrock",
+          "angle": 1.3,
+          "distance": 1400,
+          "radius": 120,
+          "color": "amber"
+        }
+      ],
+      "pdo": {
+        "faction": "rimward_charter",
+        "count": 0,
+        "radius": 540,
+        "home": "tallyrock"
+      },
+      "pirates": {
+        "count": 0,
+        "angle": 0.0,
+        "standoff": 0
+      },
+      "haulers": [
+        {
+          "id": "tally_clerk",
+          "name": "Tally Clerk",
+          "class_id": "anvil",
+          "home": "tallyrock",
+          "radius": 820
+        },
+        {
+          "id": "paper_vendor",
+          "name": "Paper Vendor",
+          "class_id": "anvil",
+          "home": "paper_moon",
+          "radius": 420
+        }
+      ],
+      "nest": {
+        "id": "nest",
+        "name": "",
+        "angle": 1.2,
+        "distance": 9000
+      },
+      "zones": {
+        "green": {
+          "anchor": "tallyrock",
+          "radius": 360
+        },
+        "amber": {
+          "anchor": "nest",
+          "radius": 0
+        }
+      }
+    },
+    {
+      "id": "HC-V1-R2-S2",
+      "name": "Towline",
+      "seed": 22002,
+      "why_visit": "Tug traffic. Tractor contracts. The Anvil was built for this road.",
+      "law_color": "amber",
+      "star": {
+        "id": "hc-v1-r2-s2-star",
+        "name": "Tow",
+        "class": "G",
+        "radius": 150,
+        "color": "#f0d7a4"
+      },
+      "bodies": [
+        {
+          "id": "tug_yard",
+          "name": "Tug Yard",
+          "angle": 0.4,
+          "distance": 1500,
+          "radius": 100,
+          "color": "#d7c49a",
+          "accent": "#d7c49a",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "lease",
+          "legal": "Charter tug lease. You may tow. You may not plant.",
+          "blurb": "A yard of tugs. The contracts are tractor jobs, not guns.",
+          "air": "Yard vent and cable grease.",
+          "face": "Bollards and cable scars.",
+          "crust": "The yard is a plated rock. The ore was the cables.",
+          "life": "None.",
+          "ruins": "The first bollard, still warm from a tow.",
+          "resource_id": "cable_mass",
+          "resource_name": "Cable mass",
+          "amount": 7
+        },
+        {
+          "id": "bollard",
+          "name": "Bollard",
+          "angle": 2.6,
+          "distance": 2200,
+          "radius": 66,
+          "color": "#b7a27a",
+          "accent": "#b7a27a",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "Tow mark. Anvil-friendly.",
+          "blurb": "A rock worn into a bollard by a century of tow cables.",
+          "air": "None.",
+          "face": "Polished cable grooves.",
+          "crust": "Hard stone, cable-cut.",
+          "life": "None.",
+          "ruins": "A snapped cable left as a ruler.",
+          "resource_id": "groove_stone",
+          "resource_name": "Groove stone",
+          "amount": 4
+        }
+      ],
+      "belt": {
+        "id": "cable_clippings",
+        "name": "Cable Clippings",
+        "composition": "cut tow cable and grease ice that is grease, not water ice",
+        "radius": 2800,
+        "width": 140,
+        "count": 12,
+        "resource_id": "cable_clip",
+        "resource_name": "Cable clip",
+        "amount": 6,
+        "legal": "Tow clippings. A tractor lease.",
+        "heat": ""
+      },
+      "trash": {
+        "id": "parted_tows",
+        "name": "Parted Tows",
+        "origin": "Tows that parted on the Lease road and were never reeled in.",
+        "anchor": "tug_yard",
+        "angle": 1.7,
+        "distance": 640,
+        "count": 7,
+        "spread": 120,
+        "resource_id": "scrap",
+        "resource_name": "Scrap",
+        "amount": 5,
+        "legal": "Parted tows. Salvage if you hold the tractor paper.",
+        "heat": ""
+      },
+      "stream": {},
+      "pocket": {
+        "id": "tow_pocket",
+        "name": "Tow Pocket",
+        "anchor": "tug_yard",
+        "angle": -0.6,
+        "distance": 540,
+        "radius": 190,
+        "plantable": false,
+        "why": "A tug pocket. The homestead is the next buoy, not this one."
+      },
+      "gates": [
+        {
+          "id": "towline_from_lease",
+          "name": "Green Spine",
+          "to": "HC-V1-R2-S1",
+          "arrive": "lease_to_towline",
+          "anchor": "tug_yard",
+          "angle": 2.9,
+          "distance": 1140,
+          "radius": 120,
+          "color": "green"
+        },
+        {
+          "id": "towline_to_soil",
+          "name": "Homestead Road",
+          "to": "HC-V1-R5-S1",
+          "arrive": "soil_from_towline",
+          "anchor": "tug_yard",
+          "angle": 0.7,
+          "distance": 1400,
+          "radius": 120,
+          "color": "amber"
+        }
+      ],
+      "pdo": {
+        "faction": "rimward_charter",
+        "count": 0,
+        "radius": 540,
+        "home": "tug_yard"
+      },
+      "pirates": {
+        "count": 0,
+        "angle": 0.0,
+        "standoff": 0
+      },
+      "haulers": [
+        {
+          "id": "tug_factor",
+          "name": "Tug Factor",
+          "class_id": "anvil",
+          "home": "tug_yard",
+          "radius": 780
+        }
+      ],
+      "nest": {
+        "id": "nest",
+        "name": "",
+        "angle": 1.2,
+        "distance": 9000
+      },
+      "zones": {
+        "green": {
+          "anchor": "tug_yard",
+          "radius": 360
+        },
+        "amber": {
+          "anchor": "nest",
+          "radius": 0
+        }
+      }
+    },
+    {
+      "id": "HC-V1-R2-S3",
+      "name": "Ore Choir",
+      "seed": 22003,
+      "why_visit": "A dense metal belt. Claim-jump crews work the rim and do not pretend to be miners.",
+      "law_color": "amber",
+      "star": {
+        "id": "hc-v1-r2-s3-star",
+        "name": "Choir",
+        "class": "A-white",
+        "radius": 170,
+        "color": "#f4f7ff"
+      },
+      "bodies": [
+        {
+          "id": "choir_anvil",
+          "name": "Choir Anvil",
+          "angle": 1.0,
+          "distance": 1700,
+          "radius": 95,
+          "color": "#d5d8e0",
+          "accent": "#d5d8e0",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "lease",
+          "legal": "Charter metal lease. The rim is where the jump crews wait.",
+          "blurb": "A metal world hammered bright. The belt sings when the drills stop.",
+          "air": "None. The anvil is bare metal.",
+          "face": "Polished nickel, not ice.",
+          "crust": "Solid metal crust. The belt is the spill.",
+          "life": "None.",
+          "ruins": "A drill hymn cut into the face.",
+          "resource_id": "nickel_mass",
+          "resource_name": "Nickel mass",
+          "amount": 10
+        },
+        {
+          "id": "rim_camp",
+          "name": "Rim Camp",
+          "angle": 3.2,
+          "distance": 2600,
+          "radius": 50,
+          "color": "#9aa0aa",
+          "accent": "#9aa0aa",
+          "moon": false,
+          "junk": true,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "No charter. The camp is a jump cooperative.",
+          "blurb": "A camp bolted to a metal shard at the belt's rim.",
+          "air": "None.",
+          "face": "Stolen plate and drill spall.",
+          "crust": "Metal shard.",
+          "life": "None. The crews eat imports.",
+          "ruins": "A jumped claim beacon, dark.",
+          "resource_id": "spall",
+          "resource_name": "Spall",
+          "amount": 6
+        }
+      ],
+      "belt": {
+        "id": "nickel_choir",
+        "name": "Nickel Choir",
+        "composition": "dense nickel and drill spall from Choir Anvil, a metal belt",
+        "radius": 2400,
+        "width": 220,
+        "count": 22,
+        "resource_id": "nickel_mass",
+        "resource_name": "Nickel mass",
+        "amount": 12,
+        "legal": "Charter metal on the inner belt. The rim is jumped.",
+        "heat": ""
+      },
+      "trash": {
+        "id": "jumped_rigs",
+        "name": "Jumped Rigs",
+        "origin": "Rigs taken by the rim cooperative and left when the Charter cutter was only a rumor.",
+        "anchor": "rim_camp",
+        "angle": 0.4,
+        "distance": 380,
+        "count": 8,
+        "spread": 140,
+        "resource_id": "scrap",
+        "resource_name": "Scrap",
+        "amount": 6,
+        "legal": "Jumped rigs. Wreck rights at the rim.",
+        "heat": ""
+      },
+      "stream": {
+        "id": "nickel_rain",
+        "name": "Nickel Rain",
+        "origin": "A nickel stream kicked off Choir Anvil by the drills, on a known vector.",
+        "vector": 2.4,
+        "period": 22.0,
+        "speed": 70.0,
+        "span": 1540.0,
+        "anchor": "choir_anvil",
+        "angle": 0.6,
+        "distance": 900,
+        "resource_id": "nickel_mass",
+        "resource_name": "Nickel mass",
+        "amount": 6,
+        "legal": "Timed nickel rain. It moves. Do not park a probe in it.",
+        "heat": ""
+      },
+      "pocket": {
+        "id": "choir_pocket",
+        "name": "Rim Pocket",
+        "anchor": "rim_camp",
+        "angle": 1.2,
+        "distance": 300,
+        "radius": 180,
+        "plantable": false,
+        "why": "The rim camp is not a garden pocket."
+      },
+      "gates": [
+        {
+          "id": "choir_from_lease",
+          "name": "Choir Road",
+          "to": "HC-V1-R2-S1",
+          "arrive": "lease_to_choir",
+          "anchor": "choir_anvil",
+          "angle": 2.4,
+          "distance": 1200,
+          "radius": 120,
+          "color": "amber"
+        }
+      ],
+      "pdo": {
+        "faction": "rimward_charter",
+        "count": 0,
+        "radius": 540,
+        "home": "choir_anvil"
+      },
+      "pirates": {
+        "count": 2,
+        "angle": 2.4,
+        "standoff": 900
+      },
+      "haulers": [
+        {
+          "id": "choir_hauler",
+          "name": "Choir Hauler",
+          "class_id": "anvil",
+          "home": "choir_anvil",
+          "radius": 700
+        }
+      ],
+      "nest": {
+        "id": "nest",
+        "name": "",
+        "angle": 1.2,
+        "distance": 9000
+      },
+      "zones": {
+        "green": {
+          "anchor": "choir_anvil",
+          "radius": 360
+        },
+        "amber": {
+          "anchor": "nest",
+          "radius": 0
+        }
+      }
+    },
+    {
+      "id": "HC-V1-R5-S2",
+      "name": "Two Weathers",
+      "seed": 52002,
+      "why_visit": "A tidally locked shard. Ember kale wants the hot face. Ghost gourd wants the cold.",
+      "law_color": "amber",
+      "star": {
+        "id": "hc-v1-r5-s2-star",
+        "name": "Lock",
+        "class": "K-binary",
+        "radius": 120,
+        "color": "#e07a4a"
+      },
+      "bodies": [
+        {
+          "id": "hot_face",
+          "name": "Hot Face",
+          "angle": 0.2,
+          "distance": 1500,
+          "radius": 100,
+          "color": "#e07a3a",
+          "accent": "#e07a3a",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "Garden Shards. A claim pocket, not a Compact exclusion.",
+          "blurb": "The locked hot face. Ember kale is the reason to stand in the glare.",
+          "air": "Hot thin air, baked.",
+          "face": "Cracked ember soil.",
+          "crust": "Warm crust. Water hides from the light.",
+          "life": "Ember kale will take here if you bring the seed.",
+          "ruins": "A burned dome from a kale year.",
+          "resource_id": "ember_soil",
+          "resource_name": "Ember soil",
+          "amount": 6
+        },
+        {
+          "id": "cold_face",
+          "name": "Cold Face",
+          "angle": 3.3,
+          "distance": 1500,
+          "radius": 100,
+          "color": "#8aa0b8",
+          "accent": "#8aa0b8",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "Garden Shards. The cold claim is the same shard's other cheek.",
+          "blurb": "The locked cold face. Ghost gourd sets in the dark.",
+          "air": "Cold enough to frost a visor. Not an ice belt.",
+          "face": "Pale gourd-scar and frost glass.",
+          "crust": "Cold crust. The frost is local, not a ring.",
+          "life": "Ghost gourd if someone stays with it.",
+          "ruins": "A dark orchard stake, snapped.",
+          "resource_id": "gourd_frost",
+          "resource_name": "Gourd frost",
+          "amount": 5
+        }
+      ],
+      "belt": {
+        "id": "weather_gravel",
+        "name": "Weather Gravel",
+        "composition": "hot cinder and cold frost-glass from the two faces, mixed only in the belt",
+        "radius": 2800,
+        "width": 160,
+        "count": 14,
+        "resource_id": "cinder",
+        "resource_name": "Cinder",
+        "amount": 6,
+        "legal": "Garden gravel. Claim country.",
+        "heat": ""
+      },
+      "trash": {
+        "id": "split_domes",
+        "name": "Split Domes",
+        "origin": "Domes that tried to farm both faces at once and split on the terminator.",
+        "anchor": "hot_face",
+        "angle": 1.6,
+        "distance": 700,
+        "count": 7,
+        "spread": 130,
+        "resource_id": "scrap",
+        "resource_name": "Scrap",
+        "amount": 4,
+        "legal": "Split homestead domes. The shard still takes a new core.",
+        "heat": ""
+      },
+      "stream": {},
+      "pocket": {
+        "id": "weather_pocket",
+        "name": "Terminator Pocket",
+        "anchor": "hot_face",
+        "angle": 1.57,
+        "distance": 420,
+        "radius": 240,
+        "plantable": true,
+        "why": "The terminator pocket. Ember kale on the hot side of the stake, ghost gourd if you shade it."
+      },
+      "gates": [
+        {
+          "id": "weather_from_soil",
+          "name": "Weather Road",
+          "to": "HC-V1-R5-S1",
+          "arrive": "soil_to_weathers",
+          "anchor": "hot_face",
+          "angle": 2.2,
+          "distance": 1100,
+          "radius": 120,
+          "color": "amber"
+        }
+      ],
+      "pdo": {
+        "faction": "rimward_charter",
+        "count": 0,
+        "radius": 540,
+        "home": "hot_face"
+      },
+      "pirates": {
+        "count": 0,
+        "angle": 0.0,
+        "standoff": 0
+      },
+      "haulers": [
+        {
+          "id": "weather_shepherd",
+          "name": "Weather Shepherd",
+          "class_id": "anvil",
+          "home": "hot_face",
+          "radius": 640
+        }
+      ],
+      "nest": {
+        "id": "nest",
+        "name": "",
+        "angle": 1.2,
+        "distance": 9000
+      },
+      "zones": {
+        "green": {
+          "anchor": "hot_face",
+          "radius": 360
+        },
+        "amber": {
+          "anchor": "nest",
+          "radius": 0
+        }
+      }
+    },
+    {
+      "id": "HC-V1-R5-S4",
+      "name": "Broken Charter",
+      "seed": 52004,
+      "why_visit": "Two charters name the same hollow. The dispute is the lesson.",
+      "law_color": "amber",
+      "star": {
+        "id": "hc-v1-r5-s4-star",
+        "name": "Dispute",
+        "class": "K",
+        "radius": 125,
+        "color": "#d2a15a"
+      },
+      "bodies": [
+        {
+          "id": "first_stamp",
+          "name": "First Stamp",
+          "angle": 0.8,
+          "distance": 1550,
+          "radius": 90,
+          "color": "#c4924a",
+          "accent": "#c4924a",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "A charter that overlaps the second stamp. Planting starts the argument.",
+          "blurb": "The older stamp. It says the hollow is already let.",
+          "air": "Dust.",
+          "face": "Stamp iron and old soil.",
+          "crust": "Claimed crust, twice.",
+          "life": "A failed garden. The soil is still good.",
+          "ruins": "The first stamp nail.",
+          "resource_id": "stamp_iron",
+          "resource_name": "Stamp iron",
+          "amount": 4
+        },
+        {
+          "id": "second_stamp",
+          "name": "Second Stamp",
+          "angle": 2.9,
+          "distance": 1900,
+          "radius": 84,
+          "color": "#8a6840",
+          "accent": "#8a6840",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "The second charter. Both papers are in the pocket.",
+          "blurb": "The newer stamp. It says the first stamp expired.",
+          "air": "Dust.",
+          "face": "Newer stamp paint over older iron.",
+          "crust": "The same crust, a second name.",
+          "life": "Nothing alive until someone tends it.",
+          "ruins": "A surveyor nail bent by the first owner.",
+          "resource_id": "stamp_iron",
+          "resource_name": "Stamp iron",
+          "amount": 4
+        }
+      ],
+      "belt": {
+        "id": "dispute_rubble",
+        "name": "Dispute Rubble",
+        "composition": "broken claim stakes and two colors of charter paint",
+        "radius": 2700,
+        "width": 150,
+        "count": 12,
+        "resource_id": "stake_scrap",
+        "resource_name": "Stake scrap",
+        "amount": 5,
+        "legal": "Dispute rubble. Both charters claim the scrap.",
+        "heat": ""
+      },
+      "trash": {
+        "id": "two_papers",
+        "name": "Two Papers",
+        "origin": "Haulers that carried one charter and were hit by the owners of the other.",
+        "anchor": "first_stamp",
+        "angle": 1.4,
+        "distance": 560,
+        "count": 8,
+        "spread": 120,
+        "resource_id": "scrap",
+        "resource_name": "Scrap",
+        "amount": 5,
+        "legal": "Wrecks of a paper fight. The hollow is still plantable.",
+        "heat": ""
+      },
+      "stream": {},
+      "pocket": {
+        "id": "overlap_pocket",
+        "name": "Overlap Hollow",
+        "anchor": "first_stamp",
+        "angle": 0.4,
+        "distance": 480,
+        "radius": 230,
+        "plantable": true,
+        "why": "Both charters name this hollow. A core here is a dispute, and it is allowed."
+      },
+      "gates": [
+        {
+          "id": "broken_from_soil",
+          "name": "Dispute Road",
+          "to": "HC-V1-R5-S1",
+          "arrive": "soil_to_broken",
+          "anchor": "first_stamp",
+          "angle": 2.6,
+          "distance": 1160,
+          "radius": 120,
+          "color": "amber"
+        }
+      ],
+      "pdo": {
+        "faction": "rimward_charter",
+        "count": 0,
+        "radius": 540,
+        "home": "first_stamp"
+      },
+      "pirates": {
+        "count": 1,
+        "angle": 1.8,
+        "standoff": 700
+      },
+      "haulers": [
+        {
+          "id": "stamp_clerk",
+          "name": "Stamp Clerk",
+          "class_id": "anvil",
+          "home": "first_stamp",
+          "radius": 600
+        }
+      ],
+      "nest": {
+        "id": "nest",
+        "name": "",
+        "angle": 1.2,
+        "distance": 9000
+      },
+      "zones": {
+        "green": {
+          "anchor": "first_stamp",
+          "radius": 360
+        },
+        "amber": {
+          "anchor": "nest",
+          "radius": 0
+        }
+      }
+    },
+    {
+      "id": "HC-V1-R5-S6",
+      "name": "Perimeter",
+      "seed": 52006,
+      "why_visit": "The last garden before the Marches. Raid weather comes from rimward. The law here is red.",
+      "law_color": "red",
+      "star": {
+        "id": "hc-v1-r5-s6-star",
+        "name": "Gutter",
+        "class": "Gutter",
+        "radius": 90,
+        "color": "#c45a3a"
+      },
+      "bodies": [
+        {
+          "id": "last_stake",
+          "name": "Last Stake",
+          "angle": 0.7,
+          "distance": 1400,
+          "radius": 88,
+          "color": "#a85a42",
+          "accent": "#a85a42",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "Garden pocket under red law. A core can sit. A hail cannot.",
+          "blurb": "The last garden stake. Past it the Marches do not write back.",
+          "air": "Raid dust. Thin.",
+          "face": "Stake wood burned into the soil.",
+          "crust": "Garden crust, already raided once.",
+          "life": "What you bring. The wild things left.",
+          "ruins": "A perimeter stake broken by a march raid.",
+          "resource_id": "raid_soil",
+          "resource_name": "Raid soil",
+          "amount": 5
+        },
+        {
+          "id": "march_echo",
+          "name": "March Echo",
+          "angle": 2.5,
+          "distance": 2300,
+          "radius": 70,
+          "color": "#6e3a32",
+          "accent": "#6e3a32",
+          "moon": false,
+          "junk": true,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "Red. Not a Compact lane.",
+          "blurb": "A rock that hears the Marches and answers with gravel.",
+          "air": "None.",
+          "face": "Raid gravel cemented with old crop ash.",
+          "crust": "Hollow. Used as a dump.",
+          "life": "None.",
+          "ruins": "A march banner nail with no banner.",
+          "resource_id": "raid_gravel",
+          "resource_name": "Raid gravel",
+          "amount": 6
+        }
+      ],
+      "belt": {
+        "id": "raid_scree",
+        "name": "Raid Scree",
+        "composition": "march raid gravel and burned garden ash, blown in from rimward",
+        "radius": 2900,
+        "width": 180,
+        "count": 15,
+        "resource_id": "raid_gravel",
+        "resource_name": "Raid gravel",
+        "amount": 7,
+        "legal": "Red scree. Wreck rights.",
+        "heat": ""
+      },
+      "trash": {
+        "id": "raided_domes",
+        "name": "Raided Domes",
+        "origin": "Garden domes cracked by march raids and left on the perimeter as a warning.",
+        "anchor": "last_stake",
+        "angle": 1.8,
+        "distance": 640,
+        "count": 9,
+        "spread": 150,
+        "resource_id": "scrap",
+        "resource_name": "Scrap",
+        "amount": 6,
+        "legal": "Raided domes. Red law. The tender can still work them.",
+        "heat": ""
+      },
+      "stream": {
+        "id": "march_gravel",
+        "name": "March Gravel",
+        "origin": "Raid gravel on a rimward vector, the weather the Marches send ahead of a hull.",
+        "vector": 3.6,
+        "period": 14.0,
+        "speed": 70.0,
+        "span": 980.0,
+        "anchor": "march_echo",
+        "angle": 0.5,
+        "distance": 500,
+        "resource_id": "raid_gravel",
+        "resource_name": "Raid gravel",
+        "amount": 5,
+        "legal": "A meteor gravel stream. It has a timer. It is not a belt.",
+        "heat": ""
+      },
+      "pocket": {
+        "id": "last_pocket",
+        "name": "Last Pocket",
+        "anchor": "last_stake",
+        "angle": -0.8,
+        "distance": 460,
+        "radius": 220,
+        "plantable": true,
+        "why": "The last garden pocket. Red law. A core is allowed. A Compact hail is not."
+      },
+      "gates": [
+        {
+          "id": "peri_from_soil",
+          "name": "Perimeter Road",
+          "to": "HC-V1-R5-S1",
+          "arrive": "soil_to_perimeter",
+          "anchor": "last_stake",
+          "angle": 2.4,
+          "distance": 1200,
+          "radius": 120,
+          "color": "amber"
+        }
+      ],
+      "pdo": {
+        "faction": "rimward_charter",
+        "count": 0,
+        "radius": 540,
+        "home": "last_stake"
+      },
+      "pirates": {
+        "count": 2,
+        "angle": 2.2,
+        "standoff": 800
+      },
+      "haulers": [],
+      "nest": {
+        "id": "nest",
+        "name": "",
+        "angle": 1.2,
+        "distance": 9000
+      },
+      "zones": {
+        "green": {
+          "anchor": "last_stake",
+          "radius": 0
+        },
+        "amber": {
+          "anchor": "nest",
+          "radius": 0
+        }
+      }
+    },
+    {
+      "id": "HC-V1-R6-S1",
+      "name": "Gyre",
+      "seed": 62001,
+      "why_visit": "The Swallow. A trash cyclone of Compact decommission and an older war. Bring a tender.",
+      "law_color": "amber",
+      "star": {
+        "id": "hc-v1-r6-s1-star",
+        "name": "Gyre",
+        "class": "K",
+        "radius": 100,
+        "color": "#d08a55"
+      },
+      "bodies": [
+        {
+          "id": "war_hulk",
+          "name": "War Hulk",
+          "angle": 1.2,
+          "distance": 1800,
+          "radius": 110,
+          "color": "#8a5a40",
+          "accent": "#8a5a40",
+          "moon": false,
+          "junk": true,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "Drift. No Compact exclusion. Wreck rights in the cyclone.",
+          "blurb": "A war hulk too large to be trash and too dead to be a port.",
+          "air": "None. The hulk leaks old air and then stops.",
+          "face": "War plate, names burned off.",
+          "crust": "The hulk is hollow. The cyclone is the resource.",
+          "life": "None living. The Swallow ate the rest.",
+          "ruins": "A fleet name, half scraped.",
+          "resource_id": "war_plate",
+          "resource_name": "War plate",
+          "amount": 8
+        },
+        {
+          "id": "decom_anchor",
+          "name": "Decom Anchor",
+          "angle": 3.8,
+          "distance": 2400,
+          "radius": 60,
+          "color": "#6e5648",
+          "accent": "#6e5648",
+          "moon": false,
+          "junk": false,
+          "ring": false,
+          "ring_kind": "",
+          "protected": false,
+          "heat": "",
+          "legal": "Decommission anchor. The tow broke. The cyclone remained.",
+          "blurb": "The anchor the Compact used when they started the decommission tow.",
+          "air": "None.",
+          "face": "Tow scars and Compact green under the rust.",
+          "crust": "Solid enough to hold a cable that is no longer there.",
+          "life": "None.",
+          "ruins": "The decom order, still bolted to the face.",
+          "resource_id": "tow_iron",
+          "resource_name": "Tow iron",
+          "amount": 5
+        }
+      ],
+      "belt": {
+        "id": "war_slag",
+        "name": "War Slag",
+        "composition": "war slag and Compact decom plate, spun out of the Swallow",
+        "radius": 2600,
+        "width": 200,
+        "count": 18,
+        "resource_id": "war_plate",
+        "resource_name": "War plate",
+        "amount": 9,
+        "legal": "Cyclone slag. Worth a tender.",
+        "heat": ""
+      },
+      "trash": {
+        "id": "the_swallow",
+        "name": "The Swallow",
+        "origin": "Compact decommission yard plus the old war, spun into one cyclone.",
+        "anchor": "war_hulk",
+        "angle": 0.6,
+        "distance": 520,
+        "count": 18,
+        "spread": 220,
+        "resource_id": "salvage_parts",
+        "resource_name": "Keel salvage",
+        "amount": 12,
+        "legal": "The Swallow. Salvage rights. This is why you brought the tender.",
+        "heat": ""
+      },
+      "stream": {
+        "id": "swallow_teeth",
+        "name": "Swallow Teeth",
+        "origin": "Hull teeth thrown off the Swallow on a slow cyclone vector.",
+        "vector": 1.15,
+        "period": 18.0,
+        "speed": 70.0,
+        "span": 1260.0,
+        "anchor": "war_hulk",
+        "angle": 2.0,
+        "distance": 860,
+        "resource_id": "salvage_parts",
+        "resource_name": "Keel salvage",
+        "amount": 6,
+        "legal": "A moving tooth stream. It has a period. Park beside it, not in it.",
+        "heat": ""
+      },
+      "pocket": {
+        "id": "swallow_pocket",
+        "name": "Swallow Eye",
+        "anchor": "war_hulk",
+        "angle": -1.0,
+        "distance": 400,
+        "radius": 180,
+        "plantable": false,
+        "why": "The eye of the cyclone. Not a garden. A tender works the field."
+      },
+      "gates": [
+        {
+          "id": "gyre_from_soil",
+          "name": "Garden Hatch",
+          "to": "HC-V1-R5-S1",
+          "arrive": "soil_to_gyre",
+          "anchor": "war_hulk",
+          "angle": 2.2,
+          "distance": 1300,
+          "radius": 120,
+          "color": "amber"
+        },
+        {
+          "id": "gyre_from_writ",
+          "name": "Swallow Hatch",
+          "to": "HC-V1-R1-S3",
+          "arrive": "writ_to_gyre",
+          "anchor": "decom_anchor",
+          "angle": 0.4,
+          "distance": 1100,
+          "radius": 120,
+          "color": "amber"
+        }
+      ],
+      "pdo": {
+        "faction": "rimward_charter",
+        "count": 0,
+        "radius": 540,
+        "home": "war_hulk"
+      },
+      "pirates": {
+        "count": 2,
+        "angle": 1.4,
+        "standoff": 740
+      },
+      "haulers": [],
+      "nest": {
+        "id": "nest",
+        "name": "",
+        "angle": 1.2,
+        "distance": 9000
+      },
+      "zones": {
+        "green": {
+          "anchor": "war_hulk",
+          "radius": 360
+        },
+        "amber": {
+          "anchor": "nest",
+          "radius": 0
+        }
+      }
+    }
+  ]
+}

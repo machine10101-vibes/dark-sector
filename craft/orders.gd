@@ -2,10 +2,14 @@ class_name CraftOrders
 extends RefCounted
 
 const LAYERS = ["orbit", "atmosphere", "surface", "crust", "biosign", "ruins", "legal"]
-const PARKED = ["fighter", "salvage_tender"]
+const PARKED = ["fighter"]
 
 
 static func launch(sim, def_id: String) -> String:
+	if def_id == "salvage_tender":
+		return _launch_tender(sim)
+	if def_id == "livestock_lighter":
+		return _launch_lighter(sim)
 	if def_id in PARKED:
 		return "%s stays parked in the rack." % _pretty(def_id)
 	var craft = _first_docked(sim, def_id)
@@ -59,6 +63,10 @@ static func order(sim, uid: String, verb: String, node_id: String) -> String:
 		return ""
 	if str(craft.def_id) in PARKED:
 		return "%s stays parked in the rack." % craft.name
+	if str(craft.def_id) == "salvage_tender":
+		return _order_tender(sim, craft, node_id)
+	if str(craft.def_id) == "livestock_lighter":
+		return _order_lighter(sim, craft)
 	if str(craft.state) == "lost":
 		return "%s is lost. Rebuild it from returned mass." % craft.name
 	var place = sim.survey_node(node_id)
@@ -139,6 +147,8 @@ static func step(sim, craft, dt: float) -> void:
 			_step_harvest(sim, craft, dt)
 		"salvage_tender":
 			_step_tender(sim, craft, dt)
+		"livestock_lighter":
+			_step_lighter(sim, craft, dt)
 		"away_shuttle":
 			_step_shuttle(sim, craft, dt)
 		"fighter":
@@ -234,26 +244,133 @@ static func _step_harvest(sim, craft, dt: float) -> void:
 		_return_home(sim, craft, dt)
 
 
+static func _launch_tender(sim) -> String:
+	var craft = _first_docked(sim, "salvage_tender")
+	if craft == null:
+		var any = _any_of(sim, "salvage_tender")
+		if any == null:
+			return "This keel has no Salvage Tender."
+		if str(any.state) == "lost":
+			return "Salvage Tender is lost. Rebuild it from returned mass."
+		return "Salvage Tender is already out."
+	var target := _salvage_mark(sim)
+	if target == "":
+		return "Salvage Tender stays parked until a wreck or a seized field is in reach."
+	return order(sim, str(craft.uid), "strip", target)
+
+
+static func _launch_lighter(sim) -> String:
+	var craft = _first_docked(sim, "livestock_lighter")
+	if craft == null:
+		var any = _any_of(sim, "livestock_lighter")
+		if any == null:
+			return "This keel has no Livestock Lighter."
+		if str(any.state) == "lost":
+			return "Livestock Lighter is lost. Rebuild it from returned mass."
+		return "Livestock Lighter is already out."
+	if str(sim.player.class_id) != "anvil" and not sim.player.modules.has("lighter_dock"):
+		return "The livestock lighter wants its dock on the keel."
+	if not bool(sim.claim.get("owned", false)):
+		return "No claim is holding kine."
+	return order(sim, str(craft.uid), "haul", str(sim.claim.get("pocket_id", "")))
+
+
+static func _order_tender(sim, craft, node_id: String) -> String:
+	if str(craft.state) == "lost":
+		return "%s is lost. Rebuild it from returned mass." % craft.name
+	var wreck = sim.wreck_by_id(node_id)
+	var place = sim.survey_node(node_id)
+	if wreck == null and place == null:
+		return "Point the tender at a wreck or a trash field."
+	_depart(sim, craft, node_id)
+	craft.order = "strip"
+	if wreck != null:
+		sim.say("Tender away to %s." % wreck.name)
+	else:
+		sim.say("Tender away to %s." % place.name)
+	sim.sfx("launch")
+	return ""
+
+
+static func _order_lighter(sim, craft) -> String:
+	if str(craft.state) == "lost":
+		return "%s is lost. Rebuild it from returned mass." % craft.name
+	_depart(sim, craft, str(sim.claim.get("pocket_id", "")))
+	craft.order = "haul"
+	sim.say("Lighter away to the claim.")
+	sim.sfx("launch")
+	return ""
+
+
+static func _salvage_mark(sim) -> String:
+	var best := ""
+	var best_d := 720.0
+	for wreck in sim.wrecks:
+		if bool(wreck.get("stripped", false)):
+			continue
+		var dist: float = sim.player.pos.distance_to(wreck.pos)
+		if dist < best_d:
+			best = str(wreck.id)
+			best_d = dist
+	if best != "":
+		return best
+	var gyre := str(sim.defs.system.id) == "HC-V1-R6-S1"
+	for row in sim.nodes:
+		var kind := str(row.get("kind", ""))
+		if kind != "trash" and kind != "stream":
+			continue
+		if not gyre and sim.player.pos.distance_to(row.pos) > 720.0:
+			continue
+		return str(row.id)
+	return ""
+
+
 static func _step_tender(sim, craft, dt: float) -> void:
 	var wreck = sim.wreck_by_id(str(craft.target))
-	if wreck == null:
+	var place = sim.survey_node(str(craft.target))
+	if wreck == null and place == null:
 		craft.state = "returning"
 		_return_home(sim, craft, dt)
 		return
+	var aim: Vector2 = wreck.pos if wreck != null else place.pos
 	if str(craft.state) == "outbound":
-		var dist = _fly_safe(sim, craft, wreck.pos, dt, float(craft.speed))
+		var dist = _fly_safe(sim, craft, aim, dt, float(craft.speed))
 		if dist < 28.0:
 			craft.state = "working"
 			craft.work = 0.0
 	elif str(craft.state) == "working":
-		_fly_safe(sim, craft, wreck.pos, dt, float(craft.speed) * 0.2)
+		_fly_safe(sim, craft, aim, dt, float(craft.speed) * 0.2)
 		craft.work = float(craft.work) + dt
 		if float(craft.work) >= float(craft.work_step) and not bool(craft.did_job):
 			craft.did_job = true
-			var result = str(sim.try_salvage(str(wreck.id)))
+			var result := "empty"
+			if wreck != null:
+				result = str(sim.try_salvage(str(wreck.id)))
+			else:
+				result = str(sim.try_field_salvage(str(place.id)))
 			if result == "full":
-				sim.say("Hold is full. The tender leaves the wreck where it is.")
+				sim.say("Hold is full. The tender leaves the field where it is.")
 				craft.did_job = false
+			craft.state = "returning"
+	else:
+		_return_home(sim, craft, dt)
+
+
+static func _step_lighter(sim, craft, dt: float) -> void:
+	var aim: Vector2 = sim.pocket_pos
+	if str(sim.claim.get("system_id", "")) == str(sim.defs.system.id):
+		aim = Vector2(float(sim.claim.get("x", sim.pocket_pos.x)), float(sim.claim.get("y", sim.pocket_pos.y)))
+	if str(craft.state) == "outbound":
+		var dist = _fly_safe(sim, craft, aim, dt, float(craft.speed))
+		if dist < 30.0:
+			craft.state = "working"
+			craft.work = 0.0
+	elif str(craft.state) == "working":
+		_fly_safe(sim, craft, aim, dt, 24.0)
+		craft.work = float(craft.work) + dt
+		if float(craft.work) >= float(craft.work_step) and not bool(craft.did_job):
+			craft.did_job = true
+			Homestead.lighter_transfer(sim)
 			craft.state = "returning"
 	else:
 		_return_home(sim, craft, dt)

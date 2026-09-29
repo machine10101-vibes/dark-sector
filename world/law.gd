@@ -5,6 +5,8 @@ extends RefCounted
 
 
 static func at(sim, pos: Vector2) -> String:
+	if str(sim.defs.system.get("law_color", "")) == "red":
+		return "red"
 	var red := _red_box(sim)
 	if not red.is_empty() and pos.distance_to(red.pos) <= float(red.radius):
 		return "red"
@@ -24,6 +26,8 @@ static func at(sim, pos: Vector2) -> String:
 		return "amber"
 	var pocket_r := float(sim.defs.system.pocket.get("radius", 0.0))
 	if bool(sim.defs.system.pocket.get("plantable", false)) and pos.distance_to(sim.pocket_pos) <= pocket_r:
+		return "amber"
+	if str(sim.defs.system.get("law_color", "")) == "amber":
 		return "amber"
 	return "dark"
 
@@ -68,12 +72,16 @@ static func discs(sim) -> Array:
 	if int(sim.defs.system.get("trash", {}).get("count", 0)) > 0:
 		var spread := float(sim.defs.system.trash.get("spread", 150.0)) + 40.0
 		var watched := _compact_on_trash(sim)
+		var field_name := str(sim.defs.system.trash.get("name", "Trash field"))
+		var label := "%s — amber, Compact off site" % field_name
+		if watched:
+			label = "%s — green, Compact on site" % field_name
 		out.append({
 			"kind": "green" if watched else "amber",
 			"pos": sim.trash_pos,
 			"radius": spread,
 			"inner": 0.0,
-			"label": "Seized Hold — green, Compact on site" if watched else "Seized Hold — amber, Compact off site",
+			"label": label,
 		})
 	var country := _claim_country(sim)
 	if not country.is_empty():
@@ -220,12 +228,19 @@ static func _in_green(sim, pos: Vector2) -> bool:
 	var reach := float(sim.defs.system.zones.green.radius)
 	if body != null and reach > 1.0 and pos.distance_to(body.pos) <= reach:
 		return true
-	if str(sim.defs.system.id) != "HC-V1-R1-S1":
+	if str(sim.defs.system.id) == "HC-V1-R1-S1":
+		for gate in sim.gates:
+			var row: Dictionary = gate
+			var disc := float(row.get("radius", 80.0)) + 220.0
+			if pos.distance_to(row.pos) <= disc:
+				return true
 		return false
 	for gate in sim.gates:
-		var row: Dictionary = gate
-		var disc := float(row.get("radius", 80.0)) + 220.0
-		if pos.distance_to(row.pos) <= disc:
+		var lane: Dictionary = gate
+		if str(lane.get("color", "")) != "green":
+			continue
+		var reach_lane := float(lane.get("radius", 80.0)) + 160.0
+		if pos.distance_to(lane.pos) <= reach_lane:
 			return true
 	return false
 
@@ -311,4 +326,24 @@ static func _green_zones(sim) -> Array:
 				"inner": 0.0,
 				"label": "Green — %s" % str(row.get("name", "lane")),
 			})
+	else:
+		for gate in sim.gates:
+			var lane: Dictionary = gate
+			if str(lane.get("color", "")) != "green":
+				continue
+			out.append({
+				"kind": "green",
+				"pos": lane.pos,
+				"radius": float(lane.get("radius", 80.0)) + 160.0,
+				"inner": 0.0,
+				"label": "Green — %s" % str(lane.get("name", "lane")),
+			})
+	if str(sim.defs.system.get("law_color", "")) == "red":
+		out.append({
+			"kind": "red",
+			"pos": Vector2.ZERO,
+			"radius": 4200.0,
+			"inner": 0.0,
+			"label": "Red — %s" % str(sim.defs.system.name),
+		})
 	return out

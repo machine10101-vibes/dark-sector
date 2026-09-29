@@ -60,5 +60,16 @@
       "range": 300,
       "ttl": 1.05
     }
+  },
+  "livestock_lighter": {
+    "id": "livestock_lighter",
+    "name": "Livestock Lighter",
+    "job": "Moves a hold-kine between the keel and a claim pen. It is a barn with an engine.",
+    "speed": 180,
+    "battery": 120,
+    "drain": 3.2,
+    "hp": 34,
+    "work": 1.6,
+    "radius": 12
   }
 }
