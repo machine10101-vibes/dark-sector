@@ -246,10 +246,11 @@ void vertex() {
 }
 void fragment() {
 	float u = clamp(UV.x, 0.0, 1.0);
-	float bands = 0.55 + 0.45 * sin(u * 34.0 + seed * 6.0);
-	float gap = smoothstep(0.045, 0.0, abs(u - 0.58));
+	float bands = 0.78 + 0.22 * sin(u * 9.0 + seed * 4.0);
+	float gap = smoothstep(0.07, 0.0, abs(u - 0.62));
+	float lane = smoothstep(0.045, 0.0, abs(u - 0.3));
 	vec3 col = albedo.rgb * bands;
-	col *= 1.0 - gap * 0.82;
+	col *= 1.0 - max(gap, lane * 0.65) * 0.8;
 	float grit = fract(sin(dot(UV, vec2(91.7, 47.3)) + seed) * 43758.5);
 	col *= 0.84 + 0.16 * grit;
 	vec3 radial = wpos - planet_pos;
