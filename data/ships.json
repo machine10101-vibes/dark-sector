@@ -20,7 +20,7 @@
     "sensor": 980,
     "radius": 16,
     "slots": ["Utility", "S", "Hangar"],
-    "yard": ["sensor_mast"],
+    "yard": ["sensor_mast", "cargo_blister", "gun_sponson", "farm_cassette", "armor_belt"],
     "gun": { "damage": 5, "cooldown": 0.32, "speed": 760, "range": 560, "ttl": 1.15 },
     "starting_craft": [
       { "id": "survey_probe", "count": 2 },
@@ -53,7 +53,7 @@
     "sensor": 540,
     "radius": 30,
     "slots": ["Utility", "Utility", "Farm", "Hangar", "L"],
-    "yard": ["cargo_blister"],
+    "yard": ["cargo_blister", "sensor_mast", "gun_sponson", "farm_cassette", "armor_belt"],
     "gun": { "damage": 4, "cooldown": 0.55, "speed": 540, "range": 460, "ttl": 1.2 },
     "starting_craft": [
       { "id": "harvest_drone", "count": 1 },
@@ -87,7 +87,7 @@
     "sensor": 660,
     "radius": 22,
     "slots": ["S", "S", "M", "Hangar"],
-    "yard": ["gun_sponson"],
+    "yard": ["armor_belt", "gun_sponson", "cargo_blister", "sensor_mast", "farm_cassette"],
     "gun": { "damage": 9, "cooldown": 0.22, "speed": 840, "range": 640, "ttl": 1.1 },
     "starting_craft": [
       { "id": "survey_probe", "count": 1 },
