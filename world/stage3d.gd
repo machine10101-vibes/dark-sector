@@ -58,7 +58,11 @@ void fragment() {
 	col += vec3(0.9, 0.42, 0.18) * twilight * 0.42;
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
 	float spec = pow(clamp(dot(n, normalize(sun + eye)), 0.0, 1.0), 56.0);
-	col += vec3(0.85, 0.93, 1.0) * spec * (1.0 - land_w) * day * 0.55;
+	col += vec3(0.85, 0.93, 1.0) * spec * (1.0 - land_w) * day * 0.75;
+	float hi = fbm(n * 13.0 + vec3(seed * 2.4, 1.1, 0.6));
+	float lo = fbm(n * 13.0 + vec3(seed * 2.4, 1.1, 0.6) + n * 0.07);
+	float relief = clamp((hi - lo) * 5.5 + 0.55, 0.2, 1.15);
+	col *= mix(1.0, relief, 0.42 * day + 0.08);
 	float lamps = 0.0;
 	if (city > 0.5) {
 		float cluster = smoothstep(0.58, 0.82, fbm(n * 5.2 + vec3(2.0, seed, 4.0)));
@@ -187,6 +191,8 @@ void fragment() {
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
 	float spec = pow(clamp(dot(normalize(wnorm), normalize(vec3(0.15, 1.0, 0.05) + eye)), 0.0, 1.0), 24.0);
 	col += vec3(0.75, 0.82, 0.9) * spec * deck * (1.0 - seam) * 0.55;
+	float edge = pow(clamp(1.0 - abs(dot(normalize(wnorm), eye)), 0.0, 1.0), 1.8);
+	col += vec3(0.82, 0.88, 0.94) * edge * 0.42;
 	ALBEDO = col;
 	METALLIC = 0.78;
 	ROUGHNESS = mix(0.22, 0.72, seam);
@@ -935,7 +941,7 @@ func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3) 
 		ring.material_override = mat
 		node.add_child(ring)
 	var band := maxf(36.0, radius * 0.085)
-	ring.mesh = _annulus(radius + band * 0.55, radius + band * 1.35, maxf(2.2, radius * 0.012), 96)
+	ring.mesh = _annulus(radius + band * 0.4, radius + band * 2.15, maxf(5.5, radius * 0.02), 112)
 	ring.rotation.x = 0.28
 	ring.visible = true
 	var outer := node.get_node_or_null("RingOuter") as MeshInstance3D
@@ -947,7 +953,7 @@ func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3) 
 		faint.shader = _ring_shader
 		outer.material_override = faint
 		node.add_child(outer)
-	outer.mesh = _annulus(radius + band * 1.5, radius + band * 2.05, maxf(1.2, radius * 0.006), 80)
+	outer.mesh = _annulus(radius + band * 2.3, radius + band * 3.35, maxf(2.4, radius * 0.01), 96)
 	outer.rotation.x = 0.28
 	outer.visible = true
 	var ice := Color(0.86, 0.92, 0.95, 0.92)
@@ -1079,10 +1085,8 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	holder.add_child(glass)
 	var bell := MeshInstance3D.new()
 	bell.name = "Bell"
-	var nozzle := BoxMesh.new()
-	nozzle.size = Vector3(5.5, 3.2, 3.2)
-	bell.mesh = nozzle
-	bell.position = Vector3(tail - 2.4, height * 0.42, 0.0)
+	bell.mesh = _bell_mesh(7.5, 1.15, 2.7)
+	bell.position = Vector3(tail + 0.4, height * 0.42, 0.0)
 	var hot := _metal(Color("2a2420"))
 	hot.emission_enabled = true
 	hot.emission = Color("e7b15a")
@@ -1231,19 +1235,19 @@ func _craft_holder(key: String, kind: String) -> Node3D:
 	node.name = key
 	node.set_meta("kind", kind)
 	var poly := _craft_poly(kind)
-	var mesh := _prism(poly, 6.0)
+	var mesh := _prism(poly, 4.6, 0.82)
 	if mesh != null:
 		var body := MeshInstance3D.new()
 		body.name = "Plate"
 		body.mesh = mesh
 		body.material_override = _hull_mat(_craft_color(kind))
 		node.add_child(body)
-		var cap_mesh := _prism(_inset_poly(poly, 0.72), 3.2)
+		var cap_mesh := _prism(_inset_poly(poly, 0.72), 2.2, 0.8)
 		if cap_mesh != null:
 			var cap := MeshInstance3D.new()
 			cap.name = "Deck"
 			cap.mesh = cap_mesh
-			cap.position.y = 3.4
+			cap.position.y = 3.8
 			cap.material_override = _hull_mat(_craft_color(kind).lightened(0.12))
 			node.add_child(cap)
 		var lamp := MeshInstance3D.new()
@@ -1438,6 +1442,57 @@ func _inset_poly(poly: PackedVector2Array, scale: float) -> PackedVector2Array:
 	return out
 
 
+func _bell_mesh(length: float, r_hull: float, r_mouth: float) -> ArrayMesh:
+	var cached := "bell|%0.1f|%0.2f|%0.2f" % [length, r_hull, r_mouth]
+	if _mesh_cache.has(cached):
+		return _mesh_cache[cached]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var segs := 14
+	for i in segs:
+		var a0 := float(i) * TAU / float(segs)
+		var a1 := float(i + 1) * TAU / float(segs)
+		var c0 := cos(a0)
+		var s0 := sin(a0)
+		var c1 := cos(a1)
+		var s1 := sin(a1)
+		var p0 := Vector3(0.0, c0 * r_hull, s0 * r_hull)
+		var p1 := Vector3(0.0, c1 * r_hull, s1 * r_hull)
+		var q0 := Vector3(-length, c0 * r_mouth, s0 * r_mouth)
+		var q1 := Vector3(-length, c1 * r_mouth, s1 * r_mouth)
+		var n0 := Vector3(-0.35, c0, s0).normalized()
+		var n1 := Vector3(-0.35, c1, s1).normalized()
+		st.set_normal(n0)
+		st.add_vertex(p0)
+		st.set_normal(n0)
+		st.add_vertex(q0)
+		st.set_normal(n1)
+		st.add_vertex(q1)
+		st.set_normal(n0)
+		st.add_vertex(p0)
+		st.set_normal(n1)
+		st.add_vertex(q1)
+		st.set_normal(n1)
+		st.add_vertex(p1)
+		var lip0 := Vector3(-length, c0 * r_mouth * 0.62, s0 * r_mouth * 0.62)
+		var lip1 := Vector3(-length, c1 * r_mouth * 0.62, s1 * r_mouth * 0.62)
+		st.set_normal(Vector3(-1.0, 0.0, 0.0))
+		st.add_vertex(q0)
+		st.set_normal(Vector3(-1.0, 0.0, 0.0))
+		st.add_vertex(lip0)
+		st.set_normal(Vector3(-1.0, 0.0, 0.0))
+		st.add_vertex(lip1)
+		st.set_normal(Vector3(-1.0, 0.0, 0.0))
+		st.add_vertex(q0)
+		st.set_normal(Vector3(-1.0, 0.0, 0.0))
+		st.add_vertex(lip1)
+		st.set_normal(Vector3(-1.0, 0.0, 0.0))
+		st.add_vertex(q1)
+	var mesh := st.commit()
+	_mesh_cache[cached] = mesh
+	return mesh
+
+
 func _plume_mesh(length: float, radius: float) -> ArrayMesh:
 	var cached := "plume|%0.1f|%0.2f" % [length, radius]
 	if _mesh_cache.has(cached):
@@ -1510,12 +1565,15 @@ func _metal(color: Color) -> StandardMaterial3D:
 	return mat
 
 
-func _prism(poly: PackedVector2Array, height: float) -> ArrayMesh:
+func _prism(poly: PackedVector2Array, height: float, top_scale: float = 0.86) -> ArrayMesh:
 	if poly.size() < 3:
 		return null
 	var indices := Geometry2D.triangulate_polygon(poly)
 	if indices.size() < 3:
 		return null
+	var top := poly
+	if top_scale < 0.995:
+		top = _inset_poly(poly, top_scale)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var count := poly.size()
@@ -1524,7 +1582,7 @@ func _prism(poly: PackedVector2Array, height: float) -> ArrayMesh:
 		centroid += point
 	centroid /= float(count)
 	for t in range(0, indices.size(), 3):
-		_tri(st, poly[indices[t]], poly[indices[t + 1]], poly[indices[t + 2]], height, Vector3.UP)
+		_tri(st, top[indices[t]], top[indices[t + 1]], top[indices[t + 2]], height, Vector3.UP)
 		_tri(st, poly[indices[t]], poly[indices[t + 2]], poly[indices[t + 1]], 0.0, Vector3.DOWN)
 	for i in count:
 		var a: Vector2 = poly[i]
@@ -1536,9 +1594,32 @@ func _prism(poly: PackedVector2Array, height: float) -> ArrayMesh:
 		if outward.length_squared() < 0.0001:
 			continue
 		outward = outward.normalized()
-		var normal := Vector3(outward.x, 0.0, outward.y)
-		_wall(st, a, b, height, normal)
+		_slope(st, a, b, top[i], top[(i + 1) % count], height, outward)
 	return st.commit()
+
+
+func _slope(st: SurfaceTool, a: Vector2, b: Vector2, ta: Vector2, tb: Vector2, height: float, outward: Vector2) -> void:
+	var edge := Vector3(b.x - a.x, 0.0, b.y - a.y)
+	var rise := Vector3(ta.x - a.x, height, ta.y - a.y)
+	var normal := edge.cross(rise)
+	var out3 := Vector3(outward.x, 0.15, outward.y)
+	if normal.dot(out3) < 0.0:
+		normal = -normal
+	if normal.length_squared() < 0.0001:
+		normal = out3
+	normal = normal.normalized()
+	st.set_normal(normal)
+	st.add_vertex(Vector3(a.x, 0.0, a.y))
+	st.set_normal(normal)
+	st.add_vertex(Vector3(b.x, 0.0, b.y))
+	st.set_normal(normal)
+	st.add_vertex(Vector3(tb.x, height, tb.y))
+	st.set_normal(normal)
+	st.add_vertex(Vector3(a.x, 0.0, a.y))
+	st.set_normal(normal)
+	st.add_vertex(Vector3(tb.x, height, tb.y))
+	st.set_normal(normal)
+	st.add_vertex(Vector3(ta.x, height, ta.y))
 
 
 func _tri(st: SurfaceTool, a: Vector2, b: Vector2, c: Vector2, y: float, normal: Vector3) -> void:
