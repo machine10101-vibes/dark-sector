@@ -190,8 +190,12 @@ class Backdrop extends Control:
 
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color("07080c"), true)
+		draw_circle(size * 0.32, size.x * 0.28, Color(0.12, 0.16, 0.22, 0.45))
+		draw_circle(size * 0.7, size.x * 0.22, Color(0.18, 0.12, 0.08, 0.28))
 		for star in stars:
-			draw_circle(Vector2(star.x * size.x, star.y * size.y), 1.15, Color(0.90, 0.84, 0.72, 0.25 + star.y * 0.45))
+			var temp := star.y
+			var tint := Color(0.75, 0.82, 0.95, 0.35) if temp < 0.35 else Color(0.95, 0.88, 0.72, 0.28 + temp * 0.4)
+			draw_circle(Vector2(star.x * size.x, star.y * size.y), 1.15, tint)
 		draw_line(Vector2(40, 22), Vector2(size.x - 40, 22), Color("8a7344"), 1.0)
 		draw_line(Vector2(40, size.y - 22), Vector2(size.x - 40, size.y - 22), Color("8a7344"), 1.0)
 

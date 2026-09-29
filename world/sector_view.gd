@@ -134,7 +134,11 @@ func _draw() -> void:
 		var shot_faction: Dictionary = sim.defs.factions.get(str(shot.team), {})
 		if str(shot_faction.get("kind", "")) == "pdo":
 			col = Color("c9d7c4")
-		draw_line(tail, shot.pos, col, 2.0, true)
+		var bloom := col
+		bloom.a = 0.28
+		draw_circle(shot.pos, 4.0, bloom)
+		draw_line(tail, shot.pos, Color(col.r, col.g, col.b, 0.45), 3.4, true)
+		draw_line(tail, shot.pos, col.lightened(0.35), 1.3, true)
 	var parked := 0
 	for item in sim.craft:
 		if str(item.state) == "docked":
@@ -317,8 +321,12 @@ func _draw_planet(sim, body: Dictionary) -> void:
 	draw_circle(pos - lit * radius * 0.34, radius * 0.86, night)
 	if bool(body.ring):
 		var ice := Color("d5e4ee") if str(body.get("ring_kind", "")) == "ice" else Color(colors[2])
-		draw_arc(pos, radius + 36.0, 0.0, TAU, 72, ice, 2.4, true)
-		draw_arc(pos, radius + 50.0, 0.0, TAU, 72, Color("9eb4c4"), 1.3, true)
+		var shadow_arc := ice.darkened(0.45)
+		shadow_arc.a = 0.85
+		draw_arc(pos, radius + 28.0, 0.0, TAU, 80, ice.darkened(0.25), 1.1, true)
+		draw_arc(pos, radius + 36.0, 0.0, TAU, 80, ice, 2.8, true)
+		draw_arc(pos, radius + 44.0, 0.2, PI + 0.2, 40, shadow_arc, 2.2, true)
+		draw_arc(pos, radius + 50.0, 0.0, TAU, 80, Color("9eb4c4"), 1.3, true)
 	if bool(body.moon):
 		var moon: Vector2 = pos + Vector2.from_angle(sim.time * 0.35 + 0.6) * (radius + 42.0)
 		var moon_col := Color(colors[1])
@@ -376,18 +384,26 @@ func _draw_homestead(sim) -> void:
 	var dome_col := Color("d7e6c8")
 	if ruptured or frozen:
 		dome_col = Color("5c4038")
-	draw_circle(origin, 22.0, dome_col)
+	var dome_lit := _light_at(origin)
+	draw_circle(origin, 22.0, dome_col.darkened(0.28))
+	draw_circle(origin + dome_lit * 6.0, 14.0, dome_col.lightened(0.12))
+	draw_circle(origin + dome_lit * 9.0, 4.0, Color(1, 1, 1, 0.28))
 	draw_arc(origin, 22.0, 0.0, TAU, 24, Color("243020"), 1.4, true)
 	if not ruptured and not frozen:
 		for i in 5:
 			var lamp: Vector2 = origin + Vector2.from_angle(float(i) * TAU / 5.0 + sim.time) * 16.0
 			draw_circle(lamp, 2.2, Color("f4e2a1"))
 	var plot := origin + Vector2(70, 18)
-	draw_rect(Rect2(plot - Vector2(16, 10), Vector2(32, 20)), Color("6f8a48"))
+	draw_rect(Rect2(plot - Vector2(16, 10), Vector2(32, 20)), Color("3e4a28"))
+	draw_rect(Rect2(plot - Vector2(14, 8), Vector2(28, 16)), Color("6f8a48"))
+	draw_line(plot + Vector2(-12, -3), plot + Vector2(12, -3), Color("4a5c30"), 1.2, true)
+	draw_line(plot + Vector2(-12, 3), plot + Vector2(12, 3), Color("4a5c30"), 1.2, true)
 	var pen := origin + Vector2(-62, 36)
-	draw_rect(Rect2(pen - Vector2(14, 12), Vector2(28, 24)), Color("8a7048"))
+	draw_rect(Rect2(pen - Vector2(14, 12), Vector2(28, 24)), Color("5c4630"))
+	draw_rect(Rect2(pen - Vector2(12, 10), Vector2(24, 20)), Color("8a7048"))
 	var crate := origin + Vector2(18, -64)
-	draw_rect(Rect2(crate - Vector2(8, 8), Vector2(16, 16)), Color("c4b49a"))
+	draw_rect(Rect2(crate - Vector2(9, 9), Vector2(18, 18)), Color("7a6a56"))
+	draw_rect(Rect2(crate - Vector2(7, 8), Vector2(14, 14)), Color("c4b49a"))
 	var beacon := origin + Vector2(0, 108)
 	draw_circle(beacon, 5.0, Color("e7b15a") if not frozen else Color("5a5348"))
 	if bool(sim.claim.get("flare", false)):
@@ -423,7 +439,9 @@ func _draw_mark(sim) -> void:
 func _draw_beacon(sim) -> void:
 	var pos: Vector2 = sim.beacon_pos
 	draw_arc(pos, 36.0, 0.0, TAU, 28, Color("8aa896"), 1.6, true)
+	draw_circle(pos, 6.5, Color(0.55, 0.7, 0.55, 0.25))
 	draw_circle(pos, 4.0, Color("d7e6c8"))
+	draw_circle(pos + Vector2(-1.2, -1.2), 1.4, Color("fff8e8"))
 	draw_line(pos + Vector2(-14, 0), pos + Vector2(14, 0), Color("cbb892"), 1.2, true)
 	draw_line(pos + Vector2(0, -14), pos + Vector2(0, 14), Color("cbb892"), 1.2, true)
 
@@ -476,7 +494,12 @@ func _draw_craft(sim, item: Dictionary) -> void:
 	var nose := pos + dir * 10.0
 	var left := pos - dir * 6.0 + side * 4.0
 	var right := pos - dir * 6.0 - side * 4.0
-	draw_colored_polygon(PackedVector2Array([nose, left, right]), col)
+	var hull_pts := PackedVector2Array([nose, left, right])
+	var lit := _light_at(pos)
+	draw_colored_polygon(PackedVector2Array([nose - lit * 2.0, left - lit * 2.0, right - lit * 2.0]), Color(0, 0, 0, 0.28))
+	draw_colored_polygon(hull_pts, col.darkened(0.32))
+	draw_colored_polygon(Silhouette._inset_world(hull_pts, 1.4, lit * 1.2), col.lightened(0.1))
+	Silhouette._rim(self, hull_pts, lit, col.lightened(0.35), 1.0)
 	if str(item.state) == "lost":
 		draw_line(pos + Vector2(-6, -6), pos + Vector2(6, 6), Color("c4512c"), 1.4, true)
 	if str(item.def_id) == "survey_probe" and str(item.state) == "working":
@@ -487,10 +510,15 @@ func _draw_craft(sim, item: Dictionary) -> void:
 func _draw_wreck(wreck: Dictionary) -> void:
 	var pos: Vector2 = wreck.pos
 	var col := Color("5a4038") if not bool(wreck.stripped) else Color("3a3532")
-	draw_colored_polygon(PackedVector2Array([
+	var pts := PackedVector2Array([
 		pos + Vector2(10, 2), pos + Vector2(-4, 8), pos + Vector2(-12, -2), pos + Vector2(2, -8)
-	]), col)
-	draw_line(pos + Vector2(-8, -6), pos + Vector2(8, 6), Color("2a1814"), 1.2, true)
+	])
+	var lit := _light_at(pos)
+	draw_colored_polygon(pts, col.darkened(0.35))
+	draw_colored_polygon(Silhouette._inset_world(pts, 2.0, lit * 1.6), col.lightened(0.08))
+	draw_line(pos + Vector2(-8, -6), pos + Vector2(8, 6), Color("1a0c0a"), 1.4, true)
+	draw_line(pos + Vector2(-2, 6), pos + Vector2(6, -4), Color("2a1814"), 1.0, true)
+	draw_circle(pos + lit * 3.0, 1.5, Color(0.85, 0.7, 0.5, 0.35))
 
 
 func _draw_velocity(ship: Dictionary) -> void:

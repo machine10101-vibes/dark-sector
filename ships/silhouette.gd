@@ -124,6 +124,12 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 	ci.draw_circle(spec, 1.7 * scale, Color(1, 0.96, 0.88, 0.42))
 	if class_id == "vesper":
 		_paint_needle(ci, xf, scale, worn, accent, shapes, thrusting)
+	elif class_id == "anvil":
+		_paint_barn(ci, xf, scale, worn, accent)
+	elif class_id == "kestrel":
+		_paint_beak(ci, xf, scale, worn, accent)
+	elif class_id == "cutter" or class_id == "skiff":
+		_paint_small(ci, xf, scale, worn, accent)
 	_rim(ci, pts, lit, accent.lightened(0.2), 1.35)
 	for extra in geom.extras:
 		var extra_pts := PackedVector2Array()
@@ -275,3 +281,46 @@ static func _paint_needle(ci: CanvasItem, xf: Transform2D, scale: float, plate: 
 			xf * (Vector2(-36.2, -0.28) * scale),
 		])
 		ci.draw_colored_polygon(ember, Color("e7b15a"))
+
+
+static func _paint_barn(ci: CanvasItem, xf: Transform2D, scale: float, plate: Color, accent: Color) -> void:
+	var seam := plate.darkened(0.48)
+	var bay := plate.darkened(0.3)
+	ci.draw_line(xf * (Vector2(8, 0) * scale), xf * (Vector2(-22, 0) * scale), seam, maxf(1.0, 0.7 * scale), true)
+	for y in [-12.0, 12.0]:
+		var hold := PackedVector2Array([
+			xf * (Vector2(6, y - 4.0) * scale),
+			xf * (Vector2(-12, y - 4.0) * scale),
+			xf * (Vector2(-14, y + 4.0) * scale),
+			xf * (Vector2(4, y + 4.0) * scale),
+		])
+		ci.draw_colored_polygon(hold, bay)
+		ci.draw_polyline(PackedVector2Array([hold[0], hold[1], hold[2], hold[3], hold[0]]), accent.darkened(0.2), 1.0, true)
+	var bridge := PackedVector2Array([
+		xf * (Vector2(16, 3.2) * scale),
+		xf * (Vector2(8, 3.2) * scale),
+		xf * (Vector2(8, -3.2) * scale),
+		xf * (Vector2(16, -3.2) * scale),
+	])
+	ci.draw_colored_polygon(bridge, Color("1c2420"))
+	ci.draw_circle(xf * (Vector2(18, 0) * scale), 1.4 * scale, accent.lightened(0.25))
+
+
+static func _paint_beak(ci: CanvasItem, xf: Transform2D, scale: float, plate: Color, accent: Color) -> void:
+	var seam := plate.darkened(0.4)
+	ci.draw_line(xf * (Vector2(30, 0) * scale), xf * (Vector2(-16, 0) * scale), seam, maxf(1.0, 0.55 * scale), true)
+	var canopy := PackedVector2Array([
+		xf * (Vector2(22, 0) * scale),
+		xf * (Vector2(12, 3.4) * scale),
+		xf * (Vector2(4, 0) * scale),
+		xf * (Vector2(12, -3.4) * scale),
+	])
+	ci.draw_colored_polygon(canopy, Color("1a2428"))
+	for y in [9.0, -9.0]:
+		ci.draw_line(xf * (Vector2(6, y) * scale), xf * (Vector2(-18, y * 0.7) * scale), accent.darkened(0.15), 1.1, true)
+	ci.draw_circle(xf * (Vector2(34, 0) * scale), 1.2 * scale, accent)
+
+
+static func _paint_small(ci: CanvasItem, xf: Transform2D, scale: float, plate: Color, accent: Color) -> void:
+	ci.draw_line(xf * (Vector2(10, 0) * scale), xf * (Vector2(-8, 0) * scale), plate.darkened(0.45), 1.0, true)
+	ci.draw_circle(xf * (Vector2(6, 0) * scale), 1.3 * scale, accent.darkened(0.1))
