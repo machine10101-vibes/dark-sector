@@ -13,7 +13,7 @@ func _ready() -> void:
 	add_child(menu)
 	menu.start_game.connect(_on_start)
 	menu.continue_game.connect(_on_continue)
-	menu.quit_game.connect(func(): get_tree().quit())
+	menu.quit_game.connect(_on_quit)
 
 
 func _process(_delta: float) -> void:
@@ -56,6 +56,12 @@ func _enter_sector() -> void:
 		hud.reset_overlays()
 	if sector.has_method("snap"):
 		sector.snap()
+
+
+func _on_quit() -> void:
+	if OS.has_feature("web"):
+		return
+	get_tree().quit()
 
 
 func show_menu() -> void:
