@@ -54,6 +54,8 @@ static func order(sim, uid: String, verb: String, node_id: String) -> String:
 		craft.state = "returning"
 		craft.order = "return"
 		sim.say("%s recalled." % craft.name)
+		if str(sim.player.get("agent_id", "")) == str(sim.claim.get("agent_id", "")):
+			Homestead.abort_crack(sim, "recall")
 		return ""
 	if str(craft.def_id) in PARKED:
 		return "%s stays parked in the rack." % craft.name

@@ -1,7 +1,7 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: 6 Quests
+Slice just completed: 7 Online
 Player-visible what works now:
 - Slice 1 helm still holds. New game picks Vesper Needle, Anvil Barn, or Kestrel Beak. Thrust coasts. Zoom runs from hull to system. The gun fires in the same view you fly.
 - Helion Dock (HC-V1-R1-S1) still has Helion, Aegis Prime, the ice ring, Seized Hold, the Helion Compact patrol, Hauler Holt, and The Unlet. The Unlet stays marked and closed.
@@ -9,15 +9,16 @@ Player-visible what works now:
 - Slice 3 modules still hold. The bay bolts and pulls cargo blister, cheek gun, survey mast, farm cassette, and armor belt. Overload is allowed. The silhouette and the handling follow the bolts.
 - Slice 4 war still holds. Shots travel in the sector. Hull HP, module HP, and hangar HP still matter. The Red Keel pack holds outside the green. Heat still hails, fines, and brings guns. The dock beacon still welds. A broken keel still leaves a wreck and wakes at the dock.
 - Slice 5 claim still holds. The Homestead Road reaches First Soil. Quiet Hollow takes a Claim Core. Helion Dock and Aegis Prime refuse one. Glasswheat can ripen or fail. A hold-kine can live or starve. A raid can freeze the claim. The keel is not deleted.
-- J opens a quest log of data objects. Y marks the next system, body, claim, or patrol. The keel does not move. O takes an offered contract.
-- Shakedown (authored_shakedown_01) runs on Needle, Barn, or Beak: undock, scan Aegis Prime, cut the ice ring or Seized Hold, bolt one module, live through a Red Keel contact, plant on Quiet Hollow, cut glasswheat, and keep the hold-kine alive for one more tick.
-- A legal cut raises Compact standing and waives dock repair. An illegal cut leaves a warrant, and the patrol inspects the next time the keel enters Helion Dock. Both still matter after the arc is filed.
-- Clerk Ivo Ram remembers which cut you made. The blueprint is a survey mast, cheek gun, or farm cassette you have not already bolted.
-- Vesper hears the survey office. Anvil hears a Charter-adjacent factor ask for grain numbers. Kestrel hears the patrol lead on the pirate contact. The arc is the same.
-- Planting the core unlocks homestead contracts on First Soil. The board can also offer a survey, a cull, a grain delivery, a craft recovery, or a pocket defense from live world state. Success and failure change standing, the glasswheat price, patrol presence, salvage, or a rumor.
-- Save and load keep quest progress, the harvest flag, the offered contracts, and the mark.
+- Slice 6 quests still hold. Shakedown runs on any starter. A legal cut and an illegal cut still change the world after the arc. Y marks a place and does not move the keel. Save and load keep the flags.
+- The same map paints law. Green is the Helion Dock lanes and the Aegis Prime orbit. Amber is the ice-ring lease, First Soil claim country, and Seized Hold when no Compact cutter is on the field. Red is a Perimeter box on the First Soil outer belt, atlas id HC-V1-R5-S6. The color is on the HUD and on the chart.
+- A shot on another captain in the green writes a warrant and the patrol closes. Guns in the red do not. A flagged fight, or a fight on a living claim, stays legal in the amber.
+- Host the dock opens a listen port. A second captain joins by IP or code. Both fly Helion Dock with the same hull, HP, and module rules. An empty host is still the NPC dock. Offline new game still works.
+- Each captain has a player id, layout, cargo, and heat. Quiet Hollow's slot id is HC-V1-R5-S1:green_wound:quiet_hollow.
+- A second captain can crack a planted core on a timer. The owner can shoot, recall craft, or pay a Compact hail if they have standing and are not in the red. The crack flares on the chart. Success transfers the homestead and locks the loser out. The loser's ship stays. A broken keel still drops only part of the hold.
+- A new keel has a short green grace in Helion Dock. A warrant shows on the ship. Enter is a single local channel.
+- The host log keeps both captains, the claim, the wrecks, and the flags.
 What is next (ordered):
-1. Slice 7 — Green / Amber / Red overlays + listen-server + second captain can contest a claim
+1. Slice 8 — density: fill Compact Core + First Soil neighbors from the HC-V1 atlas, more modules, more contracts, no clone rocks
 Blocked by:
 - Nothing in this repo blocks the next slice.
 Open design decisions (max 5):
@@ -25,13 +26,18 @@ Open design decisions (max 5):
 - The Unlet stays unplantable. Helion Dock and Aegis Prime refuse a Claim Core.
 - Helion Compact is the dock patrol. Vellum Compact is a different faction and was not renamed.
 - The farm cassette carries a hold-kine. It does not grow a crop.
-- Quiet Hollow is the claimable pocket of Green Wound.
+- Quiet Hollow is the claimable pocket of Green Wound. Perimeter this slice is a red box on that chart, not a full system.
 Files touched:
-- data/quests.json
-- quests/board.gd
-- quests/log.gd
-- tests/slice6_sim.gd
+- claims/homestead.gd
+- craft/orders.gd
+- data/first_soil.json
+- net/listen.gd
+- scripts/game.gd
+- scripts/main.gd
+- tests/slice7_sim.gd
 - ui/hud.gd
+- ui/menu.gd
+- world/law.gd
 - world/sector_sim.gd
 - world/sector_view.gd
 - LOOP_STATE.md

@@ -25,7 +25,16 @@ func _process(delta: float) -> void:
 	if Game.mode != "sector" or Game.sim == null or cam == null:
 		return
 	if not Game.paused and Game.sim.player != null:
-		Game.sim.tick(delta, _cmd())
+		var link = Game.link
+		if link != null and str(link.role) == "client":
+			link.take_client(Game.sim)
+			link.send_cmd(str(Game.sim.player.get("player_id", "")), _cmd())
+		else:
+			if link != null and str(link.role) == "host":
+				link.take_host(Game.sim)
+			Game.sim.tick(delta, _cmd())
+			if link != null and str(link.role) == "host":
+				link.broadcast(Game.sim)
 	var target: Vector2 = Game.sim.player.pos
 	if not snapped:
 		cam.position = target
@@ -73,13 +82,17 @@ func _cmd() -> Dictionary:
 		strafe -= 1.0
 	if Input.is_key_pressed(KEY_E):
 		strafe += 1.0
-	return {
+	var cmd := {
 		"thrust": 1.0 if (Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)) else 0.0,
 		"retro": 1.0 if (Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)) else 0.0,
 		"rot": rot,
 		"strafe": strafe,
 		"fire": Input.is_key_pressed(KEY_SPACE),
 	}
+	var verbs: Dictionary = Game.take_verbs()
+	for key in verbs.keys():
+		cmd[key] = verbs[key]
+	return cmd
 
 
 func _draw() -> void:
@@ -132,6 +145,10 @@ func _draw() -> void:
 	for actor in sim.actors:
 		if bool(actor.alive):
 			_draw_ship(sim, actor)
+	for mate in sim.captains:
+		if bool(mate.get("alive", false)):
+			_draw_ship(sim, mate)
+			_draw_velocity(mate)
 	if bool(sim.player.alive):
 		_draw_ship(sim, sim.player)
 		_draw_velocity(sim.player)
@@ -168,6 +185,19 @@ func _draw_zones(sim) -> void:
 	if amber_r > 1.0:
 		draw_circle(sim.nest_pos, amber_r, Color(0.77, 0.57, 0.23, 0.06))
 		draw_arc(sim.nest_pos, amber_r, 0.0, TAU, 80, Color("c4923a"), 1.6, true)
+	for disc in Law.discs(sim):
+		var row: Dictionary = disc
+		var kind := str(row.get("kind", "dark"))
+		var col := Law.color_of(kind)
+		col.a = 0.08
+		var pos: Vector2 = row.pos
+		var outer := float(row.get("radius", 0.0))
+		var inner := float(row.get("inner", 0.0))
+		if inner > 1.0:
+			draw_arc(pos, (inner + outer) * 0.5, 0.0, TAU, 96, Law.color_of(kind), maxf(2.0, outer - inner), true)
+		else:
+			draw_circle(pos, outer, col)
+			draw_arc(pos, outer, 0.0, TAU, 80, Law.color_of(kind), 1.8, true)
 
 
 func _draw_belt(sim) -> void:
@@ -287,6 +317,13 @@ func _draw_homestead(sim) -> void:
 	draw_rect(Rect2(crate - Vector2(8, 8), Vector2(16, 16)), Color("c4b49a"))
 	var beacon := origin + Vector2(0, 108)
 	draw_circle(beacon, 5.0, Color("e7b15a") if not frozen else Color("5a5348"))
+	if bool(sim.claim.get("flare", false)):
+		var pulse := 0.35 + 0.4 * absf(sin(sim.time * 6.0))
+		var flare := Color("e25a2a")
+		flare.a = 0.16 + pulse * 0.2
+		draw_circle(origin, 210.0, flare)
+		draw_arc(origin, 210.0, 0.0, TAU, 48, Color("ffb080"), 3.0, true)
+		_text(origin + Vector2(-46, -188), "CORE CRACK", 16, Color("ffb080"))
 	if bool(sim.claim.get("turret", false)):
 		var gun: Vector2 = origin + Vector2(48, 78)
 		draw_circle(gun, 4.0, Color("d7e6c8"))
@@ -433,7 +470,24 @@ func _draw_names(sim, zoom: float) -> void:
 			continue
 		_text(place.pos + Vector2(12, -16), str(place.name), 13, Color("c5d4de"))
 	var player_name := str(sim.defs.ships[sim.player.class_id].callsign)
+	var player_tag := Law.scan_tag(sim, sim.player)
+	if player_tag != "":
+		player_name = "%s  %s" % [player_name, player_tag]
 	_text(sim.player.pos + Vector2(18, 18), player_name, 14, Color("e6d7bf"))
+	for mate in sim.captains:
+		if not bool(mate.get("alive", false)):
+			continue
+		var mate_name := str(sim.defs.ships[mate.class_id].callsign)
+		var mate_tag := Law.scan_tag(sim, mate)
+		if mate_tag != "":
+			mate_name = "%s  %s" % [mate_name, mate_tag]
+		_text(mate.pos + Vector2(18, 18), mate_name, 14, Color("e6d7bf"))
+	for disc in Law.discs(sim):
+		var row: Dictionary = disc
+		if float(row.get("radius", 0.0)) < 2.0:
+			continue
+		var label_at: Vector2 = row.pos + Vector2(-70, -float(row.radius) - 16.0)
+		_text(label_at, str(row.get("label", "")), 13, Law.color_of(str(row.get("kind", "dark"))))
 	if zoom > 0.22:
 		for actor in sim.actors:
 			if not bool(actor.alive):
