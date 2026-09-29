@@ -2,34 +2,319 @@ extends Node3D
 
 ## Sim-space meshes. X is chart X, Y is up, Z is negative chart Y.
 
+const _NOISE := "float hash31(vec3 p) {
+	p = fract(p * 0.1031);
+	p += dot(p, p.yzx + 33.33);
+	return fract((p.x + p.y) * p.z);
+}
+float noise3(vec3 p) {
+	vec3 i = floor(p);
+	vec3 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix(hash31(i), hash31(i + vec3(1.0, 0.0, 0.0)), f.x), mix(hash31(i + vec3(0.0, 1.0, 0.0)), hash31(i + vec3(1.0, 1.0, 0.0)), f.x), f.y), mix(mix(hash31(i + vec3(0.0, 0.0, 1.0)), hash31(i + vec3(1.0, 0.0, 1.0)), f.x), mix(hash31(i + vec3(0.0, 1.0, 1.0)), hash31(i + vec3(1.0, 1.0, 1.0)), f.x), f.y), f.z);
+}
+float fbm(vec3 p) {
+	float v = 0.0;
+	float a = 0.5;
+	for (int i = 0; i < 4; i++) {
+		v += a * noise3(p);
+		p = p * 2.03 + vec3(1.7, 9.2, 2.4);
+		a *= 0.5;
+	}
+	return v;
+}
+"
+
 const PLANET_SHADER := "shader_type spatial;
+render_mode unshaded;
 varying vec3 wnorm;
+varying vec3 wpos;
 uniform vec4 albedo : source_color = vec4(0.6, 0.65, 0.62, 1.0);
+uniform vec4 land : source_color = vec4(0.55, 0.58, 0.52, 1.0);
 uniform vec3 to_star = vec3(1.0, 0.05, 0.0);
 uniform float city = 0.0;
-void vertex() {
+uniform float seed = 0.0;
+" + _NOISE + "void vertex() {
 	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 sun = normalize(to_star);
 	float ndl = dot(n, sun);
-	float day = smoothstep(-0.12, 0.28, ndl);
-	vec3 col = albedo.rgb * (0.2 + 0.85 * day);
-	col *= 0.88 + 0.12 * sin(n.y * 24.0 + n.x * 5.0);
+	float day = smoothstep(-0.05, 0.22, ndl);
+	float field = fbm(n * 3.1 + vec3(seed, 1.7, seed * 0.4));
+	float detail = fbm(n * 8.5 + vec3(seed * 2.0, 0.4, 3.0));
+	float land_w = smoothstep(0.45, 0.57, field);
+	vec3 sea = mix(albedo.rgb, vec3(0.12, 0.24, 0.32), 0.62);
+	vec3 coast = mix(albedo.rgb, vec3(0.62, 0.56, 0.4), 0.35);
+	vec3 ground = mix(albedo.rgb, land.rgb, 0.55) * (0.78 + 0.4 * detail);
+	vec3 terrain = mix(sea, mix(coast, ground, smoothstep(0.5, 0.68, field)), land_w);
+	float polar = smoothstep(0.58, 0.9, abs(n.y));
+	terrain = mix(terrain, vec3(0.84, 0.9, 0.93), polar * 0.82);
+	vec3 col = terrain * (0.12 + 0.95 * day);
+	float twilight = smoothstep(-0.18, -0.02, ndl) * (1.0 - smoothstep(0.02, 0.2, ndl));
+	col += vec3(0.9, 0.42, 0.18) * twilight * 0.42;
+	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
+	float spec = pow(clamp(dot(n, normalize(sun + eye)), 0.0, 1.0), 56.0);
+	col += vec3(0.85, 0.93, 1.0) * spec * (1.0 - land_w) * day * 0.55;
 	float lamps = 0.0;
 	if (city > 0.5) {
-		for (int i = 0; i < 7; i++) {
-			vec3 lamp = normalize(vec3(sin(float(i) * 1.7), -0.25, cos(float(i) * 2.4)));
-			lamps += smoothstep(0.96, 0.995, dot(n, lamp));
-		}
-		lamps *= clamp(-ndl, 0.0, 1.0);
+		float cluster = smoothstep(0.58, 0.82, fbm(n * 5.2 + vec3(2.0, seed, 4.0)));
+		float dots = step(0.8, noise3(n * 24.0 + vec3(seed)));
+		lamps = dots * cluster * clamp(-ndl + 0.08, 0.0, 1.0) * land_w;
 	}
-	float rim = pow(clamp(1.0 - max(ndl, 0.0), 0.0, 1.0), 2.2);
+	vec3 glow = vec3(1.0, 0.74, 0.38) * lamps * 2.4;
+	float rim = pow(clamp(1.0 - max(dot(n, eye), 0.0), 0.0, 1.0), 2.8);
+	col += albedo.rgb * rim * 0.16 + glow;
 	ALBEDO = col;
-	EMISSION = albedo.rgb * pow(clamp(ndl, 0.0, 1.0), 2.4) * 0.35 + vec3(1.0, 0.78, 0.4) * lamps * 1.4 + vec3(0.7, 0.82, 0.9) * rim * 0.22;
-	ROUGHNESS = 0.78;
-	METALLIC = 0.02;
+	EMISSION = glow + vec3(0.55, 0.7, 0.8) * rim * 0.2;
+}
+"
+
+const CLOUD_SHADER := "shader_type spatial;
+render_mode blend_mix, unshaded, depth_draw_never, cull_back;
+varying vec3 wnorm;
+uniform vec3 to_star = vec3(1.0, 0.0, 0.0);
+uniform float seed = 0.0;
+uniform float spin = 0.0;
+" + _NOISE + "void vertex() {
+	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+void fragment() {
+	vec3 n = normalize(wnorm);
+	float cloud = fbm(n * 3.6 + vec3(seed, spin, 0.6));
+	float wisps = fbm(n * 9.0 + vec3(spin, 1.2, seed));
+	float cover = smoothstep(0.5, 0.74, cloud) * (0.65 + 0.35 * wisps);
+	float day = smoothstep(-0.12, 0.35, dot(n, normalize(to_star)));
+	ALBEDO = vec3(0.93, 0.95, 0.97) * (0.22 + 0.9 * day);
+	ALPHA = cover * (0.16 + 0.34 * day);
+}
+"
+
+const AIR_SHADER := "shader_type spatial;
+render_mode blend_mix, unshaded, cull_disabled, depth_draw_never;
+varying vec3 wnorm;
+varying vec3 wpos;
+uniform vec3 to_star = vec3(1.0, 0.0, 0.0);
+uniform vec4 tint : source_color = vec4(0.5, 0.72, 0.82, 1.0);
+void vertex() {
+	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	vec3 n = normalize(wnorm);
+	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
+	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.7);
+	float sun = pow(clamp(dot(n, normalize(to_star)), 0.0, 1.0), 1.15);
+	vec3 col = mix(tint.rgb, vec3(1.0, 0.68, 0.38), sun * 0.7);
+	ALBEDO = col;
+	EMISSION = col * sun * 0.25;
+	ALPHA = fres * (0.22 + 0.5 * sun);
+}
+"
+
+const STAR_SHADER := "shader_type spatial;
+render_mode unshaded;
+varying vec3 wnorm;
+varying vec3 wpos;
+uniform vec4 albedo : source_color = vec4(1.0, 0.9, 0.7, 1.0);
+" + _NOISE + "void vertex() {
+	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	vec3 n = normalize(wnorm);
+	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
+	float limb = pow(clamp(dot(n, eye), 0.0, 1.0), 0.42);
+	float grain = noise3(n * 16.0);
+	vec3 hot = mix(albedo.rgb, vec3(1.0, 0.97, 0.9), 0.35);
+	vec3 col = hot * (0.62 + 0.5 * limb) * (0.86 + 0.22 * grain);
+	ALBEDO = col;
+	EMISSION = col;
+}
+"
+
+const CORONA_SHADER := "shader_type spatial;
+render_mode blend_mix, unshaded, cull_disabled, depth_draw_never;
+varying vec3 wnorm;
+varying vec3 wpos;
+uniform vec4 albedo : source_color = vec4(1.0, 0.8, 0.5, 1.0);
+void vertex() {
+	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	vec3 n = normalize(wnorm);
+	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
+	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.25);
+	float ray = 0.72 + 0.28 * sin(atan(n.y, n.x) * 8.0);
+	ALBEDO = albedo.rgb;
+	EMISSION = albedo.rgb * 0.6;
+	ALPHA = fres * fres * 0.7 * ray;
+}
+"
+
+const HULL_SHADER := "shader_type spatial;
+varying vec3 local_pos;
+varying vec3 local_nrm;
+uniform vec4 albedo : source_color = vec4(0.5, 0.55, 0.58, 1.0);
+void vertex() {
+	local_pos = VERTEX;
+	local_nrm = NORMAL;
+}
+void fragment() {
+	vec3 n = normalize(local_nrm);
+	float seam_x = smoothstep(0.45, 0.5, abs(fract(local_pos.x * 0.09) - 0.5));
+	float seam_z = smoothstep(0.42, 0.5, abs(fract(local_pos.z * 0.2) - 0.5));
+	float seam = max(seam_x, seam_z);
+	float deck = clamp(n.y, 0.0, 1.0);
+	vec3 col = albedo.rgb * (0.62 + 0.48 * deck);
+	col = mix(col, col * 0.32, seam * 0.9);
+	float stripe = smoothstep(1.15, 0.0, abs(local_pos.z));
+	col = mix(col, col * 1.18, stripe * deck * 0.4);
+	ALBEDO = col;
+	METALLIC = 0.74;
+	ROUGHNESS = mix(0.26, 0.68, seam);
+}
+"
+
+const GLASS_SHADER := "shader_type spatial;
+render_mode blend_mix, depth_draw_never;
+varying vec3 wnorm;
+varying vec3 wpos;
+uniform vec4 albedo : source_color = vec4(0.45, 0.78, 0.82, 0.45);
+void vertex() {
+	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	vec3 n = normalize(wnorm);
+	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
+	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.6);
+	ALBEDO = mix(albedo.rgb * 0.35, vec3(0.85, 0.95, 1.0), fres);
+	EMISSION = vec3(0.55, 0.8, 0.85) * 0.18;
+	ROUGHNESS = 0.05;
+	METALLIC = 0.05;
+	ALPHA = clamp(albedo.a + fres * 0.55, 0.0, 1.0);
+}
+"
+
+const PLUME_SHADER := "shader_type spatial;
+render_mode blend_mix, unshaded, cull_disabled, depth_draw_never;
+uniform vec4 albedo : source_color = vec4(1.0, 0.7, 0.3, 0.8);
+uniform float core = 0.0;
+void fragment() {
+	float along = clamp(UV.y, 0.0, 1.0);
+	float fade = smoothstep(0.0, 0.08, along) * (1.0 - smoothstep(0.45, 1.0, along));
+	vec3 hot = mix(albedo.rgb, vec3(1.0, 0.97, 0.9), core * (1.0 - along));
+	ALBEDO = hot;
+	EMISSION = hot * (1.2 + core);
+	ALPHA = albedo.a * fade;
+}
+"
+
+const RING_SHADER := "shader_type spatial;
+render_mode blend_mix, unshaded, cull_disabled;
+varying vec3 wpos;
+uniform vec4 albedo : source_color = vec4(0.84, 0.9, 0.94, 0.9);
+uniform vec3 planet_pos = vec3(0.0);
+uniform vec3 to_star = vec3(1.0, 0.0, 0.0);
+uniform float seed = 0.2;
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	float u = clamp(UV.x, 0.0, 1.0);
+	float bands = 0.55 + 0.45 * sin(u * 34.0 + seed * 6.0);
+	float gap = smoothstep(0.045, 0.0, abs(u - 0.58));
+	vec3 col = albedo.rgb * bands;
+	col *= 1.0 - gap * 0.82;
+	float grit = fract(sin(dot(UV, vec2(91.7, 47.3)) + seed) * 43758.5);
+	col *= 0.84 + 0.16 * grit;
+	vec3 radial = wpos - planet_pos;
+	float lit = 0.7;
+	if (dot(radial, radial) > 4.0) {
+		lit = smoothstep(-0.25, 0.55, dot(normalize(radial), normalize(to_star)));
+	}
+	col *= 0.28 + 0.85 * lit;
+	ALBEDO = col;
+	ALPHA = albedo.a * (0.88 - gap * 0.7);
+}
+"
+
+const NEBULA_SHADER := "shader_type spatial;
+render_mode blend_mix, unshaded, cull_disabled, depth_draw_never;
+varying vec3 wnorm;
+varying vec3 wpos;
+uniform vec4 tint : source_color = vec4(0.4, 0.5, 0.7, 0.08);
+uniform float seed = 0.0;
+" + _NOISE + "void vertex() {
+	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	vec3 n = normalize(wnorm);
+	float cloud = fbm(n * 2.8 + vec3(seed, 1.4, seed * 0.5));
+	float dens = smoothstep(0.38, 0.78, cloud);
+	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
+	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.4);
+	ALBEDO = tint.rgb;
+	ALPHA = tint.a * dens * (0.35 + 0.9 * fres);
+}
+"
+
+const GATE_SHADER := "shader_type spatial;
+render_mode blend_mix, unshaded, cull_disabled, depth_draw_never;
+uniform vec4 albedo : source_color = vec4(0.55, 0.85, 0.7, 1.0);
+void fragment() {
+	float r = clamp(UV.x, 0.0, 1.0);
+	float rim = smoothstep(0.62, 0.96, r);
+	float veil = (1.0 - r) * 0.22;
+	ALBEDO = albedo.rgb;
+	EMISSION = albedo.rgb * (0.35 + rim * 0.8);
+	ALPHA = rim * 0.62 + veil;
+}
+"
+
+const ROCK_SHADER := "shader_type spatial;
+varying vec3 wnorm;
+uniform vec4 albedo : source_color = vec4(0.45, 0.42, 0.38, 1.0);
+uniform float seed = 0.0;
+" + _NOISE + "void vertex() {
+	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+void fragment() {
+	vec3 n = normalize(wnorm);
+	float grit = fbm(n * 6.0 + vec3(seed));
+	float cavity = smoothstep(0.35, 0.7, fbm(n * 3.0 + vec3(seed * 2.0, 1.0, 0.2)));
+	ALBEDO = albedo.rgb * (0.55 + 0.6 * grit) * mix(1.0, 0.45, cavity);
+	ROUGHNESS = 0.92;
+	METALLIC = 0.04;
+}
+"
+
+const GRID_SHADER := "shader_type spatial;
+render_mode unshaded, cull_disabled;
+varying vec3 wpos;
+float grid_line(vec2 p, float spacing, float width) {
+	vec2 cell = abs(fract(p / spacing) - 0.5);
+	float d = min(cell.x, cell.y) * spacing;
+	return 1.0 - smoothstep(width * 0.35, width, d);
+}
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	vec2 p = wpos.xz;
+	float minor = grid_line(p, 420.0, 2.4);
+	float major = grid_line(p, 2100.0, 4.5);
+	float line = max(minor * 0.45, major);
+	if (line < 0.04) { discard; }
+	float dist = length(p - CAMERA_POSITION_WORLD.xz);
+	float fade = 1.0 - smoothstep(500.0, 7200.0, dist);
+	ALBEDO = mix(vec3(0.38, 0.46, 0.52), vec3(0.62, 0.7, 0.62), major);
+	ALPHA = line * fade * 0.55;
 }
 "
 
@@ -45,19 +330,54 @@ var _sky: MultiMeshInstance3D
 var _grid: MeshInstance3D
 var _sun: DirectionalLight3D
 var _planet_shader: Shader
+var _cloud_shader: Shader
+var _air_shader: Shader
+var _star_shader: Shader
+var _corona_shader: Shader
+var _hull_shader: Shader
+var _glass_shader: Shader
+var _plume_shader: Shader
+var _ring_shader: Shader
+var _nebula_shader: Shader
+var _gate_shader: Shader
+var _rock_shader: Shader
+var _fill: DirectionalLight3D
 var _used: Dictionary = {}
 
 
 func _ready() -> void:
-	_planet_shader = Shader.new()
-	_planet_shader.code = PLANET_SHADER
+	_planet_shader = _compile(PLANET_SHADER)
+	_cloud_shader = _compile(CLOUD_SHADER)
+	_air_shader = _compile(AIR_SHADER)
+	_star_shader = _compile(STAR_SHADER)
+	_corona_shader = _compile(CORONA_SHADER)
+	_hull_shader = _compile(HULL_SHADER)
+	_glass_shader = _compile(GLASS_SHADER)
+	_plume_shader = _compile(PLUME_SHADER)
+	_ring_shader = _compile(RING_SHADER)
+	_nebula_shader = _compile(NEBULA_SHADER)
+	_gate_shader = _compile(GATE_SHADER)
+	_rock_shader = _compile(ROCK_SHADER)
 	_build_grid()
 	_sun = DirectionalLight3D.new()
 	_sun.name = "Sun"
 	_sun.light_color = Color("fff0d4")
-	_sun.light_energy = 1.35
+	_sun.light_energy = 1.55
 	_sun.shadow_enabled = false
 	add_child(_sun)
+	_fill = DirectionalLight3D.new()
+	_fill.name = "Fill"
+	_fill.light_color = Color(0.72, 0.8, 0.95)
+	_fill.light_energy = 0.42
+	_fill.shadow_enabled = false
+	_fill.basis = Basis(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0), Vector3(0.0, 1.0, 0.0))
+	add_child(_fill)
+
+
+func _compile(code: String) -> Shader:
+	var shader := Shader.new()
+	shader.code = code
+	return shader
 
 
 func _process(_delta: float) -> void:
@@ -101,9 +421,10 @@ func _sync_props(sim) -> void:
 			var span := float(row.get("size", 12.0))
 			chunk.mesh = _prism(local, maxf(8.0, span * 0.62))
 			chunk.transform = _flat_xform(center, float(absi(hash(str(index))) % 7) * 0.2, 0.0)
-			var stone := _metal(Color(str(row.get("tint", "#6a6258"))))
-			stone.metallic = 0.05
-			stone.roughness = 0.94
+			var stone := ShaderMaterial.new()
+			stone.shader = _rock_shader
+			stone.set_shader_parameter("albedo", Color(str(row.get("tint", "#6a6258"))))
+			stone.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
 			chunk.material_override = stone
 			chunk.set_meta("built", "yes")
 		chunk.visible = chunk.mesh != null
@@ -116,10 +437,7 @@ func _sync_props(sim) -> void:
 			var scale := float(row.get("scale", 1.0))
 			var poly := _trash_poly(int(row.get("kind", 0)), scale)
 			scrap.mesh = _prism(poly, maxf(4.0, 5.5 * scale))
-			var rust := _metal(Color("6a5344"))
-			rust.metallic = 0.35
-			rust.roughness = 0.72
-			scrap.material_override = rust
+			scrap.material_override = _hull_mat(Color("6a5344"))
 			scrap.set_meta("built", "yes")
 		scrap.transform = _flat_xform(row.pos, float(row.rot), 1.0)
 	index = 0
@@ -128,25 +446,43 @@ func _sync_props(sim) -> void:
 		var hoop := _prop("gate%d" % index)
 		index += 1
 		var radius := float(row.get("radius", 80.0))
+		var tone := Color("7d9a86")
+		if str(row.get("color", "")) == "amber":
+			tone = Color("c4a15a")
+		elif str(row.get("color", "")) == "red":
+			tone = Color("a85a4a")
 		if str(hoop.get_meta("built", "")) != "yes":
 			var torus := TorusMesh.new()
-			torus.inner_radius = maxf(radius - 7.0, 6.0)
-			torus.outer_radius = radius + 7.0
-			torus.rings = 28
-			torus.ring_segments = 10
+			torus.inner_radius = maxf(radius - 8.0, 8.0)
+			torus.outer_radius = radius + 6.0
+			torus.rings = 40
+			torus.ring_segments = 12
 			hoop.mesh = torus
-			var tone := Color("7d9a86")
-			if str(row.get("color", "")) == "amber":
-				tone = Color("c4a15a")
-			elif str(row.get("color", "")) == "red":
-				tone = Color("a85a4a")
-			var mat := _metal(tone)
+			var mat := _metal(tone.darkened(0.35))
 			mat.emission_enabled = true
 			mat.emission = tone
-			mat.emission_energy_multiplier = 0.35
+			mat.emission_energy_multiplier = 0.55
+			mat.metallic = 0.8
+			mat.roughness = 0.28
 			hoop.material_override = mat
 			hoop.set_meta("built", "yes")
+		var ang := float(row.get("angle", 0.0))
+		var through := Vector3(cos(ang), 0.0, -sin(ang))
+		var side := Vector3.UP.cross(through).normalized()
+		var up := through.cross(side).normalized()
+		var door := Basis(side, through, up)
 		hoop.position = chart(row.pos, 0.0)
+		hoop.basis = door
+		var veil := _prop("gateveil%d" % (index - 1))
+		if str(veil.get_meta("built", "")) != "yes":
+			veil.mesh = _disc(radius * 0.9, 48)
+			var film := ShaderMaterial.new()
+			film.shader = _gate_shader
+			film.set_shader_parameter("albedo", tone)
+			veil.material_override = film
+			veil.set_meta("built", "yes")
+		veil.position = hoop.position
+		veil.basis = door
 		_tag(str(row.get("name", "")), chart(row.pos, radius * 0.15 + 20.0), Color("e6d7a8"), 13)
 	var mast := _prop("beacon")
 	if str(mast.get_meta("built", "")) != "yes":
@@ -158,6 +494,25 @@ func _sync_props(sim) -> void:
 		mast.material_override = _metal(Color("8a7a62"))
 		mast.set_meta("built", "yes")
 	mast.position = chart(sim.beacon_pos, 18.0)
+	var pad := _prop("beacon_pad")
+	if str(pad.get_meta("built", "")) != "yes":
+		var slab := BoxMesh.new()
+		slab.size = Vector3(22.0, 2.4, 22.0)
+		pad.mesh = slab
+		pad.material_override = _metal(Color("5c5348"))
+		pad.set_meta("built", "yes")
+	pad.position = chart(sim.beacon_pos, 1.2)
+	var halo := _prop("beacon_halo")
+	if str(halo.get_meta("built", "")) != "yes":
+		halo.mesh = _annulus(10.0, 18.0, 1.2, 36)
+		var ring_mat := ShaderMaterial.new()
+		ring_mat.shader = _ring_shader
+		ring_mat.set_shader_parameter("albedo", Color(0.72, 0.86, 0.74, 0.55))
+		ring_mat.set_shader_parameter("planet_pos", chart(sim.beacon_pos, 0.0))
+		ring_mat.set_shader_parameter("to_star", Vector3(0.0, 1.0, 0.0))
+		halo.material_override = ring_mat
+		halo.set_meta("built", "yes")
+	halo.position = chart(sim.beacon_pos, 0.6)
 	var lamp := _prop("beacon_lamp")
 	if str(lamp.get_meta("built", "")) != "yes":
 		var bulb := SphereMesh.new()
@@ -217,17 +572,32 @@ func _sync_nebula() -> void:
 			var ball := SphereMesh.new()
 			ball.radius = radii[i]
 			ball.height = radii[i] * 2.0
-			ball.radial_segments = 24
-			ball.rings = 12
+			ball.radial_segments = 28
+			ball.rings = 16
 			cloud.mesh = ball
-			var mat := StandardMaterial3D.new()
-			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-			mat.albedo_color = tints[i]
+			var mat := ShaderMaterial.new()
+			mat.shader = _nebula_shader
+			mat.set_shader_parameter("tint", tints[i])
+			mat.set_shader_parameter("seed", float(i) * 1.7)
 			cloud.material_override = mat
 			cloud.set_meta("built", "yes")
 		cloud.position = banks[i]
+		var inner := _prop("nebula_in%d" % i)
+		if str(inner.get_meta("built", "")) != "yes":
+			var core_ball := SphereMesh.new()
+			core_ball.radius = radii[i] * 0.62
+			core_ball.height = radii[i] * 1.24
+			core_ball.radial_segments = 22
+			core_ball.rings = 12
+			inner.mesh = core_ball
+			var core_mat := ShaderMaterial.new()
+			core_mat.shader = _nebula_shader
+			var tint: Color = tints[i]
+			core_mat.set_shader_parameter("tint", Color(tint.r, tint.g, tint.b, tint.a * 0.65))
+			core_mat.set_shader_parameter("seed", float(i) * 1.7 + 3.1)
+			inner.material_override = core_mat
+			inner.set_meta("built", "yes")
+		inner.position = banks[i] + Vector3(0.0, radii[i] * 0.08, 0.0)
 
 
 func _sync_shots(sim) -> void:
@@ -262,11 +632,17 @@ func _sync_wrecks(sim) -> void:
 		if str(hulk.get_meta("built", "")) != "yes":
 			var poly := PackedVector2Array([Vector2(12, 2), Vector2(-6, 9), Vector2(-14, -2), Vector2(3, -8)])
 			hulk.mesh = _prism(poly, 7.0)
-			var mat := _metal(Color("5a4038"))
-			mat.roughness = 0.8
-			hulk.material_override = mat
+			hulk.material_override = _hull_mat(Color("5a4038"))
 			hulk.set_meta("built", "yes")
 		hulk.transform = _flat_xform(row.pos, 0.4, 1.0)
+		var shard := _prop("wreckbit%d" % (index - 1))
+		if str(shard.get_meta("built", "")) != "yes":
+			var bit := PackedVector2Array([Vector2(5, 1), Vector2(-4, 3), Vector2(-6, -1), Vector2(2, -3)])
+			shard.mesh = _prism(bit, 3.4)
+			shard.material_override = _hull_mat(Color("3a2a26"))
+			shard.set_meta("built", "yes")
+		var pos: Vector2 = row.pos
+		shard.transform = _flat_xform(pos + Vector2(8.0, 6.0), 1.1, 2.4)
 		_tag(str(row.get("name", "wreck")), chart(row.pos, 16.0), Color("a08070"), 12)
 
 
@@ -281,10 +657,10 @@ func _sync_meteors(sim) -> void:
 			ball.radius = float(row.get("size", 4.0)) * 2.2
 			ball.height = ball.radius * 2.0
 			node.mesh = ball
-			var mat := _metal(Color("8a3c22"))
-			mat.emission_enabled = true
-			mat.emission = Color("e7b15a")
-			mat.emission_energy_multiplier = 0.45
+			var mat := ShaderMaterial.new()
+			mat.shader = _rock_shader
+			mat.set_shader_parameter("albedo", Color("8a3c22"))
+			mat.set_shader_parameter("seed", float(index) * 0.37)
 			node.material_override = mat
 		node.position = chart(row.pos, float(row.get("size", 4.0)))
 
@@ -363,9 +739,7 @@ func _build_grid() -> void:
 	_grid.mesh = plane
 	_grid.position = Vector3(0.0, -18.0, 0.0)
 	var mat := ShaderMaterial.new()
-	var grid_shader := Shader.new()
-	grid_shader.code = "shader_type spatial;\nrender_mode unshaded, cull_disabled;\nvoid fragment() {\n\tvec2 cell = fract(UV * 96.0);\n\tfloat line = max(step(0.985, cell.x), step(0.985, cell.y));\n\tif (line < 0.5) { discard; }\n\tALBEDO = vec3(0.42, 0.48, 0.52);\n\tALPHA = 0.28;\n}\n"
-	mat.shader = grid_shader
+	mat.shader = _compile(GRID_SHADER)
 	_grid.material_override = mat
 	_grid.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_grid)
@@ -377,36 +751,32 @@ func _sync_star(sim) -> void:
 		_star_mesh = MeshInstance3D.new()
 		_star_mesh.name = "Star"
 		var ball := SphereMesh.new()
-		ball.radial_segments = 48
-		ball.rings = 24
+		ball.radial_segments = 64
+		ball.rings = 32
 		_star_mesh.mesh = ball
-		var mat := StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		var mat := ShaderMaterial.new()
+		mat.shader = _star_shader
 		_star_mesh.material_override = mat
 		_star_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_star_mesh)
 		_star_glow = MeshInstance3D.new()
 		_star_glow.name = "Corona"
 		var haze := SphereMesh.new()
-		haze.radial_segments = 32
-		haze.rings = 16
+		haze.radial_segments = 40
+		haze.rings = 20
 		_star_glow.mesh = haze
-		var glow := StandardMaterial3D.new()
-		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		glow.cull_mode = BaseMaterial3D.CULL_DISABLED
+		var glow := ShaderMaterial.new()
+		glow.shader = _corona_shader
 		_star_glow.material_override = glow
 		_star_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_star_glow)
 	var core := Color(str(sim.defs.system.star.color))
 	(_star_mesh.mesh as SphereMesh).radius = radius
 	(_star_mesh.mesh as SphereMesh).height = radius * 2.0
-	var star_mat := _star_mesh.material_override as StandardMaterial3D
-	star_mat.albedo_color = core.lightened(0.15)
-	(_star_glow.mesh as SphereMesh).radius = radius * 1.35
-	(_star_glow.mesh as SphereMesh).height = radius * 2.7
-	var glow_mat := _star_glow.material_override as StandardMaterial3D
-	glow_mat.albedo_color = Color(core.r, core.g, core.b, 0.08)
+	(_star_mesh.material_override as ShaderMaterial).set_shader_parameter("albedo", core.lightened(0.12))
+	(_star_glow.mesh as SphereMesh).radius = radius * 1.55
+	(_star_glow.mesh as SphereMesh).height = radius * 3.1
+	(_star_glow.material_override as ShaderMaterial).set_shader_parameter("albedo", core)
 
 
 func _sync_planets(sim) -> void:
@@ -425,16 +795,34 @@ func _sync_planets(sim) -> void:
 		(air.mesh as SphereMesh).height = radius * 2.09
 		var colors: Array = row.get("colors", ["#889088"])
 		var mat := ball.material_override as ShaderMaterial
-		mat.set_shader_parameter("albedo", Color(str(colors[0])))
+		var albedo := Color(str(colors[0]))
+		var land := albedo
+		if colors.size() > 1:
+			land = Color(str(colors[1]))
 		var world := chart(row.pos, 0.0)
 		var to_star := -world
 		if to_star.length_squared() < 1.0:
 			to_star = Vector3(1.0, 0.2, 0.0)
-		mat.set_shader_parameter("to_star", to_star.normalized())
+		to_star = to_star.normalized()
+		var seed := float(absi(hash(bid)) % 1000) * 0.017
+		mat.set_shader_parameter("albedo", albedo)
+		mat.set_shader_parameter("land", land)
+		mat.set_shader_parameter("to_star", to_star)
+		mat.set_shader_parameter("seed", seed)
 		var legal := str(row.get("legal", ""))
 		var city := 1.0 if (legal.contains("capital") or legal.contains("pdo")) else 0.0
 		mat.set_shader_parameter("city", city)
-		_sync_ring(node, row, radius)
+		var clouds := node.get_node("Clouds") as MeshInstance3D
+		(clouds.mesh as SphereMesh).radius = radius * 1.018
+		(clouds.mesh as SphereMesh).height = radius * 2.036
+		var cloud_mat := clouds.material_override as ShaderMaterial
+		cloud_mat.set_shader_parameter("to_star", to_star)
+		cloud_mat.set_shader_parameter("seed", seed)
+		cloud_mat.set_shader_parameter("spin", float(sim.time) * 0.02)
+		var air_mat := air.material_override as ShaderMaterial
+		air_mat.set_shader_parameter("to_star", to_star)
+		air_mat.set_shader_parameter("tint", albedo.lerp(Color(0.55, 0.78, 0.88), 0.55))
+		_sync_ring(node, row, radius, to_star)
 		_sync_moon(node, sim, row, radius)
 		_tag(str(row.get("name", "")), chart(row.pos, radius + 28.0), Color("e6d7bf"), 16)
 	var star_name := str(sim.defs.system.star.name)
@@ -451,24 +839,33 @@ func _body_node(bid: String) -> Node3D:
 	var ball := MeshInstance3D.new()
 	ball.name = "Ball"
 	var sphere := SphereMesh.new()
-	sphere.radial_segments = 48
-	sphere.rings = 24
+	sphere.radial_segments = 64
+	sphere.rings = 32
 	ball.mesh = sphere
 	var mat := ShaderMaterial.new()
 	mat.shader = _planet_shader
 	ball.material_override = mat
 	ball.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	node.add_child(ball)
+	var clouds := MeshInstance3D.new()
+	clouds.name = "Clouds"
+	var puff := SphereMesh.new()
+	puff.radial_segments = 48
+	puff.rings = 24
+	clouds.mesh = puff
+	var cloud_mat := ShaderMaterial.new()
+	cloud_mat.shader = _cloud_shader
+	clouds.material_override = cloud_mat
+	clouds.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	node.add_child(clouds)
 	var air := MeshInstance3D.new()
 	air.name = "Air"
 	var shell := SphereMesh.new()
-	shell.radial_segments = 32
-	shell.rings = 16
+	shell.radial_segments = 40
+	shell.rings = 20
 	air.mesh = shell
 	var haze := ShaderMaterial.new()
-	var air_shader := Shader.new()
-	air_shader.code = "shader_type spatial;\nrender_mode blend_mix, unshaded, cull_disabled;\nvoid fragment() {\n\tfloat fres = pow(1.0 - abs(dot(normalize(NORMAL), normalize(VIEW))), 1.8);\n\tALBEDO = vec3(0.62, 0.8, 0.88);\n\tALPHA = fres * 0.42;\n}\n"
-	haze.shader = air_shader
+	haze.shader = _air_shader
 	air.material_override = haze
 	air.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	node.add_child(air)
@@ -477,7 +874,7 @@ func _body_node(bid: String) -> Node3D:
 	return node
 
 
-func _sync_ring(node: Node3D, row: Dictionary, radius: float) -> void:
+func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3) -> void:
 	var ring := node.get_node_or_null("Ring") as MeshInstance3D
 	if not bool(row.get("ring", false)):
 		if ring != null:
@@ -490,31 +887,43 @@ func _sync_ring(node: Node3D, row: Dictionary, radius: float) -> void:
 		ring = MeshInstance3D.new()
 		ring.name = "Ring"
 		ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color("d5e4ee")
-		mat.roughness = 0.45
-		mat.metallic = 0.15
+		var mat := ShaderMaterial.new()
+		mat.shader = _ring_shader
 		ring.material_override = mat
 		node.add_child(ring)
 	var band := maxf(36.0, radius * 0.085)
-	ring.mesh = _annulus(radius + band * 0.72, radius + band * 1.15, maxf(3.2, radius * 0.018), 80)
+	ring.mesh = _annulus(radius + band * 0.55, radius + band * 1.35, maxf(2.2, radius * 0.012), 96)
+	ring.rotation.x = 0.16
 	ring.visible = true
 	var outer := node.get_node_or_null("RingOuter") as MeshInstance3D
 	if outer == null:
 		outer = MeshInstance3D.new()
 		outer.name = "RingOuter"
 		outer.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		var faint := StandardMaterial3D.new()
-		faint.albedo_color = Color(0.75, 0.84, 0.9, 0.55)
-		faint.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		faint.roughness = 0.6
+		var faint := ShaderMaterial.new()
+		faint.shader = _ring_shader
 		outer.material_override = faint
 		node.add_child(outer)
-	outer.mesh = _annulus(radius + band * 1.35, radius + band * 1.62, maxf(1.6, radius * 0.008), 72)
+	outer.mesh = _annulus(radius + band * 1.5, radius + band * 2.05, maxf(1.2, radius * 0.006), 80)
+	outer.rotation.x = 0.16
 	outer.visible = true
+	var ice := Color(0.86, 0.92, 0.95, 0.92)
 	if str(row.get("ring_kind", "")) != "ice":
 		var colors: Array = row.get("colors", ["#889088", "#667066", "#d7e6c8"])
-		(ring.material_override as StandardMaterial3D).albedo_color = Color(str(colors[2]))
+		ice = Color(str(colors[mini(2, colors.size() - 1)]))
+		ice.a = 0.8
+	var ring_mat := ring.material_override as ShaderMaterial
+	ring_mat.set_shader_parameter("albedo", ice)
+	ring_mat.set_shader_parameter("planet_pos", node.position)
+	ring_mat.set_shader_parameter("to_star", to_star)
+	ring_mat.set_shader_parameter("seed", 0.2)
+	var outer_mat := outer.material_override as ShaderMaterial
+	var dust := ice
+	dust.a = 0.42
+	outer_mat.set_shader_parameter("albedo", dust)
+	outer_mat.set_shader_parameter("planet_pos", node.position)
+	outer_mat.set_shader_parameter("to_star", to_star)
+	outer_mat.set_shader_parameter("seed", 1.4)
 
 
 func _sync_moon(node: Node3D, sim, row: Dictionary, radius: float) -> void:
@@ -530,8 +939,8 @@ func _sync_moon(node: Node3D, sim, row: Dictionary, radius: float) -> void:
 		sphere.radial_segments = 24
 		sphere.rings = 12
 		moon.mesh = sphere
-		var mat := StandardMaterial3D.new()
-		mat.roughness = 0.9
+		var mat := ShaderMaterial.new()
+		mat.shader = _rock_shader
 		moon.material_override = mat
 		moon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		node.add_child(moon)
@@ -542,7 +951,9 @@ func _sync_moon(node: Node3D, sim, row: Dictionary, radius: float) -> void:
 	var ang := float(sim.time) * 0.35 + 0.6
 	moon.position = Vector3(cos(ang) * orbit, moon_r * 0.3, sin(ang) * orbit)
 	var colors: Array = row.get("colors", ["#889088", "#9aa090"])
-	(moon.material_override as StandardMaterial3D).albedo_color = Color(str(colors[1]))
+	var moon_mat := moon.material_override as ShaderMaterial
+	moon_mat.set_shader_parameter("albedo", Color(str(colors[mini(1, colors.size() - 1)])))
+	moon_mat.set_shader_parameter("seed", 2.4)
 	moon.visible = true
 
 
@@ -570,14 +981,20 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 	var body := Color(str(hull.color)).lerp(Color("3a1818"), (1.0 - hp) * 0.65)
 	var accent := Color(str(hull.accent))
 	for child in holder.get_children():
-		if child is MeshInstance3D and str(child.name).begins_with("Plate"):
-			(child.material_override as StandardMaterial3D).albedo_color = body
-		elif child is MeshInstance3D and str(child.name).begins_with("Trim"):
-			(child.material_override as StandardMaterial3D).albedo_color = accent
+		var part := str(child.name)
+		if _hull_part(part):
+			var paint := body
+			if part.begins_with("Trim"):
+				paint = accent
+			_paint_hull(child, paint)
 	holder.transform = _flat_xform(ship.pos, float(ship.rot), 2.0)
+	var thrusting := bool(ship.get("thrusting", false))
 	var exhaust := holder.get_node_or_null("Exhaust") as MeshInstance3D
 	if exhaust != null:
-		exhaust.visible = bool(ship.get("thrusting", false))
+		exhaust.visible = thrusting
+	var core := holder.get_node_or_null("ExhaustCore") as MeshInstance3D
+	if core != null:
+		core.visible = thrusting
 	var call := str(ship.get("name", hull.get("callsign", class_id)))
 	if key == "player":
 		call = str(hull.get("callsign", call))
@@ -597,7 +1014,7 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 		deck = Vector3(6.0, height, 0.0)
 		deck_size = Vector3(8.0, 4.0, 5.0)
 	var bridge := MeshInstance3D.new()
-	bridge.name = "TrimBridge"
+	bridge.name = "Bridge"
 	var box := BoxMesh.new()
 	box.size = deck_size
 	bridge.mesh = box
@@ -610,18 +1027,13 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	canopy.size = Vector3(deck_size.x * 0.55, 2.4, deck_size.z * 0.45)
 	glass.mesh = canopy
 	glass.position = bridge.position + Vector3(deck_size.x * 0.1, deck_size.y * 0.5 + 0.8, 0.0)
-	var pane := StandardMaterial3D.new()
-	pane.albedo_color = Color(0.45, 0.75, 0.78, 0.55)
-	pane.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	pane.roughness = 0.08
-	pane.metallic = 0.15
-	pane.emission_enabled = true
-	pane.emission = Color(0.6, 0.85, 0.9)
-	pane.emission_energy_multiplier = 0.25
+	var pane := ShaderMaterial.new()
+	pane.shader = _glass_shader
+	pane.set_shader_parameter("albedo", Color(0.45, 0.78, 0.82, 0.4))
 	glass.material_override = pane
 	holder.add_child(glass)
 	var bell := MeshInstance3D.new()
-	bell.name = "TrimBell"
+	bell.name = "Bell"
 	var nozzle := BoxMesh.new()
 	nozzle.size = Vector3(5.5, 3.2, 3.2)
 	bell.mesh = nozzle
@@ -629,28 +1041,54 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	var hot := _metal(Color("2a2420"))
 	hot.emission_enabled = true
 	hot.emission = Color("e7b15a")
-	hot.emission_energy_multiplier = 0.15
+	hot.emission_energy_multiplier = 0.22
 	bell.material_override = hot
 	holder.add_child(bell)
+	var nose := float(holder.get_meta("nose", 20.0))
+	var span := maxf(nose - tail, 12.0)
+	var spine := MeshInstance3D.new()
+	spine.name = "Spine"
+	var rail := BoxMesh.new()
+	rail.size = Vector3(span * 0.72, 1.3, 1.5)
+	spine.mesh = rail
+	spine.position = Vector3((nose + tail) * 0.5, height + 0.55, 0.0)
+	spine.material_override = _hull_mat(Color("14181c"))
+	holder.add_child(spine)
+	_nav_lamp(holder, "LampNose", Vector3(nose * 0.86, height * 0.62, 0.0), Color("d8fff6"), 1.05)
+	_nav_lamp(holder, "LampPort", Vector3(tail * 0.55, height * 0.28, 2.1), Color("d4553a"), 0.75)
+	_nav_lamp(holder, "LampStbd", Vector3(tail * 0.55, height * 0.28, -2.1), Color("7dcea0"), 0.75)
 	var flame := MeshInstance3D.new()
 	flame.name = "Exhaust"
 	var plume := CylinderMesh.new()
-	plume.top_radius = 0.4
-	plume.bottom_radius = 2.6
-	plume.height = maxf(18.0, height * 1.3)
+	plume.top_radius = 0.35
+	plume.bottom_radius = 2.8
+	plume.height = maxf(22.0, height * 1.45)
 	flame.mesh = plume
 	flame.basis = Basis(Vector3(0.0, 0.0, 1.0), Vector3(-1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0))
-	flame.position = Vector3(tail - plume.height * 0.55, height * 0.42, 0.0)
-	var burn := StandardMaterial3D.new()
-	burn.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	burn.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	burn.albedo_color = Color(1.0, 0.72, 0.32, 0.85)
-	burn.emission_enabled = true
-	burn.emission = Color("ffd7a0")
-	burn.emission_energy_multiplier = 1.4
+	flame.position = Vector3(tail - plume.height * 0.48, height * 0.42, 0.0)
+	var burn := ShaderMaterial.new()
+	burn.shader = _plume_shader
+	burn.set_shader_parameter("albedo", Color(1.0, 0.62, 0.22, 0.72))
+	burn.set_shader_parameter("core", 0.0)
 	flame.material_override = burn
 	flame.visible = false
 	holder.add_child(flame)
+	var core := MeshInstance3D.new()
+	core.name = "ExhaustCore"
+	var jet := CylinderMesh.new()
+	jet.top_radius = 0.12
+	jet.bottom_radius = 1.15
+	jet.height = plume.height * 0.62
+	core.mesh = jet
+	core.basis = flame.basis
+	core.position = Vector3(tail - jet.height * 0.42, height * 0.42, 0.0)
+	var white := ShaderMaterial.new()
+	white.shader = _plume_shader
+	white.set_shader_parameter("albedo", Color(1.0, 0.94, 0.82, 0.9))
+	white.set_shader_parameter("core", 1.0)
+	core.material_override = white
+	core.visible = false
+	holder.add_child(core)
 
 
 func _ship_holder(key: String) -> Node3D:
@@ -674,12 +1112,16 @@ func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array) 
 	var height := clampf(maxf(ext.x, ext.y * 2.0) * 0.48, 14.0, 40.0)
 	holder.set_meta("crown", height)
 	holder.set_meta("tail", float(geom.tail))
+	var nose := 0.0
+	for point in geom.hull:
+		nose = maxf(nose, point.x)
+	holder.set_meta("nose", nose)
 	var hull_mesh := _prism(geom.hull, height)
 	if hull_mesh != null:
 		var plate := MeshInstance3D.new()
 		plate.name = "Plate"
 		plate.mesh = hull_mesh
-		plate.material_override = _metal(Color("888888"))
+		plate.material_override = _hull_mat(Color("888888"))
 		holder.add_child(plate)
 	var extra_i := 0
 	for extra in geom.extras:
@@ -690,7 +1132,7 @@ func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array) 
 		trim.name = "Trim%d" % extra_i
 		trim.mesh = extra_mesh
 		trim.position.y = height * 0.2
-		trim.material_override = _metal(Color("cccccc"))
+		trim.material_override = _hull_mat(Color("cccccc"))
 		holder.add_child(trim)
 		extra_i += 1
 	var circle_i := 0
@@ -703,7 +1145,7 @@ func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array) 
 		sphere.height = rad * 2.0
 		ball.mesh = sphere
 		ball.position = Vector3(float(circle.x), height * 0.55, float(circle.y))
-		ball.material_override = _metal(Color("cccccc"))
+		ball.material_override = _hull_mat(Color("cccccc"))
 		holder.add_child(ball)
 		circle_i += 1
 	_add_bridge(holder, class_id, height, float(geom.tail))
@@ -747,8 +1189,23 @@ func _craft_holder(key: String, kind: String) -> Node3D:
 		var body := MeshInstance3D.new()
 		body.name = "Plate"
 		body.mesh = mesh
-		body.material_override = _metal(_craft_color(kind))
+		body.material_override = _hull_mat(_craft_color(kind))
 		node.add_child(body)
+		var lamp := MeshInstance3D.new()
+		lamp.name = "LampNose"
+		var bulb := SphereMesh.new()
+		bulb.radius = 0.55
+		bulb.height = 1.1
+		lamp.mesh = bulb
+		lamp.position = Vector3(8.0, 4.2, 0.0)
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.albedo_color = Color("f2e2c4")
+		glow.emission_enabled = true
+		glow.emission = Color("f2e2c4")
+		glow.emission_energy_multiplier = 1.4
+		lamp.material_override = glow
+		node.add_child(lamp)
 	add_child(node)
 	_craft[key] = node
 	return node
@@ -844,6 +1301,75 @@ func _flat_xform(pos: Vector2, rot: float, height: float) -> Transform3D:
 	return Transform3D(Basis(x_axis, Vector3.UP, z_axis), chart(pos, height))
 
 
+func _hull_part(part: String) -> bool:
+	if part == "Plate" or part.begins_with("TrimC"):
+		return true
+	if part.begins_with("Trim") and part.trim_prefix("Trim").is_valid_int():
+		return true
+	return false
+
+
+func _paint_hull(node: Node, color: Color) -> void:
+	if node is MeshInstance3D == false:
+		return
+	var mat: Material = (node as MeshInstance3D).material_override
+	if mat is ShaderMaterial:
+		(mat as ShaderMaterial).set_shader_parameter("albedo", color)
+
+
+func _hull_mat(color: Color) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = _hull_shader
+	mat.set_shader_parameter("albedo", color)
+	return mat
+
+
+func _nav_lamp(holder: Node3D, lamp_name: String, at: Vector3, color: Color, radius: float) -> void:
+	var lamp := MeshInstance3D.new()
+	lamp.name = lamp_name
+	var bulb := SphereMesh.new()
+	bulb.radius = radius
+	bulb.height = radius * 2.0
+	bulb.radial_segments = 10
+	bulb.rings = 6
+	lamp.mesh = bulb
+	lamp.position = at
+	var glow := StandardMaterial3D.new()
+	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	glow.albedo_color = color
+	glow.emission_enabled = true
+	glow.emission = color
+	glow.emission_energy_multiplier = 1.8
+	lamp.material_override = glow
+	lamp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	holder.add_child(lamp)
+
+
+func _disc(radius: float, segs: int) -> ArrayMesh:
+	var cached := "disc|%0.1f|%d" % [radius, segs]
+	if _mesh_cache.has(cached):
+		return _mesh_cache[cached]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in segs:
+		var a0 := float(i) * TAU / float(segs)
+		var a1 := float(i + 1) * TAU / float(segs)
+		var p0 := Vector3(cos(a0) * radius, 0.0, sin(a0) * radius)
+		var p1 := Vector3(cos(a1) * radius, 0.0, sin(a1) * radius)
+		st.set_normal(Vector3.UP)
+		st.set_uv(Vector2(0.0, 0.0))
+		st.add_vertex(Vector3.ZERO)
+		st.set_normal(Vector3.UP)
+		st.set_uv(Vector2(1.0, a0 / TAU))
+		st.add_vertex(p0)
+		st.set_normal(Vector3.UP)
+		st.set_uv(Vector2(1.0, a1 / TAU))
+		st.add_vertex(p1)
+	var mesh := st.commit()
+	_mesh_cache[cached] = mesh
+	return mesh
+
+
 func _metal(color: Color) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
@@ -921,23 +1447,33 @@ func _annulus(inner_r: float, outer_r: float, height: float, segs: int) -> Array
 		var o0 := Vector3(cos(a0) * outer_r, 0.0, sin(a0) * outer_r)
 		var i1 := Vector3(cos(a1) * inner_r, 0.0, sin(a1) * inner_r)
 		var o1 := Vector3(cos(a1) * outer_r, 0.0, sin(a1) * outer_r)
-		_quad(st, i0 + Vector3.UP * half, o0 + Vector3.UP * half, o1 + Vector3.UP * half, i1 + Vector3.UP * half, Vector3.UP)
-		_quad(st, i1 - Vector3.UP * half, o1 - Vector3.UP * half, o0 - Vector3.UP * half, i0 - Vector3.UP * half, Vector3.DOWN)
+		var uv_i0 := Vector2(0.0, a0 / TAU)
+		var uv_o0 := Vector2(1.0, a0 / TAU)
+		var uv_i1 := Vector2(0.0, a1 / TAU)
+		var uv_o1 := Vector2(1.0, a1 / TAU)
+		_quad(st, i0 + Vector3.UP * half, o0 + Vector3.UP * half, o1 + Vector3.UP * half, i1 + Vector3.UP * half, Vector3.UP, uv_i0, uv_o0, uv_o1, uv_i1)
+		_quad(st, i1 - Vector3.UP * half, o1 - Vector3.UP * half, o0 - Vector3.UP * half, i0 - Vector3.UP * half, Vector3.DOWN, uv_i1, uv_o1, uv_o0, uv_i0)
 	var mesh := st.commit()
 	_mesh_cache[cached] = mesh
 	return mesh
 
 
-func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, normal: Vector3) -> void:
+func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, normal: Vector3, uv_a: Vector2, uv_b: Vector2, uv_c: Vector2, uv_d: Vector2) -> void:
 	st.set_normal(normal)
+	st.set_uv(uv_a)
 	st.add_vertex(a)
 	st.set_normal(normal)
+	st.set_uv(uv_b)
 	st.add_vertex(b)
 	st.set_normal(normal)
+	st.set_uv(uv_c)
 	st.add_vertex(c)
 	st.set_normal(normal)
+	st.set_uv(uv_a)
 	st.add_vertex(a)
 	st.set_normal(normal)
+	st.set_uv(uv_c)
 	st.add_vertex(c)
 	st.set_normal(normal)
+	st.set_uv(uv_d)
 	st.add_vertex(d)
