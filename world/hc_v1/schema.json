@@ -1,0 +1,149 @@
+{
+  "schema": "hc_v1_g0",
+  "catalog": "HC-V1",
+  "player_name": "The Dark Sector",
+  "status": "template",
+  "notes": "G0 locks the folder, the ID grammar, and the empty shapes. Stars, rule colors, jobs, and full system files are later slices. A file with status template is not a system.",
+  "id_grammar": {
+    "region": "R1 through R8",
+    "system": "HC-V1-R#-S#",
+    "stable_after": "G2"
+  },
+  "system_required": [
+    "system_id",
+    "catalog_code",
+    "name",
+    "region",
+    "status",
+    "rule_overlay",
+    "star",
+    "bodies",
+    "belts",
+    "meteor_streams",
+    "trash_fields",
+    "lanes",
+    "stations_or_platforms",
+    "npcs_spawn",
+    "claim_slots",
+    "market_modifiers",
+    "rumor_table",
+    "quest_hooks",
+    "danger_budget",
+    "why_visit",
+    "legal_complication",
+    "economic_reason",
+    "probe_killer"
+  ],
+  "authored_rules": [
+    "status must be authored",
+    "why_visit is one sentence a player would say",
+    "at least one belt or one ring body",
+    "at least one meteor stream or one trash field",
+    "every body has a legal title",
+    "trash fields name an origin id",
+    "no Planet N, Rock-N, or Meteor Field A names"
+  ],
+  "body_required": [
+    "id",
+    "name",
+    "type",
+    "size",
+    "orbit",
+    "scan_layers",
+    "resources",
+    "legal_title",
+    "settlements",
+    "biosign",
+    "ruins",
+    "claimable"
+  ],
+  "scan_layers": ["orbit", "atmosphere", "surface", "crust", "biosign", "ruins", "legal"],
+  "rule_colors": ["green", "amber", "red", "mixed"],
+  "body_types": [
+    "rock_barren",
+    "ocean",
+    "ice_ocean",
+    "garden",
+    "shard_garden",
+    "desert",
+    "tidally_locked",
+    "gas_giant",
+    "ice_ball",
+    "volcanic",
+    "toxic",
+    "city_world",
+    "hollowed_rock",
+    "dead_ruins",
+    "large_moon",
+    "ring",
+    "lagrange_pocket",
+    "derelict_hull",
+    "trash_moon",
+    "station",
+    "field"
+  ],
+  "shapes": {
+    "body": {
+      "id": "",
+      "name": "",
+      "type": "",
+      "size": "",
+      "orbit": "",
+      "scan_layers": {
+        "orbit": "",
+        "atmosphere": "",
+        "surface": "",
+        "crust": "",
+        "biosign": "",
+        "ruins": "",
+        "legal": ""
+      },
+      "resources": [],
+      "legal_title": "",
+      "settlements": [],
+      "biosign": "",
+      "ruins": "",
+      "claimable": {"yes": false, "why": ""}
+    },
+    "belt": {
+      "id": "",
+      "composition": "",
+      "density": "",
+      "hidden_pois": []
+    },
+    "meteor_stream": {
+      "id": "",
+      "timing": "",
+      "vector": "",
+      "damage": "",
+      "harvestable": []
+    },
+    "trash_field": {
+      "id": "",
+      "origin_id": "",
+      "loot_table": [],
+      "sensor_penalty": ""
+    },
+    "lane": {
+      "id": "",
+      "from": "",
+      "to": "",
+      "rule_color": "",
+      "traffic": "",
+      "pdo_response_time": ""
+    },
+    "trash_origin": {
+      "id": "",
+      "name": "",
+      "story": "",
+      "loot_table": []
+    },
+    "claim_slot": {
+      "id": "",
+      "system_id": "",
+      "coordinates": null,
+      "why": ""
+    }
+  }
+}
+
