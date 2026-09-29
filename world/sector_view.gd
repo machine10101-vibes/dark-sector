@@ -255,23 +255,39 @@ func _draw_star(sim) -> void:
 	draw_circle(Vector2.ZERO, radius * 0.42, Color("fff6e4"))
 
 
+func _light_at(pos: Vector2) -> Vector2:
+	if pos.length_squared() < 6400.0:
+		return Vector2(0, -1)
+	return -pos.normalized()
+
+
 func _draw_planet(sim, body: Dictionary) -> void:
 	var pos: Vector2 = body.pos
 	var radius := float(body.radius)
 	var colors: Array = body.colors
-	draw_circle(pos, radius + 10.0, Color(colors[2]))
-	draw_circle(pos, radius, Color(colors[0]))
+	var base := Color(colors[0])
+	var lit := _light_at(pos)
+	var air := Color(colors[2])
+	air.a = 0.22
+	draw_circle(pos, radius + 18.0, air)
+	draw_circle(pos, radius, base.darkened(0.42))
+	draw_circle(pos + lit * radius * 0.22, radius * 0.9, base)
+	draw_circle(pos + lit * radius * 0.4, radius * 0.28, base.lightened(0.22))
 	var spin := float(body.get("spin", 0.1))
 	for i in 4:
 		var a0: float = float(sim.time) * spin + float(i) * 1.35
 		draw_arc(pos, radius * (0.38 + float(i) * 0.13), a0, a0 + 1.35, 18, Color(colors[1]), 5.0, true)
+	var night := Color(0.02, 0.03, 0.05, 0.55)
+	draw_circle(pos - lit * radius * 0.34, radius * 0.86, night)
 	if bool(body.ring):
 		var ice := Color("d5e4ee") if str(body.get("ring_kind", "")) == "ice" else Color(colors[2])
 		draw_arc(pos, radius + 36.0, 0.0, TAU, 72, ice, 2.4, true)
 		draw_arc(pos, radius + 50.0, 0.0, TAU, 72, Color("9eb4c4"), 1.3, true)
 	if bool(body.moon):
 		var moon: Vector2 = pos + Vector2.from_angle(sim.time * 0.35 + 0.6) * (radius + 42.0)
-		draw_circle(moon, 9.0, Color(colors[1]))
+		var moon_col := Color(colors[1])
+		draw_circle(moon, 9.0, moon_col.darkened(0.35))
+		draw_circle(moon + lit * 2.4, 6.2, moon_col)
 	if bool(body.junk):
 		for k in 6:
 			var ang := float(k) * 1.05 + float(body.angle)
@@ -387,7 +403,8 @@ func _draw_ship(sim, ship: Dictionary) -> void:
 		Color(str(hull.accent)),
 		hp_ratio,
 		bool(ship.thrusting),
-		layers
+		layers,
+		_light_at(ship.pos)
 	)
 	var bar := float(Fit.stats(sim.defs, ship).hit_radius)
 	var frac := hp_ratio

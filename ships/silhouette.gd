@@ -102,31 +102,42 @@ static func extent(geom: Dictionary) -> Vector2:
 	return Vector2(max_x, max_y)
 
 
-static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, shapes: Array, scale: float, body: Color, accent: Color, hp_ratio: float = 1.0, thrusting: bool = false, layers: Array = []) -> void:
+static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, shapes: Array, scale: float, body: Color, accent: Color, hp_ratio: float = 1.0, thrusting: bool = false, layers: Array = [], light: Vector2 = Vector2(0, -1)) -> void:
 	var geom := parts(class_id, shapes, layers)
 	var hull: PackedVector2Array = geom.hull
 	if hull.is_empty():
 		return
+	var lit := _unit(light)
 	var xf := Transform2D(rot, origin)
 	var worn := body.lerp(Color("3a1818"), clampf((1.0 - hp_ratio) * 0.75, 0.0, 0.75))
 	var pts := PackedVector2Array()
 	for point in hull:
 		pts.append(xf * (point * scale))
-	ci.draw_colored_polygon(pts, worn)
+	var shadow := PackedVector2Array()
+	for point in pts:
+		shadow.append(point - lit * (4.2 * scale))
+	ci.draw_colored_polygon(shadow, Color(0, 0, 0, 0.32))
+	ci.draw_colored_polygon(pts, worn.darkened(0.34))
+	var cap := _inset_world(pts, 2.4 * scale, lit * (2.6 * scale))
+	ci.draw_colored_polygon(cap, worn.lightened(0.16))
+	var spec := _centroid(pts) + lit * (7.0 * scale)
+	ci.draw_circle(spec, 1.7 * scale, Color(1, 0.96, 0.88, 0.42))
 	if class_id == "vesper":
 		_paint_needle(ci, xf, scale, worn, accent, shapes, thrusting)
-	var outline := pts.duplicate()
-	outline.append(pts[0])
-	ci.draw_polyline(outline, accent.darkened(0.15), 1.4, true)
+	_rim(ci, pts, lit, accent.lightened(0.2), 1.35)
 	for extra in geom.extras:
 		var extra_pts := PackedVector2Array()
 		for point in extra:
 			extra_pts.append(xf * (point * scale))
 		if extra_pts.size() >= 3:
-			ci.draw_colored_polygon(extra_pts, accent)
+			ci.draw_colored_polygon(extra_pts, accent.darkened(0.22))
+			ci.draw_colored_polygon(_inset_world(extra_pts, 1.2 * scale, lit * scale), accent.lightened(0.08))
+			_rim(ci, extra_pts, lit, accent.lightened(0.35), 1.0)
 	for circle in geom.circles:
 		var center := xf * (Vector2(float(circle.x), float(circle.y)) * scale)
-		ci.draw_circle(center, float(circle.r) * scale, accent)
+		var rad := float(circle.r) * scale
+		ci.draw_circle(center, rad, accent.darkened(0.28))
+		ci.draw_circle(center + lit * rad * 0.28, rad * 0.72, accent.lightened(0.12))
 	if class_id == "vesper" and (shapes.has("mast") or _layer_reaches(layers, 80.0)):
 		ci.draw_circle(xf * (Vector2(46, 0) * scale), 1.25 * scale, worn.darkened(0.2))
 	if hp_ratio < 0.72:
@@ -135,12 +146,74 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 		ci.draw_line(scar_a, scar_b, Color("140808"), 1.6, true)
 	if thrusting:
 		var tail := float(geom.tail)
-		var flame := PackedVector2Array([
-			xf * (Vector2(tail + 2.0, 4.0) * scale),
-			xf * (Vector2(tail - 16.0, 0.0) * scale),
-			xf * (Vector2(tail + 2.0, -4.0) * scale),
+		var haze := PackedVector2Array([
+			xf * (Vector2(tail + 1.0, 6.5) * scale),
+			xf * (Vector2(tail - 26.0, 0.0) * scale),
+			xf * (Vector2(tail + 1.0, -6.5) * scale),
 		])
+		var flame := PackedVector2Array([
+			xf * (Vector2(tail + 2.0, 3.2) * scale),
+			xf * (Vector2(tail - 14.0, 0.0) * scale),
+			xf * (Vector2(tail + 2.0, -3.2) * scale),
+		])
+		var core := PackedVector2Array([
+			xf * (Vector2(tail + 1.0, 1.3) * scale),
+			xf * (Vector2(tail - 8.0, 0.0) * scale),
+			xf * (Vector2(tail + 1.0, -1.3) * scale),
+		])
+		ci.draw_colored_polygon(haze, Color(0.91, 0.55, 0.22, 0.45))
 		ci.draw_colored_polygon(flame, Color("e7b15a"))
+		ci.draw_colored_polygon(core, Color("fff1d2"))
+
+
+static func _unit(v: Vector2) -> Vector2:
+	if v.length_squared() < 0.0001:
+		return Vector2(0, -1)
+	return v.normalized()
+
+
+static func _centroid(pts: PackedVector2Array) -> Vector2:
+	var c := Vector2.ZERO
+	if pts.is_empty():
+		return c
+	for point in pts:
+		c += point
+	return c / float(pts.size())
+
+
+static func _inset_world(pts: PackedVector2Array, amount: float, nudge: Vector2) -> PackedVector2Array:
+	var c := _centroid(pts)
+	var out := PackedVector2Array()
+	for point in pts:
+		var delta := point - c
+		var len := delta.length()
+		if len < 0.01:
+			out.append(point + nudge)
+		else:
+			var keep := maxf(len * 0.42, len - amount)
+			out.append(c + delta * (keep / len) + nudge)
+	return out
+
+
+static func _rim(ci: CanvasItem, pts: PackedVector2Array, lit: Vector2, col: Color, width: float) -> void:
+	var c := _centroid(pts)
+	var n := pts.size()
+	for i in n:
+		var a: Vector2 = pts[i]
+		var b: Vector2 = pts[(i + 1) % n]
+		var edge := b - a
+		if edge.length_squared() < 0.01:
+			continue
+		var normal := Vector2(-edge.y, edge.x).normalized()
+		var mid := (a + b) * 0.5
+		if normal.dot(mid - c) < 0.0:
+			normal = -normal
+		var face := clampf(normal.dot(lit), 0.0, 1.0)
+		if face < 0.18:
+			continue
+		var tone := col
+		tone.a = 0.28 + face * 0.72
+		ci.draw_line(a, b, tone, width, true)
 
 
 static func _layer_reaches(layers: Array, reach: float) -> bool:
