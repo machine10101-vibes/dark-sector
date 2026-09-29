@@ -1,0 +1,18 @@
+{
+  "region_id": "R7",
+  "name": "Rimward Marches",
+  "authority": "",
+  "law": "red",
+  "job": "PvP on-ramp, bounty, raid staging.",
+  "palette": "#a34b3c",
+  "flagship": "Step",
+  "flagship_kind": "rock",
+  "system_ids": ["HC-V1-R7-S1", "HC-V1-R7-S2", "HC-V1-R7-S3", "HC-V1-R7-S4", "HC-V1-R7-S5", "HC-V1-R7-S6"],
+  "status": "placed",
+  "map": {
+    "placed": true,
+    "x": 2,
+    "y": 4,
+    "unit": "catalog_span"
+  }
+}

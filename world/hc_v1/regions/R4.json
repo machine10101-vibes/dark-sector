@@ -1,0 +1,18 @@
+{
+  "region_id": "R4",
+  "name": "Glass Quarantine",
+  "authority": "Glass Choir Wardens",
+  "law": "green that shoots",
+  "job": "Blight arcs, smuggled gene-stock, animals vs wardens.",
+  "palette": "#c9ebe4",
+  "flagship": "Ash Hymn",
+  "flagship_kind": "world",
+  "system_ids": ["HC-V1-R4-S1", "HC-V1-R4-S2", "HC-V1-R4-S3", "HC-V1-R4-S4", "HC-V1-R4-S5", "HC-V1-R4-S6"],
+  "status": "placed",
+  "map": {
+    "placed": true,
+    "x": 4,
+    "y": -2,
+    "unit": "catalog_span"
+  }
+}

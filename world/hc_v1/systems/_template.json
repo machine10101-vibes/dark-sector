@@ -1,0 +1,41 @@
+{
+  "system_id": "HC-V1-R0-S0",
+  "catalog_code": "HC-V1-R0-S0",
+  "name": "",
+  "region": "",
+  "status": "template",
+  "rule_overlay": {
+    "default": "",
+    "pockets": []
+  },
+  "star": {
+    "class": "",
+    "color": "",
+    "hazard": "",
+    "light_bible": ""
+  },
+  "bodies": [],
+  "belts": [],
+  "meteor_streams": [],
+  "trash_fields": [],
+  "lanes": [],
+  "stations_or_platforms": [],
+  "npcs_spawn": {
+    "pdo_patrols": [],
+    "rogues": [],
+    "miners": [],
+    "haulers": []
+  },
+  "claim_slots": [],
+  "market_modifiers": [],
+  "rumor_table": [],
+  "quest_hooks": [],
+  "danger_budget": {
+    "tier": "",
+    "notes": ""
+  },
+  "why_visit": "",
+  "legal_complication": "",
+  "economic_reason": "",
+  "probe_killer": ""
+}
