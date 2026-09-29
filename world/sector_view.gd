@@ -72,22 +72,29 @@ func _zoom(direction: float) -> void:
 func _cmd() -> Dictionary:
 	if not Game.sim.player.alive:
 		return {}
+	var stick: Dictionary = Game.flight
 	var rot := 0.0
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
 		rot -= 1.0
 	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
 		rot += 1.0
+	if rot == 0.0:
+		rot = float(stick.get("rot", 0.0))
 	var strafe := 0.0
 	if Input.is_key_pressed(KEY_Q):
 		strafe -= 1.0
 	if Input.is_key_pressed(KEY_E):
 		strafe += 1.0
+	if strafe == 0.0:
+		strafe = float(stick.get("strafe", 0.0))
+	var thrust := 1.0 if (Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)) else float(stick.get("thrust", 0.0))
+	var retro := 1.0 if (Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)) else float(stick.get("retro", 0.0))
 	var cmd := {
-		"thrust": 1.0 if (Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)) else 0.0,
-		"retro": 1.0 if (Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)) else 0.0,
+		"thrust": thrust,
+		"retro": retro,
 		"rot": rot,
 		"strafe": strafe,
-		"fire": Input.is_key_pressed(KEY_SPACE),
+		"fire": Input.is_key_pressed(KEY_SPACE) or bool(stick.get("fire", false)),
 	}
 	var verbs: Dictionary = Game.take_verbs()
 	for key in verbs.keys():

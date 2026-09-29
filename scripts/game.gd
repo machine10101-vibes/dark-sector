@@ -4,6 +4,13 @@ var defs: Dictionary = {}
 var sim: SectorSim
 var link: ListenLink
 var verbs: Dictionary = {}
+var flight := {
+	"thrust": 0.0,
+	"retro": 0.0,
+	"rot": 0.0,
+	"strafe": 0.0,
+	"fire": false,
+}
 var mode := "menu"
 var paused := false
 var zoom := 0.9
@@ -80,11 +87,22 @@ func take_verbs() -> Dictionary:
 	return out
 
 
+func clear_flight() -> void:
+	flight = {
+		"thrust": 0.0,
+		"retro": 0.0,
+		"rot": 0.0,
+		"strafe": 0.0,
+		"fire": false,
+	}
+
+
 func _drop_link() -> void:
 	if link != null:
 		link.close()
 	link = null
 	verbs = {}
+	clear_flight()
 
 
 func write_host_log(quiet: bool = true) -> String:

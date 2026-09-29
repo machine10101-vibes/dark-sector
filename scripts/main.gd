@@ -29,7 +29,7 @@ func _process(_delta: float) -> void:
 	if Game.sim == null or Game.mode != "sector":
 		return
 	if tones != null and tones.has_method("play"):
-		var thrusting: bool = Input.is_key_pressed(KEY_W) and bool(Game.sim.player.alive) and not Game.paused
+		var thrusting: bool = (Input.is_key_pressed(KEY_W) or float(Game.flight.get("thrust", 0.0)) > 0.2) and bool(Game.sim.player.alive) and not Game.paused
 		if thrusting and not bool(get_meta("was_thrust", false)):
 			tones.play("thrust")
 		set_meta("was_thrust", thrusting)

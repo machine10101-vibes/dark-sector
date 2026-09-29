@@ -12,6 +12,7 @@ var continue_button: Button
 var address_line: LineEdit
 var note: Label
 var intent := "offline"
+var keel_row: GridContainer
 
 
 var backdrop: Control
@@ -71,12 +72,19 @@ func _ready() -> void:
 	select_box.visible = false
 	root.add_child(select_box)
 	select_box.add_child(ThemeKit.label("Choose the keel. The other two stay in someone else's yard.", 16, Color("cbb892")))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	select_box.add_child(row)
+	var keel_scroll := ScrollContainer.new()
+	keel_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	keel_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	keel_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	select_box.add_child(keel_scroll)
+	keel_row = GridContainer.new()
+	keel_row.columns = 3
+	keel_row.add_theme_constant_override("h_separation", 12)
+	keel_row.add_theme_constant_override("v_separation", 12)
+	keel_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	keel_scroll.add_child(keel_row)
 	for class_id in ["vesper", "anvil", "kestrel"]:
-		row.add_child(_card(class_id))
+		keel_row.add_child(_card(class_id))
 	var back := ThemeKit.button("Back")
 	back.pressed.connect(func(): _show_root())
 	select_box.add_child(back)
@@ -93,10 +101,16 @@ func _fit() -> void:
 	backdrop.size = screen
 	root.position = Vector2.ZERO
 	root.size = screen
-	root_box.position = Vector2((screen.x - 520.0) * 0.5, (screen.y - 520.0) * 0.5)
-	root_box.size = Vector2(520, 520)
-	select_box.position = Vector2(28, 18)
-	select_box.size = screen - Vector2(56, 32)
+	var wide := minf(520.0, screen.x - 24.0)
+	var tall := minf(560.0, screen.y - 24.0)
+	root_box.position = Vector2((screen.x - wide) * 0.5, maxf(8.0, (screen.y - tall) * 0.5))
+	root_box.size = Vector2(wide, tall)
+	if address_line != null:
+		address_line.custom_minimum_size = Vector2(minf(480.0, wide - 8.0), 40)
+	select_box.position = Vector2(12, 12)
+	select_box.size = screen - Vector2(24, 24)
+	if keel_row != null:
+		keel_row.columns = 1 if screen.x < 860.0 else 3
 	backdrop.queue_redraw()
 
 

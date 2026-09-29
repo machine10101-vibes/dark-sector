@@ -55,6 +55,7 @@ static func button(text: String) -> Button:
 	node.text = text
 	node.focus_mode = Control.FOCUS_NONE
 	node.mouse_filter = Control.MOUSE_FILTER_STOP
+	node.custom_minimum_size = Vector2(0, 44)
 	node.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	node.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return node
