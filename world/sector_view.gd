@@ -70,9 +70,10 @@ func _process(delta: float) -> void:
 
 func _chase_pos() -> Vector2:
 	var ship: Dictionary = Game.sim.player
+	var focus: Vector2 = Game.sim.view_focus()
 	var ahead := Vector2.from_angle(float(ship.rot))
 	var zoom := maxf(Game.zoom, 0.12)
-	return ship.pos + ahead * (36.0 / zoom) + Vector2(0.0, -72.0 / zoom)
+	return focus + ahead * (36.0 / zoom) + Vector2(0.0, -72.0 / zoom)
 
 
 func _chase_rot() -> float:

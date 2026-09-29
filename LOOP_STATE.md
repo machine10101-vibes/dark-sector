@@ -1,15 +1,13 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Live-Ops 1
+Slice just completed: Scale + Ecosystem
 Player-visible what works now:
-- The spine still flies: Helion Dock, Brass Lantern, Lease, First Soil, Perimeter, Marchport, Black Quay. Each of those has a star and a body. The red road is not an empty chart.
-- A lane refuses while a craft is still out. If the lane is taken anyway, that craft is lost where it was. It does not appear on the new buoy.
-- Green capitals refuse a Claim Core. Helion Dock still refuses one by name. Quiet Hollow still takes one. A core crack still needs the full timer. Green grace still keeps a new Helion keel at one hull point. A criminal flag still reads on scan.
-- An overloaded Anvil yaws and accelerates like a barn. A naked Vesper that stays in a Red Keel pack and shoots breaks. A Kestrel wins a two-skiff fight. A claim with no fodder and no crate food loses the hold-kine. Starter fodder keeps it through the same window. Patrol heat at hail range brings a cutter in, and guns follow once the heat is hot.
-- Salvage, a dock fee, and a grain price each leave a world flag.
-- Drop JSON still loads with no script edit. This drop: Cheek Fin, Belly Spine, Lamp Jaw. Cinder millet. Lamp moth. Choir ash window and Unpaid tow. Glass coda on Choir Gate. Stolen coda for Black Sail. False Rain on Nameless Chart. Missed Windows on Clockstream.
-- Host the dock and Dedicated host are the same listen sim. Headless: godot --headless --path . --script res://scripts/headless_host.gd. The world log is user://dark_sector_host.json. A host restart keeps the claim, crop, animal, layout, lost craft, cargo, heat, warrant, quest flag, and discovery. A second client can join that host.
+- Helion Dock opens on the Aegis Prime band. The planet is a limb that fills the helm. The keel is a speck on that band, not a toy ball beside a marble. Burning toward the city scrapes the crust and stays in the band. Flying out of the band returns to the chart. The chart is icons and wells. Entering a well is approach, in kilometers, and matching the shell drops back into the band. The capital ship does not land.
+- Starters are 40–180 m. Probes are 4–14 m. Aegis Prime is planetary (6400 km). Green Wound is 320 km across. Quiet Hollow is one 520 m valley. Ash Shelf, Reed Basin, and Glass Scar are other land. The site layer walks the valley at meter scale while the keel stays in the sky. Grow-lights read as a pin from orbit. Animals stay in the pen.
+- Aegis traffic is civic, cargo, and PDO shells, plus the yard. Belts and meteor streams are volumes. A probe scan is a flight you can watch, and the time scales with altitude and body size. A lost craft keeps kilometer coordinates.
+- The save and the listen snapshot share system id, body id, layer, a rebasing local origin in kilometers, and a local pos. Law and patrol guns stay on distance inside the band.
+- The older loop still resolves: lanes, claims, scans, harvest, heat, modules, quests, and the host log.
 What is next (ordered):
 1. Live-Ops 2 — player count per system, insurance/wreck tuning, more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -21,29 +19,17 @@ Open design decisions (max 5):
 - The farm cassette carries a hold-kine. It does not grow a crop. Crops grow on a claim plot.
 - A pocket takes a core only when claim_slots.json names it. The red box on First Soil keeps the Perimeter atlas id.
 Files touched:
-- claims/homestead.gd
+- data/craft.json
+- data/first_soil.json
 - data/ships.json
-- life/animals/lamp_moth.json
-- life/crops/cinder_millet.json
-- modules/belly_spine.json
-- modules/cheek_fin.json
-- modules/fit.gd
-- modules/lamp_jaw.json
-- quests/authored/glass_coda.json
-- quests/authored/stolen_coda.json
-- quests/board.gd
-- quests/templates/choir_ash_window.json
-- quests/templates/unpaid_tow.json
-- scripts/game.gd
-- scripts/headless_host.gd
-- scripts/main.gd
-- tests/liveops_sim.gd
-- tools/catalog.gd
-- ui/menu.gd
-- world/hc_v1/streams.json
-- world/hc_v1/systems/HC-V1-R6-S2.json
-- world/hc_v1/systems/HC-V1-R6-S3.json
-- world/hc_v1/trash_origins.json
+- data/system.json
+- craft/orders.gd
+- tests/scale_sim.gd
+- ui/hud.gd
+- world/overhead.gd
+- world/scale.gd
 - world/sector_sim.gd
+- world/sector_view.gd
+- world/stage3d.gd
 - PLAYTEST.md
 - LOOP_STATE.md

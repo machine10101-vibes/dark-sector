@@ -29,6 +29,54 @@
       ],
       "legal": "claim_country",
       "protected": false,
+      "scale": {
+        "radius_km": 160,
+        "across_km": 320,
+        "soi_km": 2400,
+        "bands": [
+          {
+            "id": "shard",
+            "name": "Shard band",
+            "alt_km": 48,
+            "width_km": 70
+          }
+        ],
+        "biomes": [
+          {
+            "id": "quiet_hollow",
+            "name": "Quiet Hollow",
+            "x_m": 0,
+            "y_m": 0,
+            "span_m": 520,
+            "claim": true,
+            "grow_light": true
+          },
+          {
+            "id": "ash_shelf",
+            "name": "Ash Shelf",
+            "x_m": 2400,
+            "y_m": 860,
+            "span_m": 980,
+            "claim": false
+          },
+          {
+            "id": "reed_basin",
+            "name": "Reed Basin",
+            "x_m": -1900,
+            "y_m": 1400,
+            "span_m": 1100,
+            "claim": false
+          },
+          {
+            "id": "glass_scar",
+            "name": "Glass Scar",
+            "x_m": 700,
+            "y_m": -2100,
+            "span_m": 760,
+            "claim": false
+          }
+        ]
+      },
       "resource": {
         "id": "raw_mass",
         "name": "Raw mass",

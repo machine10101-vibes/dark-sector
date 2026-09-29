@@ -93,9 +93,21 @@ func _aim() -> void:
 	var zoom := maxf(Game.zoom, 0.12)
 	var chase: Vector2 = sector._chase_pos()
 	var height := 920.0 / zoom
+	var far := 80000.0
+	var layer := int(Game.sim.layer)
+	if layer == ScaleFrame.CHART:
+		height = 52000.0 / zoom
+		far = 420000.0
+	elif layer == ScaleFrame.APPROACH:
+		height = 160.0 / zoom
+		far = 120000.0
+	elif layer == ScaleFrame.SITE:
+		height = 220.0 / zoom
+		far = 6000.0
 	var back := height * 0.62
 	var target := Vector3(chase.x, 0.0, -chase.y)
 	cam3.fov = 50.0
+	cam3.far = far
 	cam3.position = target + Vector3(0.0, height, -back)
 	cam3.look_at(target, Vector3(0.0, 0.0, 1.0))
 

@@ -388,6 +388,11 @@ func _build_actions() -> void:
 	_action("Bay", func() -> void: _toggle("bay"))
 	_action("Quests", func() -> void: _toggle("quest"))
 	_action("Claim", func() -> void: _toggle("claim"))
+	_action("Site", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Game.sim.enter_site())
+	)
 	_action("Probe", func() -> void: _launch("survey_probe"))
 	_action("Harvest", func() -> void: _launch("harvest_drone"))
 	_action("Boat", func() -> void: _launch(_boat_id()))
@@ -458,15 +463,20 @@ func _refresh_helm() -> void:
 	var keel := "Keel complaining." if stats.keel_warn else "Keel within tolerance."
 	if compact:
 		helm_name.text = "%s    %s" % [str(sim.defs.system.name).to_upper(), hull.callsign]
-		helm_flight.text = "hull %d/%d    %d m/s    %s" % [
+		helm_flight.text = "hull %d/%d    %d m/s    %s    %s" % [
 			int(sim.player.hp),
 			int(sim.player.max_hp),
 			int(sim.player.vel.length()),
 			zoom_word,
+			ScaleFrame.layer_name(int(sim.layer)),
 		]
 	else:
 		helm_name.text = "%s    %s    %s" % [str(sim.defs.system.name).to_upper(), hull.class_name, hull.callsign]
-		helm_flight.text = "hull %d/%d    %d m/s    yaw %.0f°/s    %s    sig %s    %s    %s" % [
+		var alt_km := 0.0
+		var focus = sim.planet(str(sim.body_id))
+		if focus != null:
+			alt_km = ScaleFrame.band_alt(focus)
+		helm_flight.text = "hull %d/%d    %d m/s    yaw %.0f°/s    %s    sig %s    %s    %s    %s %.0f km" % [
 			int(sim.player.hp),
 			int(sim.player.max_hp),
 			int(sim.player.vel.length()),
@@ -475,6 +485,8 @@ func _refresh_helm() -> void:
 			stats.signature_word,
 			keel,
 			zoom_word,
+			ScaleFrame.layer_name(int(sim.layer)),
+			alt_km,
 		]
 	var law_name := Law.at(sim, sim.player.pos)
 	helm_zone.add_theme_color_override("font_color", Law.color_of(law_name))

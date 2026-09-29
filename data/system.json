@@ -28,6 +28,27 @@
       ],
       "legal": "pdo_capital",
       "protected": false,
+      "scale": {
+        "radius_km": 6400,
+        "soi_km": 48000,
+        "bands": [
+          {
+            "id": "dock",
+            "name": "Helion Dock",
+            "alt_km": 220,
+            "width_km": 90
+          }
+        ],
+        "sites": [
+          {
+            "id": "helion_yard",
+            "name": "Helion Yard",
+            "alt_km": 220,
+            "span_m": 640,
+            "kind": "yard"
+          }
+        ]
+      },
       "resource": {
         "id": "ring_ice",
         "name": "Ring ice",
@@ -76,6 +97,12 @@
       "band": 43,
       "legal_title": "Compact lease, limited harvest",
       "heat": "lease",
+      "scale": {
+        "radius_km": 1.2,
+        "soi_km": 40,
+        "alt_km": 260,
+        "kind": "ring"
+      },
       "resource": {
         "id": "raw_mass",
         "name": "Raw mass",
@@ -100,6 +127,12 @@
       "distance": 560,
       "legal_title": "Compact seized property",
       "heat": "pdo",
+      "scale": {
+        "radius_km": 18,
+        "soi_km": 36,
+        "span_km": 22,
+        "kind": "trash"
+      },
       "resource": {
         "id": "raw_mass",
         "name": "Raw mass",
