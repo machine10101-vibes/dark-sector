@@ -109,24 +109,32 @@ func _fit() -> void:
 		dead_box.position = Vector2((screen.x - card_w) * 0.5, maxf(8.0, (screen.y - card_h) * 0.5))
 		dead_box.size = Vector2(card_w, card_h)
 	if hold_button != null:
-		hold_button.position = Vector2(screen.x - 188, 12)
-		hold_button.size = Vector2(92, 44)
+		if compact:
+			hold_button.position = Vector2(screen.x - 92, 8)
+			hold_button.size = Vector2(80, 44)
+		else:
+			hold_button.position = Vector2(screen.x - 188, 12)
+			hold_button.size = Vector2(88, 44)
 	if stick_button != null:
-		stick_button.position = Vector2(screen.x - 92, 12)
-		stick_button.size = Vector2(80, 44)
+		if compact:
+			stick_button.position = Vector2(screen.x - 92, 56)
+			stick_button.size = Vector2(80, 44)
+		else:
+			stick_button.position = Vector2(screen.x - 96, 12)
+			stick_button.size = Vector2(84, 44)
 		stick_button.text = "Keys" if touch_on else "Stick"
 	if helm_box != null:
-		var helm_w := screen.x - 210.0
+		var helm_w := screen.x - 108.0 if compact else screen.x - 210.0
 		if not compact and panel != null and panel.visible:
 			helm_w = minf(760.0, screen.x - 500.0)
-		helm_box.size = Vector2(maxf(180.0, helm_w), 150)
-	if touch_on:
+		helm_box.size = Vector2(maxf(160.0, helm_w), 160)
+	if compact:
 		if log_label != null:
-			log_label.position = Vector2(16, 148)
-			log_label.size = Vector2(maxf(160.0, screen.x - 32.0), 56)
+			log_label.position = Vector2(16, 168)
+			log_label.size = Vector2(maxf(140.0, screen.x - 32.0), 40)
 		if banner != null:
-			banner.position = Vector2(16, 208)
-			banner.size = Vector2(maxf(160.0, screen.x - 210.0), 40)
+			banner.position = Vector2(16, 212)
+			banner.size = Vector2(maxf(140.0, screen.x - 32.0), 36)
 	else:
 		if log_label != null:
 			log_label.position = Vector2(16, screen.y - bar_h - 132.0)
@@ -450,11 +458,10 @@ func _refresh_helm() -> void:
 	var keel := "Keel complaining." if stats.keel_warn else "Keel within tolerance."
 	if compact:
 		helm_name.text = "%s    %s" % [str(sim.defs.system.name).to_upper(), hull.callsign]
-		helm_flight.text = "hull %d/%d    %d m/s    %s    %s" % [
+		helm_flight.text = "hull %d/%d    %d m/s    %s" % [
 			int(sim.player.hp),
 			int(sim.player.max_hp),
 			int(sim.player.vel.length()),
-			_mass_line(stats),
 			zoom_word,
 		]
 	else:
@@ -486,7 +493,7 @@ func _refresh_helm() -> void:
 	elif stage == "guns":
 		stage_word = " — guns"
 	if compact:
-		helm_zone.text = "%s%s    heat %.0f%s" % [Law.hud_line(sim, sim.player.pos), link_word, heat, stage_word]
+		helm_zone.text = "%s%s    heat %.0f%s" % [law_name.to_upper(), link_word, heat, stage_word]
 	else:
 		helm_zone.text = "%s%s    %s heat %s (%.0f)%s" % [Law.hud_line(sim, sim.player.pos), link_word, sim._pdo_name(), HeatWords.word(heat), heat, stage_word]
 	var repair := ""
