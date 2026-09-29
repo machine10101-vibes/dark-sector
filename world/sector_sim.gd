@@ -27,6 +27,9 @@ var heat: Dictionary = {}
 var memory: Dictionary = {}
 var heat_log: Array = []
 var quest_flags: Dictionary = {}
+var contracts: Array = []
+var nav_mark: Dictionary = {}
+var market: Dictionary = {"glasswheat": 4}
 var claim: Dictionary = {}
 var lines: Array = []
 var banner = ""
@@ -87,8 +90,19 @@ func new_game(class_id: String) -> void:
 			running[def_id] = int(running.get(def_id, 0)) + 1
 			craft.append(_make_craft(def_id, int(running[def_id])))
 	actors = []
+	quest_flags = {}
 	_spawn_factions()
-	quest_flags = {"origin_%s" % class_id: "dormant"}
+	quest_flags = {
+		"origin_%s" % class_id: "dormant",
+		"authored_shakedown_01": "active",
+		"shakedown_beat": "undock",
+		"dock_x": player.pos.x,
+		"dock_y": player.pos.y,
+		"compact_standing": 0,
+	}
+	contracts = []
+	nav_mark = {}
+	market = {"glasswheat": 4}
 	var pocket: Dictionary = defs.system.pocket
 	claim = {
 		"pocket_id": str(pocket.id),
@@ -103,6 +117,7 @@ func new_game(class_id: String) -> void:
 	say("You have the %s, callsign %s." % [hull.class_name, hull.callsign])
 	say("%s. %s is the city-orbital. The ice ring is lit. %s holds confiscated hulls. %s is marked and not a homestead." % [defs.system.name, planet(str(defs.system.pdo.home)).name, defs.system.trash.name, pocket.name])
 	say("A Claim Core is in the hold. The Homestead Road buoy is off the green. L takes the lane.")
+	say("Shakedown is on the log. J reads it. Y marks the next place. The keel stays put.")
 
 
 func tick(dt: float, cmd: Dictionary) -> void:
@@ -451,6 +466,9 @@ func to_dict() -> Dictionary:
 		"memory": memory.duplicate(true),
 		"heat_log": heat_log.duplicate(true),
 		"quest_flags": quest_flags.duplicate(true),
+		"contracts": contracts.duplicate(true),
+		"nav_mark": nav_mark.duplicate(true),
+		"market": market.duplicate(true),
 		"claim": claim.duplicate(true),
 		"lines": lines.duplicate(true),
 		"banner": banner,
@@ -496,6 +514,10 @@ func from_dict(data: Dictionary) -> void:
 	memory = data.memory.duplicate(true)
 	heat_log = data.get("heat_log", []).duplicate(true)
 	quest_flags = data.quest_flags.duplicate(true)
+	contracts = data.get("contracts", []).duplicate(true)
+	nav_mark = data.get("nav_mark", {}).duplicate(true)
+	market = data.get("market", {"glasswheat": 4}).duplicate(true)
+	market.glasswheat = int(market.get("glasswheat", 4))
 	claim = data.claim.duplicate(true)
 	Homestead.normalize(self)
 	lines = data.get("lines", []).duplicate(true)
@@ -529,6 +551,7 @@ func _step(dt: float, cmd: Dictionary) -> void:
 	if banner_t > 9.0:
 		banner = ""
 	Homestead.step(self, dt)
+	QuestBoard.pulse(self, dt)
 	_step_compact()
 
 
@@ -719,9 +742,13 @@ func try_repair() -> String:
 			break
 	if not hurt:
 		return "Nothing to weld."
-	if int(player.cargo.get("raw_mass", 0)) < 1:
+	var waived := bool(quest_flags.get("repair_discount", false))
+	if not waived and int(player.cargo.get("raw_mass", 0)) < 1:
 		return "Repair wants one unit of harvested mass."
-	spend_cargo("raw_mass", 1)
+	if not waived:
+		spend_cargo("raw_mass", 1)
+	else:
+		say("Compact standing waives the mass.")
 	player.hp = minf(float(player.max_hp), float(player.hp) + 28.0)
 	player.hangar_hp = float(player.get("hangar_max", 22.0))
 	if not player.has("module_hp"):
@@ -757,6 +784,8 @@ func _fine_cargo() -> void:
 		taken = "raw mass"
 	else:
 		for key in player.cargo.keys():
+			if str(key) == "claim_core":
+				continue
 			if int(player.cargo[key]) <= 0:
 				continue
 			spend_cargo(str(key), 1)
@@ -1117,6 +1146,7 @@ func _arrive(system_id: String, gate_id: String) -> void:
 		say("Craft buttoned up for the lane.")
 	say("The lane opens on %s." % str(defs.system.name))
 	sfx("launch")
+	QuestBoard.on_arrive(self)
 
 
 func _gate_by_id(gate_id: String) -> Dictionary:
@@ -1185,6 +1215,14 @@ func _spawn_factions() -> void:
 		actor.ai = {"phase": ang, "radius": float(defs.system.pdo.radius), "enraged": false}
 		actor.cargo = {"scrap": 1}
 		actors.append(actor)
+	if bool(quest_flags.get("patrol_reinforced", false)) and int(defs.system.pdo.count) > 0:
+		var extra = _blank_ship("cutter", "%s Cutter %d" % [_pdo_name(), int(defs.system.pdo.count) + 1], "agent:%s:extra" % faction_id, "npc", faction_id)
+		extra.home = home
+		extra.pos = home + Vector2(float(defs.system.pdo.radius), 80.0)
+		extra.rot = PI * 0.5
+		extra.ai = {"phase": 0.4, "radius": float(defs.system.pdo.radius), "enraged": false}
+		extra.cargo = {"scrap": 1}
+		actors.append(extra)
 	for entry in defs.system.get("haulers", []):
 		var hauler = _blank_ship(str(entry.class_id), str(entry.name), "agent:civilian:%s" % entry.id, "npc", "civilian")
 		var orbit = float(entry.radius)
