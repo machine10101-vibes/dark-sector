@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R7-S3",
+  "name": "Empty Tithe",
+  "seed": 37003,
+  "why_visit": "A starving outpost. Food prices are a wound. Garden smugglers are the only pantry.",
+  "law_color": "red",
+  "status": "authored",
+  "region": "R7",
+  "star": {
+    "id": "hc-v1-r7-s3-star",
+    "name": "Tithe",
+    "class": "M",
+    "radius": 120,
+    "color": "#a06040"
+  },
+  "bodies": [
+    {
+      "id": "tithe_outpost",
+      "name": "Tithe Outpost",
+      "angle": 0.4,
+      "distance": 1400,
+      "radius": 70,
+      "color": "#8a5040",
+      "blurb": "An outpost that eats and does not grow.",
+      "legal": "Red. The price of food is the law.",
+      "air": "Hungry vent.",
+      "face": "Empty crates.",
+      "crust": "Outpost stone.",
+      "life": "People, hungry. No herds left.",
+      "ruins": "A price board with no goods under it.",
+      "resource_id": "empty_crate",
+      "resource_name": "Empty crate",
+      "amount": 2,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "smuggler_shelf",
+      "name": "Smuggler Shelf",
+      "angle": 2.3,
+      "distance": 2000,
+      "radius": 48,
+      "color": "#5c3830",
+      "blurb": "The shelf where garden food arrives off the books.",
+      "legal": "Smuggler pantry. The outpost pretends not to see it.",
+      "air": "None.",
+      "face": "Hidden sacks.",
+      "crust": "Shelf rock.",
+      "life": "Smuggled seed, not a crop.",
+      "ruins": "A First Soil stencil, scratched out.",
+      "resource_id": "hidden_food",
+      "resource_name": "Hidden food",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "hunger_dust",
+    "name": "Hunger Dust",
+    "composition": "crate dust and stolen seed hulls from the Empty Tithe pantry",
+    "radius": 2500,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Hunger Dust",
+    "amount": 6,
+    "legal": "crate dust and stolen seed hulls from the Empty Tithe pantry",
+    "heat": ""
+  },
+  "trash": {
+    "id": "starved_convoys",
+    "name": "Starved Convoys",
+    "origin": "Food convoys that were eaten before they docked at Tithe Outpost.",
+    "anchor": "tithe_outpost",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Food convoys that were eaten before they docked at Tithe Outpost.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "tithe_outpost_pocket",
+    "name": "Empty Tithe Pocket",
+    "anchor": "tithe_outpost",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "A starving outpost. Food prices are a wound. Garden smugglers are the only pantry."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "rimward_charter",
+    "count": 0,
+    "radius": 520,
+    "home": "tithe_outpost"
+  },
+  "pirates": {
+    "count": 1,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "tithe_broker",
+      "name": "Tithe Broker",
+      "class_id": "anvil",
+      "home": "tithe_outpost",
+      "radius": 600
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "tithe_outpost",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

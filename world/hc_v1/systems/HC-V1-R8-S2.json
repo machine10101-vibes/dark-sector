@@ -1,0 +1,133 @@
+{
+  "id": "HC-V1-R8-S2",
+  "name": "False Choir",
+  "seed": 38002,
+  "why_visit": "Stolen Glass Choir beacons. A trap for a captain who still trusts a white lamp.",
+  "law_color": "red",
+  "status": "authored",
+  "region": "R8",
+  "star": {
+    "id": "hc-v1-r8-s2-star",
+    "name": "False",
+    "class": "F",
+    "radius": 120,
+    "color": "#e8e0d0"
+  },
+  "bodies": [
+    {
+      "id": "stolen_coda",
+      "name": "Stolen Coda",
+      "angle": 0.8,
+      "distance": 1550,
+      "radius": 70,
+      "color": "#d0c8b8",
+      "blurb": "A beacon wearing Choir white that the Choir did not light.",
+      "legal": "Red trap. The lamp is stolen.",
+      "air": "None.",
+      "face": "Stolen white.",
+      "crust": "Beacon.",
+      "life": "None.",
+      "ruins": "A sweep tag, forged.",
+      "resource_id": "forged_tag",
+      "resource_name": "Forged tag",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "good_captain",
+      "name": "Good Captain",
+      "angle": 2.6,
+      "distance": 2200,
+      "radius": 80,
+      "color": "#6a4038",
+      "blurb": "The wreck of someone who slowed for the lamp.",
+      "legal": "Wreck rights. The trap worked.",
+      "air": "None.",
+      "face": "Trust and holes.",
+      "crust": "Hulk.",
+      "life": "None.",
+      "ruins": "A Choir prayer, unfinished.",
+      "resource_id": "trust_plate",
+      "resource_name": "Trust plate",
+      "amount": 5,
+      "heat": "",
+      "moon": false,
+      "junk": true,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "forged_white",
+    "name": "Forged White",
+    "composition": "forged Choir lamp glass and stolen sweep tags from False Choir",
+    "radius": 2500,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Forged White",
+    "amount": 6,
+    "legal": "forged Choir lamp glass and stolen sweep tags from False Choir",
+    "heat": ""
+  },
+  "trash": {
+    "id": "trusted_wrong",
+    "name": "Trusted Wrong",
+    "origin": "Captains who heaved to for a stolen Choir beacon.",
+    "anchor": "stolen_coda",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Captains who heaved to for a stolen Choir beacon.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "stolen_coda_pocket",
+    "name": "False Choir Pocket",
+    "anchor": "stolen_coda",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "Stolen Glass Choir beacons. A trap for a captain who still trusts a white lamp."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "black_sail",
+    "count": 0,
+    "radius": 520,
+    "home": "stolen_coda"
+  },
+  "pirates": {
+    "count": 2,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "stolen_coda",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

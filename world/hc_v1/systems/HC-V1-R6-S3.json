@@ -1,0 +1,133 @@
+{
+  "id": "HC-V1-R6-S3",
+  "name": "Nameless Chart",
+  "seed": 36003,
+  "why_visit": "The maps lie. The belt is not where the chart draws it. Salvage is a jackpot or a blank.",
+  "law_color": "amber",
+  "status": "authored",
+  "region": "R6",
+  "star": {
+    "id": "hc-v1-r6-s3-star",
+    "name": "Gutter",
+    "class": "Gutter",
+    "radius": 120,
+    "color": "#b09070"
+  },
+  "bodies": [
+    {
+      "id": "false_mark",
+      "name": "False Mark",
+      "angle": 1.3,
+      "distance": 1800,
+      "radius": 60,
+      "color": "#a08060",
+      "blurb": "A mark that is not where the last chart said.",
+      "legal": "Drift. The chart is the trap.",
+      "air": "None.",
+      "face": "Scraped paint.",
+      "crust": "Liar stone.",
+      "life": "None.",
+      "ruins": "A chart plate with the coordinates cut out.",
+      "resource_id": "chart_plate",
+      "resource_name": "Chart plate",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "blank_jackpot",
+      "name": "Blank Jackpot",
+      "angle": 3.4,
+      "distance": 2500,
+      "radius": 55,
+      "color": "#6e5844",
+      "blurb": "Sometimes a hull. Sometimes nothing. The name is the joke.",
+      "legal": "Uncharted salvage. Bring a tender or leave.",
+      "air": "None.",
+      "face": "Bare.",
+      "crust": "Hollow.",
+      "life": "None.",
+      "ruins": "A claim tag with no name.",
+      "resource_id": "blank_ore",
+      "resource_name": "Unnamed ore",
+      "amount": 6,
+      "heat": "",
+      "moon": false,
+      "junk": true,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "liar_gravel",
+    "name": "Liar Gravel",
+    "composition": "chart-plate gravel and misplaced claim tags from Nameless Chart",
+    "radius": 3100,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Liar Gravel",
+    "amount": 6,
+    "legal": "chart-plate gravel and misplaced claim tags from Nameless Chart",
+    "heat": ""
+  },
+  "trash": {
+    "id": "wrong_lane",
+    "name": "Wrong Lane",
+    "origin": "Tows that followed the chart and arrived in the gravel instead of the lane.",
+    "anchor": "false_mark",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Tows that followed the chart and arrived in the gravel instead of the lane.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "false_mark_pocket",
+    "name": "Nameless Chart Pocket",
+    "anchor": "false_mark",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "The maps lie. The belt is not where the chart draws it. Salvage is a jackpot or a blank."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "rimward_charter",
+    "count": 0,
+    "radius": 520,
+    "home": "false_mark"
+  },
+  "pirates": {
+    "count": 1,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "false_mark",
+      "radius": 280
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

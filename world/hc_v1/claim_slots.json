@@ -1,5 +1,31 @@
 {
-  "schema": "hc_v1_g0",
-  "status": "template",
-  "slots": []
+  "schema": "hc_v1_slice9",
+  "status": "authored",
+  "slots": [
+    {
+      "system_id": "HC-V1-R5-S1",
+      "pocket_id": "quiet_hollow",
+      "name": "Quiet Hollow"
+    },
+    {
+      "system_id": "HC-V1-R5-S2",
+      "pocket_id": "weather_pocket",
+      "name": "Terminator Pocket"
+    },
+    {
+      "system_id": "HC-V1-R5-S4",
+      "pocket_id": "overlap_pocket",
+      "name": "Overlap Hollow"
+    },
+    {
+      "system_id": "HC-V1-R5-S6",
+      "pocket_id": "last_pocket",
+      "name": "Last Pocket"
+    },
+    {
+      "system_id": "HC-V1-R7-S5",
+      "pocket_id": "dead_hollow_pocket",
+      "name": "Dead Hollow"
+    }
+  ]
 }

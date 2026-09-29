@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R6-S6",
+  "name": "Last Beacon",
+  "seed": 36006,
+  "why_visit": "One working buoy. Everything else is wreck light.",
+  "law_color": "amber",
+  "status": "authored",
+  "region": "R6",
+  "star": {
+    "id": "hc-v1-r6-s6-star",
+    "name": "Last",
+    "class": "K-binary",
+    "radius": 120,
+    "color": "#e0c090"
+  },
+  "bodies": [
+    {
+      "id": "working_buoy",
+      "name": "Working Buoy",
+      "angle": 1.0,
+      "distance": 1500,
+      "radius": 40,
+      "color": "#f0d090",
+      "blurb": "The one buoy that still answers.",
+      "legal": "Drift. The buoy is the whole port.",
+      "air": "None.",
+      "face": "Lamp and rust.",
+      "crust": "Small.",
+      "life": "None.",
+      "ruins": "A maintenance log, last entry years ago.",
+      "resource_id": "buoy_lamp",
+      "resource_name": "Buoy lamp",
+      "amount": 2,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "wreck_light",
+      "name": "Wreck Light",
+      "angle": 3.0,
+      "distance": 2200,
+      "radius": 90,
+      "color": "#806050",
+      "blurb": "A dead hulk whose lamps still blink because the buoy powers them.",
+      "legal": "Wreck light. Not a rescue.",
+      "air": "None.",
+      "face": "Blink paint.",
+      "crust": "Hulk.",
+      "life": "None.",
+      "ruins": "Names that blink and do not answer.",
+      "resource_id": "blink_plate",
+      "resource_name": "Blink plate",
+      "amount": 5,
+      "heat": "",
+      "moon": false,
+      "junk": true,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "blink_scrap",
+    "name": "Blink Scrap",
+    "composition": "buoy glass and blink-plate from the last working buoy's dependents",
+    "radius": 2800,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Blink Scrap",
+    "amount": 6,
+    "legal": "buoy glass and blink-plate from the last working buoy's dependents",
+    "heat": ""
+  },
+  "trash": {
+    "id": "unanswered",
+    "name": "Unanswered",
+    "origin": "Calls the last buoy logged and no ship answered.",
+    "anchor": "wreck_light",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Calls the last buoy logged and no ship answered.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "working_buoy_pocket",
+    "name": "Last Beacon Pocket",
+    "anchor": "working_buoy",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "One working buoy. Everything else is wreck light."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "rimward_charter",
+    "count": 0,
+    "radius": 520,
+    "home": "working_buoy"
+  },
+  "pirates": {
+    "count": 1,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "buoy_keeper",
+      "name": "Buoy Keeper",
+      "class_id": "anvil",
+      "home": "working_buoy",
+      "radius": 500
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "working_buoy",
+      "radius": 280
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

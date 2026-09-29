@@ -1,0 +1,149 @@
+{
+  "id": "HC-V1-R4-S3",
+  "name": "Sporefall",
+  "seed": 34003,
+  "why_visit": "Blight weather. A harvest drone left in the fall does not come home.",
+  "law_color": "amber",
+  "status": "authored",
+  "region": "R4",
+  "star": {
+    "id": "hc-v1-r4-s3-star",
+    "name": "Spore",
+    "class": "K",
+    "radius": 120,
+    "color": "#c4a06a"
+  },
+  "bodies": [
+    {
+      "id": "blight_moon",
+      "name": "Blight Moon",
+      "angle": 1.0,
+      "distance": 1650,
+      "radius": 90,
+      "color": "#a88458",
+      "blurb": "Weather that eats a drone's seals.",
+      "legal": "Choir blight zone. Work it and expect a loss.",
+      "air": "Spore haze.",
+      "face": "Pitted stone.",
+      "crust": "Soft crust.",
+      "life": "Blight. It is the life here, and it is not yours.",
+      "ruins": "A drone shell grown into the dust.",
+      "resource_id": "spore_mass",
+      "resource_name": "Spore mass",
+      "amount": 6,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "drone_grave",
+      "name": "Drone Grave",
+      "angle": 2.9,
+      "distance": 2400,
+      "radius": 50,
+      "color": "#6e5840",
+      "blurb": "Where harvest drones go when the fall is thick.",
+      "legal": "Salvage of lost drones. The Choir does not fetch them.",
+      "air": "None.",
+      "face": "Drone ribs.",
+      "crust": "Metal and spore.",
+      "life": "None living.",
+      "ruins": "A bay tag from an Anvil that left lighter.",
+      "resource_id": "drone_ribs",
+      "resource_name": "Drone ribs",
+      "amount": 5,
+      "heat": "",
+      "moon": false,
+      "junk": true,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "spore_grit",
+    "name": "Spore Grit",
+    "composition": "blight grit and drone sealant shed in the Sporefall weather",
+    "radius": 2500,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Spore Grit",
+    "amount": 6,
+    "legal": "blight grit and drone sealant shed in the Sporefall weather",
+    "heat": ""
+  },
+  "trash": {
+    "id": "lost_drones",
+    "name": "Lost Drones",
+    "origin": "Harvest drones the blight sealed shut and the Choir refused to tow.",
+    "anchor": "drone_grave",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Harvest drones the blight sealed shut and the Choir refused to tow.",
+    "heat": ""
+  },
+  "stream": {
+    "id": "spore_fall",
+    "name": "Spore Fall",
+    "origin": "Blight spores on a falling vector off Blight Moon.",
+    "vector": 1.8,
+    "period": 12.0,
+    "speed": 64.0,
+    "span": 768.0,
+    "anchor": "blight_moon",
+    "angle": 0.6,
+    "distance": 820,
+    "resource_id": "stream_mass",
+    "resource_name": "Spore Fall",
+    "amount": 5,
+    "legal": "Blight spores on a falling vector off Blight Moon.",
+    "heat": ""
+  },
+  "pocket": {
+    "id": "blight_moon_pocket",
+    "name": "Sporefall Pocket",
+    "anchor": "blight_moon",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "Blight weather. A harvest drone left in the fall does not come home."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "glass_choir",
+    "count": 1,
+    "radius": 520,
+    "home": "blight_moon"
+  },
+  "pirates": {
+    "count": 0,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "blight_moon",
+      "radius": 280
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

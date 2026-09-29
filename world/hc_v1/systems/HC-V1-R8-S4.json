@@ -1,0 +1,133 @@
+{
+  "id": "HC-V1-R8-S4",
+  "name": "Twin Wake",
+  "seed": 38004,
+  "why_visit": "A clan war. Pick a sail or take fire from both.",
+  "law_color": "red",
+  "status": "authored",
+  "region": "R8",
+  "star": {
+    "id": "hc-v1-r8-s4-star",
+    "name": "Twin",
+    "class": "G-binary",
+    "radius": 120,
+    "color": "#e0d0a0"
+  },
+  "bodies": [
+    {
+      "id": "red_sail",
+      "name": "Red Sail",
+      "angle": 0.4,
+      "distance": 1600,
+      "radius": 70,
+      "color": "#a03028",
+      "blurb": "One clan's wake.",
+      "legal": "Red. Their sail or the other's.",
+      "air": "None.",
+      "face": "Red cloth and guns.",
+      "crust": "Rock.",
+      "life": "A clan.",
+      "ruins": "A challenge, painted.",
+      "resource_id": "red_cloth",
+      "resource_name": "Red cloth",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "black_sail",
+      "name": "Black Sail Rock",
+      "angle": 3.6,
+      "distance": 1600,
+      "radius": 70,
+      "color": "#2a2428",
+      "blurb": "The other clan's wake. The name is the faction and the rock.",
+      "legal": "Red. Both sails shoot the undecided.",
+      "air": "None.",
+      "face": "Black cloth.",
+      "crust": "Rock.",
+      "life": "A clan.",
+      "ruins": "The answering challenge.",
+      "resource_id": "black_cloth",
+      "resource_name": "Black cloth",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "sail_rag",
+    "name": "Sail Rag",
+    "composition": "red sailcloth and black sailcloth shot off the two wakes",
+    "radius": 2300,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Sail Rag",
+    "amount": 6,
+    "legal": "red sailcloth and black sailcloth shot off the two wakes",
+    "heat": ""
+  },
+  "trash": {
+    "id": "undecided",
+    "name": "Undecided",
+    "origin": "Hulls that would not pick a sail at Twin Wake.",
+    "anchor": "red_sail",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Hulls that would not pick a sail at Twin Wake.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "red_sail_pocket",
+    "name": "Twin Wake Pocket",
+    "anchor": "red_sail",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "A clan war. Pick a sail or take fire from both."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "black_sail",
+    "count": 0,
+    "radius": 520,
+    "home": "red_sail"
+  },
+  "pirates": {
+    "count": 3,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "red_sail",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

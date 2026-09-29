@@ -1,0 +1,11 @@
+{
+  "id": "ribbon_goat",
+  "name": "Ribbon goat",
+  "dies_if": "hunger",
+  "hunger_death": 8,
+  "need": "a ribbon of food",
+  "yield": "ribbon",
+  "yield_after": 10,
+  "open_dome_kills": true,
+  "line": "A ribbon goat is in the pen. Hunger kills it. An open dome kills it."
+}

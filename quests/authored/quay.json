@@ -1,0 +1,9 @@
+{
+  "id": "authored_quay",
+  "title": "Quay tribute",
+  "kind": "authored",
+  "summary": "Pay attention at Quay. Tribute warms Black Sail heat, files claim law red, and starts a rumor.",
+  "body": "quay",
+  "system_id": "HC-V1-R8-S1",
+  "mutations": ["rumor_quay", "heat_black_sail", "claim_law_red"]
+}

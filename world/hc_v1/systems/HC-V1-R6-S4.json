@@ -1,0 +1,133 @@
+{
+  "id": "HC-V1-R6-S4",
+  "name": "Hullweather",
+  "seed": 36004,
+  "why_visit": "Derelicts the size of stations. Boarding is later. The tender works now.",
+  "law_color": "amber",
+  "status": "authored",
+  "region": "R6",
+  "star": {
+    "id": "hc-v1-r6-s4-star",
+    "name": "Weather",
+    "class": "M",
+    "radius": 120,
+    "color": "#c47a55"
+  },
+  "bodies": [
+    {
+      "id": "station_hulk",
+      "name": "Station Hulk",
+      "angle": 0.8,
+      "distance": 1900,
+      "radius": 150,
+      "color": "#8a5a40",
+      "blurb": "A derelict the size of a station. The weather is hull plates.",
+      "legal": "Drift salvage. Tender work. Do not board.",
+      "air": "Leaking compartments, then vacuum.",
+      "face": "Station plate.",
+      "crust": "Hollow.",
+      "life": "None living.",
+      "ruins": "A station name sanded by dust.",
+      "resource_id": "station_plate",
+      "resource_name": "Station plate",
+      "amount": 8,
+      "heat": "",
+      "moon": false,
+      "junk": true,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "plate_moon",
+      "name": "Plate Moon",
+      "angle": 2.9,
+      "distance": 2600,
+      "radius": 50,
+      "color": "#5c4034",
+      "blurb": "Plates that fell off the hulk and made a moon of themselves.",
+      "legal": "Fallen plate. Still a tender job.",
+      "air": "None.",
+      "face": "Layered plate.",
+      "crust": "Metal.",
+      "life": "None.",
+      "ruins": "A bay number from the hulk.",
+      "resource_id": "fallen_plate",
+      "resource_name": "Fallen plate",
+      "amount": 5,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "hull_weather",
+    "name": "Hull Weather",
+    "composition": "station plate and compartment dust falling off the Hullweather hulk",
+    "radius": 2400,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Hull Weather",
+    "amount": 6,
+    "legal": "station plate and compartment dust falling off the Hullweather hulk",
+    "heat": ""
+  },
+  "trash": {
+    "id": "compartment_spill",
+    "name": "Compartment Spill",
+    "origin": "Compartments that opened when the station hulk rolled.",
+    "anchor": "station_hulk",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Compartments that opened when the station hulk rolled.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "station_hulk_pocket",
+    "name": "Hullweather Pocket",
+    "anchor": "station_hulk",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "Derelicts the size of stations. Boarding is later. The tender works now."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "rimward_charter",
+    "count": 0,
+    "radius": 520,
+    "home": "station_hulk"
+  },
+  "pirates": {
+    "count": 1,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "station_hulk",
+      "radius": 280
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

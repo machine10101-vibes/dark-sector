@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R8-S5",
+  "name": "Deep Hold",
+  "seed": 38005,
+  "why_visit": "Hidden docks in a hollow rock. Player dens, not a posted port.",
+  "law_color": "red",
+  "status": "authored",
+  "region": "R8",
+  "star": {
+    "id": "hc-v1-r8-s5-star",
+    "name": "Deep",
+    "class": "M",
+    "radius": 120,
+    "color": "#806050"
+  },
+  "bodies": [
+    {
+      "id": "hollow_rock",
+      "name": "Hollow Rock",
+      "angle": 1.2,
+      "distance": 1800,
+      "radius": 130,
+      "color": "#5c4038",
+      "blurb": "A rock with docks on the inside.",
+      "legal": "Red den. The entrance is the secret.",
+      "air": "Den air, recycled.",
+      "face": "Hidden bollards.",
+      "crust": "Hollow.",
+      "life": "Dens. People who do not post a beacon.",
+      "ruins": "A dock number with no chart.",
+      "resource_id": "hidden_bollard",
+      "resource_name": "Hidden bollard",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "outer_lie",
+      "name": "Outer Lie",
+      "angle": 2.7,
+      "distance": 2500,
+      "radius": 40,
+      "color": "#3a302c",
+      "blurb": "The outside of the rock, which looks empty.",
+      "legal": "The lie. The hold is inside.",
+      "air": "None.",
+      "face": "Blank.",
+      "crust": "Shell.",
+      "life": "None.",
+      "ruins": "Nothing, on purpose.",
+      "resource_id": "blank_shell",
+      "resource_name": "Blank shell",
+      "amount": 2,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "den_scrap",
+    "name": "Den Scrap",
+    "composition": "hidden-dock scrap and recycled-air filters from Hollow Rock",
+    "radius": 2100,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Den Scrap",
+    "amount": 6,
+    "legal": "hidden-dock scrap and recycled-air filters from Hollow Rock",
+    "heat": ""
+  },
+  "trash": {
+    "id": "thrown_out",
+    "name": "Thrown Out",
+    "origin": "Captains the den threw out the hollow and did not tow home.",
+    "anchor": "hollow_rock",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Captains the den threw out the hollow and did not tow home.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "hollow_rock_pocket",
+    "name": "Deep Hold Pocket",
+    "anchor": "hollow_rock",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "Hidden docks in a hollow rock. Player dens, not a posted port."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "black_sail",
+    "count": 0,
+    "radius": 520,
+    "home": "hollow_rock"
+  },
+  "pirates": {
+    "count": 1,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "den_keeper",
+      "name": "Den Keeper",
+      "class_id": "anvil",
+      "home": "hollow_rock",
+      "radius": 900
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "hollow_rock",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

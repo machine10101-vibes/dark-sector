@@ -1,0 +1,9 @@
+{
+  "id": "authored_jurisdiction_hole",
+  "title": "Jurisdiction hole",
+  "kind": "authored",
+  "summary": "Smuggle living food from the Dock through Not Ours to the Empty Tithe stub. The navy will not follow.",
+  "route": ["HC-V1-R1-S1", "HC-V1-R3-S4", "HC-V1-R7-S3"],
+  "need_cargo": "food_mass",
+  "mutations": ["rumor_jurisdiction", "glasswheat_dearer"]
+}

@@ -1,0 +1,133 @@
+{
+  "id": "HC-V1-R7-S6",
+  "name": "No Witness",
+  "seed": 37006,
+  "why_visit": "The open fight classroom. Wreck rights. Nobody writes it down.",
+  "law_color": "red",
+  "status": "authored",
+  "region": "R7",
+  "star": {
+    "id": "hc-v1-r7-s6-star",
+    "name": "Gutter",
+    "class": "Gutter",
+    "radius": 120,
+    "color": "#a05040"
+  },
+  "bodies": [
+    {
+      "id": "classroom",
+      "name": "Classroom",
+      "angle": 0.2,
+      "distance": 1300,
+      "radius": 60,
+      "color": "#8a4038",
+      "blurb": "A rock where fights are the lesson.",
+      "legal": "Red. Wreck rights. No slate.",
+      "air": "None.",
+      "face": "Scorch.",
+      "crust": "Stone.",
+      "life": "None.",
+      "ruins": "No names.",
+      "resource_id": "scorch",
+      "resource_name": "Scorch",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "unwritten",
+      "name": "Unwritten",
+      "angle": 2.0,
+      "distance": 2000,
+      "radius": 70,
+      "color": "#5c3028",
+      "blurb": "The wrecks nobody logged.",
+      "legal": "Wreck rights with no witness.",
+      "air": "None.",
+      "face": "Unmarked plate.",
+      "crust": "Hulk.",
+      "life": "None.",
+      "ruins": "A log page, blank.",
+      "resource_id": "blank_plate",
+      "resource_name": "Blank plate",
+      "amount": 5,
+      "heat": "",
+      "moon": false,
+      "junk": true,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "unlogged_plate",
+    "name": "Unlogged Plate",
+    "composition": "unmarked fight plate from No Witness, with no chart name",
+    "radius": 2300,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Unlogged Plate",
+    "amount": 6,
+    "legal": "unmarked fight plate from No Witness, with no chart name",
+    "heat": ""
+  },
+  "trash": {
+    "id": "no_log",
+    "name": "No Log",
+    "origin": "Fights that ended here and were never written into a Compact log.",
+    "anchor": "unwritten",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Fights that ended here and were never written into a Compact log.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "classroom_pocket",
+    "name": "No Witness Pocket",
+    "anchor": "classroom",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "The open fight classroom. Wreck rights. Nobody writes it down."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "red_keel",
+    "count": 0,
+    "radius": 520,
+    "home": "classroom"
+  },
+  "pirates": {
+    "count": 3,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "classroom",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

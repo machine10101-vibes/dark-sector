@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R3-S5",
+  "name": "Cinder Parish",
+  "seed": 33005,
+  "why_visit": "Scrap religion. The yard cult keeps its trash moon and calls it Pulpit.",
+  "law_color": "amber",
+  "status": "authored",
+  "region": "R3",
+  "star": {
+    "id": "hc-v1-r3-s5-star",
+    "name": "Cinder",
+    "class": "K-dwarf",
+    "radius": 120,
+    "color": "#e07a45"
+  },
+  "bodies": [
+    {
+      "id": "pulpit",
+      "name": "Pulpit",
+      "angle": 1.1,
+      "distance": 1700,
+      "radius": 100,
+      "color": "#a85a3a",
+      "blurb": "The trash moon the yard cult preaches from.",
+      "legal": "Yard cult ground. Municipal law is a rumor here.",
+      "air": "Ash and incense vent.",
+      "face": "Sermon plate and slag.",
+      "crust": "Cinder crust.",
+      "life": "None the navy would bless.",
+      "ruins": "The first sermon burned into the hull.",
+      "resource_id": "sermon_slag",
+      "resource_name": "Sermon slag",
+      "amount": 6,
+      "heat": "",
+      "moon": false,
+      "junk": true,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "ash_choir",
+      "name": "Ash Choir",
+      "angle": 3.3,
+      "distance": 2300,
+      "radius": 58,
+      "color": "#6e4030",
+      "blurb": "A side rock where the cult stacks burned beacons.",
+      "legal": "Cult annex. Not a Compact claim.",
+      "air": "None.",
+      "face": "Burned beacon glass.",
+      "crust": "Cinder.",
+      "life": "None.",
+      "ruins": "A choir badge melted flat.",
+      "resource_id": "beacon_glass",
+      "resource_name": "Beacon glass",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "sermon_clinker",
+    "name": "Sermon Clinker",
+    "composition": "burned beacon clinker and pulpit slag from the yard cult",
+    "radius": 2600,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Sermon Clinker",
+    "amount": 6,
+    "legal": "burned beacon clinker and pulpit slag from the yard cult",
+    "heat": ""
+  },
+  "trash": {
+    "id": "burned_beacons",
+    "name": "Burned Beacons",
+    "origin": "Municipal beacons the parish burned after the navy went home.",
+    "anchor": "pulpit",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Municipal beacons the parish burned after the navy went home.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "pulpit_pocket",
+    "name": "Cinder Parish Pocket",
+    "anchor": "pulpit",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "Scrap religion. The yard cult keeps its trash moon and calls it Pulpit."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "municipal_navy",
+    "count": 0,
+    "radius": 520,
+    "home": "pulpit"
+  },
+  "pirates": {
+    "count": 1,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "parish_tender",
+      "name": "Parish Tender",
+      "class_id": "anvil",
+      "home": "pulpit",
+      "radius": 720
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "pulpit",
+      "radius": 280
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

@@ -1,0 +1,11 @@
+{
+  "id": "marker_buoy",
+  "name": "Marker Buoy",
+  "job": "A data-only buoy. Dropping this file does not change a starter's rack.",
+  "speed": 40,
+  "battery": 20,
+  "drain": 0.2,
+  "hp": 8,
+  "work": 0,
+  "radius": 6
+}

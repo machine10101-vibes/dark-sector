@@ -1,5 +1,168 @@
 {
-  "schema": "hc_v1_g0",
-  "status": "template",
-  "origins": []
+  "schema": "hc_v1_slice9",
+  "status": "authored",
+  "origins": [
+    {
+      "id": "unpaid_hulls",
+      "name": "Unpaid Hulls",
+      "system_id": "HC-V1-R3-S1",
+      "origin": "Haulers impounded at Spindle for an unpaid dock fee."
+    },
+    {
+      "id": "shift_wrecks",
+      "name": "Shift Wrecks",
+      "system_id": "HC-V1-R3-S2",
+      "origin": "Tugs that missed the union bell and were left between shifts."
+    },
+    {
+      "id": "cut_purses",
+      "name": "Cut Purses",
+      "system_id": "HC-V1-R3-S3",
+      "origin": "Dispatch boats robbed between Guest Lamp stations and never claimed."
+    },
+    {
+      "id": "abandoned_help",
+      "name": "Abandoned Help",
+      "system_id": "HC-V1-R3-S4",
+      "origin": "Rescue boats the navy recalled when the call was two lanes off Orbit Only."
+    },
+    {
+      "id": "burned_beacons",
+      "name": "Burned Beacons",
+      "system_id": "HC-V1-R3-S5",
+      "origin": "Municipal beacons the parish burned after the navy went home."
+    },
+    {
+      "id": "morning_after",
+      "name": "Morning After",
+      "system_id": "HC-V1-R3-S6",
+      "origin": "Deals that failed when the navy came back and towed the stalls."
+    },
+    {
+      "id": "confiscated_holds",
+      "name": "Confiscated Holds",
+      "system_id": "HC-V1-R4-S1",
+      "origin": "Living cargo taken at Coda and parked until a warden burns the manifest."
+    },
+    {
+      "id": "burned_domes",
+      "name": "Burned Domes",
+      "system_id": "HC-V1-R4-S2",
+      "origin": "Domes the Choir fired after the moth count failed."
+    },
+    {
+      "id": "lost_drones",
+      "name": "Lost Drones",
+      "system_id": "HC-V1-R4-S3",
+      "origin": "Harvest drones the blight sealed shut and the Choir refused to tow."
+    },
+    {
+      "id": "glassed_sheds",
+      "name": "Glassed Sheds",
+      "system_id": "HC-V1-R4-S4",
+      "origin": "Farm sheds glassed in the hymn and left as a warning."
+    },
+    {
+      "id": "dirty_holds",
+      "name": "Dirty Holds",
+      "system_id": "HC-V1-R4-S5",
+      "origin": "Holds the Choir emptied because the gloves were not clean."
+    },
+    {
+      "id": "revoked_samples",
+      "name": "Revoked Samples",
+      "system_id": "HC-V1-R4-S6",
+      "origin": "Samples the license revoked and the shard would not burn on site."
+    },
+    {
+      "id": "wrong_lane",
+      "name": "Wrong Lane",
+      "system_id": "HC-V1-R6-S3",
+      "origin": "Tows that followed the chart and arrived in the gravel instead of the lane."
+    },
+    {
+      "id": "compartment_spill",
+      "name": "Compartment Spill",
+      "system_id": "HC-V1-R6-S4",
+      "origin": "Compartments that opened when the station hulk rolled."
+    },
+    {
+      "id": "unanswered",
+      "name": "Unanswered",
+      "system_id": "HC-V1-R6-S6",
+      "origin": "Calls the last buoy logged and no ship answered."
+    },
+    {
+      "id": "expired_papers",
+      "name": "Expired Papers",
+      "system_id": "HC-V1-R7-S1",
+      "origin": "Privateers whose paper died at Step and whose hulls stayed."
+    },
+    {
+      "id": "dishonored",
+      "name": "Dishonored",
+      "system_id": "HC-V1-R7-S2",
+      "origin": "Captains who presented a letter at Marque Rock and were fired on anyway."
+    },
+    {
+      "id": "starved_convoys",
+      "name": "Starved Convoys",
+      "system_id": "HC-V1-R7-S3",
+      "origin": "Food convoys that were eaten before they docked at Tithe Outpost."
+    },
+    {
+      "id": "costume_hulls",
+      "name": "Costume Hulls",
+      "system_id": "HC-V1-R7-S4",
+      "origin": "Hulls painted Compact and abandoned when the real cutter did not come."
+    },
+    {
+      "id": "frozen_claims",
+      "name": "Frozen Claims",
+      "system_id": "HC-V1-R7-S5",
+      "origin": "Homesteads frozen by raids and towed here to be stripped."
+    },
+    {
+      "id": "no_log",
+      "name": "No Log",
+      "system_id": "HC-V1-R7-S6",
+      "origin": "Fights that ended here and were never written into a Compact log."
+    },
+    {
+      "id": "unpaid_tribute",
+      "name": "Unpaid Tribute",
+      "system_id": "HC-V1-R8-S1",
+      "origin": "Hulls that reached Quay and would not pay."
+    },
+    {
+      "id": "trusted_wrong",
+      "name": "Trusted Wrong",
+      "system_id": "HC-V1-R8-S2",
+      "origin": "Captains who heaved to for a stolen Choir beacon."
+    },
+    {
+      "id": "sealed_then_stolen",
+      "name": "Sealed Then Stolen",
+      "system_id": "HC-V1-R8-S3",
+      "origin": "Vaults lifted from Sealed Orchard and cracked at Seedcut."
+    },
+    {
+      "id": "undecided",
+      "name": "Undecided",
+      "system_id": "HC-V1-R8-S4",
+      "origin": "Hulls that would not pick a sail at Twin Wake."
+    },
+    {
+      "id": "thrown_out",
+      "name": "Thrown Out",
+      "system_id": "HC-V1-R8-S5",
+      "origin": "Captains the den threw out the hollow and did not tow home."
+    },
+    {
+      "id": "first_deaths",
+      "name": "First Deaths",
+      "system_id": "HC-V1-R8-S6",
+      "origin": "Couriers who believed the plywood was a Compact fort."
+    }
+  ]
 }

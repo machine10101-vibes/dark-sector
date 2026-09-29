@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R4-S6",
+  "name": "The Exception",
+  "seed": 34006,
+  "why_visit": "One sanctioned research shard. The plague hook is the reason the seal has a door.",
+  "law_color": "amber",
+  "status": "authored",
+  "region": "R4",
+  "star": {
+    "id": "hc-v1-r4-s6-star",
+    "name": "Exception",
+    "class": "Gutter",
+    "radius": 120,
+    "color": "#d2a06a"
+  },
+  "bodies": [
+    {
+      "id": "research_shard",
+      "name": "Research Shard",
+      "angle": 1.2,
+      "distance": 1500,
+      "radius": 80,
+      "color": "#c4a070",
+      "blurb": "The one shard the Choir licensed. The door is the exception.",
+      "legal": "Sanctioned research. Everything else in the lane is still a crime.",
+      "air": "Lab vent.",
+      "face": "Licensed glass.",
+      "crust": "Shard crust.",
+      "life": "Cultures under license. Do not open them.",
+      "ruins": "The license, one page.",
+      "resource_id": "license_glass",
+      "resource_name": "License glass",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "plague_hook",
+      "name": "Plague Hook",
+      "angle": 2.8,
+      "distance": 2300,
+      "radius": 52,
+      "color": "#8a6848",
+      "blurb": "The hook the license does not name out loud.",
+      "legal": "Authored plague ground. The Choir watches the door.",
+      "air": "None.",
+      "face": "Quarantine paint.",
+      "crust": "Hook stone.",
+      "life": "Contained. You hope.",
+      "ruins": "A redacted line.",
+      "resource_id": "hook_stone",
+      "resource_name": "Hook stone",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "license_dust",
+    "name": "License Dust",
+    "composition": "license ash and quarantine paint from the one sanctioned shard",
+    "radius": 2600,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "License Dust",
+    "amount": 6,
+    "legal": "license ash and quarantine paint from the one sanctioned shard",
+    "heat": ""
+  },
+  "trash": {
+    "id": "revoked_samples",
+    "name": "Revoked Samples",
+    "origin": "Samples the license revoked and the shard would not burn on site.",
+    "anchor": "research_shard",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Samples the license revoked and the shard would not burn on site.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "research_shard_pocket",
+    "name": "The Exception Pocket",
+    "anchor": "research_shard",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "One sanctioned research shard. The plague hook is the reason the seal has a door."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "glass_choir",
+    "count": 1,
+    "radius": 520,
+    "home": "research_shard"
+  },
+  "pirates": {
+    "count": 0,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "license_warden",
+      "name": "License Warden",
+      "class_id": "cutter",
+      "home": "research_shard",
+      "radius": 640
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "research_shard",
+      "radius": 280
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

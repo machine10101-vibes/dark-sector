@@ -1,5 +1,30 @@
 {
-  "schema": "hc_v1_g0",
-  "status": "template",
-  "streams": []
+  "schema": "hc_v1_slice9",
+  "status": "authored",
+  "streams": [
+    {
+      "id": "spore_fall",
+      "name": "Spore Fall",
+      "system_id": "HC-V1-R4-S3",
+      "origin": "Blight spores on a falling vector off Blight Moon.",
+      "vector": 1.8,
+      "period": 12.0
+    },
+    {
+      "id": "clock_stream",
+      "name": "Clock Stream",
+      "system_id": "HC-V1-R6-S2",
+      "origin": "Ice and rare comps on the Clock Rock timer. A probe in the window dies.",
+      "vector": 0.7,
+      "period": 14.0
+    },
+    {
+      "id": "iron_rain",
+      "name": "Iron Rain",
+      "system_id": "HC-V1-R6-S5",
+      "origin": "Nickel on a hard vector. Fighters hate it. Anvils invoice it.",
+      "vector": 2.2,
+      "period": 11.0
+    }
+  ]
 }

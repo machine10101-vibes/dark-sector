@@ -1,0 +1,9 @@
+{
+  "id": "municipal_navy",
+  "name": "Municipal Navy",
+  "kind": "pdo",
+  "temper": "audience",
+  "color": "#d7c4a0",
+  "blurb": "Orbital Municipal Navy. They like a dock fee and an audience. Two lanes over is already a story.",
+  "heat_to_engage": 36
+}

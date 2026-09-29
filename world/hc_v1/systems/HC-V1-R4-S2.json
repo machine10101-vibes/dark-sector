@@ -1,0 +1,133 @@
+{
+  "id": "HC-V1-R4-S2",
+  "name": "Sealed Orchard",
+  "seed": 34002,
+  "why_visit": "Dead domes and lamp-moth graveyards. The culture vaults are illegal and still cold.",
+  "law_color": "green",
+  "status": "authored",
+  "region": "R4",
+  "star": {
+    "id": "hc-v1-r4-s2-star",
+    "name": "Orchard",
+    "class": "G",
+    "radius": 120,
+    "color": "#dfe8c8"
+  },
+  "bodies": [
+    {
+      "id": "dead_dome",
+      "name": "Dead Dome",
+      "angle": 0.8,
+      "distance": 1600,
+      "radius": 95,
+      "color": "#b7c49a",
+      "blurb": "A dome the Choir sealed. Lamp-moths died on the glass.",
+      "legal": "Glass Choir seal. The vault is not a claim.",
+      "air": "Stale dome air.",
+      "face": "Moth-dusted glass.",
+      "crust": "Orchard soil under seal.",
+      "life": "Dead lamp-moths. Nothing you may keep.",
+      "ruins": "A culture index burned at the edge.",
+      "resource_id": "moth_dust",
+      "resource_name": "Moth dust",
+      "amount": 5,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "cold_vault",
+      "name": "Cold Vault",
+      "angle": 3.1,
+      "distance": 2200,
+      "radius": 60,
+      "color": "#9aa888",
+      "blurb": "An illegal culture vault the seal did not find the first time.",
+      "legal": "Contraband vault. The Choir will burn a second copy.",
+      "air": "None.",
+      "face": "Vault frost.",
+      "crust": "Archive stone.",
+      "life": "Cultures, illegal.",
+      "ruins": "A second index, hidden.",
+      "resource_id": "culture_ice",
+      "resource_name": "Culture ice",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "moth_scale",
+    "name": "Moth Scale",
+    "composition": "lamp-moth scale and dome sealant from the sealed orchard",
+    "radius": 2850,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Moth Scale",
+    "amount": 6,
+    "legal": "lamp-moth scale and dome sealant from the sealed orchard",
+    "heat": ""
+  },
+  "trash": {
+    "id": "burned_domes",
+    "name": "Burned Domes",
+    "origin": "Domes the Choir fired after the moth count failed.",
+    "anchor": "dead_dome",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Domes the Choir fired after the moth count failed.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "dead_dome_pocket",
+    "name": "Sealed Orchard Pocket",
+    "anchor": "dead_dome",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "Dead domes and lamp-moth graveyards. The culture vaults are illegal and still cold."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "glass_choir",
+    "count": 1,
+    "radius": 520,
+    "home": "dead_dome"
+  },
+  "pirates": {
+    "count": 0,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "dead_dome",
+      "radius": 780
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

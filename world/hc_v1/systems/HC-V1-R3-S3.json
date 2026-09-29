@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R3-S3",
+  "name": "Guest Lamp",
+  "seed": 33003,
+  "why_visit": "Diplomacy stations and a neutral exchange. Pickpockets work the vacuum between lamps.",
+  "law_color": "green",
+  "status": "authored",
+  "region": "R3",
+  "star": {
+    "id": "hc-v1-r3-s3-star",
+    "name": "Lamp",
+    "class": "F",
+    "radius": 120,
+    "color": "#f7f1e4"
+  },
+  "bodies": [
+    {
+      "id": "guest_station",
+      "name": "Guest Station",
+      "angle": 0.3,
+      "distance": 1450,
+      "radius": 90,
+      "color": "#e6dcc8",
+      "blurb": "A diplomacy station. The lamps are brighter than the law.",
+      "legal": "Neutral exchange under municipal lamps.",
+      "air": "Reception air.",
+      "face": "White lamp metal.",
+      "crust": "Hollow station plate.",
+      "life": "Delegations. No stock.",
+      "ruins": "A stolen invitation, framed.",
+      "resource_id": "lamp_token",
+      "resource_name": "Lamp token",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "pocket_lane",
+      "name": "Pocket Lane",
+      "angle": 2.4,
+      "distance": 2400,
+      "radius": 48,
+      "color": "#c8bba4",
+      "blurb": "The dark between lamps where a pocket is cut.",
+      "legal": "Vacuum between stations. The navy calls it a corridor.",
+      "air": "None.",
+      "face": "Soot and stolen seals.",
+      "crust": "Thin.",
+      "life": "None.",
+      "ruins": "A cut purse frozen to the rock.",
+      "resource_id": "seal_scrap",
+      "resource_name": "Seal scrap",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": true,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "invitation_ash",
+    "name": "Invitation Ash",
+    "composition": "burned invitations and lamp soot from the diplomacy watch",
+    "radius": 2900,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Invitation Ash",
+    "amount": 6,
+    "legal": "burned invitations and lamp soot from the diplomacy watch",
+    "heat": ""
+  },
+  "trash": {
+    "id": "cut_purses",
+    "name": "Cut Purses",
+    "origin": "Dispatch boats robbed between Guest Lamp stations and never claimed.",
+    "anchor": "guest_station",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Dispatch boats robbed between Guest Lamp stations and never claimed.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "guest_station_pocket",
+    "name": "Guest Lamp Pocket",
+    "anchor": "guest_station",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "Diplomacy stations and a neutral exchange. Pickpockets work the vacuum between lamps."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "municipal_navy",
+    "count": 1,
+    "radius": 520,
+    "home": "guest_station"
+  },
+  "pirates": {
+    "count": 1,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "lamp_host",
+      "name": "Lamp Host",
+      "class_id": "anvil",
+      "home": "guest_station",
+      "radius": 680
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "guest_station",
+      "radius": 780
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}

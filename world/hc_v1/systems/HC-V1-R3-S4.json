@@ -1,0 +1,141 @@
+{
+  "id": "HC-V1-R3-S4",
+  "name": "Not Ours",
+  "seed": 33004,
+  "why_visit": "A beautiful garden moon. The navy will not leave orbit to help you two lanes over.",
+  "law_color": "green",
+  "status": "authored",
+  "region": "R3",
+  "star": {
+    "id": "hc-v1-r3-s4-star",
+    "name": "Haven",
+    "class": "G",
+    "radius": 120,
+    "color": "#d7e6c4"
+  },
+  "bodies": [
+    {
+      "id": "garden_moon",
+      "name": "Garden Moon",
+      "angle": 0.9,
+      "distance": 1550,
+      "radius": 110,
+      "color": "#8fbf78",
+      "blurb": "The garden moon the navy photographs and does not defend.",
+      "legal": "Municipal beauty. Not a filed claim. Not theirs once you leave orbit.",
+      "air": "Garden breath, thin.",
+      "face": "Terraces and closed gates.",
+      "crust": "Good soil under a law that stops at the lane.",
+      "life": "Orchards in bond. Not yours.",
+      "ruins": "A navy plaque that faces the lane, not the soil.",
+      "resource_id": "terrace_fruit",
+      "resource_name": "Terrace fruit",
+      "amount": 6,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "orbit_only",
+      "name": "Orbit Only",
+      "angle": 2.8,
+      "distance": 2100,
+      "radius": 50,
+      "color": "#9aa890",
+      "blurb": "The rock the navy actually patrols. Two lanes over is already a story.",
+      "legal": "Navy orbit. Help ends here.",
+      "air": "None.",
+      "face": "Patrol paint.",
+      "crust": "Plain stone.",
+      "life": "None.",
+      "ruins": "A rescue buoy with the battery pulled.",
+      "resource_id": "paint_chips",
+      "resource_name": "Patrol paint",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "terrace_peel",
+    "name": "Terrace Peel",
+    "composition": "garden peel and plaque metal from Garden Moon, not ice",
+    "radius": 2750,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Terrace Peel",
+    "amount": 6,
+    "legal": "garden peel and plaque metal from Garden Moon, not ice",
+    "heat": ""
+  },
+  "trash": {
+    "id": "abandoned_help",
+    "name": "Abandoned Help",
+    "origin": "Rescue boats the navy recalled when the call was two lanes off Orbit Only.",
+    "anchor": "orbit_only",
+    "angle": 1.4,
+    "distance": 640,
+    "count": 8,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Rescue boats the navy recalled when the call was two lanes off Orbit Only.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "garden_moon_pocket",
+    "name": "Not Ours Pocket",
+    "anchor": "garden_moon",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "A beautiful garden moon. The navy will not leave orbit to help you two lanes over."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "municipal_navy",
+    "count": 1,
+    "radius": 520,
+    "home": "garden_moon"
+  },
+  "pirates": {
+    "count": 0,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [
+    {
+      "id": "orbit_clerk",
+      "name": "Orbit Clerk",
+      "class_id": "anvil",
+      "home": "orbit_only",
+      "radius": 640
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "garden_moon",
+      "radius": 780
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": "Garden Moon"
+}

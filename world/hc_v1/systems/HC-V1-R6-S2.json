@@ -1,0 +1,149 @@
+{
+  "id": "HC-V1-R6-S2",
+  "name": "Clockstream",
+  "seed": 36002,
+  "why_visit": "A meteor stream on a known timer. Ice and rare comps. It kills a parked probe.",
+  "law_color": "amber",
+  "status": "authored",
+  "region": "R6",
+  "star": {
+    "id": "hc-v1-r6-s2-star",
+    "name": "Clock",
+    "class": "F",
+    "radius": 120,
+    "color": "#f2f4f8"
+  },
+  "bodies": [
+    {
+      "id": "clock_rock",
+      "name": "Clock Rock",
+      "angle": 0.5,
+      "distance": 1700,
+      "radius": 70,
+      "color": "#c8d0d8",
+      "blurb": "The rock the stream is timed against.",
+      "legal": "Drift. The window is the law.",
+      "air": "None.",
+      "face": "Impact glass.",
+      "crust": "Timing stone.",
+      "life": "None.",
+      "ruins": "A probe that missed the window.",
+      "resource_id": "rare_comp",
+      "resource_name": "Rare comp",
+      "amount": 5,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "window_mark",
+      "name": "Window Mark",
+      "angle": 2.4,
+      "distance": 2400,
+      "radius": 46,
+      "color": "#8a98a4",
+      "blurb": "A mark buoy that still counts the period.",
+      "legal": "Timer buoy. Not a port.",
+      "air": "None.",
+      "face": "Buoy paint.",
+      "crust": "Metal.",
+      "life": "None.",
+      "ruins": "The count, scratched.",
+      "resource_id": "timer_plate",
+      "resource_name": "Timer plate",
+      "amount": 3,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "clock_grit",
+    "name": "Clock Grit",
+    "composition": "impact glass and rare-comp chips from the Clockstream impacts",
+    "radius": 2500,
+    "width": 160,
+    "count": 12,
+    "resource_id": "belt_mass",
+    "resource_name": "Clock Grit",
+    "amount": 6,
+    "legal": "impact glass and rare-comp chips from the Clockstream impacts",
+    "heat": ""
+  },
+  "trash": {
+    "id": "none",
+    "name": "",
+    "origin": "",
+    "anchor": "",
+    "angle": 0,
+    "distance": 0,
+    "count": 0,
+    "spread": 0,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 0,
+    "legal": "",
+    "heat": ""
+  },
+  "stream": {
+    "id": "clock_stream",
+    "name": "Clock Stream",
+    "origin": "Ice and rare comps on the Clock Rock timer. A probe in the window dies.",
+    "vector": 0.7,
+    "period": 14.0,
+    "speed": 64.0,
+    "span": 896.0,
+    "anchor": "clock_rock",
+    "angle": 0.6,
+    "distance": 820,
+    "resource_id": "stream_mass",
+    "resource_name": "Clock Stream",
+    "amount": 5,
+    "legal": "Ice and rare comps on the Clock Rock timer. A probe in the window dies.",
+    "heat": ""
+  },
+  "pocket": {
+    "id": "clock_rock_pocket",
+    "name": "Clockstream Pocket",
+    "anchor": "clock_rock",
+    "angle": -0.8,
+    "distance": 480,
+    "radius": 200,
+    "plantable": false,
+    "why": "A meteor stream on a known timer. Ice and rare comps. It kills a parked probe."
+  },
+  "gates": [],
+  "pdo": {
+    "faction": "rimward_charter",
+    "count": 0,
+    "radius": 520,
+    "home": "clock_rock"
+  },
+  "pirates": {
+    "count": 1,
+    "angle": 1.7,
+    "standoff": 780
+  },
+  "haulers": [],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "clock_rock",
+      "radius": 280
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": ""
+}
