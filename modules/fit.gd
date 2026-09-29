@@ -41,11 +41,22 @@ static func effects_sum(defs: Dictionary, module_ids: Array) -> Dictionary:
 	return total
 
 
+static func working_ids(ship: Dictionary, module_ids: Array) -> Array:
+	var hpmap: Dictionary = ship.get("module_hp", {})
+	var live: Array = []
+	for module_id in module_ids:
+		if hpmap.has(module_id) and float(hpmap[module_id]) <= 0.0:
+			continue
+		live.append(module_id)
+	return live
+
+
 static func stats(defs: Dictionary, ship: Dictionary) -> Dictionary:
 	var hull: Dictionary = defs.ships[ship.class_id]
 	var module_ids: Array = ship.get("modules", [])
-	var effects := effects_sum(defs, module_ids)
-	var mass := float(hull.mass) + float(effects.mass)
+	var bolted := effects_sum(defs, module_ids)
+	var effects := effects_sum(defs, working_ids(ship, module_ids))
+	var mass := float(hull.mass) + float(bolted.mass)
 	var thrust := float(hull.thrust) + float(effects.thrust)
 	var moment := Vector2.ZERO
 	for module_id in module_ids:
@@ -64,16 +75,16 @@ static func stats(defs: Dictionary, ship: Dictionary) -> Dictionary:
 	var power := float(hull.power)
 	var draw := float(hull.power_draw) + float(effects.power_draw)
 	var cargo := int(hull.cargo) + int(round(float(effects.cargo)))
-	var signature := float(hull.signature) + float(effects.signature)
+	var signature := float(hull.signature) + float(bolted.signature)
 	var sensor := float(hull.sensor) + float(effects.sensor)
 	var gun: Dictionary = hull.gun.duplicate(true)
 	gun.damage = float(gun.damage) + float(effects.gun_damage)
 	var keel := float(hull.mass) * 1.12
-	var radius := float(hull.radius) + float(effects.radius)
+	var radius := float(hull.radius) + float(bolted.radius)
 	var crew_budget := 0
 	if ship.has("crew"):
 		crew_budget = ship.crew.size()
-	var crew_used := int(round(float(effects.crew)))
+	var crew_used := int(round(float(bolted.crew)))
 	var armor := clampf(float(effects.armor), 0.0, 0.7)
 	return {
 		"mass": mass,

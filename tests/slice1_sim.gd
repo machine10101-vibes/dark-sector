@@ -102,7 +102,7 @@ func _traffic() -> void:
 			pirates += 1
 	check(not patrol.is_empty(), "Helion Compact patrol is on the lane")
 	check(not hauler.is_empty() and str(hauler.name) == "Hauler Holt", "a civilian hauler is in the system")
-	check(pirates == 0, "no pirate pack this slice")
+	check(pirates >= 2 and pirates <= 4, "a small Red Keel pack is in the system")
 	var patrol_at: Vector2 = patrol.pos
 	var hauler_at: Vector2 = hauler.pos
 	sim.tick(1.6, {})

@@ -39,7 +39,7 @@ func _ready() -> void:
 	_build_pause()
 	_build_dead()
 	var hint := ThemeKit.label(
-		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   wheel zoom     1 probe   2 harvest     B bay   H hangar   D dossier   F heat   J quests   K claim     Hold / Esc pause   F5 save   F9 load",
+		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   R repair   wheel zoom     1 probe   2 harvest     B bay   H hangar   D dossier   F heat   J quests   K claim     Hold / Esc pause   F5 save   F9 load",
 		12,
 		Color("8d826c")
 	)
@@ -143,6 +143,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_launch("harvest_drone")
 		KEY_3, KEY_KP_3:
 			_launch(_boat_id())
+		KEY_R:
+			_repair()
 		KEY_F5:
 			_save()
 		KEY_F9:
@@ -238,7 +240,7 @@ func _build_pause() -> void:
 func _build_dead() -> void:
 	dead_box = _center_card("The keel is a wreck")
 	dead_box.visible = false
-	var note := ThemeKit.label("Your agent id is still on the wreck. Load an earlier log, or leave and take a new keel. The dock keeps the wreck either way.", 14)
+	var note := ThemeKit.label("The wreck keeps your name and some of the hold. The layout stays. You wake at Helion Dock.", 14)
 	note.custom_minimum_size = Vector2(360, 0)
 	var load := ThemeKit.button("Read the log")
 	load.pressed.connect(_load)
@@ -273,7 +275,9 @@ func _refresh_helm() -> void:
 		zoom_word = "Local"
 	helm_name.text = "%s    %s    %s" % [str(sim.defs.system.name).to_upper(), hull.class_name, hull.callsign]
 	var keel := "Keel complaining." if stats.keel_warn else "Keel within tolerance."
-	helm_flight.text = "%d m/s    yaw %.0f°/s    %s    sig %s    %s    %s" % [
+	helm_flight.text = "hull %d/%d    %d m/s    yaw %.0f°/s    %s    sig %s    %s    %s" % [
+		int(sim.player.hp),
+		int(sim.player.max_hp),
 		int(sim.player.vel.length()),
 		stats.yaw_deg,
 		_mass_line(stats),
@@ -282,8 +286,19 @@ func _refresh_helm() -> void:
 		zoom_word,
 	]
 	var heat := float(sim.heat.get(sim._pdo_id(), 0.0))
-	helm_zone.text = "%s    %s heat %s (%.0f)" % [sim.zone_label(zone), sim._pdo_name(), HeatWords.word(heat), heat]
-	helm_cargo.text = _cargo_line(sim, stats)
+	var stage := sim.heat_stage()
+	var stage_word := ""
+	if stage == "hail":
+		stage_word = " — hailed"
+	elif stage == "fine":
+		stage_word = " — fined"
+	elif stage == "guns":
+		stage_word = " — guns"
+	helm_zone.text = "%s    %s heat %s (%.0f)%s" % [sim.zone_label(zone), sim._pdo_name(), HeatWords.word(heat), heat, stage_word]
+	var repair := ""
+	if sim.player.pos.distance_to(sim.beacon_pos) <= 170.0:
+		repair = "    R welds at the dock beacon"
+	helm_cargo.text = _cargo_line(sim, stats) + repair
 	helm_craft.text = _craft_line(sim)
 	var bits: Array = []
 	for line in sim.lines:
@@ -312,13 +327,17 @@ func _cargo_line(sim, stats: Dictionary) -> String:
 
 func _craft_line(sim) -> String:
 	var bits: Array = []
+	if sim.hangar_down():
+		bits.append("Hangar down — craft cannot come aboard")
 	for item in sim.craft:
 		if str(item.state) == "docked":
 			continue
 		bits.append("%s %s" % [item.name, item.state])
 	if bits.is_empty():
 		return "Hangar sealed. Craft are aboard."
-	return "Out: " + "   ".join(bits)
+	if sim.hangar_down() and bits.size() == 1:
+		return str(bits[0])
+	return "   ".join(bits)
 
 
 func _toggle(kind: String) -> void:
@@ -668,6 +687,14 @@ func _recall_uid(uid: String) -> void:
 	if Game.sim == null:
 		return
 	CraftOrders.recall(Game.sim, uid)
+
+
+func _repair() -> void:
+	if Game.sim == null:
+		return
+	var message := Game.sim.try_repair()
+	if message != "":
+		Game.sim.say(message)
 
 
 func _launch(def_id: String) -> void:

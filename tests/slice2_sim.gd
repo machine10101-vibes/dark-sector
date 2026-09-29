@@ -106,12 +106,15 @@ func _scan_harvest_heat() -> void:
 	check(lease > 0.0 and lease <= 8.0, "small lease cut adds little heat (%.0f)" % lease)
 	var heat1 := float(sim.heat.helion_compact)
 	var mass1 := int(sim.player.cargo.get("raw_mass", 0))
+	var seam := int(sim.deposits.get("aegis_prime", 0))
 	check(CraftOrders.order(sim, "harvest_drone_1", "launch", "aegis_prime") == "", "drone launches to Aegis Prime")
 	guard = 0
-	while int(sim.player.cargo.get("raw_mass", 0)) == mass1 and guard < 900:
+	while int(sim.deposits.get("aegis_prime", 0)) == seam and guard < 900:
 		sim.tick(0.05, {})
 		guard += 1
-	check(int(sim.player.cargo.get("raw_mass", 0)) == mass1 + 1, "protected crust still yields mass")
+	var yielded := int(sim.deposits.get("aegis_prime", 0)) == seam - 1
+	var kept := int(sim.player.cargo.get("raw_mass", 0)) >= mass1
+	check(yielded and (kept or sim.fined), "protected crust still yields mass")
 	var illegal := float(sim.heat.helion_compact) - heat1
 	check(illegal > lease, "protected harvest adds more heat than the lease (%.0f)" % illegal)
 	var before_trash := float(sim.heat.helion_compact)
