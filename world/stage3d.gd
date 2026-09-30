@@ -949,8 +949,8 @@ func _sync_planets(sim) -> void:
 		(ball.mesh as SphereMesh).radius = radius
 		(ball.mesh as SphereMesh).height = radius * 2.0
 		var air := node.get_node("Air") as MeshInstance3D
-	(air.mesh as SphereMesh).radius = radius * 1.012
-	(air.mesh as SphereMesh).height = radius * 2.024
+		(air.mesh as SphereMesh).radius = radius * 1.012
+		(air.mesh as SphereMesh).height = radius * 2.024
 		var colors: Array = row.get("colors", ["#889088"])
 		var mat := ball.material_override as ShaderMaterial
 		var albedo := Color(str(colors[0]))
