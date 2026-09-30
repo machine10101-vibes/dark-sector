@@ -166,7 +166,14 @@ func _process(_delta: float) -> void:
 		stage.set_keel(klass, hero)
 	if yard_line != null and Game.defs.has("ships") and Game.defs.ships.has(klass):
 		var hull: Dictionary = Game.defs.ships[klass]
-		yard_line.text = "%s is in the yard." % str(hull.callsign)
+		var fit := ""
+		if klass == "vesper":
+			fit = " Spine mast."
+		elif klass == "anvil":
+			fit = " Wide bay."
+		elif klass == "kestrel":
+			fit = " Wing guns."
+		yard_line.text = "%s is in the yard.%s" % [str(hull.callsign), fit]
 
 
 func _focused_keel() -> String:

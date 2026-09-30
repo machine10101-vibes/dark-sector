@@ -20,6 +20,14 @@ Pages build. One fresh Needle. Incognito is fine. The scale bar is zoom. The car
 3. Board. Take scan. Probe. The probe reads Aegis Prime. When that dossier seals while Moored, or the next time the pad has the keel, Purse is 80. Sealing the ice ring does not pay this slip.
 4. Take the haul. Touch the ice ring. Return until Moored. Purse is 200. The crate is gone.
 
+## Ready — hull mounts
+
+Windowed or the Pages build. One fresh launch. The same four bolts. Stats and slots stay put.
+
+1. The title is still the Helion limb, the ice rings, and one keel. New keel. Needle wears a spine mast. Barn wears a wide bay. Beak wears wing guns. The line names the keel and that fit. Take the Needle. Still moored. Cast off and Board are up. Purse is 0.
+2. Bolt the same roles in flight and the hardware differs. Needle: spine boom, flank pods, slim cheek barrels, a spine probe rail. Barn: roof mast, one wide bay, fat cheek boxes, twin roof tubes. Beak: swept wing mast, wing guns, side panniers, a chin probe.
+3. Cast off, fly out, return until the card shows Helion Dock under 200 m. Moored. Inside 500 m, Dock forces it. Take scan still pays 80 on the pad. The haul still pays to 200. The chart still opens. The glass helm is unchanged.
+
 ## Ready — title yard
 
 Windowed or the Pages build. One fresh launch.

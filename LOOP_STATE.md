@@ -1,11 +1,12 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Moor and purse
+Slice just completed: Hull mounts
 Player-visible what works now:
 - Cast off, fly out, and come back. When the card shows Helion Dock under 200 m the keel is Moored from any heading, speed, or stop, on Local or Tactical. Inside 500 m the Dock button forces that snap. A fresh cast-off that never leaves the bubble is not grabbed. The card meters are the range. The scale bar is zoom.
 - Take scan sends the probe to Aegis Prime. The ice ring is closer to the pad, and sealing it does not pay. When the Aegis Prime dossier seals while Moored, or on the next pad contact, Purse becomes 80. The ice-ring crate pays 120 on the next Moored pad, 200 if the scan was already paid, and the crate leaves the hold.
-- The title and the keel yard are the same 3D sky as the helm: Aegis as a limb, ice rings, and one hull. New keel opens that hull above the cards. Hover, or the top card on a phone, swaps Needle, Barn, and Beak. Take the Needle still moors at Helion Dock.
+- The title and the keel yard are the same 3D sky as the helm: Aegis as a limb, ice rings, and one hull. New keel opens that hull above the cards. Hover, or the top card on a phone, swaps Needle, Barn, and Beak. The yard line names the signature fit: Needle a spine mast, Barn a wide bay, Beak wing guns. Take the Needle still moors at Helion Dock.
+- The same four bolts — probe, survey mast, guns, cargo bay — sit on different mounts. Needle wears a spine boom, flank pods, slim cheeks, and a spine probe rail. Barn wears a roof mast, one wide bay, fat cheek boxes, and twin roof tubes. Beak wears a swept wing mast, wing guns, side panniers, and a chin probe. Slots, stats, and the 2D card stay shared.
 - The helm is a dark glass card: hull, speed, heat, and purse sit in their own chips. Place and mode are the line under them. Cast off, Board, Quests, and Probe are the primary controls. Lane, weld, claim, and the rest sit in a quieter strip. The web build still hides the origin overlay.
 - W (or Cast off) leaves the pad and stays gone. A/D yaws and the velocity follows the nose, easing at high speed so the keel carves instead of spinning. Q/E strafes. The camera keeps the ship in frame once you leave the berth, with a lead along the nose. D is still yaw. I is still the dossier.
 - Leaving the Aegis band keeps outward speed and opens a readable chart. Aegis Prime and the lanes (Homestead Road, Green Spine, Writ Lane) stay on screen. The city crust still refuses a landing and tells you to turn outward. The web build hides the origin/focus/render overlay.
@@ -45,3 +46,6 @@ Files touched:
 - world/stage3d.gd
 - PLAYTEST.md
 - LOOP_STATE.md
+- tests/hull_mounts.gd
+- ui/menu.gd
+- README.md
