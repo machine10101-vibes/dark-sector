@@ -4,6 +4,11 @@ extends RefCounted
 const BODY_SCALE := 3.4
 const ROCK_SCALE := 4.2
 const DOCK_GAP := 320.0
+const DOCK_BUOY_ANGLE := -0.7
+const DOCK_BUOY_OUT := 700.0
+const DOCK_HALO_KM := 3200.0
+const DOCK_LEAVE := 520.0
+const DOCK_CATCH := 460.0
 
 var defs: Dictionary = {}
 var seed_value = 0
@@ -690,6 +695,7 @@ func _step(dt: float, cmd: Dictionary) -> void:
 	_step_stream(dt)
 	_step_traffic(dt)
 	_step_scale(before_pos)
+	_try_pad_return()
 	Homestead.step(self, dt)
 	QuestBoard.pulse(self, dt)
 	DockBoard.pulse(self, dt)
@@ -711,7 +717,22 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 	_release_mooring(unit)
 	var cast_off := false
 	if bool(unit.get("moored", false)):
-		var leaving := float(cmd.get("thrust", 0.0)) > 0.15 or float(cmd.get("retro", 0.0)) > 0.15 or absf(float(cmd.get("strafe", 0.0))) > 0.15 or bool(cmd.get("cast_off", false))
+		var thrust_in := float(cmd.get("thrust", 0.0))
+		var retro_in := float(cmd.get("retro", 0.0))
+		var strafe_in := float(cmd.get("strafe", 0.0))
+		var leaving := thrust_in > 0.15 or retro_in > 0.15 or absf(strafe_in) > 0.15 or bool(cmd.get("cast_off", false))
+		# After a return, swallow a key that is still down. The Cast off button
+		# leaves immediately. A quiet moment, then a fresh press, leaves too.
+		if str(unit.get("agent_id", "")) == str(player.get("agent_id", "")):
+			var latch_t := float(quest_flags.get("moor_latch", 0.0))
+			if bool(cmd.get("cast_off", false)):
+				quest_flags.moor_latch = 0.0
+			elif latch_t > 0.0:
+				leaving = false
+				var next: float = latch_t - dt
+				if thrust_in > 0.15 or retro_in > 0.15 or absf(strafe_in) > 0.15:
+					next = maxf(next, 0.05)
+				quest_flags.moor_latch = maxf(next, 0.0)
 		if not leaving:
 			var held = Fit.stats(defs, unit)
 			unit.rot += float(cmd.get("rot", 0.0)) * float(held.turn) * dt
@@ -1414,6 +1435,25 @@ func _build_static() -> void:
 		pack_pos = green_body.pos + Vector2.from_angle(pang) * (green_r + stand)
 	_build_gates()
 	_build_nodes()
+
+
+func dock_buoy_km() -> Vector2:
+	var body = planet(str(defs.system.get("pdo", {}).get("home", "")))
+	if body == null:
+		return Vector2.ZERO
+	return body.chart_km + Vector2.from_angle(DOCK_BUOY_ANGLE) * (ScaleFrame.soi_km(body) + DOCK_BUOY_OUT)
+
+
+func in_dock_approach(world_km: Vector2) -> bool:
+	if str(defs.system.id) != "HC-V1-R1-S1":
+		return false
+	var home = planet(str(defs.system.get("pdo", {}).get("home", "")))
+	if home == null:
+		return false
+	if world_km.distance_to(dock_buoy_km()) <= DOCK_HALO_KM:
+		return true
+	var close := ScaleFrame.radius_km(home) + ScaleFrame.band_alt(home) + 1400.0
+	return world_km.distance_to(home.chart_km) <= close
 
 
 func chart_lane_pos(gate: Dictionary) -> Vector2:
@@ -2264,6 +2304,7 @@ func _to_chart_from_band(body: Dictionary) -> void:
 	layer = ScaleFrame.CHART
 	body_id = ""
 	band_id = ""
+	quest_flags.pad_departed = true
 	say("Clear of the band. The lanes are marked. Hold W — the sector stays open.")
 
 
@@ -2277,7 +2318,12 @@ func _step_approach() -> void:
 	var band := ScaleFrame.primary_band(body)
 	var mid := float(band.get("alt_km", 80.0))
 	var half := float(band.get("width_km", 40.0)) * 0.5
-	if alt <= mid + half and alt >= mid - half:
+	var outer_alt := mid + half
+	var inner_alt := mid - half
+	if _is_helion_pad(body):
+		outer_alt = mid + half + 800.0
+		inner_alt = maxf(mid - half - 400.0, 40.0)
+	if alt <= outer_alt and alt >= inner_alt:
 		_enter_band(body)
 		return
 	if player.pos.length() > ScaleFrame.soi_km(body):
@@ -2296,6 +2342,20 @@ func _step_approach() -> void:
 
 
 func _enter_band(body: Dictionary) -> void:
+	layer = ScaleFrame.BAND
+	body_id = str(body.id)
+	band_id = str(ScaleFrame.primary_band(body).get("id", "band"))
+	local_origin = body.chart_km
+	if _is_helion_pad(body) and beacon_pos != Vector2.ZERO:
+		var inward: Vector2 = beacon_pos - body.pos
+		if inward.length() < 1.0:
+			inward = Vector2.RIGHT
+		inward = inward.normalized()
+		player.pos = beacon_pos - inward * 180.0
+		player.vel = inward * 70.0
+		player.rot = inward.angle()
+		say("Helion Dock is ahead. Ease in — the pad takes the keel.")
+		return
 	var dir: Vector2 = player.pos.normalized()
 	if dir.length() < 0.2:
 		dir = Vector2.RIGHT
@@ -2303,10 +2363,6 @@ func _enter_band(body: Dictionary) -> void:
 	var sim_r := minf(float(body.radius) + DOCK_GAP, outer - 120.0)
 	player.pos = body.pos + dir * sim_r
 	player.vel = Vector2.ZERO
-	layer = ScaleFrame.BAND
-	body_id = str(body.id)
-	band_id = str(ScaleFrame.primary_band(body).get("id", "band"))
-	local_origin = body.chart_km
 	say("In the %s. Burning in does not land this keel." % str(ScaleFrame.primary_band(body).get("name", "band")))
 
 
@@ -2322,6 +2378,13 @@ func _rebase_chart() -> void:
 
 func _step_chart() -> void:
 	var world: Vector2 = local_origin + player.pos
+	var home = planet(str(defs.system.get("pdo", {}).get("home", "")))
+	if home != null and _is_helion_pad(home):
+		var in_well: bool = world.distance_to(home.chart_km) < ScaleFrame.soi_km(home)
+		var at_buoy: bool = world.distance_to(dock_buoy_km()) <= DOCK_HALO_KM
+		if in_well or at_buoy:
+			_begin_dock_approach(home, world, at_buoy and in_well == false)
+			return
 	var best = null
 	var best_d := 1.0e12
 	for body in planets:
@@ -2341,6 +2404,81 @@ func _step_chart() -> void:
 	body_id = str(best.id)
 	band_id = ""
 	say("%s fills the well. The band is the floor, not the streets." % str(best.name))
+
+
+func _is_helion_pad(body: Dictionary) -> bool:
+	if str(defs.system.id) != "HC-V1-R1-S1":
+		return false
+	return str(body.get("id", "")) == str(defs.system.get("pdo", {}).get("home", ""))
+
+
+func _begin_dock_approach(body: Dictionary, world: Vector2, from_buoy: bool) -> void:
+	var rel: Vector2 = world - body.chart_km
+	var dir := Vector2.RIGHT
+	if rel.length() > 1.0:
+		dir = rel.normalized()
+	local_origin = body.chart_km
+	layer = ScaleFrame.APPROACH
+	body_id = str(body.id)
+	band_id = ""
+	var inbound: float = player.vel.dot(-dir)
+	# A still keel inside the well stays where the layer test put it.
+	# Way on, or a touch of the Helion Dock buoy, drops to the shell.
+	if from_buoy or inbound > 80.0:
+		var shell := _dock_shell_km(body)
+		player.pos = dir * shell
+		player.vel = -dir * 90.0
+		player.rot = (-dir).angle()
+		say("Helion Dock approach. Hold in — the pad takes the keel.")
+		return
+	player.pos = rel
+	player.vel = player.vel.limit_length(40.0)
+	say("%s fills the well. The band is the floor, not the streets." % str(body.name))
+
+
+func _dock_shell_km(body: Dictionary) -> float:
+	var band := ScaleFrame.primary_band(body)
+	var mid := float(band.get("alt_km", 80.0))
+	var half := float(band.get("width_km", 40.0)) * 0.5
+	return ScaleFrame.radius_km(body) + mid + half + 80.0
+
+
+func _try_pad_return() -> void:
+	if player.is_empty():
+		return
+	if str(defs.system.id) != "HC-V1-R1-S1":
+		return
+	if int(layer) != ScaleFrame.BAND:
+		return
+	if beacon_pos == Vector2.ZERO:
+		return
+	var gap: float = player.pos.distance_to(beacon_pos)
+	if gap > DOCK_LEAVE:
+		quest_flags.pad_departed = true
+	if bool(player.get("moored", false)):
+		return
+	if bool(quest_flags.get("pad_departed", false)) == false:
+		return
+	if gap > DOCK_CATCH:
+		return
+	_moor_at_pad()
+
+
+func _moor_at_pad() -> void:
+	var dock = planet(str(defs.system.get("pdo", {}).get("home", "")))
+	player.moored = true
+	player.pos = beacon_pos
+	player.dock_x = beacon_pos.x
+	player.dock_y = beacon_pos.y
+	player.vel = Vector2.ZERO
+	player.thrusting = false
+	if dock != null:
+		var away: Vector2 = beacon_pos - dock.pos
+		if away.length() > 1.0:
+			player.rot = away.angle()
+	quest_flags.pad_departed = false
+	quest_flags.moor_latch = 0.55
+	say("Moored at the Helion Dock pad. Board is live. Cast off when you leave.")
 
 
 func _build_traffic() -> void:

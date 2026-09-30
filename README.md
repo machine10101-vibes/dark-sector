@@ -77,6 +77,8 @@ Hold W outward. Past the band the keel stays moving and the chart names Aegis Pr
 
 Slips are taken only on the pad. A full hold refuses the crate. Each slip pays once. Cast off is unchanged: W or the Cast off button still leaves the dock.
 
+To come back, fly at the cyan **Helion Dock** buoy on the chart, or into the Aegis well. The pad moors the keel. The helm reads Moored, and Cast off and Board are available again. A key that is still held down waits until you release it.
+
 Pick one keel at new game: Needle (Vesper), Barn (Anvil), or Beak (Kestrel). The yard has one module. Bolting it changes the top-down silhouette. It does not come off.
 
 ## Slice

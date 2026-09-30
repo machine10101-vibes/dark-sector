@@ -5,6 +5,9 @@ extends RefCounted
 
 
 static func at(sim, pos: Vector2) -> String:
+	var layer := int(sim.layer)
+	if layer == ScaleFrame.CHART or layer == ScaleFrame.APPROACH:
+		return _transit_law(sim, pos)
 	if str(sim.defs.system.get("law_color", "")) == "red":
 		return "red"
 	var red := _red_box(sim)
@@ -221,6 +224,28 @@ static func _other_flagged(sim, unit: Dictionary) -> bool:
 		if unit.pos.distance_to(other.pos) < 900.0:
 			return true
 	return false
+
+
+static func _transit_law(sim, pos: Vector2) -> String:
+	# Chart and approach positions are kilometers. The band discs are meters
+	# around Aegis, so a numeric overlap used to read green while the keel
+	# was still a sector away from the pad.
+	var painted := str(sim.defs.system.get("law_color", ""))
+	if painted == "red":
+		return "red"
+	var home = sim.planet(str(sim.defs.system.get("pdo", {}).get("home", "")))
+	var world := pos
+	if int(sim.layer) == ScaleFrame.APPROACH:
+		var focus = sim.planet(str(sim.body_id))
+		if focus != null:
+			world = focus.chart_km + pos
+	else:
+		world = sim.local_origin + pos
+	if home != null and sim.in_dock_approach(world):
+		return "green"
+	if painted == "amber":
+		return "amber"
+	return "dark"
 
 
 static func _in_green(sim, pos: Vector2) -> bool:

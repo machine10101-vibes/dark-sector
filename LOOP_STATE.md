@@ -1,8 +1,10 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Glass helm
+Slice just completed: Helion Dock return
 Player-visible what works now:
+- Cast off, fly past the band, then come back. The chart marks a cyan Helion Dock buoy outside the Aegis well. Flying into that buoy, or back into the well with way on, drops the keel onto the pad and moors it. The helm reads Moored. Cast off and Board return. Chart law stays dark until that approach is real, so a stray Local green is not the pad.
+- A sealed Aegis dossier pays 80 into Purse. The ice-ring crate pays 120 when it is brought back to the moored pad, and the crate leaves the hold.
 - The helm is a dark glass card: hull, speed, heat, and purse sit in their own chips. Place and mode are the line under them. Cast off, Board, Quests, and Probe are the primary controls. Lane, weld, claim, and the rest sit in a quieter strip. The web build still hides the origin overlay.
 - W (or Cast off) leaves the pad and stays gone. A/D yaws and the velocity follows the nose, easing at high speed so the keel carves instead of spinning. Q/E strafes. The camera keeps the ship in frame once you leave the berth, with a lead along the nose. D is still yaw. I is still the dossier.
 - Leaving the Aegis band keeps outward speed and opens a readable chart. Aegis Prime and the lanes (Homestead Road, Green Spine, Writ Lane) stay on screen. The city crust still refuses a landing and tells you to turn outward. The web build hides the origin/focus/render overlay.

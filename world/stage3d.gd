@@ -1297,6 +1297,27 @@ func _sync_chart_bodies(sim) -> void:
 		buoy.position = chart(at, 0.0)
 		buoy.visible = true
 		_tag(str(row.get("name", "Lane")), buoy.position + Vector3(0.0, 70.0, 0.0), Color("e6d7a8"), 18)
+	if str(sim.defs.system.id) == "HC-V1-R1-S1":
+		var dock_mark := _prop("chart_dock")
+		if dock_mark.mesh == null:
+			var ring := TorusMesh.new()
+			ring.inner_radius = 48.0
+			ring.outer_radius = 78.0
+			ring.rings = 32
+			ring.ring_segments = 8
+			dock_mark.mesh = ring
+			var glow := StandardMaterial3D.new()
+			glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			glow.albedo_color = Color("d7fbff")
+			glow.emission_enabled = true
+			glow.emission = Color("7ee7f2")
+			glow.emission_energy_multiplier = 1.4
+			dock_mark.material_override = glow
+			dock_mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var dock_at: Vector2 = sim.dock_buoy_km() - sim.local_origin
+		dock_mark.position = chart(dock_at, 0.0)
+		dock_mark.visible = true
+		_tag("Helion Dock", dock_mark.position + Vector3(0.0, 96.0, 0.0), Color("9eecf5"), 20)
 	var mark := _prop("chart_ship")
 	if mark.mesh == null:
 		var dot := SphereMesh.new()
