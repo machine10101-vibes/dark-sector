@@ -265,13 +265,12 @@ func _death_and_save() -> void:
 	check(sim.install("cargo_blister").ok, "the blister is on the keel")
 	sim.player.cargo["raw_mass"] = 4
 	sim.player.hp = 1.0
-	var dock = sim.planet("aegis_prime")
-	var spawn: Vector2 = dock.pos + Vector2(float(dock.radius) + SectorSim.DOCK_GAP, 40.0)
+	var spawn: Vector2 = sim.beacon_pos
 	sim.player.pos = sim.pack_pos
 	sim.damage_unit(sim.player, 80.0, "agent:red_keel:0")
 	check(bool(sim.player.alive), "the captain wakes")
 	check(sim.player.modules.has("cargo_blister"), "the layout stays bolted")
-	check(sim.player.pos.distance_to(spawn) < 8.0, "respawn is Helion Dock")
+	check(sim.player.pos.distance_to(spawn) < 8.0, "respawn is the Helion Dock pad")
 	check(int(sim.player.cargo.get("raw_mass", 0)) == 2, "some cargo stays aboard")
 	check(sim.wrecks.size() == 1, "the break leaves a wreck")
 	check(int(sim.wrecks[0].cargo.get("raw_mass", 0)) == 2, "the wreck holds the rest of the cargo")

@@ -137,13 +137,45 @@ class ScaleReadout extends Control:
 		var stage = helm.get("stage")
 		var font := ThemeDB.fallback_font
 		if cam != null and stage != null and font != null:
+			var ranked: Array = []
 			for item in stage.tags:
 				var at: Vector3 = item.p
 				if cam.is_position_behind(at):
 					continue
-				var sp: Vector2 = cam.unproject_position(at)
-				var col: Color = item.c
-				draw_string(font, sp, str(item.t), HORIZONTAL_ALIGNMENT_LEFT, -1, int(item.s), col)
+				var dist := cam.global_position.distance_to(at)
+				if dist > 2600.0:
+					continue
+				ranked.append({"item": item, "at": at, "dist": dist})
+			ranked.sort_custom(Callable(self, "_nearer_tag"))
+			var drawn: Array = []
+			for row in ranked:
+				var tag: Dictionary = row.item
+				var sp: Vector2 = cam.unproject_position(row.at)
+				if sp.x < -30.0 or sp.y < -10.0 or sp.x > size.x + 30.0 or sp.y > size.y - 88.0:
+					continue
+				var text := str(tag.t)
+				var font_size := int(tag.s)
+				var box := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+				var w := maxf(box.x, 24.0)
+				var h := maxf(box.y, float(font_size))
+				var kept := false
+				for _nudge in 5:
+					var hit := false
+					var mine := Rect2(sp, Vector2(w, h))
+					for other in drawn:
+						var taken: Rect2 = other
+						if mine.intersects(taken.grow(4.0)):
+							hit = true
+							break
+					if not hit:
+						kept = true
+						break
+					sp.y += h + 2.0
+				if not kept:
+					continue
+				drawn.append(Rect2(sp, Vector2(w, h)))
+				var col: Color = tag.c
+				draw_string(font, sp, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, col)
 		var zoom := maxf(Game.zoom, 0.05)
 		var raw := 140.0 / zoom
 		var mag := pow(10.0, floor(log(maxf(raw, 1.0)) / log(10.0)))
@@ -165,6 +197,10 @@ class ScaleReadout extends Control:
 		draw_line(origin + Vector2(px, 0), origin + Vector2(px, -7), Color("cbb892"), 2.0, true)
 		if font != null:
 			draw_string(font, origin + Vector2(0, -18), "%d m" % int(length), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("cbb892"))
+
+	func _nearer_tag(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.dist) < float(b.dist)
+
 
 	func sector_chase():
 		var helm := get_parent().get_parent()

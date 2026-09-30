@@ -91,8 +91,9 @@ func new_game(class_id: String) -> void:
 	var hull: Dictionary = defs.ships[class_id]
 	var fresh = _blank_ship(class_id, hull.callsign, "agent:captain", "human", "captain")
 	var dock = planet(str(defs.system.pdo.home))
-	fresh.pos = dock.pos + Vector2(float(dock.radius) + DOCK_GAP, 40.0)
+	fresh.pos = _hub_pad(dock, 0.0)
 	fresh.rot = (fresh.pos - dock.pos).angle()
+	fresh.moored = true
 	fresh.yard = hull.yard.duplicate()
 	fresh.slots = hull.slots.duplicate()
 	fresh.crew = hull.crew.duplicate(true)
@@ -153,7 +154,8 @@ func new_game(class_id: String) -> void:
 	say("%s. %s is the city-orbital. The ice ring is lit. %s holds confiscated hulls. %s is marked and not a homestead." % [defs.system.name, planet(str(defs.system.pdo.home)).name, defs.system.trash.name, pocket.name])
 	say("A Claim Core is in the hold. The Homestead Road buoy is off the green. L takes the lane.")
 	say("Green spine buoys leave for Brass Lantern and Writ. From First Soil the amber road reaches Perimeter, and the hatch reaches Gyre.")
-	say("Shakedown is on the log. J reads it. Y marks the next place. The keel stays put.")
+	say("Shakedown is on the log. J reads it. Y marks the next place.")
+	say("Moored at the Helion Dock pad. W casts off. The keel is in clear space, not in the city.")
 	_bind_band()
 
 
@@ -703,6 +705,19 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 		unit.thrusting = false
 		unit.pos += unit.vel * dt
 		return
+	_release_mooring(unit)
+	if bool(unit.get("moored", false)):
+		var leaving := float(cmd.get("thrust", 0.0)) > 0.15 or float(cmd.get("retro", 0.0)) > 0.15 or absf(float(cmd.get("strafe", 0.0))) > 0.15
+		if not leaving:
+			var held = Fit.stats(defs, unit)
+			unit.rot += float(cmd.get("rot", 0.0)) * float(held.turn) * dt
+			unit.vel = Vector2.ZERO
+			unit.thrusting = false
+			unit.pos = Vector2(float(unit.get("dock_x", unit.pos.x)), float(unit.get("dock_y", unit.pos.y)))
+			return
+		unit.moored = false
+		if str(unit.get("agent_id", "")) == str(player.agent_id):
+			say("Cast off. Helion Dock is behind you.")
 	var stats = Fit.stats(defs, unit)
 	unit.rot += float(cmd.get("rot", 0.0)) * float(stats.turn) * dt
 	var forward = Vector2.from_angle(unit.rot)
@@ -1187,8 +1202,11 @@ func _respawn_captain(unit: Dictionary) -> void:
 	if str(unit.agent_id) != str(player.agent_id):
 		nudge = 90.0
 	if dock != null:
-		unit.pos = dock.pos + Vector2(float(dock.radius) + DOCK_GAP, 40.0 + nudge)
+		unit.pos = _hub_pad(dock, nudge)
 		unit.rot = (unit.pos - dock.pos).angle()
+		unit.dock_x = unit.pos.x
+		unit.dock_y = unit.pos.y
+		unit.moored = true
 	if str(unit.agent_id) == str(player.agent_id):
 		banner = "You wake at %s. The wreck still has your name, and some of the hold." % str(defs.system.name)
 		say("The keel broke. Layout kept. You are back on the dock.")
@@ -1196,6 +1214,23 @@ func _respawn_captain(unit: Dictionary) -> void:
 		banner = "%s wakes at %s. The wreck still has their name, and some of the hold." % [str(unit.name), str(defs.system.name)]
 		say("%s broke. The layout stays. The ship was not deleted." % str(unit.name))
 	banner_t = 0.0
+
+
+func _hub_pad(dock, nudge: float) -> Vector2:
+	if dock == null:
+		return Vector2.ZERO
+	if beacon_pos != Vector2.ZERO and absf(nudge) < 0.5:
+		return beacon_pos
+	var outward := Vector2(float(dock.radius) + 430.0, -160.0 + nudge)
+	return dock.pos + outward
+
+
+func _release_mooring(unit: Dictionary) -> void:
+	if not bool(unit.get("moored", false)):
+		return
+	var pad := Vector2(float(unit.get("dock_x", unit.pos.x)), float(unit.get("dock_y", unit.pos.y)))
+	if unit.pos.distance_to(pad) > 64.0:
+		unit.moored = false
 
 
 func _add_cargo(id: String, count: int) -> void:
