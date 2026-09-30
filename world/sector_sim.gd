@@ -724,24 +724,36 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 		if str(unit.get("agent_id", "")) == str(player.agent_id):
 			say("Cast off. Helion Dock is behind you.")
 	var stats = Fit.stats(defs, unit)
-	unit.rot += float(cmd.get("rot", 0.0)) * float(stats.turn) * dt
+	var spd_before := float(unit.vel.length())
+	var yaw_rate := float(stats.turn)
+	# Full turn at rest (the slice yaw check). At cruise the nose still answers,
+	# but it stops pirouetting while the keel is already moving.
+	if spd_before > 140.0:
+		yaw_rate *= clampf(140.0 / spd_before, 0.55, 1.0)
+	unit.rot += float(cmd.get("rot", 0.0)) * yaw_rate * dt
 	var forward = Vector2.from_angle(unit.rot)
 	var thrust = float(cmd.get("thrust", 0.0))
 	var retro = float(cmd.get("retro", 0.0))
 	var strafe = float(cmd.get("strafe", 0.0))
 	unit.thrusting = thrust > 0.0
 	if thrust > 0.0:
-		unit.vel += forward * float(stats.accel) * dt
-		var speed := float(unit.vel.length())
-		if speed > 12.0:
-			var slip := wrapf(forward.angle() - unit.vel.angle(), -PI, PI)
-			var grip := clampf(float(stats.turn) * 0.9, 0.45, 3.4)
-			var step := clampf(slip, -grip * dt, grip * dt)
-			unit.vel = Vector2.from_angle(unit.vel.angle() + step) * speed
+		var kick := float(stats.accel)
+		if unit.vel.dot(forward) < 60.0:
+			kick *= 1.28
+		unit.vel += forward * kick * dt
 	if retro > 0.0:
 		unit.vel -= forward * float(stats.accel) * 0.62 * dt
 	if absf(strafe) > 0.0:
-		unit.vel += forward.orthogonal() * float(stats.strafe_accel) * strafe * dt
+		unit.vel += forward.orthogonal() * float(stats.strafe_accel) * 1.7 * strafe * dt
+	elif unit.vel.length() > 10.0:
+		var speed: float = unit.vel.length()
+		var slip := wrapf(forward.angle() - unit.vel.angle(), -PI, PI)
+		var grip := float(stats.turn) * (2.2 if thrust > 0.0 else 1.2)
+		grip = clampf(grip, 1.05, 4.8)
+		if speed > 180.0:
+			grip *= clampf(180.0 / speed, 0.5, 1.0)
+		var step := clampf(slip, -grip * dt, grip * dt)
+		unit.vel = Vector2.from_angle(unit.vel.angle() + step) * speed
 	unit.vel *= 1.0 - float(stats.damp) * dt
 	var cap := float(stats.vmax)
 	if int(layer) == ScaleFrame.CHART:

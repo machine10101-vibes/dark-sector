@@ -62,7 +62,7 @@ A new Needle starts moored at the Helion Dock pad. The flight line reads “Moor
 2. Hold **W** or **Up**. The log says “Cast off. Helion Dock is behind you.” and speed leaves 0.
 3. The **Cast off** button does that same shove if a hint, scroll, or leftover text field has focus. W is also the UI “up” key, so the helm records it before any focused control can eat it.
 
-A and D yaw while moored. They do not leave the pad. S, Q, and E do.
+A and D yaw while moored. They do not leave the pad. S, Q, and E do. Once you are off the pad, A/D turns the path with the nose, Q/E steps sideways, and the camera follows the keel.
 
 ### Helion Dock board
 

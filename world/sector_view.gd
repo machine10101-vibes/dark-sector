@@ -79,7 +79,14 @@ func _chase_pos() -> Vector2:
 	var focus: Vector2 = Game.sim.view_focus()
 	var ahead := Vector2.from_angle(float(ship.rot))
 	var zoom := maxf(Game.zoom, 0.12)
-	return focus + ahead * (36.0 / zoom) + Vector2(0.0, -72.0 / zoom)
+	var speed := float(ship.vel.length())
+	var lead := clampf(72.0 + speed * 0.2, 90.0, 340.0) / zoom
+	var layer := int(Game.sim.layer)
+	if layer == ScaleFrame.CHART:
+		lead = clampf(160.0 + speed * 0.12, 160.0, 480.0) / zoom
+	elif layer == ScaleFrame.APPROACH:
+		lead = clampf(200.0 + speed * 0.1, 200.0, 560.0) / zoom
+	return focus + ahead * lead
 
 
 func _chase_rot() -> float:
@@ -125,7 +132,7 @@ func _cmd(delta: float) -> Dictionary:
 		rot -= 1.0
 	if rot == 0.0:
 		rot = -float(stick.get("rot", 0.0))
-	helm_yaw = move_toward(helm_yaw, rot, 8.5 * delta)
+	helm_yaw = move_toward(helm_yaw, rot, 24.0 * delta)
 	rot = helm_yaw
 	var strafe := 0.0
 	if Game.flight_down(KEY_Q):

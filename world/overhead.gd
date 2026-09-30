@@ -97,8 +97,10 @@ func _aim() -> void:
 	var chase: Vector2 = sector._chase_pos()
 	var layer := int(Game.sim.layer)
 	if layer == ScaleFrame.CHART:
+		# A light bias keeps the well on the wide chart. The keel stays the
+		# thing you steer, not a speck pulled off the pad of the phone.
 		var well := _chart_well(Game.sim)
-		chase = chase.lerp(well, 0.45)
+		chase = chase.lerp(well, 0.1)
 	var gate: Variant = WorldCoord.gate()
 	if gate != null:
 		chase = gate.render_of_world(chase)
@@ -142,11 +144,11 @@ func _aim() -> void:
 				framed = world_focus + toward.normalized() * lead
 		if gate != null:
 			framed = gate.render_of_world(framed)
-		if moored or away < 40.0:
+		if moored:
 			height = berth
 			chase = framed
-		elif away < 900.0:
-			var blend := clampf(away / 900.0, 0.0, 1.0)
+		elif away < 200.0:
+			var blend := clampf(away / 200.0, 0.0, 1.0)
 			height = lerpf(berth, height, blend)
 			chase = framed.lerp(chase, blend)
 	if env != null:

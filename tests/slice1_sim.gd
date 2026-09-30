@@ -16,6 +16,7 @@ func _init() -> void:
 	_silhouettes()
 	_dock()
 	_inertia_and_gun()
+	_steer()
 	_traffic()
 	_save()
 	if fails == 0:
@@ -85,6 +86,25 @@ func _inertia_and_gun() -> void:
 	sim.player.fire_cd = 0.0
 	sim.try_fire(sim.player, Fit.stats(defs, sim.player).gun)
 	check(sim.projectiles.size() == shots + 1, "the gun fires")
+
+
+func _steer() -> void:
+	var sim := make("vesper")
+	check(bool(sim.player.moored), "a new needle starts moored")
+	sim.tick(0.25, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
+	check(bool(sim.player.moored) == false, "thrust clears the mooring")
+	check(sim.player.vel.length() > 20.0, "cast off has way on")
+	sim.tick(0.35, {"thrust": 0.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
+	check(bool(sim.player.moored) == false, "the pad does not grab the keel again")
+	sim.player.rot = 0.0
+	sim.player.vel = Vector2(90.0, 0.0)
+	sim.tick(0.55, {"thrust": 0.0, "retro": 0.0, "rot": 1.0, "strafe": 0.0, "fire": false})
+	check(sim.player.vel.angle() > 0.2, "yaw carries the keel, not only the nose")
+	check(sim.player.vel.length() > 40.0, "a turn keeps the drift")
+	sim.player.rot = 0.0
+	sim.player.vel = Vector2.ZERO
+	sim.tick(0.4, {"thrust": 0.0, "retro": 0.0, "rot": 0.0, "strafe": 1.0, "fire": false})
+	check(absf(sim.player.vel.y) > 8.0, "strafe steps off the nose line")
 
 
 func _traffic() -> void:
