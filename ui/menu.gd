@@ -32,13 +32,16 @@ func _ready() -> void:
 	root_box.custom_minimum_size = Vector2(520, 280)
 	root_box.add_theme_constant_override("separation", 10)
 	root.add_child(root_box)
-	root_box.add_child(ThemeKit.label("DARK SECTOR", 42, Color("e6d7bf")))
-	var sky := "HELION DOCK"
+	root_box.add_child(ThemeKit.label("DARK SECTOR ONLINE", 34, Color("e6d7bf")))
+	root_box.add_child(ThemeKit.label("Ashen Reach", 16, Color("8a7344")))
+	var sky := "Helion Dock"
 	if Game.defs.has("system"):
-		sky = str(Game.defs.system.name).to_upper()
-	root_box.add_child(ThemeKit.label(sky, 16, Color("8a7344")))
-	root_box.add_child(ThemeKit.label("One keel. The dock is a place, not a menu.", 14, Color("b7ab96")))
-	var new_game := ThemeKit.button("New keel")
+		sky = str(Game.defs.system.name)
+	var place := "A star system, not the title."
+	if sky != "Ashen Reach":
+		place = "A star system, not the title. You undock at %s." % sky
+	root_box.add_child(ThemeKit.label(place, 14, Color("b7ab96")))
+	var new_game := ThemeKit.button("New game")
 	new_game.pressed.connect(func(): _show_select("offline"))
 	var host := ThemeKit.button("Host the dock")
 	host.pressed.connect(func(): _show_select("host"))
@@ -53,7 +56,7 @@ func _ready() -> void:
 	address_line.custom_minimum_size = Vector2(480, 32)
 	var join := ThemeKit.button("Join a dock")
 	join.pressed.connect(func(): _show_select("join"))
-	continue_button = ThemeKit.button("Continue log")
+	continue_button = ThemeKit.button("Continue")
 	continue_button.pressed.connect(func(): continue_game.emit())
 	var quit := ThemeKit.button("Leave")
 	quit.pressed.connect(func(): quit_game.emit())
@@ -129,7 +132,7 @@ func _show_root() -> void:
 	select_box.hide()
 	var has := Game.has_save()
 	continue_button.disabled = not has
-	continue_button.text = "Continue log" if has else "No log on the slate"
+	continue_button.text = "Continue" if has else "No game to continue"
 
 
 func _show_select(next: String) -> void:

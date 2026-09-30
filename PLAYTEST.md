@@ -1,4 +1,6 @@
-# Playtest — Helion Dock helm
+# Playtest — Dark Sector Online
+
+The game is Dark Sector Online. Ashen Reach is a star system, not the title. This pass opens on Helion Dock.
 
 Godot 4.7, windowed. One pass is enough if each line is done in the window.
 
@@ -7,7 +9,7 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 3. **Coast.** Thrust, then let go. The hull keeps drifting.
 4. **Zoom.** Out until the star and Aegis read together. In until the silhouette is readable.
 5. **Gun.** Space fires a shot.
-6. **Log.** F5. Leave the dock. F9 or Continue log. Same hull, same place, still Helion Dock.
+6. **Log.** F5. Leave the dock. F9 or Continue. Same hull, same place, still Helion Dock. The menu title is Dark Sector Online; Helion Dock is the system under it.
 
 ```bash
 godot --headless --path . --script res://tests/slice1_sim.gd
