@@ -8,6 +8,9 @@ var cam3: Camera3D
 var board: MeshInstance3D
 var stage: Node3D
 var env: Environment
+var _ease := 1.0
+var _saw_mode := false
+var _was_sector := false
 
 
 func _ready() -> void:
@@ -78,9 +81,21 @@ func _ready() -> void:
 		host.size_changed.connect(_fit)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if cam3 == null or cam3.current == false:
 		return
+	var sector_on := Game.mode == "sector"
+	if _saw_mode == false:
+		_saw_mode = true
+		_was_sector = sector_on
+		_ease = 1.0
+	elif sector_on and _was_sector == false:
+		_ease = 0.0
+		_was_sector = true
+	else:
+		_was_sector = sector_on
+	if _ease < 1.0:
+		_ease = minf(1.0, _ease + delta / 1.45)
 	_aim()
 
 
@@ -156,6 +171,14 @@ func _aim() -> void:
 	var back := height * 0.62
 	var target := Vector3(chase.x, 0.0, -chase.y)
 	cam3.fov = 50.0
+	# The yard opens on a wide Helion limb. The first moments at the pad
+	# pull back along the same berth angle, then settle to the working helm.
+	if layer == ScaleFrame.BAND and bool(Game.sim.player.get("moored", false)) and _ease < 0.999:
+		var settle := _ease * _ease * (3.0 - 2.0 * _ease)
+		var wide := lerpf(1.58, 1.0, settle)
+		height *= wide
+		back = height * 0.62
+		cam3.fov = lerpf(44.0, 50.0, settle)
 	cam3.far = far
 	cam3.position = target + Vector3(0.0, height, -back)
 	cam3.look_at(target, Vector3(0.0, 0.0, 1.0))
