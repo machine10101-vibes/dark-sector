@@ -32,6 +32,8 @@ func _process(_dt: float) -> bool:
 		_press(typed.substr(i, 1))
 	if edit.text != typed:
 		_bad("the field kept '%s'" % edit.text)
+	if DockBoard.clip_tag(edit.text) != "Red-Keel":
+		_bad("set tag would store '%s'" % DockBoard.clip_tag(edit.text))
 	if edit.has_focus() == false:
 		_bad("the field lost focus while typing")
 	var held: Dictionary = game.get("key_down")
@@ -78,6 +80,11 @@ func _press(ch: String) -> void:
 	ev.keycode = code
 	ev.physical_keycode = code
 	root.push_input(ev)
+	var again := ev.duplicate() as InputEventKey
+	root.push_input(again)
+	var echo := ev.duplicate() as InputEventKey
+	echo.echo = true
+	root.push_input(echo)
 	var up := ev.duplicate() as InputEventKey
 	up.pressed = false
 	up.unicode = 0

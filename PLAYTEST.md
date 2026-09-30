@@ -1,16 +1,11 @@
 # Playtest — Helion Dock helm
 
-## Ready — Beta #4 in-world fidelity
+## Ready — rocky hold and corona spokes
 
-Pages build. One fresh Needle on the Helion band. This pass is the sky and the hulls. Desk and phone should still read clean.
+Pages build. One fresh Needle, moored. City lamps already passed. The corp field stays as it is.
 
-1. **Aegis.** The limb shows land, water, ice, and city lamps on the night side, with a soft rim of air. The horizon is a little uneven.
-2. **Ice ring.** The ring glints. Chips catch and fade. It stays a flat ring.
-3. **Debris.** Seized Hold and any meteors read as rocky or crumpled volumes, not flat cards.
-4. **Helion.** Zoom out until the star and corona show. The star has grain, the corona has rays, and the starfield twinkles.
-5. **Hulls.** Zoom in. The Needle has a rounded keel, deck plates, and the spine mast. The Barn shows the wide bay. The Beak shows the wing guns. Phone landscape and portrait still keep Speed, Purse, and the bars clear of each other.
-
-Optional Beta #3 smoke, same page: scan 80 and haul 120 still add to Purse 200, Market still buys glasswheat for 12 and sells it for 8 on the pad, the tag Red-Keel still sticks through F5/F9, and New keel still flies solo.
+1. **Seized Hold.** Zoom out until Aegis and the pad share the frame. The hold is the rocky pile beside the planet. It reads as crumpled rock without opening the probe.
+2. **Corona.** Zoom until Helion shows. Spokes run past the soft glow, separate from the star’s grain.
 
 Godot 4.7, windowed. One pass is enough if each line is done in the window.
 

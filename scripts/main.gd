@@ -7,6 +7,8 @@ var hud: CanvasLayer
 var desk: CanvasLayer
 var tones: Node
 var origin_hud: CanvasLayer
+var _glyph_down := false
+var _glyph_unicode := 0
 
 
 func _ready() -> void:
@@ -87,6 +89,7 @@ func _input(event: InputEvent) -> void:
 	if _editing_text():
 		Game.text_entry = true
 		Game.clear_flight_keys()
+		_take_text(event as InputEventKey)
 		return
 	if hud != null and bool(hud.get("chat_open")):
 		Game.text_entry = true
@@ -133,6 +136,31 @@ func _focus_canvas() -> void:
 	if OS.has_feature("web") == false:
 		return
 	JavaScriptBridge.eval("var c=document.getElementById('canvas');if(c){c.setAttribute('tabindex','0');c.focus();}", true)
+
+
+func _take_text(key_ev: InputEventKey) -> void:
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var edit := vp.gui_get_focus_owner() as LineEdit
+	if edit == null:
+		return
+	# A repeat or a second keydown before keyup was landing in the field
+	# after the real letters, so Red-Keel!! stored as Red-Keeld-.
+	if key_ev.echo:
+		vp.set_input_as_handled()
+		return
+	if key_ev.pressed and key_ev.unicode != 0:
+		if _glyph_down and key_ev.unicode == _glyph_unicode:
+			vp.set_input_as_handled()
+			return
+		_glyph_down = true
+		_glyph_unicode = key_ev.unicode
+		edit.insert_text_at_caret(char(key_ev.unicode))
+		vp.set_input_as_handled()
+		return
+	if key_ev.pressed == false:
+		_glyph_down = false
 
 
 func _editing_text() -> bool:
