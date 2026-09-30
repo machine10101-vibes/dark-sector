@@ -33,17 +33,30 @@ func _process(_dt: float) -> bool:
 func _check_title(screen: Vector2) -> void:
 	menu._show_root()
 	menu._fit()
+	_resort(menu)
 	var glass: Control = menu.get("slate_glass")
 	_inside(glass, screen, "title glass")
 	_buttons(menu, screen, "title")
+	var cont: Button = menu.get("continue_button")
+	_inside_parent(cont, glass, "title continue")
 
 
 func _check_select(screen: Vector2) -> void:
 	menu._show_select("offline")
 	menu._fit()
+	_resort(menu)
 	var glass: Control = menu.get("select_glass")
 	_inside(glass, screen, "select glass")
 	_buttons(menu, screen, "select")
+	var back := _find_button(menu, "Back")
+	_inside_parent(back, glass, "select back")
+	if back != null and screen.x > screen.y and screen.y < 520.0 and back.get_global_rect().end.y > screen.y - 24.0:
+		_bad("select back low %s" % back.get_global_rect())
+	var row: Node = menu.get("keel_row")
+	if row != null:
+		for card in row.get_children():
+			_inside_parent(card, glass, "select card")
+			_inside(card, screen, "select card screen")
 
 
 func _check_helm(screen: Vector2, touch: bool) -> void:
@@ -64,6 +77,7 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 	var purse: Label = hud.get("stat_purse")
 	purse.text = "PURSE  200"
 	hud._layout_chrome(screen)
+	_resort(hud)
 	var tag := "helm touch" if touch else "helm keys"
 	var primary: Control = hud.get("primary_bar")
 	var actions: Control = hud.get("action_scroll")
@@ -95,6 +109,16 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 		_apart(joy, actions, tag + " stick/actions")
 
 
+func _find_button(node: Node, text: String) -> Button:
+	if node is Button and (node as Button).text == text:
+		return node
+	for child in node.get_children():
+		var found := _find_button(child, text)
+		if found != null:
+			return found
+	return null
+
+
 func _buttons(host: Node, screen: Vector2, tag: String) -> void:
 	_walk(host, screen, tag)
 
@@ -103,13 +127,18 @@ func _walk(node: Node, screen: Vector2, tag: String) -> void:
 	if node is Button and node.visible:
 		var button := node as Button
 		var rect := button.get_global_rect()
-		var bounds := Rect2(Vector2.ZERO, screen).grow(6.0)
-		if bounds.intersects(rect):
+		var bounds := Rect2(Vector2.ZERO, screen).grow(4.0)
+		var text := button.text
+		var must := text == "New keel" or text == "Back" or text.begins_with("Take the") or text.contains("Continue") or text.contains("No log") or text == "Cast" or text == "Cast off" or text == "Board" or text == "Quests" or text == "Probe"
+		if must:
+			if bounds.encloses(rect) == false:
+				_bad("%s off %s %s" % [tag, text, rect])
+		elif bounds.intersects(rect):
 			var shown := bounds.intersection(rect)
 			if shown.size.y < rect.size.y - 8.0 or shown.size.x < minf(rect.size.x, 48.0) - 8.0:
-				_bad("%s clips %s" % [tag, button.text])
+				_bad("%s clips %s" % [tag, text])
 		if button.custom_minimum_size.y < 44.0:
-			_bad("%s short target %s" % [tag, button.text])
+			_bad("%s short target %s" % [tag, text])
 	for child in node.get_children():
 		_walk(child, screen, tag)
 
@@ -137,7 +166,13 @@ func _apart(a: Control, b: Control, tag: String) -> void:
 	if a == null or b == null or a.visible == false or b.visible == false:
 		return
 	if a.get_global_rect().grow(-1).intersects(b.get_global_rect()):
-		_bad(tag + " overlap")
+		_bad("%s overlap %s vs %s" % [tag, a.get_global_rect(), b.get_global_rect()])
+
+
+func _resort(node: Node) -> void:
+	node.notification(Container.NOTIFICATION_SORT_CHILDREN)
+	for child in node.get_children():
+		_resort(child)
 
 
 func _bad(message: String) -> void:
