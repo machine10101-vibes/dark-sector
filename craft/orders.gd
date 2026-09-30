@@ -617,6 +617,12 @@ static func _by_uid(sim, uid: String):
 
 
 static func _next_scan_target(sim):
+	# The dock slip is Aegis Prime. From the pad the ice ring is closer,
+	# and a nearest-node launch sealed that ring and left the purse at 0.
+	if DockBoard.state(sim, "dock_scan") == "active" and sim.dossier_complete("aegis_prime") == false:
+		var prime = sim.survey_node("aegis_prime")
+		if prime != null and _targeted(sim, "aegis_prime") == false:
+			return prime
 	var best = null
 	var best_dist = 1.0e12
 	for place in sim.nodes:

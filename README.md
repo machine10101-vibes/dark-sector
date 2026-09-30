@@ -70,7 +70,7 @@ A and D yaw while moored. They do not leave the pad. S, Q, and E do. Once you ar
 
 The **Board** button sits beside Cast off while the keel is on the Helion pad. The same slate is on the bottom action row. `[` opens it too.
 
-1. **Take Seal Aegis Prime.** Launch a probe (Probe button or 1). When the dossier seals, the log says “Aegis scan filed. Helion Dock paid 80. Purse 80.” Pay lands when the dossier seals, on the pad or already underway.
+1. **Take Seal Aegis Prime.** Launch a probe (Probe button or 1). It reads Aegis Prime, not the nearer ice ring. When that dossier seals while Moored, or the next time the pad has the keel, the log says “Aegis scan filed. Helion Dock paid 80. Purse 80.”
 2. **Take Crate to the ice ring.** A dock crate enters the hold. Fly to the Aegis ice ring, then bring the crate back to the pad. The log says “Ring haul filed. Helion Dock paid 120.” The purse line on the helm shows the total.
 
 ### Open chart
@@ -79,7 +79,7 @@ Hold W outward. Past the band the keel stays moving and the chart names Aegis Pr
 
 Slips are taken only on the pad. A full hold refuses the crate. Each slip pays once. Cast off is unchanged: W or the Cast off button still leaves the dock.
 
-To come back, fly into the flashing cyan **Helion Dock** buoy. A stop inside that buoy moors from any heading, and on the band about 50–100 m from the pad does the same even while the helm still says Tactical. The line reads Moored, and Cast off and Board are available again. The card’s Helion Dock meters are the range to the pad. The scale bar is only the zoom. A key that is still held down waits until you release it.
+To come back, fly until the card shows **Helion Dock** under 200 m. That moors from any heading and any speed, including a stop, whether the line says Local or Tactical. Inside 500 m the **Dock** button forces the same snap. The line reads Moored, and Cast off and Board are available again. The card’s Helion Dock meters are the range to the pad. The scale bar is only the zoom. A key that is still held down waits until you release it.
 
 Pick one keel at new game: Needle (Vesper), Barn (Anvil), or Beak (Kestrel). The yard has one module. Bolting it changes the top-down silhouette. It does not come off.
 

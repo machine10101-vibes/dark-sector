@@ -127,6 +127,10 @@ func request_cast_off() -> void:
 	cast_pulse = maxf(cast_pulse, 0.55)
 
 
+func request_dock() -> void:
+	tap("dock", true)
+
+
 func _drop_link() -> void:
 	if link != null:
 		link.close()

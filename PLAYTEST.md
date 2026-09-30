@@ -8,8 +8,17 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 4. **Zoom.** Out until the star and Aegis read together. In until the silhouette is readable.
 5. **Gun.** Space fires a shot.
 6. **Log.** F5. Leave the dock. F9 or Continue log. Same hull, same place, still Helion Dock.
-7. **Board.** On the pad, Board. Take Seal Aegis Prime. Probe. When the dossier seals, the log pays 80 and the helm reads Purse 80, even if the keel has already left the pad. Take the ring crate, fly to the ice ring, return to the pad. The log pays 120 and the crate leaves the hold.
+7. **Board.** On the pad, Board. Take Seal Aegis Prime. Probe. It reads Aegis Prime. When that dossier seals while Moored, or the next time you are on the pad, the log pays 80 and the helm reads Purse 80. Take the ring crate, fly to the ice ring, return until Moored. The log pays 120 and the crate leaves the hold.
 8. **Chart.** Cast off and hold W past the band. Speed stays above 0. The chart shows Aegis Prime, Homestead Road, Green Spine, and Writ Lane. The log does not lock you on a scrape.
+
+## Ready — moor and purse
+
+Pages build. One fresh Needle. Incognito is fine. The scale bar is zoom. The card’s `Helion Dock` meters are the range.
+
+1. Cast off. Fly out until those meters climb, or the chart opens.
+2. Come back. Do not hunt the buoy mesh. When the card shows **Helion Dock** under 200 m, the line becomes **Moored** from any heading and any speed, including a stop. Local and Tactical both snap. Inside 500 m, **Dock** forces that same snap. Cast off and Board return.
+3. Board. Take scan. Probe. The probe reads Aegis Prime. When that dossier seals while Moored, or the next time the pad has the keel, Purse is 80. Sealing the ice ring does not pay this slip.
+4. Take the haul. Touch the ice ring. Return until Moored. Purse is 200. The crate is gone.
 
 ## Ready — title yard
 
@@ -27,8 +36,8 @@ Windowed or the Pages build. One fresh Needle. Incognito is fine.
 2. W or Cast off leaves the pad. Speed leaves 0. Log has Cast off, then Undocked.
 3. D yaws. I opens the dossier. D does not open it.
 4. Fly out of the band. Speed stays above 0. The chart names Aegis Prime, Homestead Road, Green Spine, and Writ Lane. There is no scrape lock and no “city stays under the band” dead end. On the web build the origin/focus/render overlay is hidden.
-5. Turn around. The cyan **Helion Dock** buoy is the big flashing ring on the chart, and the same name rides an arrow on the band. Fly into that buoy from any heading. Within about 50–100 m the pad moors the keel even if the helm still says Tactical. The line reads **Moored**. Cast off and Board are both on screen again. On the band the card also shows `Helion Dock` and the meters to the buoy, which is not the scale-bar length. A held W sits on the pad until you release it, then W or Cast off leaves.
-6. Board. Take the Aegis scan. Probe. Bring the keel back if you left. When the dossier seals, Purse becomes 80.
+5. Turn around. The cyan **Helion Dock** buoy is the flashing ring on the chart, and the card on the band shows the meters. Come back until that card reads under 200 m. The pad moors from any heading, any speed, and a stop, on Local or Tactical. Inside 500 m the **Dock** button forces it. The line reads **Moored**. Cast off and Board are both on screen again. A held W sits on the pad until you release it, then W or Cast off leaves.
+6. Board. Take the Aegis scan. Probe. It reads Aegis Prime. While Moored, or the next time you touch the pad, Purse becomes 80.
 7. Take the ice-ring crate. Touch the ring. Bring it back to the pad. Purse becomes 200 if the scan was already paid, or 120 if this is the only job. The crate is gone.
 
 If keys are quiet, click the sky once. The Board, Take, Probe, and Cast off buttons do not need the keyboard.

@@ -7,8 +7,12 @@ const DOCK_GAP := 320.0
 const DOCK_BUOY_ANGLE := -0.7
 const DOCK_BUOY_OUT := 700.0
 const DOCK_HALO_KM := 9000.0
-const DOCK_LEAVE := 520.0
-const DOCK_CATCH := 160.0
+## Band meters, the same number the helm prints as "Helion Dock N m".
+## A return inside this snaps from any heading, speed, or zoom, including a stop.
+## The keel has to leave the bubble once (cast-off) before the snap arms.
+const DOCK_CATCH := 220.0
+## The Dock button forces the same snap inside this, even if the bubble was never left.
+const DOCK_BUTTON := 500.0
 
 var defs: Dictionary = {}
 var seed_value = 0
@@ -695,7 +699,7 @@ func _step(dt: float, cmd: Dictionary) -> void:
 	_step_stream(dt)
 	_step_traffic(dt)
 	_step_scale(before_pos)
-	_try_pad_return(dt)
+	_try_pad_return(dt, cmd)
 	Homestead.step(self, dt)
 	QuestBoard.pulse(self, dt)
 	DockBoard.pulse(self, dt)
@@ -2456,7 +2460,26 @@ func _snap_dock_moor(body: Dictionary) -> void:
 	_moor_at_pad()
 
 
-func _try_pad_return(dt: float) -> void:
+func helion_dock_gap() -> float:
+	if player.is_empty() or beacon_pos == Vector2.ZERO:
+		return 1.0e12
+	if str(defs.system.id) != "HC-V1-R1-S1":
+		return 1.0e12
+	if int(layer) != ScaleFrame.BAND:
+		return 1.0e12
+	return player.pos.distance_to(beacon_pos)
+
+
+func can_force_dock() -> bool:
+	if bool(player.get("moored", false)):
+		return false
+	return helion_dock_gap() <= DOCK_BUTTON
+
+
+func _try_pad_return(_dt: float, cmd: Dictionary) -> void:
+	# The card, the mesh, and this check share beacon_pos in band meters.
+	# Zoom (Tactical / Local / Sector) is not consulted. Heading and speed
+	# are not consulted. A stop inside the catch moors.
 	if player.is_empty():
 		return
 	if str(defs.system.id) != "HC-V1-R1-S1":
@@ -2466,9 +2489,12 @@ func _try_pad_return(dt: float) -> void:
 	if beacon_pos == Vector2.ZERO:
 		return
 	var gap: float = player.pos.distance_to(beacon_pos)
-	if gap > DOCK_LEAVE:
+	if gap > DOCK_CATCH:
 		quest_flags.pad_departed = true
 	if bool(player.get("moored", false)):
+		return
+	if bool(cmd.get("dock", false)) and gap <= DOCK_BUTTON:
+		_moor_at_pad()
 		return
 	if bool(quest_flags.get("pad_departed", false)) and gap <= DOCK_CATCH:
 		_moor_at_pad()
