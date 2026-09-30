@@ -11,6 +11,36 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 7. **Board.** On the pad, Board. Take Seal Aegis Prime. Probe. It reads Aegis Prime. When that dossier seals while Moored, or the next time you are on the pad, the log pays 80 and the helm reads Purse 80. Take the ring crate, fly to the ice ring, return until Moored. The log pays 120 and the crate leaves the hold.
 8. **Chart.** Cast off and hold W past the band. Speed stays above 0. The chart shows Aegis Prime, Homestead Road, Green Spine, and Writ Lane. The log does not lock you on a scrape.
 
+## Ready — landscape market
+
+Pages build. Phone landscape, about 844×390. One fresh Needle. This pass is only the open Market and the tag line.
+
+1. Market opens a glass that stays clear of Speed, Purse, Cast off, Board, Quests, Probe, the quiet strip (Market, Lane, Weld), the stick, and the gun. The goods list scrolls inside that glass. The scrollbar stays on the glass.
+2. Click the corp field. Type `Red-Keel!!`. The field keeps the whole string, including the letters that also fly the keel. Set tag. The helm shows one short line, **Red-Keel**. The scan dossier reads `Corp tag  Red-Keel`. The overhead name on the keel shows it too.
+3. F5 writes the log and stays on the helm. F9 reads it back. The helm still reads **Red-Keel**, and any glasswheat is still in the hold. The page does not jump back to the title.
+
+Desk and portrait market glass stay as they passed. Buy still charges 12 and sell still pays 8, and only on the pad. Haul ribbons and Purse 200 stay.
+
+## Ready — Beta #3 trade and tags
+
+Pages build. One fresh Needle, still moored. This pass is the purse and the tag, not the sky.
+
+1. Board, then Market. Purse reads 0. Buy glasswheat. The log says the purse is short, and Purse stays 0.
+2. Take scan, seal Aegis Prime on the pad, Purse 80. Market. Buy glasswheat. Purse becomes 68 and the hold shows one glasswheat. Sell it. Purse becomes 76 and the hold shows none. Sell again. Purse stays 76.
+3. Cast off past the pad. Market. Buy and sell both refuse, and the purse does not move. Come back, Moored. The same buy and sell work again.
+4. Market. Type `Red-Keel!!` and Set tag. The helm callsign line shows Red-Keel. Scan dossier opens with `Corp tag  Red-Keel`. The overhead name on the keel reads the same tag. Clear the field and Set tag. The tag leaves the helm, the dossier, and the name.
+5. F5, leave, F9. The tag and the glasswheat count are still there. Scan 80 and haul 120 still add to 200. New keel still flies solo when the page has no listen port.
+
+## Ready — Beta #4 market glass
+
+Same page. This pass is the glass and the phone, after the purse math already passed.
+
+1. **Desk (1280×720).** Market is the first button on the quiet strip, not a new primary. The panel reads Helion market, Purse, the glasswheat count, Buy, Sell, and a corp-tag field. The type is on the glass. Cast off, Board, Quests, and Probe stay in the big bar.
+2. **Portrait (~390×844).** Market opens inside the glass. Buy, Sell, and Set tag are tappable. The tag line on the helm does not cover Speed, Purse, or the primary bar.
+3. **Landscape (~844×390).** Same panel, scrolled if it is taller than the glass. The helm tag is one short line. Speed, Purse, Cast off, Board, Quests, Probe, the stick, and the gun stay clear of each other.
+
+Still holding, do not regress: haul ribbons and Purse 200, New keel solo, phone reflow, the three hull mounts, and the yard glass.
+
 ## Ready — Beta #4 hull mounts
 
 Pages build. One fresh launch. This pass is the three keels looking like different jobs. The phone reflow already passed.

@@ -16,6 +16,8 @@ var paused := false
 var zoom := 0.58
 ## Keys seen in _input before any focused control can eat them.
 var key_down: Dictionary = {}
+## True while a helm line edit owns the keys, so flight chords do not type or move.
+var text_entry := false
 ## Seconds of thrust after the Cast off control, so one click leaves the pad.
 var cast_pulse := 0.0
 
@@ -119,6 +121,8 @@ func clear_flight() -> void:
 
 
 func note_flight_key(code: Key, down: bool) -> void:
+	if text_entry:
+		return
 	if code == KEY_NONE:
 		return
 	if down:
@@ -132,6 +136,8 @@ func clear_flight_keys() -> void:
 
 
 func flight_down(code: Key) -> bool:
+	if text_entry:
+		return false
 	if key_down.has(int(code)):
 		return true
 	if Input.is_key_pressed(code):

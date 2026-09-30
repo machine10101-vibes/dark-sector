@@ -1769,6 +1769,9 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 	var call := str(ship.get("name", hull.get("callsign", class_id)))
 	if key == "player":
 		call = str(hull.get("callsign", call))
+	var tag := str(ship.get("corp_tag", "")).strip_edges()
+	if tag != "":
+		call = "%s  ·  %s" % [call, tag]
 	_tag(call, chart(ship.pos + Vector2(22.0, 18.0), float(holder.get_meta("crown", 16.0))), Color("e6d7bf"), 14)
 
 

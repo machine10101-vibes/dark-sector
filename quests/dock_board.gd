@@ -6,6 +6,10 @@ const HAUL_PAY := 120
 const PAD := 220.0
 const RING := 160.0
 const CRATE := "dock_crate"
+const GOOD := "glasswheat"
+const BUY_PRICE := 12
+const SELL_PRICE := 8
+const TAG_LEN := 12
 
 
 static func at_pad(sim) -> bool:
@@ -262,6 +266,64 @@ static func _pulse_haul(sim) -> void:
 		sim.quest_flags.dock_haul = "done"
 		sim.quest_flags.dock_haul_ring = false
 		_pay(sim, HAUL_PAY, "Ring haul filed. Helion Dock paid %d." % HAUL_PAY)
+
+
+static func holding(sim) -> int:
+	return int(sim.player.cargo.get(GOOD, 0))
+
+
+static func buy_good(sim) -> String:
+	if not at_pad(sim):
+		return "The Helion market stands on the pad."
+	if purse(sim) < BUY_PRICE:
+		return "Purse is short of %d for glasswheat." % BUY_PRICE
+	var stats: Dictionary = Fit.stats(sim.defs, sim.player)
+	if Fit.cargo_used(sim.player) >= int(stats.cargo_cap):
+		return "The hold is full."
+	sim.quest_flags.purse = purse(sim) - BUY_PRICE
+	sim._add_cargo(GOOD, 1)
+	sim.say("Bought glasswheat for %d. Purse %d." % [BUY_PRICE, purse(sim)])
+	return ""
+
+
+static func sell_good(sim) -> String:
+	if not at_pad(sim):
+		return "The Helion market stands on the pad."
+	if not sim.spend_cargo(GOOD, 1):
+		return "No glasswheat in the hold."
+	_pay(sim, SELL_PRICE, "Sold glasswheat for %d." % SELL_PRICE)
+	return ""
+
+
+static func tag_of(sim) -> String:
+	if sim == null or sim.player.is_empty():
+		return ""
+	return str(sim.player.get("corp_tag", "")).strip_edges()
+
+
+static func clip_tag(raw: String) -> String:
+	var text := raw.strip_edges()
+	var out := ""
+	for i in range(text.length()):
+		var ch := text.substr(i, 1)
+		var ok := ch == " " or ch == "-" or (ch >= "0" and ch <= "9")
+		if ok == false:
+			ok = (ch >= "A" and ch <= "Z") or (ch >= "a" and ch <= "z")
+		if ok:
+			out += ch
+		if out.length() >= TAG_LEN:
+			break
+	return out.strip_edges()
+
+
+static func set_tag(sim, raw: String) -> String:
+	var clean := clip_tag(raw)
+	sim.player.corp_tag = clean
+	if clean == "":
+		sim.say("Corp tag cleared.")
+	else:
+		sim.say("Corp tag set to %s." % clean)
+	return clean
 
 
 static func _near_ring(sim) -> bool:
