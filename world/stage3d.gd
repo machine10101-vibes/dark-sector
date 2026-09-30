@@ -809,21 +809,20 @@ func _sync_props(sim) -> void:
 		var flash := 0.55 + 0.45 * sin(float(sim.time) * 5.0)
 		var dock_ring := _prop("band_dock")
 		if str(dock_ring.get_meta("built", "")) != "yes":
-			var ring := TorusMesh.new()
-			ring.inner_radius = 150.0
-			ring.outer_radius = 220.0
-			ring.rings = 40
-			ring.ring_segments = 10
-			dock_ring.mesh = ring
+			# A berth ring around the keel. The old 150–220 torus put the
+			# hull in the hole of a planet-sized disc.
+			dock_ring.mesh = _annulus(30.0, 52.0, 1.3, 56)
 			var glow := StandardMaterial3D.new()
 			glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			glow.albedo_color = Color("d7fbff")
+			glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			glow.albedo_color = Color(0.72, 0.94, 0.98, 0.72)
 			glow.emission_enabled = true
 			glow.emission = Color("7ee7f2")
+			glow.emission_energy_multiplier = 0.85
 			dock_ring.material_override = glow
 			dock_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			dock_ring.set_meta("built", "yes")
-		dock_ring.position = chart(sim.beacon_pos, 6.0)
+		dock_ring.position = chart(sim.beacon_pos, 1.4)
 		dock_ring.visible = true
 		var paint := dock_ring.material_override as StandardMaterial3D
 		if paint != null:
@@ -849,7 +848,7 @@ func _sync_props(sim) -> void:
 		var beam_paint := beam.material_override as StandardMaterial3D
 		if beam_paint != null:
 			beam_paint.emission_energy_multiplier = 0.6 + flash * 1.8
-		_tag("Helion Dock", chart(sim.beacon_pos + Vector2(-90.0, -30.0), 168.0), Color("9eecf5"), 22)
+		_tag("Helion Dock", chart(sim.beacon_pos + Vector2(36.0, 28.0), 46.0), Color("9eecf5"), 18)
 		_sync_haul_ring(sim)
 	elif not on_chart:
 		_tag("Dock beacon", chart(sim.beacon_pos + Vector2(-70.0, -90.0), 78.0), Color("8aa896"), 13)
