@@ -38,7 +38,12 @@ func _run() -> void:
 	check(ring != null and ring.code.find("TIME") >= 0 and ring.code.find("glitter") >= 0, "ice ring glitter moves")
 	check(star != null and star.code.find("grain") >= 0, "the star keeps surface grain")
 	check(corona != null and corona.code.find("fbm") < 0 and corona.code.find("spoke") < 0, "the corona glow is a smooth halo")
-	check(rays != null and rays.code.find("spoke") >= 0, "corona rays are separate spokes")
+	check(rays != null and rays.code.find("spoke") >= 0 and rays.code.find("UV") >= 0, "corona spokes are a card past the halo")
+	var pile: ArrayMesh = stage.call("_rubble_mesh", 3, 20.0)
+	var pile_box: AABB = pile.get_aabb()
+	var rubble: Shader = stage.get("_rubble_shader")
+	check(pile_box.size.x > 28.0 and pile_box.size.y > 16.0 and pile_box.size.z > 16.0, "seized rubble is a lifted cluster")
+	check(rubble != null and rubble.code.find("unshaded") >= 0, "rubble stays lit without the sun")
 	check(planet != null and planet.code.find("VERTEX +=") >= 0 and planet.code.find("night_side") >= 0 and planet.code.find("blob") >= 0, "night-side city lamps are blobs on the limb")
 	for class_id in ["vesper", "anvil", "kestrel"]:
 		var holder := Node3D.new()

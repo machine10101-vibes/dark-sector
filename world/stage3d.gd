@@ -220,34 +220,26 @@ void fragment() {
 "
 
 const RAY_SHADER := "shader_type spatial;
-render_mode blend_mix, unshaded, cull_disabled, depth_draw_never;
-varying vec3 wnorm;
-varying vec3 wpos;
+render_mode blend_add, unshaded, cull_disabled, depth_draw_never;
 uniform vec4 albedo : source_color = vec4(1.0, 0.78, 0.42, 1.0);
-void vertex() {
-	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-}
 void fragment() {
-	vec3 n = normalize(wnorm);
-	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	vec3 axis = cross(eye, vec3(0.0, 1.0, 0.0));
-	if (dot(axis, axis) < 0.0001) {
-		axis = cross(eye, vec3(1.0, 0.0, 0.0));
-	}
-	axis = normalize(axis);
-	vec3 bit = normalize(cross(eye, axis));
-	float ang = atan(dot(n, axis), dot(n, bit));
-	float a = ang / 6.2831853;
-	float spoke = smoothstep(0.045, 0.008, abs(fract(a * 7.0) - 0.5));
-	float thin = smoothstep(0.02, 0.003, abs(fract(a * 7.0 + 0.5) - 0.5));
-	float rim = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 2.6);
-	float ray = rim * max(spoke, thin * 0.9);
-	if (ray < 0.05) {
+	vec2 p = UV * 2.0 - 1.0;
+	float r = length(p);
+	if (r > 0.995 || r < 0.42) {
 		discard;
 	}
-	ALBEDO = albedo.rgb;
-	EMISSION = albedo.rgb * (1.4 + spoke * 3.0);
+	float ang = atan(p.y, p.x);
+	float a = ang / 6.2831853 + TIME * 0.012;
+	float spoke = smoothstep(0.16, 0.025, abs(fract(a * 6.0) - 0.5));
+	float thin = smoothstep(0.07, 0.01, abs(fract(a * 6.0 + 0.5) - 0.5));
+	float mid = smoothstep(1.0, 0.58, r);
+	float reach = smoothstep(1.0, 0.72, r);
+	float ray = max(spoke * mid, thin * reach);
+	if (ray < 0.12) {
+		discard;
+	}
+	ALBEDO = albedo.rgb * (1.15 + spoke);
+	EMISSION = ALBEDO;
 	ALPHA = ray;
 }
 "
@@ -444,6 +436,25 @@ void fragment() {
 }
 "
 
+const RUBBLE_SHADER := "shader_type spatial;
+render_mode unshaded;
+varying vec3 onorm;
+uniform vec4 albedo : source_color = vec4(0.62, 0.48, 0.34, 1.0);
+uniform float seed = 0.0;
+void vertex() {
+	onorm = NORMAL;
+}
+void fragment() {
+	vec3 n = normalize(onorm);
+	float salt = fract(sin(dot(floor(n * 5.0 + vec3(seed)), vec3(17.0, 43.0, 9.0))) * 12345.6);
+	vec3 stone = mix(albedo.rgb * 0.42, albedo.rgb * 1.45, salt);
+	float sky = clamp(n.y * 0.55 + 0.62, 0.4, 1.0);
+	float crease = smoothstep(0.15, 0.72, abs(n.x) + abs(n.z));
+	stone = mix(stone * 0.55, stone, crease);
+	ALBEDO = stone * sky;
+}
+"
+
 const GRID_SHADER := "shader_type spatial;
 render_mode unshaded, cull_disabled;
 varying vec3 wpos;
@@ -507,6 +518,7 @@ var tags: Array = []
 var _star_mesh: MeshInstance3D
 var _star_glow: MeshInstance3D
 var _star_far: MeshInstance3D
+var _star_rays: MeshInstance3D
 var _sky: MultiMeshInstance3D
 var _band: MultiMeshInstance3D
 var _grid: MeshInstance3D
@@ -524,6 +536,7 @@ var _ring_shader: Shader
 var _nebula_shader: Shader
 var _gate_shader: Shader
 var _rock_shader: Shader
+var _rubble_shader: Shader
 var _wake_shader: Shader
 var _ground_shader: Shader
 var _fill: DirectionalLight3D
@@ -552,6 +565,7 @@ func _ready() -> void:
 	_nebula_shader = _compile(NEBULA_SHADER)
 	_gate_shader = _compile(GATE_SHADER)
 	_rock_shader = _compile(ROCK_SHADER)
+	_rubble_shader = _compile(RUBBLE_SHADER)
 	_wake_shader = _compile(WAKE_SHADER)
 	_ground_shader = _compile(GROUND_SHADER)
 	_build_grid()
@@ -666,19 +680,16 @@ func _sync_props(sim) -> void:
 		var scrap := _prop("trash%d" % index)
 		index += 1
 		var scale := float(row.get("scale", 1.0))
-		var radius := maxf(28.0, 36.0 * scale)
+		var radius := maxf(64.0, 82.0 * scale)
 		if str(scrap.get_meta("built", "")) != "yes":
-			scrap.mesh = _rock_mesh(index + 40, radius)
-			scrap.material_override = _rock_shader_mat(Color("6a5344"), float(index) * 0.31)
-			var chip := MeshInstance3D.new()
-			chip.name = "Chip"
-			chip.mesh = _rock_mesh(index + 90, radius * 0.42)
-			chip.position = Vector3(radius * 0.72, radius * 0.18, radius * 0.24)
-			chip.material_override = _rock_shader_mat(Color("8a6a48"), float(index) * 0.2)
-			scrap.add_child(chip)
+			scrap.mesh = _rubble_mesh(index + 40, radius)
+			var tones: Array = [Color("c49262"), Color("6e5340"), Color("a87448"), Color("d4b48a")]
+			scrap.material_override = _rubble_mat(tones[index % tones.size()], float(index) * 0.37)
 			scrap.set_meta("built", "yes")
 		scrap.visible = not on_chart
-		scrap.transform = _flat_xform(row.pos, float(row.rot), radius * 0.85)
+		scrap.transform = _flat_xform(row.pos, float(row.rot), radius * 0.72)
+	if sim.trash.size() > 0 and not on_chart:
+		_tag(str(sim.defs.system.trash.get("name", "Hold")), chart(sim.trash_pos, 160.0), Color("e4c8a4"), 20)
 	index = 0
 	for gate in sim.gates:
 		var row: Dictionary = gate
@@ -1063,12 +1074,12 @@ func _sync_meteors(sim) -> void:
 		var row: Dictionary = rock
 		var node := _prop("meteor%d" % index)
 		index += 1
-		var radius := maxf(22.0, float(row.get("size", 4.0)) * 6.0)
+		var radius := maxf(36.0, float(row.get("size", 4.0)) * 8.0)
 		if str(node.get_meta("built", "")) != "yes":
-			node.mesh = _rock_mesh(index + 17, radius)
-			node.material_override = _rock_shader_mat(Color("8a3c22"), float(index) * 0.37)
+			node.mesh = _rubble_mesh(index + 17, radius)
+			node.material_override = _rubble_mat(Color("a85a32"), float(index) * 0.37)
 			node.set_meta("built", "yes")
-		node.position = chart(row.pos, radius * 0.8)
+		node.position = chart(row.pos, radius * 0.7)
 		node.rotation = Vector3(float(index) * 0.4, float(index) * 0.7, 0.2)
 
 
@@ -1210,32 +1221,44 @@ func _sync_star(sim) -> void:
 	(_star_glow.mesh as SphereMesh).radius = radius * 1.55
 	(_star_glow.mesh as SphereMesh).height = radius * 3.1
 	(_star_glow.material_override as ShaderMaterial).set_shader_parameter("albedo", core)
-	if _star_far == null:
-		_star_far = MeshInstance3D.new()
-		_star_far.name = "Halo"
-		var shell := SphereMesh.new()
-		shell.radial_segments = 28
-		shell.rings = 14
-		_star_far.mesh = shell
-		var far := ShaderMaterial.new()
-		far.shader = _ray_shader
-		_star_far.material_override = far
-		_star_far.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(_star_far)
-	(_star_far.mesh as SphereMesh).radius = radius * 3.15
-	(_star_far.mesh as SphereMesh).height = radius * 6.3
-	var far_col := core
-	far_col.a = 0.45
-	(_star_far.material_override as ShaderMaterial).set_shader_parameter("albedo", far_col)
+	if _star_far != null:
+		_star_far.visible = false
+	if _star_rays == null:
+		_star_rays = MeshInstance3D.new()
+		_star_rays.name = "Spokes"
+		var card := QuadMesh.new()
+		card.orientation = PlaneMesh.FACE_Z
+		_star_rays.mesh = card
+		var rays := ShaderMaterial.new()
+		rays.shader = _ray_shader
+		rays.render_priority = 2
+		_star_rays.material_override = rays
+		_star_rays.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_star_rays)
+	var spoke_card := _star_rays.mesh as QuadMesh
+	spoke_card.size = Vector2(radius * 5.2, radius * 5.2)
+	(_star_rays.material_override as ShaderMaterial).set_shader_parameter("albedo", core.lightened(0.05))
 	# The meshes used to stay at 3D zero. The camera's render origin is the
 	# keel, so that put Helion around the dock and buried the hull.
 	_star_mesh.position = at
 	_star_glow.position = at
-	_star_far.position = at
+	_star_rays.position = at
 	var show_star := layer == ScaleFrame.BAND or layer == ScaleFrame.CHART
 	_star_mesh.visible = show_star
 	_star_glow.visible = show_star
-	_star_far.visible = show_star
+	_star_rays.visible = show_star
+	if show_star:
+		var eye := get_viewport().get_camera_3d()
+		if eye != null:
+			var to_eye := eye.global_position - _star_rays.global_position
+			if to_eye.length_squared() > 4.0:
+				var z_axis := to_eye.normalized()
+				var x_axis := Vector3.UP.cross(z_axis)
+				if x_axis.length_squared() < 0.0001:
+					x_axis = Vector3.RIGHT.cross(z_axis)
+				x_axis = x_axis.normalized()
+				var y_axis := z_axis.cross(x_axis).normalized()
+				_star_rays.basis = Basis(x_axis, y_axis, z_axis)
 	if show_star:
 		var star_name := str(sim.defs.system.star.name)
 		_tag(star_name, at + Vector3(0.0, radius + 40.0, 0.0), Color("f0c27a"), 16)
@@ -2693,12 +2716,71 @@ func _metal(color: Color) -> StandardMaterial3D:
 	return mat
 
 
+func _rubble_mat(color: Color, seed: float) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = _rubble_shader
+	mat.set_shader_parameter("albedo", color)
+	mat.set_shader_parameter("seed", seed)
+	return mat
+
+
 func _rock_shader_mat(color: Color, seed: float) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = _rock_shader
 	mat.set_shader_parameter("albedo", color)
 	mat.set_shader_parameter("seed", seed)
 	return mat
+
+
+func _rubble_mesh(seed: int, radius: float) -> ArrayMesh:
+	var bucket := int(round(radius))
+	var key := "rubble|%d|%d" % [posmod(seed, 13), bucket]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = absi(seed) + 91
+	_add_crumple(st, rng, radius, Vector3.ZERO)
+	_add_crumple(st, rng, radius * 0.7, Vector3(radius * 0.98, radius * 0.12, radius * 0.18))
+	_add_crumple(st, rng, radius * 0.62, Vector3(-radius * 0.72, radius * 0.38, radius * 0.58))
+	_add_crumple(st, rng, radius * 0.48, Vector3(radius * 0.12, radius * 0.78, -radius * 0.66))
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _add_crumple(st: SurfaceTool, rng: RandomNumberGenerator, radius: float, center: Vector3) -> void:
+	var lat := 3
+	var lon := 5
+	var rads := PackedFloat32Array()
+	rads.resize((lat + 1) * lon)
+	var wobble := 0.0
+	for yi in lat + 1:
+		for xi in lon:
+			wobble = 0.32 + rng.randf() * 1.05
+			if (yi + xi) % 2 == 0:
+				wobble *= 0.55
+			rads[yi * lon + xi] = wobble
+	var a := Vector3.ZERO
+	var b := Vector3.ZERO
+	var c := Vector3.ZERO
+	var d := Vector3.ZERO
+	var nrm := Vector3.UP
+	for y0 in lat:
+		for x0 in lon:
+			a = center + _rock_vert(y0, x0, lat, lon, rads, radius)
+			b = center + _rock_vert(y0, x0 + 1, lat, lon, rads, radius)
+			c = center + _rock_vert(y0 + 1, x0 + 1, lat, lon, rads, radius)
+			d = center + _rock_vert(y0 + 1, x0, lat, lon, rads, radius)
+			nrm = (b - a).cross(d - a)
+			if nrm.length_squared() < 0.0001:
+				nrm = (a - center).normalized()
+			_rock_tri(st, a, b, d, nrm.normalized())
+			nrm = (c - b).cross(d - b)
+			if nrm.length_squared() < 0.0001:
+				nrm = (d - center).normalized()
+			_rock_tri(st, b, c, d, nrm.normalized())
 
 
 func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
@@ -3092,6 +3174,8 @@ func _build_yard() -> void:
 	_star_glow.visible = true
 	if _star_far != null:
 		_star_far.visible = false
+	if _star_rays != null:
+		_star_rays.visible = false
 	var ring := _prop("yard_dock")
 	if str(ring.get_meta("built", "")) != "yes":
 		var torus := TorusMesh.new()

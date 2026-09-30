@@ -1,19 +1,11 @@
 # Playtest — Helion Dock helm
 
-## Ready — tag exact
+## Ready — rocky hold and corona spokes
 
-Pages build. One fresh Needle, moored. This pass is only the corp field.
+Pages build. One fresh Needle, moored. City lamps already passed. The corp field stays as it is.
 
-1. Market. Click the corp field. Type `Red-Keel!!`. The field keeps that exact string. Set tag. Helm, dossier, and the overhead name read **Red-Keel**. They do not read `Red-Keeld-`.
-2. F5 stays on the helm and writes the log. F9 reads it back. The tag is still **Red-Keel**.
-
-## Ready — Beta #4 re-board
-
-Same page, after the tag. Ice glints and the three hulls already passed. Re-check only these:
-
-1. **City lamps.** Aegis’s night side shows distinct amber lamps, not only a textured globe.
-2. **Debris.** Fly to Seized Hold. The pieces are rocky crumpled volumes in the world. A meteor stream, where one is in the system, reads the same way.
-3. **Corona.** Zoom out until Helion shows. The star’s surface is grain. Separate from that, corona rays stick out past the soft glow.
+1. **Seized Hold.** Zoom out until Aegis and the pad share the frame. The hold is the rocky pile beside the planet. It reads as crumpled rock without opening the probe.
+2. **Corona.** Zoom until Helion shows. Spokes run past the soft glow, separate from the star’s grain.
 
 Godot 4.7, windowed. One pass is enough if each line is done in the window.
 
