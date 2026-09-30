@@ -47,6 +47,7 @@ If the URL 404s, the repo still needs Pages pointed at the `gh-pages` branch, fo
 | Wheel, = / - | Zoom, tactical to sector |
 | 1 / 2 / 3 | Launch probe / harvester / boat |
 | I | Scan dossier |
+| Board, or [ | Helion Dock board. Scan and ring-haul slips, paid into the purse. |
 | B H I F J K | Bay, hangar, dossier, heat, quests, claim |
 | Hold, or Esc | Pause. Write or read the log from that card |
 | F5 / F9 | Write / read the log without pausing |
@@ -62,6 +63,19 @@ A new Needle starts moored at the Helion Dock pad. The flight line reads “Moor
 3. The **Cast off** button does that same shove if a hint, scroll, or leftover text field has focus. W is also the UI “up” key, so the helm records it before any focused control can eat it.
 
 A and D yaw while moored. They do not leave the pad. S, Q, and E do.
+
+### Helion Dock board
+
+The **Board** button sits beside Cast off while the keel is on the Helion pad. The same slate is on the bottom action row. `[` opens it too.
+
+1. **Take Seal Aegis Prime.** Launch a probe (Probe button or 1). When the dossier seals, the log says “Aegis scan filed. Helion Dock paid 80. Purse 80.” Pay lands when the dossier seals, on the pad or already underway.
+2. **Take Crate to the ice ring.** A dock crate enters the hold. Fly to the Aegis ice ring, then bring the crate back to the pad. The log says “Ring haul filed. Helion Dock paid 120.” The purse line on the helm shows the total.
+
+### Open chart
+
+Hold W outward. Past the band the keel stays moving and the chart names Aegis Prime plus the lanes (Homestead Road, Green Spine, Writ Lane). The city stays closed if you burn into the crust; the log points back out to those lanes. The origin/focus/render overlay is omitted on the web build.
+
+Slips are taken only on the pad. A full hold refuses the crate. Each slip pays once. Cast off is unchanged: W or the Cast off button still leaves the dock.
 
 Pick one keel at new game: Needle (Vesper), Barn (Anvil), or Beak (Kestrel). The yard has one module. Bolting it changes the top-down silhouette. It does not come off.
 

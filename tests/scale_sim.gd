@@ -115,8 +115,13 @@ func _layers() -> void:
 	sim.player.vel = Vector2(200.0, 0.0)
 	sim.tick(0.6, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
 	check(int(sim.layer) == ScaleFrame.CHART, "leaving the band returns to the chart")
+	check(sim.player.vel.length() > 40.0, "leaving the band keeps the keel moving")
 	var dropped: Vector2 = sim.local_origin + sim.player.pos
 	check(dropped.distance_to(body.chart_km) > ScaleFrame.soi_km(body), "the chart drop sits outside the well")
+	var lane_world: Vector2 = sim.local_origin + sim.chart_lane_pos(sim.gates[0])
+	check(lane_world.distance_to(body.chart_km) > ScaleFrame.soi_km(body), "a lane sits outside the well on the chart")
+	var viewed: Vector2 = ScaleFrame.chart_view(sim, sim.player.pos)
+	check(viewed.length() < ScaleFrame.CHART_VIEW_RADIUS + 80.0, "the chart view fits a phone helm")
 	sim.local_origin = Vector2(500000.0, -420000.0)
 	sim.player.pos = Vector2(5200.0, -800.0)
 	sim.player.vel = Vector2.ZERO

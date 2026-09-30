@@ -549,14 +549,18 @@ func _limb_gap() -> float:
 
 
 func chart(p: Vector2, height: float = 0.0) -> Vector3:
-	var render: Vector2 = p
+	var shown := p
+	if Game.sim != null and int(Game.sim.layer) == ScaleFrame.CHART:
+		shown = ScaleFrame.chart_view(Game.sim, p)
+	var render: Vector2 = shown
 	var gate: Variant = WorldCoord.gate()
 	if gate != null:
-		render = gate.render_of_world(p)
+		render = gate.render_of_world(shown)
 	return Vector3(render.x, height, -render.y)
 
 
 func _sync_props(sim) -> void:
+	var on_chart := int(sim.layer) == ScaleFrame.CHART
 	var belt: Dictionary = sim.defs.system.get("belt", {})
 	var volume := ScaleFrame.belt_is_volume(belt)
 	var index := 0
@@ -587,7 +591,7 @@ func _sync_props(sim) -> void:
 			stone.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
 			chunk.material_override = stone
 			chunk.set_meta("built", "yes")
-		chunk.visible = chunk.mesh != null
+		chunk.visible = chunk.mesh != null and not on_chart
 	if volume:
 		_sync_belt_volume(sim, belt)
 	index = 0
@@ -601,6 +605,7 @@ func _sync_props(sim) -> void:
 			scrap.mesh = _prism(poly, maxf(4.0, 5.5 * scale))
 			scrap.material_override = _hull_mat(Color("6a5344"))
 			scrap.set_meta("built", "yes")
+		scrap.visible = not on_chart
 		scrap.transform = _flat_xform(row.pos, float(row.rot), 1.0)
 	index = 0
 	for gate in sim.gates:
@@ -633,6 +638,7 @@ func _sync_props(sim) -> void:
 		var side := Vector3.UP.cross(through).normalized()
 		var up := through.cross(side).normalized()
 		var door := Basis(side, through, up)
+		hoop.visible = not on_chart
 		hoop.position = chart(row.pos, 0.0)
 		hoop.basis = door
 		var veil := _prop("gateveil%d" % (index - 1))
@@ -643,9 +649,11 @@ func _sync_props(sim) -> void:
 			film.set_shader_parameter("albedo", tone)
 			veil.material_override = film
 			veil.set_meta("built", "yes")
+		veil.visible = not on_chart
 		veil.position = hoop.position
 		veil.basis = door
-		_tag(str(row.get("name", "")), chart(row.pos, radius * 0.15 + 20.0), Color("e6d7a8"), 13)
+		if not on_chart:
+			_tag(str(row.get("name", "")), chart(row.pos, radius * 0.15 + 20.0), Color("e6d7a8"), 13)
 	var mast := _prop("beacon")
 	if str(mast.get_meta("built", "")) != "yes":
 		var pole := CylinderMesh.new()
@@ -655,6 +663,7 @@ func _sync_props(sim) -> void:
 		mast.mesh = pole
 		mast.material_override = _metal(Color("8a7a62"))
 		mast.set_meta("built", "yes")
+	mast.visible = not on_chart
 	mast.position = chart(sim.beacon_pos, 18.0)
 	var yard := _prop("beacon_yard")
 	if str(yard.get_meta("built", "")) != "yes":
@@ -663,6 +672,7 @@ func _sync_props(sim) -> void:
 		yard.mesh = arm
 		yard.material_override = _metal(Color("6e6254"))
 		yard.set_meta("built", "yes")
+	yard.visible = not on_chart
 	yard.position = chart(sim.beacon_pos, 32.0)
 	var pad := _prop("beacon_pad")
 	if str(pad.get_meta("built", "")) != "yes":
@@ -671,6 +681,7 @@ func _sync_props(sim) -> void:
 		pad.mesh = slab
 		pad.material_override = _hull_mat(Color("6a5e50"))
 		pad.set_meta("built", "yes")
+	pad.visible = not on_chart
 	pad.position = chart(sim.beacon_pos, 1.2)
 	var halo := _prop("beacon_halo")
 	if str(halo.get_meta("built", "")) != "yes":
@@ -682,6 +693,7 @@ func _sync_props(sim) -> void:
 		ring_mat.set_shader_parameter("to_star", Vector3(0.0, 1.0, 0.0))
 		halo.material_override = ring_mat
 		halo.set_meta("built", "yes")
+	halo.visible = not on_chart
 	halo.position = chart(sim.beacon_pos, 0.6)
 	var lamp := _prop("beacon_lamp")
 	if str(lamp.get_meta("built", "")) != "yes":
@@ -697,6 +709,7 @@ func _sync_props(sim) -> void:
 		glow.emission_energy_multiplier = 1.6
 		lamp.material_override = glow
 		lamp.set_meta("built", "yes")
+	lamp.visible = not on_chart
 	lamp.position = chart(sim.beacon_pos, 40.0)
 	if _beacon_light == null:
 		_beacon_light = OmniLight3D.new()
@@ -706,8 +719,10 @@ func _sync_props(sim) -> void:
 		_beacon_light.omni_range = 90.0
 		_beacon_light.shadow_enabled = false
 		add_child(_beacon_light)
+	_beacon_light.visible = not on_chart
 	_beacon_light.position = chart(sim.beacon_pos, 38.0)
-	_tag("Dock beacon", chart(sim.beacon_pos + Vector2(-70.0, -90.0), 78.0), Color("8aa896"), 13)
+	if not on_chart:
+		_tag("Dock beacon", chart(sim.beacon_pos + Vector2(-70.0, -90.0), 78.0), Color("8aa896"), 13)
 	_sync_density(sim)
 	_sync_pocket(sim)
 	_sync_nebula()
@@ -733,8 +748,10 @@ func _sync_pocket(sim) -> void:
 		mat.emission_energy_multiplier = 0.2
 		hoop.material_override = mat
 		hoop.set_meta("built", str(radius))
+	hoop.visible = int(sim.layer) != ScaleFrame.CHART
 	hoop.position = chart(sim.pocket_pos, 2.0)
-	_tag(str(sim.defs.system.pocket.name), chart(sim.pocket_pos, 18.0), Color("c5d2b4"), 14)
+	if hoop.visible:
+		_tag(str(sim.defs.system.pocket.name), chart(sim.pocket_pos, 18.0), Color("c5d2b4"), 14)
 
 
 func _sync_nebula() -> void:
@@ -959,7 +976,7 @@ func _sync_star(sim) -> void:
 	var radius := float(sim.star_radius)
 	var at := chart(Vector2.ZERO, 0.0)
 	if layer == ScaleFrame.CHART:
-		radius = 1600.0
+		radius = 160.0
 		var origin: Vector2 = sim.local_origin
 		at = chart(Vector2.ZERO - origin, 0.0)
 	if _star_mesh == null:
@@ -1251,15 +1268,40 @@ func _sync_chart_bodies(sim) -> void:
 			well.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			node.add_child(well)
 		var soi := ScaleFrame.soi_km(row)
-		(well.mesh as TorusMesh).inner_radius = maxf(soi - 180.0, 20.0)
-		(well.mesh as TorusMesh).outer_radius = soi + 180.0
+		var visual := ScaleFrame.chart_view(sim, Vector2(soi, 0.0)).x
+		(well.mesh as TorusMesh).inner_radius = maxf(visual - 28.0, 20.0)
+		(well.mesh as TorusMesh).outer_radius = visual + 28.0
 		well.visible = true
-		_tag(str(row.name), node.position + Vector3(0.0, icon + 200.0, 0.0), Color("e6d7bf"), 16)
+		_tag(str(row.name), node.position + Vector3(0.0, icon + 80.0, 0.0), Color("e6d7bf"), 18)
+	var lane_i := 0
+	for gate in sim.gates:
+		var row: Dictionary = gate
+		var buoy := _prop("chartlane%d" % lane_i)
+		lane_i += 1
+		if buoy.mesh == null:
+			var ring := TorusMesh.new()
+			ring.inner_radius = 36.0
+			ring.outer_radius = 52.0
+			ring.rings = 28
+			ring.ring_segments = 8
+			buoy.mesh = ring
+			var glow := StandardMaterial3D.new()
+			glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			glow.albedo_color = Color("9fd0c8")
+			glow.emission_enabled = true
+			glow.emission = Color("7d9a86")
+			glow.emission_energy_multiplier = 0.8
+			buoy.material_override = glow
+			buoy.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var at: Vector2 = sim.chart_lane_pos(row)
+		buoy.position = chart(at, 0.0)
+		buoy.visible = true
+		_tag(str(row.get("name", "Lane")), buoy.position + Vector3(0.0, 70.0, 0.0), Color("e6d7a8"), 18)
 	var mark := _prop("chart_ship")
 	if mark.mesh == null:
 		var dot := SphereMesh.new()
-		dot.radius = 280.0
-		dot.height = 560.0
+		dot.radius = 42.0
+		dot.height = 84.0
 		mark.mesh = dot
 		var glow := StandardMaterial3D.new()
 		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -1520,8 +1562,12 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 		holder.scale = Vector3(0.28, 0.28, 0.28)
 		holder.position = chart(sim.site_pos + Vector2(36.0, -20.0), 280.0)
 		holder.rotation = Vector3(-0.4, float(ship.rot), 0.15)
+	elif int(sim.layer) == ScaleFrame.CHART and key != "player":
+		holder.visible = false
+		return
 	else:
-		holder.scale = Vector3.ONE
+		holder.visible = true
+		holder.scale = Vector3(6.0, 6.0, 6.0) if int(sim.layer) == ScaleFrame.CHART else Vector3.ONE
 		_banked(holder, ship.pos, float(ship.rot), 2.0)
 	_pulse_lamps(holder)
 	var exhaust := holder.get_node_or_null("Exhaust") as MeshInstance3D
@@ -1727,6 +1773,8 @@ func _sync_craft(sim) -> void:
 		var row: Dictionary = item
 		var pos: Vector2 = row.pos
 		var rot := float(row.rot)
+		if int(sim.layer) == ScaleFrame.CHART and str(row.get("state", "")) != "docked":
+			continue
 		if str(row.get("state", "")) == "docked" and bool(sim.player.get("alive", false)):
 			var side := Vector2.from_angle(float(sim.player.rot) + PI * 0.5)
 			var back := Vector2.from_angle(float(sim.player.rot) + PI)
@@ -1863,8 +1911,10 @@ func _sync_sky(sim) -> void:
 		mm.instance_count = count
 	var layer := int(sim.layer)
 	var shell := 6400.0
+	var star_scale := 0.012
 	if layer == ScaleFrame.CHART:
-		shell = 64000.0
+		shell = 9000.0
+		star_scale = 0.0014
 	elif layer == ScaleFrame.APPROACH:
 		shell = 36000.0
 	elif layer == ScaleFrame.SITE:
@@ -1883,7 +1933,7 @@ func _sync_sky(sim) -> void:
 			dir = Vector3.UP
 		dir = dir.normalized()
 		var radius := lerpf(shell * 0.55, shell, u)
-		var scale := radius * 0.012 * (0.55 + float(star.a))
+		var scale := radius * star_scale * (0.55 + float(star.a))
 		var basis := Basis.IDENTITY.scaled(Vector3(scale, scale, scale))
 		mm.set_instance_transform(i, Transform3D(basis, anchor + dir * radius))
 		var temp := float(star.a)

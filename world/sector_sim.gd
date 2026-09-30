@@ -394,6 +394,8 @@ func resource_name(id: String) -> String:
 		return "Claim Core"
 	if id == "food_mass":
 		return "food mass"
+	if id == "dock_crate":
+		return "dock crate"
 	if id == "milk_analogue":
 		return "milk analogue"
 	if id == "fodder":
@@ -690,6 +692,7 @@ func _step(dt: float, cmd: Dictionary) -> void:
 	_step_scale(before_pos)
 	Homestead.step(self, dt)
 	QuestBoard.pulse(self, dt)
+	DockBoard.pulse(self, dt)
 	_step_compact()
 
 
@@ -742,9 +745,9 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 	unit.vel *= 1.0 - float(stats.damp) * dt
 	var cap := float(stats.vmax)
 	if int(layer) == ScaleFrame.CHART:
-		cap = 24.0
+		cap = 1600.0
 	elif int(layer) == ScaleFrame.APPROACH:
-		cap = 80.0
+		cap = 1600.0
 	if unit.vel.length() > cap:
 		unit.vel = unit.vel.limit_length(cap)
 	# One accepted cast-off frame has to show on the integer speed line.
@@ -889,6 +892,11 @@ func _shot_reaches(origin: Vector2, dest: Vector2, center: Vector2, radius: floa
 func _bump_world(ship: Dictionary) -> void:
 	if not bool(ship.alive):
 		return
+	# Planet and star colliders live in band meters. Chart and approach
+	# positions are kilometers, and a rebase toward the origin was scraping
+	# the star and killing speed on the open chart.
+	if int(layer) != ScaleFrame.BAND:
+		return
 	_bump_circle(ship, Vector2.ZERO, star_radius, 16.0)
 	for body in planets:
 		_bump_circle(ship, body.pos, float(body.radius) * 0.94, 9.0)
@@ -902,11 +910,16 @@ func _bump_circle(ship: Dictionary, center: Vector2, radius: float, dmg: float) 
 		return
 	var normal = delta / dist
 	ship.pos = center + normal * limit
-	ship.vel = ship.vel.slide(normal) * 0.45 - normal * 30.0
+	ship.vel = ship.vel.slide(normal)
+	if ship.vel.dot(normal) < 12.0:
+		ship.vel += normal * 36.0
 	if float(ship.hurt_cd) <= 0.0:
-		damage_unit(ship, dmg, "world")
+		damage_unit(ship, minf(dmg, 3.0), "world")
 		if str(ship.agent_id) == str(player.agent_id) and bool(player.alive):
-			say("The keel scrapes. Burning in does not land it. The city stays under the band.")
+			var last := float(quest_flags.get("crust_note", -20.0))
+			if time - last > 8.0:
+				quest_flags.crust_note = time
+				say("The city is closed. Turn outward — the chart has the lanes.")
 
 
 func hangar_down() -> bool:
@@ -1391,7 +1404,31 @@ func _build_static() -> void:
 	_build_nodes()
 
 
+func chart_lane_pos(gate: Dictionary) -> Vector2:
+	var body = planet(str(gate.get("anchor", "")))
+	var dir := Vector2.from_angle(float(gate.get("angle", 0.0)))
+	if dir.length() < 0.2:
+		dir = Vector2.RIGHT
+	var soi := 8000.0
+	var center := Vector2.ZERO
+	if body != null:
+		soi = ScaleFrame.soi_km(body)
+		center = body.chart_km
+	var km: Vector2 = center + dir * (soi + 900.0)
+	return km - local_origin
+
+
 func nearby_gate() -> Dictionary:
+	if int(layer) == ScaleFrame.CHART:
+		var chart_best: Dictionary = {}
+		var chart_d := 2200.0
+		for gate in gates:
+			var at: Vector2 = chart_lane_pos(gate)
+			var dist: float = player.pos.distance_to(at)
+			if dist < chart_d:
+				chart_best = gate
+				chart_d = dist
+		return chart_best
 	var best: Dictionary = {}
 	var best_d := 100000.0
 	for gate in gates:
@@ -2092,6 +2129,8 @@ func _roman(index: int) -> String:
 func view_focus() -> Vector2:
 	if int(layer) == ScaleFrame.SITE:
 		return site_pos
+	if int(layer) == ScaleFrame.CHART:
+		return ScaleFrame.chart_view(self, player.pos)
 	return player.pos
 
 
@@ -2208,11 +2247,12 @@ func _to_chart_from_band(body: Dictionary) -> void:
 	var outside := ScaleFrame.soi_km(body) + 40.0
 	local_origin = body.chart_km
 	player.pos = exit * outside
-	player.vel = Vector2.ZERO
+	var carry := maxf(player.vel.dot(exit), 0.0)
+	player.vel = exit * maxf(carry, 520.0)
 	layer = ScaleFrame.CHART
 	body_id = ""
 	band_id = ""
-	say("Clear of the band. The chart has the well. The city stays down there.")
+	say("Clear of the band. The lanes are marked. Hold W — the sector stays open.")
 
 
 func _step_approach() -> void:
@@ -2229,13 +2269,18 @@ func _step_approach() -> void:
 		_enter_band(body)
 		return
 	if player.pos.length() > ScaleFrame.soi_km(body):
+		var leaving: Vector2 = player.pos
+		if leaving.length() < 1.0:
+			leaving = Vector2.RIGHT
+		var out_dir := leaving.normalized()
+		var carried := maxf(player.vel.length(), 520.0)
 		local_origin = body.chart_km + player.pos
 		player.pos = Vector2.ZERO
-		player.vel = Vector2.ZERO
+		player.vel = out_dir * carried
 		layer = ScaleFrame.CHART
 		body_id = ""
 		band_id = ""
-		say("Out of the well. The chart is icons and lanes.")
+		say("Out of the well. The lanes stay on the chart.")
 
 
 func _enter_band(body: Dictionary) -> void:

@@ -146,11 +146,12 @@ func _enter_sector() -> void:
 		hud.reset_overlays()
 	if sector != null and sector.has_method("snap"):
 		sector.snap()
-	if origin_hud == null:
+	if origin_hud == null and OS.has_feature("web") == false:
 		origin_hud = preload("res://ui/OriginDebugHUD.gd").new()
 		origin_hud.name = "OriginDebug"
 		add_child(origin_hud)
-	origin_hud.show()
+	if origin_hud != null:
+		origin_hud.visible = OS.has_feature("web") == false
 
 
 func _on_quit() -> void:
