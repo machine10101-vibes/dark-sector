@@ -1,16 +1,19 @@
 # Playtest — Helion Dock helm
 
-## Ready — Beta #4 in-world fidelity
+## Ready — tag exact
 
-Pages build. One fresh Needle on the Helion band. This pass is the sky and the hulls. Desk and phone should still read clean.
+Pages build. One fresh Needle, moored. This pass is only the corp field.
 
-1. **Aegis.** The limb shows land, water, ice, and city lamps on the night side, with a soft rim of air. The horizon is a little uneven.
-2. **Ice ring.** The ring glints. Chips catch and fade. It stays a flat ring.
-3. **Debris.** Seized Hold and any meteors read as rocky or crumpled volumes, not flat cards.
-4. **Helion.** Zoom out until the star and corona show. The star has grain, the corona has rays, and the starfield twinkles.
-5. **Hulls.** Zoom in. The Needle has a rounded keel, deck plates, and the spine mast. The Barn shows the wide bay. The Beak shows the wing guns. Phone landscape and portrait still keep Speed, Purse, and the bars clear of each other.
+1. Market. Click the corp field. Type `Red-Keel!!`. The field keeps that exact string. Set tag. Helm, dossier, and the overhead name read **Red-Keel**. They do not read `Red-Keeld-`.
+2. F5 stays on the helm and writes the log. F9 reads it back. The tag is still **Red-Keel**.
 
-Optional Beta #3 smoke, same page: scan 80 and haul 120 still add to Purse 200, Market still buys glasswheat for 12 and sells it for 8 on the pad, the tag Red-Keel still sticks through F5/F9, and New keel still flies solo.
+## Ready — Beta #4 re-board
+
+Same page, after the tag. Ice glints and the three hulls already passed. Re-check only these:
+
+1. **City lamps.** Aegis’s night side shows distinct amber lamps, not only a textured globe.
+2. **Debris.** Fly to Seized Hold. The pieces are rocky crumpled volumes in the world. A meteor stream, where one is in the system, reads the same way.
+3. **Corona.** Zoom out until Helion shows. The star’s surface is grain. Separate from that, corona rays stick out past the soft glow.
 
 Godot 4.7, windowed. One pass is enough if each line is done in the window.
 

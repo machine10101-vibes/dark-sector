@@ -97,19 +97,18 @@ void fragment() {
 	float relief = clamp((hi - lo) * 5.5 + 0.55, 0.2, 1.15);
 	col *= mix(1.0, relief, 0.5 * day + 0.06);
 	float lamps = 0.0;
+	float night_side = smoothstep(0.18, -0.42, ndl);
 	if (city > 0.5) {
-		float cluster = smoothstep(0.52, 0.8, fbm(n * 4.4 + vec3(2.0, seed, 4.0)));
-		vec3 cell = fract(n * 22.0 + vec3(seed));
-		float window = step(0.72, cell.x) * step(0.72, cell.y);
-		float block = step(0.18, cell.z);
-		float artery = step(0.9, fract(n.x * 9.0 + seed)) + step(0.9, fract(n.z * 9.0 + seed));
-		lamps = (window * block + artery * 0.28) * cluster * clamp(-ndl + 0.12, 0.0, 1.0) * land_w;
+		vec2 grid = fract(n.xz * 3.4 + vec2(seed, seed * 1.7));
+		float blob = smoothstep(0.42, 0.06, length(grid - vec2(0.5)));
+		float district = smoothstep(0.38, 0.66, fbm(n * 2.4 + vec3(seed, 1.2, 0.4)));
+		lamps = blob * district * night_side * mix(0.75, 1.0, land_w);
 	}
 	float shore = 1.0 - smoothstep(0.0, 0.035, abs(field - 0.5));
 	col += vec3(0.9, 0.93, 0.88) * shore * day * 0.55;
 	float cloud_shade = smoothstep(0.46, 0.74, fbm(n * 3.6 + vec3(seed, spin, 0.6)));
 	col *= 1.0 - cloud_shade * day * 0.42;
-	vec3 glow = vec3(1.0, 0.78, 0.42) * lamps * 3.1;
+	vec3 glow = vec3(1.0, 0.86, 0.38) * lamps * 8.0;
 	float rim = pow(clamp(1.0 - max(dot(n, eye), 0.0), 0.0, 1.0), 2.4);
 	col += vec3(0.55, 0.72, 0.88) * rim * 0.22 + glow;
 	ALBEDO = col;
@@ -206,22 +205,50 @@ render_mode blend_mix, unshaded, cull_disabled, depth_draw_never;
 varying vec3 wnorm;
 varying vec3 wpos;
 uniform vec4 albedo : source_color = vec4(1.0, 0.8, 0.5, 1.0);
-" + _NOISE + "void vertex() {
+void vertex() {
 	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.15);
-	float ang = atan(n.y, n.x);
-	float gust = fbm(n * 3.4 + vec3(TIME * 0.05, 0.2, TIME * 0.02));
-	float ray = pow(0.5 + 0.5 * sin(ang * 13.0 + gust * 5.0 + TIME * 0.35), 2.4);
-	float spike = pow(max(sin(ang * 27.0 - TIME * 0.55 + gust * 3.0), 0.0), 10.0);
-	vec3 col = mix(albedo.rgb, vec3(1.0, 0.95, 0.82), spike * 0.65);
-	ALBEDO = col;
-	EMISSION = col * (0.7 + spike * 1.4);
-	ALPHA = fres * fres * (0.28 + 0.72 * ray) * (0.62 + spike);
+	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.7);
+	ALBEDO = albedo.rgb;
+	EMISSION = albedo.rgb * 0.4;
+	ALPHA = fres * fres * 0.5;
+}
+"
+
+const RAY_SHADER := "shader_type spatial;
+render_mode blend_mix, unshaded, cull_disabled, depth_draw_never;
+varying vec3 wnorm;
+varying vec3 wpos;
+uniform vec4 albedo : source_color = vec4(1.0, 0.78, 0.42, 1.0);
+void vertex() {
+	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	vec3 n = normalize(wnorm);
+	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
+	vec3 axis = cross(eye, vec3(0.0, 1.0, 0.0));
+	if (dot(axis, axis) < 0.0001) {
+		axis = cross(eye, vec3(1.0, 0.0, 0.0));
+	}
+	axis = normalize(axis);
+	vec3 bit = normalize(cross(eye, axis));
+	float ang = atan(dot(n, axis), dot(n, bit));
+	float a = ang / 6.2831853;
+	float spoke = smoothstep(0.045, 0.008, abs(fract(a * 7.0) - 0.5));
+	float thin = smoothstep(0.02, 0.003, abs(fract(a * 7.0 + 0.5) - 0.5));
+	float rim = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 2.6);
+	float ray = rim * max(spoke, thin * 0.9);
+	if (ray < 0.05) {
+		discard;
+	}
+	ALBEDO = albedo.rgb;
+	EMISSION = albedo.rgb * (1.4 + spoke * 3.0);
+	ALPHA = ray;
 }
 "
 
@@ -404,8 +431,9 @@ void fragment() {
 	float cavity = smoothstep(0.32, 0.72, fbm(n * 3.2 + vec3(seed * 2.0, 1.0, 0.2)));
 	float pits = smoothstep(0.62, 0.82, noise3(n * 18.0 + vec3(seed)));
 	vec3 mineral = mix(albedo.rgb, albedo.rgb * vec3(1.15, 0.92, 0.78), grit * 0.45);
-	vec3 col = mineral * (0.32 + 1.2 * ndl) * mix(1.0, 0.28, cavity);
-	col *= 1.0 - pits * 0.35;
+	vec3 col = mineral * (0.7 + 0.75 * ndl);
+	col = mix(col, col * 0.42, cavity * 0.7);
+	col *= 1.0 - pits * 0.22;
 	float vein = smoothstep(0.52, 0.74, fbm(n * 11.0 + vec3(seed, 2.2, 0.5)));
 	col = mix(col, mineral * vec3(0.62, 0.48, 0.32), vein * 0.42);
 	float rim = pow(1.0 - ndl, 2.2);
@@ -488,6 +516,7 @@ var _cloud_shader: Shader
 var _air_shader: Shader
 var _star_shader: Shader
 var _corona_shader: Shader
+var _ray_shader: Shader
 var _hull_shader: Shader
 var _glass_shader: Shader
 var _plume_shader: Shader
@@ -515,6 +544,7 @@ func _ready() -> void:
 	_air_shader = _compile(AIR_SHADER)
 	_star_shader = _compile(STAR_SHADER)
 	_corona_shader = _compile(CORONA_SHADER)
+	_ray_shader = _compile(RAY_SHADER)
 	_hull_shader = _compile(HULL_SHADER)
 	_glass_shader = _compile(GLASS_SHADER)
 	_plume_shader = _compile(PLUME_SHADER)
@@ -635,20 +665,20 @@ func _sync_props(sim) -> void:
 		var row: Dictionary = hull
 		var scrap := _prop("trash%d" % index)
 		index += 1
+		var scale := float(row.get("scale", 1.0))
+		var radius := maxf(28.0, 36.0 * scale)
 		if str(scrap.get_meta("built", "")) != "yes":
-			var scale := float(row.get("scale", 1.0))
-			var radius := maxf(6.0, 9.5 * scale)
 			scrap.mesh = _rock_mesh(index + 40, radius)
-			scrap.material_override = _hull_mat(Color("6a5344"))
+			scrap.material_override = _rock_shader_mat(Color("6a5344"), float(index) * 0.31)
 			var chip := MeshInstance3D.new()
 			chip.name = "Chip"
-			chip.mesh = _rock_mesh(index + 90, radius * 0.46)
-			chip.position = Vector3(radius * 0.85, radius * 0.15, radius * 0.28)
-			chip.material_override = _rock_shader_mat(Color("5c4638"), float(index) * 0.2)
+			chip.mesh = _rock_mesh(index + 90, radius * 0.42)
+			chip.position = Vector3(radius * 0.72, radius * 0.18, radius * 0.24)
+			chip.material_override = _rock_shader_mat(Color("8a6a48"), float(index) * 0.2)
 			scrap.add_child(chip)
 			scrap.set_meta("built", "yes")
 		scrap.visible = not on_chart
-		scrap.transform = _flat_xform(row.pos, float(row.rot), 1.0)
+		scrap.transform = _flat_xform(row.pos, float(row.rot), radius * 0.85)
 	index = 0
 	for gate in sim.gates:
 		var row: Dictionary = gate
@@ -1033,12 +1063,12 @@ func _sync_meteors(sim) -> void:
 		var row: Dictionary = rock
 		var node := _prop("meteor%d" % index)
 		index += 1
+		var radius := maxf(22.0, float(row.get("size", 4.0)) * 6.0)
 		if str(node.get_meta("built", "")) != "yes":
-			var radius := float(row.get("size", 4.0)) * 2.2
 			node.mesh = _rock_mesh(index + 17, radius)
 			node.material_override = _rock_shader_mat(Color("8a3c22"), float(index) * 0.37)
 			node.set_meta("built", "yes")
-		node.position = chart(row.pos, float(row.get("size", 4.0)))
+		node.position = chart(row.pos, radius * 0.8)
 		node.rotation = Vector3(float(index) * 0.4, float(index) * 0.7, 0.2)
 
 
@@ -1188,12 +1218,12 @@ func _sync_star(sim) -> void:
 		shell.rings = 14
 		_star_far.mesh = shell
 		var far := ShaderMaterial.new()
-		far.shader = _corona_shader
+		far.shader = _ray_shader
 		_star_far.material_override = far
 		_star_far.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_star_far)
-	(_star_far.mesh as SphereMesh).radius = radius * 2.35
-	(_star_far.mesh as SphereMesh).height = radius * 4.7
+	(_star_far.mesh as SphereMesh).radius = radius * 3.15
+	(_star_far.mesh as SphereMesh).height = radius * 6.3
 	var far_col := core
 	far_col.a = 0.45
 	(_star_far.material_override as ShaderMaterial).set_shader_parameter("albedo", far_col)
@@ -2687,9 +2717,9 @@ func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
 	var wobble := 0.0
 	for yi in lat + 1:
 		for xi in lon:
-			wobble = 0.62 + rng.randf() * 0.58
+			wobble = 0.36 + rng.randf() * 1.05
 			if (yi + xi) % 3 == 0:
-				wobble *= 0.76
+				wobble *= 0.55
 			if yi == 0 or yi == lat:
 				wobble = 0.72 + rng.randf() * 0.2
 			rads[yi * lon + xi] = wobble
@@ -2712,9 +2742,42 @@ func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
 			if nrm.length_squared() < 0.0001:
 				nrm = d.normalized()
 			_rock_tri(st, b, c, d, nrm.normalized())
+	_add_rock_lobe(st, rng, radius * 0.62, Vector3(radius * 0.58, radius * 0.1, radius * 0.16))
+	_add_rock_lobe(st, rng, radius * 0.5, Vector3(-radius * 0.34, radius * 0.2, radius * 0.52))
 	var mesh := st.commit()
 	_mesh_cache[key] = mesh
 	return mesh
+
+
+func _add_rock_lobe(st: SurfaceTool, rng: RandomNumberGenerator, radius: float, center: Vector3) -> void:
+	var lat := 5
+	var lon := 7
+	var rads := PackedFloat32Array()
+	rads.resize((lat + 1) * lon)
+	var wobble := 0.0
+	for yi in lat + 1:
+		for xi in lon:
+			wobble = 0.4 + rng.randf() * 0.95
+			rads[yi * lon + xi] = wobble
+	var a := Vector3.ZERO
+	var b := Vector3.ZERO
+	var c := Vector3.ZERO
+	var d := Vector3.ZERO
+	var nrm := Vector3.UP
+	for y0 in lat:
+		for x0 in lon:
+			a = center + _rock_vert(y0, x0, lat, lon, rads, radius)
+			b = center + _rock_vert(y0, x0 + 1, lat, lon, rads, radius)
+			c = center + _rock_vert(y0 + 1, x0 + 1, lat, lon, rads, radius)
+			d = center + _rock_vert(y0 + 1, x0, lat, lon, rads, radius)
+			nrm = (b - a).cross(d - a)
+			if nrm.length_squared() < 0.0001:
+				nrm = (a - center).normalized()
+			_rock_tri(st, a, b, d, nrm.normalized())
+			nrm = (c - b).cross(d - b)
+			if nrm.length_squared() < 0.0001:
+				nrm = (d - center).normalized()
+			_rock_tri(st, b, c, d, nrm.normalized())
 
 
 func _rock_vert(y: int, x: int, lat: int, lon: int, rads: PackedFloat32Array, radius: float) -> Vector3:
