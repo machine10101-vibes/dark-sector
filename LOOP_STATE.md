@@ -1,8 +1,9 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Helion Dock return
+Slice just completed: Title yard
 Player-visible what works now:
+- The title and the keel yard are the same 3D sky as the helm: Aegis as a limb, ice rings, and one hull. New keel opens that hull above the cards. Hover, or the top card on a phone, swaps Needle, Barn, and Beak. Take the Needle still moors at Helion Dock.
 - Cast off, fly past the band, then come back. The cyan Helion Dock buoy is a large flashing ring on the chart and a ring plus light column on the band. An arrow keeps the name on screen when the buoy is off the tactical view. Touching the chart buoy, or closing to about 50–100 m of the band buoy from any heading, moors the keel. The helm reads Moored, and the band line shows the meters to Helion Dock rather than only the scale bar. Cast off and Board return. Chart law stays dark until that approach is real.
 - A sealed Aegis dossier pays 80 into Purse. The ice-ring crate pays 120 when it is brought back to the moored pad, and the crate leaves the hold.
 - The helm is a dark glass card: hull, speed, heat, and purse sit in their own chips. Place and mode are the line under them. Cast off, Board, Quests, and Probe are the primary controls. Lane, weld, claim, and the rest sit in a quieter strip. The web build still hides the origin overlay.

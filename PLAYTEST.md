@@ -11,6 +11,14 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 7. **Board.** On the pad, Board. Take Seal Aegis Prime. Probe. When the dossier seals, the log pays 80 and the helm reads Purse 80, even if the keel has already left the pad. Take the ring crate, fly to the ice ring, return to the pad. The log pays 120 and the crate leaves the hold.
 8. **Chart.** Cast off and hold W past the band. Speed stays above 0. The chart shows Aegis Prime, Homestead Road, Green Spine, and Writ Lane. The log does not lock you on a scrape.
 
+## Ready — title yard
+
+Windowed or the Pages build. One fresh launch.
+
+1. The title is the Helion limb, the ice rings, and a keel in front of that sky. New keel, Host, Join, and Continue log are still on the left.
+2. New keel. One hull is in the yard above the cards. The line names it. Hover a card, or on a phone scroll so that card is the top one. Needle, Barn, and Beak each take the yard in turn.
+3. Take the Needle. The helm is still moored at Helion Dock. Cast off and Board are up. Purse is 0.
+
 ## Ready — dock board
 
 Windowed or the Pages build. One fresh Needle. Incognito is fine.

@@ -17,10 +17,16 @@ var keel_row: GridContainer
 
 var backdrop: Control
 var root: Control
+var stage: SubViewportContainer
+var yard_line: Label
+var pinned_keel := ""
 
 
 func _ready() -> void:
 	layer = 30
+	stage = preload("res://ui/menu_stage.gd").new()
+	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(stage)
 	backdrop = Backdrop.new()
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(backdrop)
@@ -72,6 +78,8 @@ func _ready() -> void:
 	select_box.visible = false
 	root.add_child(select_box)
 	select_box.add_child(ThemeKit.label("Choose the keel. The other two stay in someone else's yard.", 16, Color("cbb892")))
+	yard_line = ThemeKit.label("Needle is in the yard.", 14, Color("9eecf5"))
+	select_box.add_child(yard_line)
 	var keel_scroll := ScrollContainer.new()
 	keel_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	keel_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -99,16 +107,20 @@ func _fit() -> void:
 		screen = Vector2(1280, 720)
 	backdrop.position = Vector2.ZERO
 	backdrop.size = screen
+	if stage != null and stage.has_method("fit"):
+		stage.fit(screen)
 	root.position = Vector2.ZERO
 	root.size = screen
-	var wide := minf(520.0, screen.x - 24.0)
-	var tall := minf(560.0, screen.y - 24.0)
-	root_box.position = Vector2((screen.x - wide) * 0.5, maxf(8.0, (screen.y - tall) * 0.5))
+	var wide := minf(460.0, screen.x - 24.0)
+	var tall := minf(520.0, screen.y * 0.72)
+	var left := 28.0 if screen.x > 860.0 else 12.0
+	root_box.position = Vector2(left, maxf(16.0, screen.y * 0.06))
 	root_box.size = Vector2(wide, tall)
 	if address_line != null:
 		address_line.custom_minimum_size = Vector2(minf(480.0, wide - 8.0), 40)
-	select_box.position = Vector2(12, 12)
-	select_box.size = screen - Vector2(24, 24)
+	var select_h := minf(340.0, screen.y * 0.46) if screen.x > 860.0 else minf(screen.y * 0.58, screen.y - 36.0)
+	select_box.position = Vector2(12, screen.y - select_h - 8.0)
+	select_box.size = Vector2(screen.x - 24.0, select_h)
 	if keel_row != null:
 		var stacked := screen.x < 860.0
 		keel_row.columns = 1 if stacked else 3
@@ -138,6 +150,56 @@ func _show_select(next: String) -> void:
 	select_box.show()
 
 
+func _process(_delta: float) -> void:
+	if stage == null:
+		return
+	var on := visible and str(Game.mode) != "sector"
+	if stage.has_method("set_live"):
+		stage.set_live(on)
+	if on == false:
+		return
+	var hero := select_box != null and select_box.visible
+	var klass := "vesper"
+	if hero:
+		klass = _focused_keel()
+	if stage.has_method("set_keel"):
+		stage.set_keel(klass, hero)
+	if yard_line != null and Game.defs.has("ships") and Game.defs.ships.has(klass):
+		var hull: Dictionary = Game.defs.ships[klass]
+		yard_line.text = "%s is in the yard." % str(hull.callsign)
+
+
+func _focused_keel() -> String:
+	if pinned_keel != "":
+		return pinned_keel
+	if keel_row == null:
+		return "vesper"
+	var screen := get_viewport().get_visible_rect().size
+	if screen.x >= 860.0:
+		return "vesper"
+	var best := "vesper"
+	var best_y := 1.0e12
+	var top := select_box.global_position.y
+	for card in keel_row.get_children():
+		var id := str(card.get_meta("class_id", "vesper"))
+		var y: float = card.global_position.y
+		if y + card.size.y < top:
+			continue
+		if y < best_y:
+			best_y = y
+			best = id
+	return best
+
+
+func _pin_keel(class_id: String) -> void:
+	pinned_keel = class_id
+
+
+func _unpin_keel(class_id: String) -> void:
+	if pinned_keel == class_id:
+		pinned_keel = ""
+
+
 func _choose(class_id: String) -> void:
 	if intent == "host":
 		host_game.emit(class_id)
@@ -155,6 +217,9 @@ func set_note(text: String) -> void:
 func _card(class_id: String) -> PanelContainer:
 	var hull: Dictionary = Game.defs.ships[class_id]
 	var card := PanelContainer.new()
+	card.set_meta("class_id", class_id)
+	card.mouse_entered.connect(_pin_keel.bind(class_id))
+	card.mouse_exited.connect(_unpin_keel.bind(class_id))
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var box := VBoxContainer.new()
@@ -208,28 +273,8 @@ class Backdrop extends Control:
 			stars.append(Vector2(rng.randf(), rng.randf()))
 
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), Color("07080c"), true)
-		var globe := size * 0.3
-		var gr := size.x * 0.2
-		var lit := Vector2(-0.62, -0.42).normalized()
-		draw_circle(globe, gr * 1.18, Color(0.35, 0.48, 0.52, 0.08))
-		draw_circle(globe, gr, Color(0.07, 0.09, 0.11))
-		draw_circle(globe + lit * gr * 0.2, gr * 0.7, Color(0.16, 0.2, 0.22))
-		draw_circle(globe + lit * gr * 0.38, gr * 0.38, Color(0.32, 0.38, 0.4))
-		draw_arc(globe, gr * 0.96, lit.angle() - 1.05, lit.angle() + 1.05, 18, Color(0.72, 0.84, 0.88, 0.4), 2.4, true)
-		var ember := size * 0.78
-		draw_circle(ember, size.x * 0.16, Color(0.22, 0.1, 0.05, 0.22))
-		draw_circle(ember + Vector2(-18, -10), size.x * 0.06, Color(0.55, 0.32, 0.14, 0.18))
-		draw_line(size * Vector2(0.02, 0.46), size * Vector2(0.7, 0.3), Color(0.02, 0.025, 0.03, 0.55), 14.0)
-		draw_line(size * Vector2(0.12, 0.74), size * Vector2(0.92, 0.58), Color(0.07, 0.08, 0.11, 0.4), 7.0)
-		for cluster in 6:
-			var cx: float = 0.16 + float(cluster) * 0.035
-			var cy: float = 0.2 + float(cluster % 2) * 0.028
-			draw_circle(Vector2(cx * size.x, cy * size.y), 1.55, Color(0.9, 0.93, 0.96, 0.75))
-		for star in stars:
-			var temp: float = float(star.y)
-			var tint := Color(0.75, 0.82, 0.95, 0.35) if temp < 0.35 else Color(0.95, 0.88, 0.72, 0.28 + temp * 0.4)
-			draw_circle(Vector2(star.x * size.x, star.y * size.y), 1.15, tint)
+		draw_rect(Rect2(Vector2.ZERO, Vector2(size.x, 64.0)), Color(0.02, 0.03, 0.05, 0.42), true)
+		draw_rect(Rect2(Vector2(0.0, size.y - 72.0), Vector2(size.x, 72.0)), Color(0.02, 0.03, 0.05, 0.5), true)
 		draw_line(Vector2(40, 22), Vector2(size.x - 40, 22), Color("8a7344"), 1.0)
 		draw_line(Vector2(40, size.y - 22), Vector2(size.x - 40, size.y - 22), Color("8a7344"), 1.0)
 
