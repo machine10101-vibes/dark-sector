@@ -1806,6 +1806,135 @@ func _ship_holder(key: String) -> Node3D:
 	return node
 
 
+func _signature_mount(class_id: String) -> Array:
+	match class_id:
+		"vesper":
+			return ["sensor_mast"]
+		"anvil":
+			return ["cargo_blister"]
+		"kestrel":
+			return ["gun_sponson"]
+		_:
+			return []
+
+
+func _mount_roles(holder: Node3D, class_id: String, shapes: Array, height: float) -> void:
+	# Same bolts, different hardware. The 2D card still uses Silhouette.parts.
+	var nose := float(holder.get_meta("nose", 40.0))
+	var y := height * 0.48
+	if shapes.has("mast"):
+		_mount_mast(holder, class_id, nose, y, height)
+	if shapes.has("sponson"):
+		_mount_guns(holder, class_id, y, height)
+	if shapes.has("blister"):
+		_mount_bay(holder, class_id, y, height)
+	if shapes.has("probes"):
+		_mount_probe(holder, class_id, nose, y, height)
+
+
+func _mount_mast(holder: Node3D, class_id: String, nose: float, y: float, height: float) -> void:
+	var metal := Color("c4b49a")
+	var dish := Color("9fd0c8")
+	if class_id == "anvil":
+		_hardware(holder, "MountMastCollar", Vector3(10.0, 3.2, 10.0), Vector3(2.0, height * 0.92, 0.0), metal)
+		_tube(holder, "MountMast", 1.6, 18.0, Vector3(2.0, height + 8.0, 0.0), "y", metal)
+		_tube(holder, "MountMastDish", 6.4, 1.1, Vector3(2.0, height + 18.0, 0.0), "y", dish)
+	elif class_id == "kestrel":
+		_hardware(holder, "MountMastCollar", Vector3(5.0, 2.0, 7.0), Vector3(4.0, y, 12.0), metal)
+		var boom := _tube(holder, "MountMast", 0.7, 22.0, Vector3(14.0, y + 5.0, 20.0), "x", metal)
+		boom.rotation = Vector3(0.35, 0.9, 0.15)
+		_tube(holder, "MountMastDish", 3.6, 0.8, Vector3(24.0, y + 9.0, 28.0), "z", dish)
+	else:
+		_hardware(holder, "MountMastCollar", Vector3(8.0, 1.6, 2.4), Vector3(nose - 6.0, y, 0.0), metal)
+		_tube(holder, "MountMast", 0.55, 40.0, Vector3(nose + 16.0, y + 1.2, 0.0), "x", metal)
+		_tube(holder, "MountMastDish", 3.4, 0.7, Vector3(nose + 38.0, y + 1.2, 0.0), "x", dish)
+
+
+func _mount_guns(holder: Node3D, class_id: String, y: float, _height: float) -> void:
+	var metal := Color("8e8680")
+	var bore := Color("2c3138")
+	if class_id == "anvil":
+		_hardware(holder, "MountGunP", Vector3(12.0, 7.0, 9.0), Vector3(-2.0, y, 24.0), metal)
+		_hardware(holder, "MountGunS", Vector3(12.0, 7.0, 9.0), Vector3(-2.0, y, -24.0), metal)
+		_tube(holder, "MountBarrelP", 1.45, 9.0, Vector3(8.0, y, 24.0), "x", bore)
+		_tube(holder, "MountBarrelS", 1.45, 9.0, Vector3(8.0, y, -24.0), "x", bore)
+	elif class_id == "kestrel":
+		var port := _tube(holder, "MountGunP", 0.7, 16.0, Vector3(6.0, y, 16.0), "x", bore)
+		port.rotation.y = -0.65
+		var starboard := _tube(holder, "MountGunS", 0.7, 16.0, Vector3(6.0, y, -16.0), "x", bore)
+		starboard.rotation.y = 0.65
+		_hardware(holder, "MountGunBracket", Vector3(4.0, 1.4, 10.0), Vector3(2.0, y, 0.0), metal)
+	else:
+		_hardware(holder, "MountGunP", Vector3(3.0, 1.6, 2.2), Vector3(12.0, y * 0.72, 6.5), metal)
+		_hardware(holder, "MountGunS", Vector3(3.0, 1.6, 2.2), Vector3(12.0, y * 0.72, -6.5), metal)
+		_tube(holder, "MountBarrelP", 0.42, 18.0, Vector3(20.0, y * 0.72, 6.5), "x", bore)
+		_tube(holder, "MountBarrelS", 0.42, 18.0, Vector3(20.0, y * 0.72, -6.5), "x", bore)
+
+
+func _mount_bay(holder: Node3D, class_id: String, y: float, height: float) -> void:
+	var metal := Color("a89880")
+	var door := Color("6a5e50")
+	if class_id == "anvil":
+		_hardware(holder, "MountBay", Vector3(28.0, 10.0, 36.0), Vector3(-8.0, height * 0.22, 0.0), metal)
+		_hardware(holder, "MountBayDoor", Vector3(2.0, 7.0, 22.0), Vector3(4.0, height * 0.28, 0.0), door)
+	elif class_id == "kestrel":
+		var port := _hardware(holder, "MountBay", Vector3(18.0, 3.6, 6.0), Vector3(-2.0, y * 0.7, 15.0), metal)
+		port.rotation.y = 0.4
+		var starboard := _hardware(holder, "MountBayS", Vector3(18.0, 3.6, 6.0), Vector3(-2.0, y * 0.7, -15.0), metal)
+		starboard.rotation.y = -0.4
+	else:
+		_tube(holder, "MountBay", 3.1, 16.0, Vector3(-6.0, y * 0.55, 9.0), "x", metal)
+		_tube(holder, "MountBayS", 3.1, 16.0, Vector3(-6.0, y * 0.55, -9.0), "x", metal)
+		_hardware(holder, "MountBayStrap", Vector3(1.2, 1.2, 20.0), Vector3(-6.0, y * 0.55 + 2.4, 0.0), door)
+
+
+func _mount_probe(holder: Node3D, class_id: String, nose: float, y: float, height: float) -> void:
+	var metal := Color("b7c4c0")
+	var dart := Color("d7e6c8")
+	if class_id == "anvil":
+		_tube(holder, "MountProbe", 1.8, 12.0, Vector3(-12.0, height * 0.85, 8.0), "y", metal)
+		_tube(holder, "MountProbeS", 1.8, 12.0, Vector3(-12.0, height * 0.85, -8.0), "y", metal)
+		_hardware(holder, "MountProbeBed", Vector3(8.0, 1.4, 20.0), Vector3(-12.0, height * 0.72, 0.0), dart)
+	elif class_id == "kestrel":
+		_hardware(holder, "MountProbeBed", Vector3(6.0, 1.6, 4.0), Vector3(nose * 0.45, height * 0.16, 0.0), metal)
+		_tube(holder, "MountProbe", 1.05, 14.0, Vector3(nose * 0.55, height * 0.16, 0.0), "x", dart)
+	else:
+		_hardware(holder, "MountProbeBed", Vector3(20.0, 1.1, 2.2), Vector3(nose * 0.42, height * 0.82, 0.0), metal)
+		_tube(holder, "MountProbe", 0.7, 9.0, Vector3(nose * 0.62, height * 0.95, 0.0), "x", dart)
+
+
+func _hardware(holder: Node3D, part_name: String, size: Vector3, at: Vector3, color: Color) -> MeshInstance3D:
+	var node := MeshInstance3D.new()
+	node.name = part_name
+	var box := BoxMesh.new()
+	box.size = size
+	node.mesh = box
+	node.position = at
+	node.material_override = _hull_mat(color)
+	holder.add_child(node)
+	return node
+
+
+func _tube(holder: Node3D, part_name: String, radius: float, length: float, at: Vector3, axis: String, color: Color) -> MeshInstance3D:
+	var node := MeshInstance3D.new()
+	node.name = part_name
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = radius
+	cyl.bottom_radius = radius
+	cyl.height = length
+	cyl.radial_segments = 12
+	cyl.rings = 1
+	node.mesh = cyl
+	node.position = at
+	if axis == "x":
+		node.rotation.z = PI * 0.5
+	elif axis == "z":
+		node.rotation.x = PI * 0.5
+	node.material_override = _hull_mat(color)
+	holder.add_child(node)
+	return node
+
+
 func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array) -> void:
 	for child in holder.get_children():
 		holder.remove_child(child)
@@ -1862,6 +1991,7 @@ func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array) 
 		holder.add_child(ball)
 		circle_i += 1
 	_add_bridge(holder, class_id, height, float(geom.tail))
+	_mount_roles(holder, class_id, shapes, height)
 
 
 func _sync_craft(sim) -> void:
@@ -2687,9 +2817,10 @@ func _dress_yard() -> void:
 	if Game.defs.ships.has(menu_class) == false:
 		return
 	var holder := _ship_holder("yard")
-	var shapes: Array = Silhouette.shapes_of(Game.defs, [])
-	var layers: Array = Silhouette.layers_of(Game.defs, [])
-	var mesh_key := menu_class + "|yard"
+	var worn: Array = _signature_mount(menu_class)
+	var shapes: Array = Silhouette.shapes_of(Game.defs, worn)
+	var layers: Array = Silhouette.layers_of(Game.defs, worn)
+	var mesh_key := menu_class + "|" + str(shapes)
 	if str(holder.get_meta("mesh_key", "")) != mesh_key:
 		_fill_ship(holder, menu_class, shapes, layers)
 		holder.set_meta("mesh_key", mesh_key)

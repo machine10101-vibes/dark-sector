@@ -81,7 +81,7 @@ Slips are taken only on the pad. A full hold refuses the crate. Each slip pays o
 
 To come back, fly until the card shows **Helion Dock** under 200 m. That moors from any heading and any speed, including a stop, whether the line says Local or Tactical. Inside 500 m the **Dock** button forces the same snap. The line reads Moored, and Cast off and Board are available again. The card’s Helion Dock meters are the range to the pad. The scale bar is only the zoom. A key that is still held down waits until you release it.
 
-Pick one keel at new game: Needle (Vesper), Barn (Anvil), or Beak (Kestrel). The yard has one module. Bolting it changes the top-down silhouette. It does not come off.
+Pick one keel at new game: Needle (Vesper), Barn (Anvil), or Beak (Kestrel). The yard shows that keel’s signature mount: Needle a spine mast, Barn a wide bay, Beak wing guns. The same four roles bolt on every keel, and each keel wears them on different hardware. Stats and slots stay the same. The top-down card still uses the shared silhouette.
 
 ## Slice
 
