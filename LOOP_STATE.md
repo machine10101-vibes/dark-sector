@@ -1,8 +1,9 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Helm tracks the keel
+Slice just completed: Glass helm
 Player-visible what works now:
+- The helm is a dark glass card: hull, speed, heat, and purse sit in their own chips. Place and mode are the line under them. Cast off, Board, Quests, and Probe are the primary controls. Lane, weld, claim, and the rest sit in a quieter strip. The web build still hides the origin overlay.
 - W (or Cast off) leaves the pad and stays gone. A/D yaws and the velocity follows the nose, easing at high speed so the keel carves instead of spinning. Q/E strafes. The camera keeps the ship in frame once you leave the berth, with a lead along the nose. D is still yaw. I is still the dossier.
 - Leaving the Aegis band keeps outward speed and opens a readable chart. Aegis Prime and the lanes (Homestead Road, Green Spine, Writ Lane) stay on screen. The city crust still refuses a landing and tells you to turn outward. The web build hides the origin/focus/render overlay.
 - On the Helion pad, Board lists two paid slips. Seal Aegis Prime with a probe for 80; pay lands when the dossier seals, on the pad or already underway. Carry a dock crate to the ice ring and back for 120. The helm shows Purse. Each slip pays once and stays in the log.

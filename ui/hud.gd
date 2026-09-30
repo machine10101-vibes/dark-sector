@@ -29,13 +29,24 @@ var hold_button: Button
 var chat_line: LineEdit
 var chat_open := false
 var helm_box: VBoxContainer
+var status_card: PanelContainer
+var stats_grid: GridContainer
+var stat_hull: Label
+var stat_speed: Label
+var stat_heat: Label
+var stat_purse: Label
 var hint_label: Label
 var cast_button: Button
 var board_button: Button
+var quest_button: Button
+var probe_button: Button
 var board_box: VBoxContainer
 var board_sig := ""
 var action_scroll: ScrollContainer
 var action_row: HBoxContainer
+var primary_bar: PanelContainer
+var primary_row: HBoxContainer
+var log_card: PanelContainer
 var pad: Control
 var stick_button: Button
 var touch_on := false
@@ -59,27 +70,28 @@ func _ready() -> void:
 	pad = preload("res://ui/flight_pad.gd").new()
 	pad.visible = touch_on
 	root.add_child(pad)
-	hint_label = ThemeKit.label(
-		"Hold W to cast off and thrust. Board posts dock jobs on the pad. S retro. A/D yaw. Q/E strafe. Space gun. I opens the scan dossier.",
-		12,
-		Color("8d826c")
-	)
-	hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hint_label = ThemeKit.label("", 12, Color("8aa8b0"))
+	hint_label.visible = false
 	root.add_child(hint_label)
-	cast_button = ThemeKit.button("Cast off")
+	cast_button = ThemeKit.button("Cast off", true)
 	cast_button.visible = false
+	cast_button.custom_minimum_size = Vector2(124, 48)
+	cast_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	cast_button.pressed.connect(func() -> void:
 		if Game.sim == null:
 			return
 		Game.request_cast_off()
 	)
 	root.add_child(cast_button)
-	board_button = ThemeKit.button("Board")
+	board_button = ThemeKit.button("Board", true)
 	board_button.visible = false
+	board_button.custom_minimum_size = Vector2(112, 48)
+	board_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	board_button.pressed.connect(func() -> void:
 		_toggle("board")
 	)
 	root.add_child(board_button)
+	_mount_primary()
 	stick_button = ThemeKit.button("Stick")
 	stick_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	stick_button.custom_minimum_size = Vector2(88, 44)
@@ -108,14 +120,16 @@ func _fit() -> void:
 		touch_on = true
 	root.position = Vector2.ZERO
 	root.size = screen
-	var bar_h := 64.0
+	if stats_grid != null:
+		stats_grid.columns = 2 if compact else 4
+	var side := 460.0
 	if panel != null:
 		if compact:
-			panel.position = Vector2(8, screen.y * 0.34)
-			panel.size = Vector2(screen.x - 16.0, screen.y * 0.62)
+			panel.position = Vector2(8, screen.y * 0.22)
+			panel.size = Vector2(screen.x - 16.0, screen.y * 0.5)
 		else:
-			panel.position = Vector2(screen.x - 472, 12)
-			panel.size = Vector2(460, screen.y - 48)
+			panel.position = Vector2(screen.x - side - 16.0, 16)
+			panel.size = Vector2(side, screen.y - 150.0)
 	if panel_inner != null:
 		panel_inner.custom_minimum_size = Vector2(minf(420.0, screen.x - 48.0), 0)
 	var card_w := minf(440.0, screen.x - 24.0)
@@ -127,60 +141,77 @@ func _fit() -> void:
 		dead_box.position = Vector2((screen.x - card_w) * 0.5, maxf(8.0, (screen.y - card_h) * 0.5))
 		dead_box.size = Vector2(card_w, card_h)
 	if hold_button != null:
-		if compact:
-			hold_button.position = Vector2(screen.x - 92, 8)
-			hold_button.size = Vector2(80, 44)
-		else:
-			hold_button.position = Vector2(screen.x - 188, 12)
-			hold_button.size = Vector2(88, 44)
+		hold_button.position = Vector2(screen.x - 100.0, 12)
+		hold_button.size = Vector2(84, 40)
 	if stick_button != null:
 		if compact:
-			stick_button.position = Vector2(screen.x - 92, 56)
-			stick_button.size = Vector2(80, 44)
+			stick_button.position = Vector2(screen.x - 100.0, 58)
 		else:
-			stick_button.position = Vector2(screen.x - 96, 12)
-			stick_button.size = Vector2(84, 44)
+			stick_button.position = Vector2(screen.x - 192.0, 12)
+		stick_button.size = Vector2(84, 40)
 		stick_button.text = "Keys" if touch_on else "Stick"
-	if helm_box != null:
-		var helm_w := screen.x - 108.0 if compact else screen.x - 210.0
-		if not compact and panel != null and panel.visible:
-			helm_w = minf(760.0, screen.x - 500.0)
-		helm_box.size = Vector2(maxf(160.0, helm_w), 160)
-	if compact:
-		if log_label != null:
-			log_label.position = Vector2(16, 168)
-			log_label.size = Vector2(maxf(140.0, screen.x - 32.0), 40)
-		if banner != null:
-			banner.position = Vector2(16, 212)
-			banner.size = Vector2(maxf(140.0, screen.x - 32.0), 36)
-	else:
-		if log_label != null:
-			log_label.position = Vector2(16, screen.y - bar_h - 132.0)
-			log_label.size = Vector2(minf(760.0, screen.x - 32.0), 96)
-		if banner != null:
-			banner.position = Vector2(16, 156)
-			banner.size = Vector2(minf(860.0, screen.x - 32.0), 48)
-	if hint_label != null:
-		hint_label.visible = not touch_on
-		hint_label.position = Vector2(16, screen.y - bar_h - 22.0)
-		hint_label.size = Vector2(maxf(120.0, screen.x - 32.0), 20)
 	if cast_button != null:
 		var moored := false
 		if Game.sim != null and Game.mode == "sector":
 			moored = bool(Game.sim.player.get("moored", false))
 		cast_button.visible = moored
-		cast_button.position = Vector2(16, 96 if compact else 108)
-		cast_button.size = Vector2(148, 44)
 	_place_board_button(compact)
-	if action_scroll != null:
-		action_scroll.position = Vector2(8, screen.y - bar_h - 4.0)
-		action_scroll.size = Vector2(screen.x - 16.0, bar_h)
+	_layout_chrome(screen)
 	if pad != null:
 		pad.visible = touch_on
 		if touch_on and pad.has_method("place"):
-			pad.place(screen)
+			var dock := 118.0 if compact else 108.0
+			pad.place(screen, dock)
 		elif not touch_on:
 			Game.clear_flight()
+
+
+func _layout_chrome(screen: Vector2) -> void:
+	var margin := 12.0
+	var secondary_h := 46.0
+	var primary_h := 72.0 if compact else 76.0
+	var helm_w := screen.x - 118.0 if compact else minf(560.0, screen.x - 220.0)
+	if not compact and panel != null and panel.visible:
+		helm_w = minf(helm_w, screen.x - 500.0)
+	helm_w = maxf(200.0, helm_w)
+	if status_card != null:
+		status_card.position = Vector2(margin, 10)
+		status_card.size = Vector2(helm_w, status_card.get_combined_minimum_size().y)
+	var status_bottom := 150.0
+	if status_card != null:
+		status_bottom = status_card.position.y + status_card.size.y
+	if banner != null:
+		banner.position = Vector2(margin, status_bottom + 6.0)
+		banner.size = Vector2(helm_w, 36)
+	var bars_top := screen.y - secondary_h - primary_h - 16.0
+	_size_primary(compact)
+	if primary_bar != null:
+		var primary_w := screen.x - margin * 2.0 if compact else minf(640.0, screen.x - margin * 2.0)
+		var hug := primary_row.get_combined_minimum_size().x + 28.0 if primary_row != null else primary_w
+		if not compact:
+			primary_w = minf(primary_w, maxf(hug, 180.0))
+		primary_bar.position = Vector2(margin, bars_top)
+		primary_bar.size = Vector2(primary_w, primary_h)
+	if action_scroll != null:
+		action_scroll.position = Vector2(margin, screen.y - secondary_h - 8.0)
+		action_scroll.size = Vector2(screen.x - margin * 2.0, secondary_h)
+	if log_card != null:
+		if compact:
+			var log_y := status_bottom + 8.0
+			if banner != null and banner.visible and banner.text != "":
+				log_y = banner.position.y + banner.size.y + 6.0
+			log_card.position = Vector2(margin, log_y)
+			log_card.size = Vector2(screen.x - margin * 2.0, 68.0)
+		else:
+			var log_w := minf(620.0, screen.x - margin * 2.0)
+			var log_h := 78.0
+			log_card.position = Vector2(margin, bars_top - log_h - 8.0)
+			log_card.size = Vector2(log_w, log_h)
+	if chat_line != null:
+		chat_line.position = Vector2(margin, bars_top - 40.0)
+		chat_line.size = Vector2(minf(480.0, screen.x - margin * 2.0), 32)
+	if hint_label != null:
+		hint_label.visible = false
 
 
 func _process(_delta: float) -> void:
@@ -297,29 +328,58 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _build_helm() -> void:
+	status_card = PanelContainer.new()
+	status_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	status_card.add_theme_stylebox_override("panel", ThemeKit.glass(true))
+	root.add_child(status_card)
 	helm_box = VBoxContainer.new()
-	helm_box.position = Vector2(16, 12)
-	helm_box.custom_minimum_size = Vector2(280, 0)
 	helm_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(helm_box)
+	helm_box.add_theme_constant_override("separation", 4)
+	status_card.add_child(helm_box)
 	var box := helm_box
-	helm_name = ThemeKit.label("DARK SECTOR", 13, Color("8a7344"))
-	helm_flight = ThemeKit.label("", 16, Color("e6d7bf"))
-	helm_zone = ThemeKit.label("", 14, Color("cbb892"))
-	helm_cargo = ThemeKit.label("", 14, Color("d7e6c8"))
-	helm_craft = ThemeKit.label("", 14, Color("9fd0c8"))
+	helm_name = ThemeKit.label("DARK SECTOR", 12, Color("7ed0dc"))
+	helm_flight = ThemeKit.label("", 18, Color("f2fbff"))
+	helm_zone = ThemeKit.label("", 13, Color("9fd4c8"))
+	stats_grid = GridContainer.new()
+	stats_grid.columns = 4
+	stats_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stats_grid.add_theme_constant_override("h_separation", 8)
+	stats_grid.add_theme_constant_override("v_separation", 6)
 	box.add_child(helm_name)
 	box.add_child(helm_flight)
+	box.add_child(stats_grid)
+	stat_hull = _chip("HULL")
+	stat_speed = _chip("0 m/s")
+	stat_heat = _chip("HEAT")
+	stat_purse = _chip("PURSE 0")
 	box.add_child(helm_zone)
+	helm_cargo = ThemeKit.label("", 13, Color("b7c9c4"))
+	helm_craft = ThemeKit.label("", 13, Color("8eb8c0"))
 	box.add_child(helm_cargo)
 	box.add_child(helm_craft)
-	banner = ThemeKit.label("", 16, Color("e7b15a"))
+	banner = ThemeKit.label("", 16, Color("f0c36a"))
 	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(banner)
-	log_label = ThemeKit.label("", 14, Color("b7ab96"))
-	log_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	log_card = PanelContainer.new()
+	log_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	log_card.add_theme_stylebox_override("panel", ThemeKit.glass(false))
+	root.add_child(log_card)
+	log_label = ThemeKit.label("", 13, Color("d5e4e8"))
 	log_label.clip_text = true
-	root.add_child(log_label)
+	log_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	log_card.add_child(log_label)
+
+
+func _chip(text: String) -> Label:
+	var chip := PanelContainer.new()
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chip.add_theme_stylebox_override("panel", ThemeKit.chip_box())
+	var lab := ThemeKit.label(text, 14, Color("e9fbff"))
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	chip.add_child(lab)
+	stats_grid.add_child(chip)
+	return lab
 
 
 func _build_panel() -> void:
@@ -402,6 +462,47 @@ func _build_dead() -> void:
 	box.add_child(menu)
 
 
+func _size_primary(is_compact: bool) -> void:
+	var wide := Control.SIZE_EXPAND_FILL if is_compact else Control.SIZE_SHRINK_CENTER
+	var slot := 0.0 if is_compact else 112.0
+	for node in [cast_button, board_button, quest_button, probe_button]:
+		if node == null:
+			continue
+		var button := node as Button
+		var span := 124.0 if button == cast_button and not is_compact else slot
+		button.size_flags_horizontal = wide
+		button.custom_minimum_size = Vector2(span, 44)
+
+
+func _mount_primary() -> void:
+	primary_bar = PanelContainer.new()
+	primary_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	primary_bar.add_theme_stylebox_override("panel", ThemeKit.glass(true))
+	root.add_child(primary_bar)
+	primary_row = HBoxContainer.new()
+	primary_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	primary_row.add_theme_constant_override("separation", 8)
+	primary_bar.add_child(primary_row)
+	_reparent(cast_button)
+	_reparent(board_button)
+	quest_button = ThemeKit.button("Quests", true)
+	quest_button.custom_minimum_size = Vector2(112, 48)
+	quest_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	quest_button.pressed.connect(func() -> void: _toggle("quest"))
+	primary_row.add_child(quest_button)
+	probe_button = ThemeKit.button("Probe", true)
+	probe_button.custom_minimum_size = Vector2(112, 48)
+	probe_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	probe_button.pressed.connect(func() -> void: _launch("survey_probe"))
+	primary_row.add_child(probe_button)
+
+
+func _reparent(node: Control) -> void:
+	if node.get_parent() != null:
+		node.get_parent().remove_child(node)
+	primary_row.add_child(node)
+
+
 func _build_actions() -> void:
 	action_scroll = ScrollContainer.new()
 	action_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
@@ -422,15 +523,12 @@ func _build_actions() -> void:
 	_action("Hail", func() -> void: Game.tap("hail", true))
 	_action("Flag", func() -> void: Game.tap("flag", true))
 	_action("Bay", func() -> void: _toggle("bay"))
-	_action("Board", func() -> void: _toggle("board"))
-	_action("Quests", func() -> void: _toggle("quest"))
 	_action("Claim", func() -> void: _toggle("claim"))
 	_action("Site", func() -> void:
 		if Game.sim == null:
 			return
 		_say_result(Game.sim.enter_site())
 	)
-	_action("Probe", func() -> void: _launch("survey_probe"))
 	_action("Harvest", func() -> void: _launch("harvest_drone"))
 	_action("Boat", func() -> void: _launch(_boat_id()))
 	_action("Heat", func() -> void: _toggle("heat"))
@@ -451,9 +549,9 @@ func _build_actions() -> void:
 
 
 func _action(text: String, call: Callable) -> void:
-	var node := ThemeKit.button(text)
+	var node := ThemeKit.button(text, false)
 	node.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	node.custom_minimum_size = Vector2(84, 44)
+	node.custom_minimum_size = Vector2(78, 36)
 	node.pressed.connect(call)
 	action_row.add_child(node)
 
@@ -491,85 +589,75 @@ func _refresh_helm() -> void:
 	var sim = Game.sim
 	var hull: Dictionary = sim.defs.ships[sim.player.class_id]
 	var stats := Fit.stats(sim.defs, sim.player)
-	var zone: String = sim.zone_at(sim.player.pos)
 	var zoom_word := "Tactical"
 	if Game.zoom < 0.28:
 		zoom_word = "Sector"
 	elif Game.zoom < 0.7:
 		zoom_word = "Local"
-	var keel := "Keel complaining." if stats.keel_warn else "Keel within tolerance."
 	var moored := bool(sim.player.get("moored", false))
 	if cast_button != null:
 		cast_button.visible = moored
 	_place_board_button(compact)
+	helm_name.text = str(sim.defs.system.name).to_upper()
 	if compact:
-		helm_name.text = "%s    %s" % [str(sim.defs.system.name).to_upper(), hull.callsign]
-		if moored:
-			helm_flight.text = "Moored. Hold W or Cast off."
-		else:
-			helm_flight.text = "hull %d/%d    %d m/s    %s    %s" % [
-				int(sim.player.hp),
-				int(sim.player.max_hp),
-				int(sim.player.vel.length()),
-				zoom_word,
-				ScaleFrame.layer_name(int(sim.layer)),
-			]
+		helm_flight.text = str(hull.callsign)
 	else:
-		helm_name.text = "%s    %s    %s" % [str(sim.defs.system.name).to_upper(), hull.class_name, hull.callsign]
-		if moored:
-			helm_flight.text = "Moored at Helion Dock. Hold W or Cast off.    %s" % keel
-		else:
-			var alt_km := 0.0
-			var focus = sim.planet(str(sim.body_id))
-			if focus != null:
-				alt_km = ScaleFrame.band_alt(focus)
-			helm_flight.text = "hull %d/%d    %d m/s    yaw %.0f°/s    %s    sig %s    %s    %s    %s %.0f km" % [
-				int(sim.player.hp),
-				int(sim.player.max_hp),
-				int(sim.player.vel.length()),
-				stats.yaw_deg,
-				_mass_line(stats),
-				stats.signature_word,
-				keel,
-				zoom_word,
-				ScaleFrame.layer_name(int(sim.layer)),
-				alt_km,
-			]
+		helm_flight.text = "%s   ·   %s" % [str(hull.callsign), str(hull.class_name)]
+	var hp_now := int(sim.player.hp)
+	var hp_max := int(sim.player.max_hp)
+	stat_hull.text = "HULL  %d/%d" % [hp_now, hp_max]
+	stat_hull.add_theme_color_override("font_color", Color("f0a0a0") if hp_now < hp_max * 0.45 else Color("e9fbff"))
+	stat_speed.text = "%d m/s" % int(sim.player.vel.length())
 	var law_name := Law.at(sim, sim.player.pos)
-	helm_zone.add_theme_color_override("font_color", Law.color_of(law_name))
 	var link_word := ""
 	if Game.link != null and str(Game.link.role) == "host":
-		link_word = "    HOST %s" % str(Game.link.code)
+		link_word = "  ·  HOST %s" % str(Game.link.code)
 	elif Game.link != null and str(Game.link.role) == "client":
-		link_word = "    GUEST"
+		link_word = "  ·  GUEST"
 	var heat := float(sim.heat.get(sim._pdo_id(), 0.0))
 	var stage := sim.heat_stage()
-	var stage_word := ""
-	if stage == "hail":
-		stage_word = " — hailed"
+	var heat_word := HeatWords.word(heat)
+	if stage == "guns":
+		heat_word = "guns"
 	elif stage == "fine":
-		stage_word = " — fined"
-	elif stage == "guns":
-		stage_word = " — guns"
-	if compact:
-		helm_zone.text = "%s%s    heat %.0f%s" % [law_name.to_upper(), link_word, heat, stage_word]
-	else:
-		helm_zone.text = "%s%s    %s heat %s (%.0f)%s" % [Law.hud_line(sim, sim.player.pos), link_word, sim._pdo_name(), HeatWords.word(heat), heat, stage_word]
+		heat_word = "fined"
+	elif stage == "hail":
+		heat_word = "hailed"
+	stat_heat.text = "HEAT  %s" % heat_word
+	var heat_color := Color("9fd4c8")
+	if stage == "guns":
+		heat_color = Color("f0a0a0")
+	elif stage == "fine" or stage == "hail":
+		heat_color = Color("f0c36a")
+	stat_heat.add_theme_color_override("font_color", heat_color)
+	stat_purse.text = "PURSE  %d" % DockBoard.purse(sim)
+	stat_purse.add_theme_color_override("font_color", Color("f0d48a"))
+	var place := "Moored" if moored else ScaleFrame.layer_name(int(sim.layer))
+	helm_zone.text = "%s  ·  %s  ·  %s%s" % [place, zoom_word, law_name, link_word]
+	helm_zone.add_theme_color_override("font_color", Law.color_of(law_name))
 	var repair := ""
 	if sim.player.pos.distance_to(sim.beacon_pos) <= 170.0:
-		repair = "    Weld is live at the beacon"
+		repair = "  ·  Weld live"
 	var gate := sim.nearby_gate()
 	if not gate.is_empty():
-		repair += "    Lane %s" % str(gate.name)
-	helm_cargo.text = _cargo_line(sim, stats) + repair + "    Purse %d" % DockBoard.purse(sim)
+		repair += "  ·  %s" % str(gate.name)
+	helm_cargo.text = _cargo_line(sim, stats) + repair
+	helm_cargo.visible = not compact
 	helm_craft.text = _craft_line(sim)
+	helm_craft.visible = not compact
 	var bits: Array = []
 	for line in sim.lines:
 		bits.append(str(line.text))
-	if compact and bits.size() > 2:
-		bits = bits.slice(bits.size() - 2, bits.size())
+	var keep := 2 if compact else 3
+	if bits.size() > keep:
+		bits = bits.slice(0, keep)
 	log_label.text = "\n".join(bits)
-	log_label.max_lines_visible = 2 if compact else 5
+	log_label.max_lines_visible = keep
+	if log_card != null:
+		log_card.visible = log_label.text != ""
+	var screen := get_viewport().get_visible_rect().size
+	if screen.x >= 64.0:
+		_layout_chrome(screen)
 
 
 func _mass_line(stats: Dictionary) -> String:
@@ -647,18 +735,13 @@ func _close_panel() -> void:
 	panel.hide()
 
 
-func _place_board_button(is_compact: bool) -> void:
+func _place_board_button(_is_compact: bool) -> void:
 	if board_button == null:
 		return
 	var at := false
 	if Game.sim != null and Game.mode == "sector":
 		at = DockBoard.at_pad(Game.sim)
 	board_button.visible = at
-	var x := 16.0
-	if cast_button != null and cast_button.visible:
-		x = 172.0
-	board_button.position = Vector2(x, 96.0 if is_compact else 108.0)
-	board_button.size = Vector2(148, 44)
 
 
 func _fill_board() -> void:

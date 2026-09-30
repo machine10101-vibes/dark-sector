@@ -2,7 +2,7 @@
 
 Godot 4.7, windowed. One pass is enough if each line is done in the window.
 
-1. **New keel.** Needle, Barn, and Beak are different shapes.
+1. **New keel.** Needle, Barn, and Beak are different shapes. The helm reads hull, speed, heat, and purse in one glass card. Cast off, Board, Quests, and Probe are the large controls.
 2. **Take the Needle.** The sky is Helion Dock. Aegis Prime fills the view; the hull is a speck on the band, not a marble beside the planet. An ice ring, Seized Hold, a Helion Compact patrol, Hauler Holt, and The Unlet are on that band. Flying out of the band keeps speed and opens the chart with named lanes. Burning at the city does not land the keel.
 3. **Coast.** Thrust, then let go. The hull keeps drifting. A/D yaws the nose and the keel follows. Q/E steps sideways. The camera stays on the keel once you are off the pad.
 4. **Zoom.** Out until the star and Aegis read together. In until the silhouette is readable.
