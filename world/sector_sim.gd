@@ -70,14 +70,7 @@ func new_game(class_id: String) -> void:
 	actors = []
 	_spawn_factions()
 	quest_flags = {"origin_%s" % class_id: "dormant"}
-	claim = {
-		"pocket_id": "hollow_latch",
-		"owned": false,
-		"frozen": false,
-		"core": false,
-		"agent_id": "",
-		"surveyed": false,
-	}
+	claim = PocketRules.blank()
 	say("You have the %s, callsign %s." % [hull.class_name, hull.callsign])
 	say("Hollow Latch is under the keel. Cinder is the near rust world. Red Keel hunts the Slat. Vellum Compact owns the pale world — the green lane remembers guns.")
 
@@ -116,6 +109,10 @@ func zone_label(zone: String) -> String:
 		"amber":
 			return "Amber — Red Keel ground. Finish a hull and the wreck is rights."
 		"pocket":
+			if bool(claim.get("frozen", false)):
+				return "Hollow Latch — homestead frozen. The keel is still yours."
+			if bool(claim.get("core", false)):
+				return "Hollow Latch — your stake. Keep the hen fed."
 			return "Hollow Latch — calm pocket. A Claim Core could sit here."
 		_:
 			return "Unpatrolled dark."
@@ -212,6 +209,10 @@ func resource_name(id: String) -> String:
 		return "keel salvage"
 	if id == "scrap":
 		return "scrap"
+	if defs.has("claim"):
+		var goods: Dictionary = defs.claim.get("goods", {})
+		if goods.has(id):
+			return str(goods[id])
 	for body in planets:
 		if str(body.resource.id) == id:
 			return str(body.resource.name)
@@ -363,7 +364,7 @@ func from_dict(data: Dictionary) -> void:
 	memory = data.memory.duplicate(true)
 	heat_log = data.get("heat_log", []).duplicate(true)
 	quest_flags = data.quest_flags.duplicate(true)
-	claim = data.claim.duplicate(true)
+	claim = PocketRules.normalize(data.claim.duplicate(true))
 	lines = data.get("lines", []).duplicate(true)
 	banner = str(data.get("banner", ""))
 	banner_t = 0.0
@@ -381,6 +382,7 @@ func _step(dt: float, cmd: Dictionary) -> void:
 	if not hold_npc:
 		for actor in actors:
 			_step_npc(actor, dt)
+	PocketRules.tick(self, dt)
 	_step_projectiles(dt)
 	if player.alive:
 		_bump_world(player)

@@ -23,6 +23,9 @@ var install_button: Button
 var bay_detail: Label
 var dossier_timer := 0.0
 var hold_button: Button
+var claim_box: VBoxContainer
+var claim_status: Label
+var claim_buttons: Dictionary = {}
 
 
 func _ready() -> void:
@@ -36,7 +39,7 @@ func _ready() -> void:
 	_build_pause()
 	_build_dead()
 	var hint := ThemeKit.label(
-		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   wheel zoom     1 probe   2 harvest   3 boat     B bay   H hangar   D dossier   F heat   J quests   K claim     Hold / Esc pause   F5 save   F9 load",
+		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   wheel zoom     1 probe   2 harvest   3 boat     B bay   H hangar   D dossier   F heat   J quests   K homestead     Hold / Esc pause   F5 save   F9 load",
 		12,
 		Color("8d826c")
 	)
@@ -103,7 +106,7 @@ func _process(_delta: float) -> void:
 	elif panel_kind == "quest":
 		panel_body.text = _quest_text()
 	elif panel_kind == "claim":
-		panel_body.text = _claim_text()
+		_refresh_claim()
 	elif panel_kind == "bay":
 		_refresh_bay_text()
 
@@ -212,6 +215,7 @@ func _build_panel() -> void:
 	dossier_box = VBoxContainer.new()
 	dossier_box.visible = false
 	inner.add_child(dossier_box)
+	_build_claim_box(inner)
 
 
 func _build_pause() -> void:
@@ -324,10 +328,11 @@ func _toggle(kind: String) -> void:
 		return
 	panel_kind = kind
 	panel.show()
-	panel_body.visible = kind in ["heat", "quest", "claim"]
+	panel_body.visible = kind in ["heat", "quest"]
 	bay_box.visible = kind == "bay"
 	hangar_box.visible = kind == "hangar"
 	dossier_box.visible = kind == "dossier"
+	claim_box.visible = kind == "claim"
 	match kind:
 		"bay":
 			panel_title.text = "Ship bay"
@@ -346,7 +351,7 @@ func _toggle(kind: String) -> void:
 			panel_body.text = _quest_text()
 		"claim":
 			panel_title.text = "Homestead"
-			panel_body.text = _claim_text()
+			_refresh_claim()
 
 
 func _close_panel() -> void:
@@ -522,15 +527,44 @@ func _quest_text() -> String:
 	return "\n\n".join(blocks)
 
 
-func _claim_text() -> String:
-	var status := PocketRules.status(Game.sim)
-	return "%s\nEligible: %s\nCore planted: %s\nWalked: %s\n\n%s\n\nFly into the pale ring trailing Cinder. A shuttle can walk it. Planting a core is the next work." % [
-		status.name,
-		"yes" if status.eligible else "no",
-		"yes" if status.owned else "no",
-		"yes" if status.surveyed else "no",
-		status.line,
-	]
+func _build_claim_box(parent: Node) -> void:
+	claim_box = VBoxContainer.new()
+	claim_box.visible = false
+	claim_box.add_theme_constant_override("separation", 6)
+	parent.add_child(claim_box)
+	claim_status = ThemeKit.label("", 14)
+	claim_box.add_child(claim_status)
+	for spec in [
+		["print_core", "Print a Claim Core"],
+		["plant", "Plant the core"],
+		["dome", "Raise the ash dome"],
+		["sow", "Sow ember kale"],
+		["harvest", "Take the kale aboard"],
+		["stock", "Stock an ash hen"],
+		["feed", "Feed the hen"],
+		["turret", "Stake a turret"],
+	]:
+		var button := ThemeKit.button(str(spec[1]))
+		button.pressed.connect(_claim_act.bind(str(spec[0])))
+		claim_box.add_child(button)
+		claim_buttons[str(spec[0])] = button
+
+
+func _refresh_claim() -> void:
+	if claim_status == null or Game.sim == null:
+		return
+	claim_status.text = PocketRules.describe(Game.sim)
+	var gates: Dictionary = PocketRules.availability(Game.sim)
+	for action in claim_buttons.keys():
+		var button: Button = claim_buttons[action]
+		button.disabled = not bool(gates.get(action, false))
+
+
+func _claim_act(action: String) -> void:
+	if Game.sim == null:
+		return
+	PocketRules.act(Game.sim, action)
+	_refresh_claim()
 
 
 func reset_overlays() -> void:

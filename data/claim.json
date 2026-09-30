@@ -1,0 +1,45 @@
+{
+  "pocket_id": "hollow_latch",
+  "climate": "cinder-heat",
+  "climate_line": "Cinder-heat. Ember kale wants this pocket. Glasswheat would cook.",
+  "integrity_max": 80,
+  "crack_range": 130,
+  "crack_dps": 18,
+  "core": {
+    "cargo_id": "claim_core",
+    "name": "Claim Core",
+    "cost": { "cinder_ore": 2 }
+  },
+  "dome": {
+    "name": "Ash Dome",
+    "cost": { "cinder_ore": 1 }
+  },
+  "crop": {
+    "id": "ember_kale",
+    "name": "Ember kale",
+    "climate": "cinder-heat",
+    "grow_seconds": 16,
+    "yield_id": "ember_kale",
+    "yield_name": "Ember kale"
+  },
+  "animal": {
+    "id": "ash_hen",
+    "name": "Ash hen",
+    "cost": { "cinder_ore": 1 },
+    "feed_id": "ember_kale",
+    "hunger_seconds": 22
+  },
+  "defense": {
+    "name": "Stake turret",
+    "cost": { "salvage_parts": 1 },
+    "damage": 9,
+    "cooldown": 0.55,
+    "speed": 740,
+    "range": 420,
+    "ttl": 1.1
+  },
+  "goods": {
+    "claim_core": "Claim Core",
+    "ember_kale": "Ember kale"
+  }
+}
