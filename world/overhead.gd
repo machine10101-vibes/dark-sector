@@ -115,18 +115,37 @@ func _aim() -> void:
 		far = 6000.0
 		density = 0.00004
 	elif layer == ScaleFrame.BAND:
-		# Berth height keeps the same angle (back = height * 0.62, fov 50).
-		# At the pad the cruise height leaves the Needle a speck on the disc.
-		var berth := 168.0 / zoom
+		# Berth keeps the cruise angle (back = height * 0.62, fov 50) and looks
+		# between the keel and the planet, so the pad reads and Aegis sits beside
+		# it. The cruise lead is tuned for the high camera and hides that pair.
+		var berth := 220.0 / zoom
 		var player: Dictionary = Game.sim.player
 		var ship: Vector2 = player.pos
 		var pad := Vector2(float(player.get("dock_x", ship.x)), float(player.get("dock_y", ship.y)))
 		var away: float = ship.distance_to(pad)
 		var moored := bool(player.get("moored", false))
+		var world_focus: Vector2 = Game.sim.view_focus()
+		var framed: Vector2 = world_focus
+		var body: Variant = Game.sim.planet(str(Game.sim.body_id))
+		if body != null:
+			var row: Dictionary = body
+			var center: Vector2 = row.pos
+			var toward: Vector2 = center - world_focus
+			if toward.length() > 80.0:
+				var screen := get_viewport().get_visible_rect().size
+				var aspect := screen.x / maxf(screen.y, 1.0)
+				var half_world := berth * 1.176 * tan(deg_to_rad(25.0)) * aspect
+				var lead := clampf(half_world * 0.34, 0.0, toward.length() * 0.28)
+				framed = world_focus + toward.normalized() * lead
+		if gate != null:
+			framed = gate.render_of_world(framed)
 		if moored or away < 40.0:
 			height = berth
+			chase = framed
 		elif away < 900.0:
-			height = lerpf(berth, height, clampf(away / 900.0, 0.0, 1.0))
+			var blend := clampf(away / 900.0, 0.0, 1.0)
+			height = lerpf(berth, height, blend)
+			chase = framed.lerp(chase, blend)
 	if env != null:
 		env.fog_density = density
 	var back := height * 0.62
