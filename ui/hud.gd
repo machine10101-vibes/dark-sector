@@ -686,7 +686,10 @@ func _fill_board() -> void:
 		board_box.add_child(ThemeKit.label("%s    pay %d    [%s]" % [str(row.title), int(row.pay), str(row.state)], 16))
 		board_box.add_child(ThemeKit.label(str(row.blurb), 13, Color("8d826c")))
 		if str(row.state) == "open":
-			var take := ThemeKit.button("Take %s" % str(row.title))
+			var verb := "Take haul"
+			if job_id == "scan":
+				verb = "Take scan"
+			var take := ThemeKit.button(verb)
 			take.pressed.connect(_take_dock_job.bind(job_id))
 			board_box.add_child(take)
 		board_box.add_child(ThemeKit.label(" ", 8))
