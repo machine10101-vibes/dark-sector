@@ -207,7 +207,9 @@ class ScaleReadout extends Control:
 					continue
 				var dist := cam.global_position.distance_to(at)
 				var reach := 2600.0
-				if Game.sim != null:
+				if str(item.t) == "Helion Dock":
+					reach = 24000.0
+				elif Game.sim != null:
 					var layer := int(Game.sim.layer)
 					if layer == ScaleFrame.CHART or layer == ScaleFrame.APPROACH:
 						reach = 48000.0
@@ -265,6 +267,60 @@ class ScaleReadout extends Control:
 		draw_line(origin + Vector2(px, 0), origin + Vector2(px, -7), Color("cbb892"), 2.0, true)
 		if font != null:
 			draw_string(font, origin + Vector2(0, -18), "%d m" % int(length), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("cbb892"))
+		_draw_dock_guide(cam, font)
+
+	func _draw_dock_guide(cam: Camera3D, font: Font) -> void:
+		var sim = Game.sim
+		if cam == null or font == null or sim == null or sim.player.is_empty():
+			return
+		if bool(sim.player.get("moored", false)):
+			return
+		if str(sim.defs.system.id) != "HC-V1-R1-S1":
+			return
+		var at := Vector3.ZERO
+		var caption := "Helion Dock"
+		var layer := int(sim.layer)
+		if layer == ScaleFrame.BAND:
+			var gap := sim.player.pos.distance_to(sim.beacon_pos)
+			caption = "Helion Dock  %d m" % int(gap)
+			at = Vector3(sim.beacon_pos.x, 80.0, -sim.beacon_pos.y)
+		elif layer == ScaleFrame.CHART:
+			var shown: Vector2 = ScaleFrame.chart_view(sim, sim.dock_buoy_km() - sim.local_origin)
+			var km: float = (sim.local_origin + sim.player.pos).distance_to(sim.dock_buoy_km())
+			caption = "Helion Dock  %.0f km" % km
+			at = Vector3(shown.x, 120.0, -shown.y)
+		elif layer == ScaleFrame.APPROACH:
+			caption = "Helion Dock"
+			at = Vector3(0.0, 80.0, 0.0)
+		else:
+			return
+		var sp := cam.unproject_position(at)
+		var behind := cam.is_position_behind(at)
+		var margin := 36.0
+		var edge := Rect2(Vector2(margin, margin), size - Vector2(margin * 2.0, margin * 2.0 + 80.0))
+		var center := size * 0.5
+		var on_screen := behind == false and edge.has_point(sp)
+		if on_screen:
+			draw_rect(Rect2(sp + Vector2(-8, -8), Vector2(16, 16)), Color(0.45, 0.9, 0.95, 0.9), false, 2.0)
+			draw_string(font, sp + Vector2(14, 4), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("9eecf5"))
+			return
+		var aim := sp - center
+		if behind:
+			aim = -aim
+		if aim.length() < 1.0:
+			aim = Vector2.RIGHT
+		aim = aim.normalized()
+		var hit := center
+		var limit := edge.size * 0.5
+		var scale := 1.0e6
+		if absf(aim.x) > 0.001:
+			scale = minf(scale, limit.x / absf(aim.x))
+		if absf(aim.y) > 0.001:
+			scale = minf(scale, limit.y / absf(aim.y))
+		hit = center + aim * scale
+		var side := Vector2(-aim.y, aim.x)
+		draw_colored_polygon(PackedVector2Array([hit + aim * 14.0, hit - aim * 8.0 + side * 8.0, hit - aim * 8.0 - side * 8.0]), Color("9eecf5"))
+		draw_string(font, hit + side * 12.0 - Vector2(0, 8), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("9eecf5"))
 
 	func _nearer_tag(a: Dictionary, b: Dictionary) -> bool:
 		return float(a.dist) < float(b.dist)

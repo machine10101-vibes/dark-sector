@@ -633,7 +633,11 @@ func _refresh_helm() -> void:
 	stat_purse.text = "PURSE  %d" % DockBoard.purse(sim)
 	stat_purse.add_theme_color_override("font_color", Color("f0d48a"))
 	var place := "Moored" if moored else ScaleFrame.layer_name(int(sim.layer))
-	helm_zone.text = "%s  ·  %s  ·  %s%s" % [place, zoom_word, law_name, link_word]
+	var dock_word := ""
+	if moored == false and str(sim.defs.system.id) == "HC-V1-R1-S1" and int(sim.layer) == ScaleFrame.BAND and sim.beacon_pos != Vector2.ZERO:
+		var gap := sim.player.pos.distance_to(sim.beacon_pos)
+		dock_word = "  ·  Helion Dock %d m" % int(gap)
+	helm_zone.text = "%s  ·  %s  ·  %s%s%s" % [place, zoom_word, law_name, dock_word, link_word]
 	helm_zone.add_theme_color_override("font_color", Law.color_of(law_name))
 	var repair := ""
 	if sim.player.pos.distance_to(sim.beacon_pos) <= 170.0:

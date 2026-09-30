@@ -121,11 +121,9 @@ func _return_and_pay() -> void:
 	sim.player.vel = Vector2.ZERO
 	check(Law.at(sim, sim.player.pos) == "green", "the Helion Dock buoy reads green")
 	sim.tick(0.05, {})
-	check(int(sim.layer) == ScaleFrame.APPROACH, "the buoy opens the dock approach")
-	sim.tick(0.45, {})
-	check(int(sim.layer) == ScaleFrame.BAND, "the approach reaches the Helion band")
-	check(bool(sim.player.moored), "the pad moors the returning keel")
-	check(DockBoard.at_pad(sim), "Board is live after the moor")
+	check(bool(sim.player.moored), "touching the buoy moors from a stop, any heading")
+	check(int(sim.layer) == ScaleFrame.BAND, "the buoy puts the keel on the Helion band")
+	check(DockBoard.at_pad(sim), "Board is live after the buoy")
 	for layer in CraftOrders.LAYERS:
 		sim.reveal_layer("aegis_prime", layer)
 	sim.tick(0.05, {})
@@ -160,6 +158,15 @@ func _return_and_pay() -> void:
 	sim.tick(0.1, {"thrust": 0.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
 	sim.tick(0.25, held)
 	check(bool(sim.player.moored) == false, "a fresh thrust casts off again")
+	sim.player.pos = sim.beacon_pos + Vector2(700.0, 0.0)
+	sim.player.vel = Vector2.ZERO
+	sim.layer = ScaleFrame.BAND
+	sim.tick(0.05, {})
+	check(bool(sim.player.moored) == false, "seven hundred meters of dark band is not the pad")
+	sim.player.pos = sim.beacon_pos + Vector2(40.0, 30.0)
+	sim.player.vel = Vector2(40.0, -10.0)
+	sim.tick(0.05, {})
+	check(bool(sim.player.moored) and DockBoard.at_pad(sim), "fifty meters from the buoy moors from any heading")
 
 
 func _save() -> void:

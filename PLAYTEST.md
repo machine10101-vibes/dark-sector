@@ -19,7 +19,7 @@ Windowed or the Pages build. One fresh Needle. Incognito is fine.
 2. W or Cast off leaves the pad. Speed leaves 0. Log has Cast off, then Undocked.
 3. D yaws. I opens the dossier. D does not open it.
 4. Fly out of the band. Speed stays above 0. The chart names Aegis Prime, Homestead Road, Green Spine, and Writ Lane. There is no scrape lock and no “city stays under the band” dead end. On the web build the origin/focus/render overlay is hidden.
-5. Turn around. Fly at the cyan **Helion Dock** buoy, or back into the Aegis well. The helm leaves `chart · Local · green` only when that approach is real. The pad moors the keel. The line reads **Moored**. Cast off and Board are both on screen again. A held W sits on the pad until you release it, then W or Cast off leaves.
+5. Turn around. The cyan **Helion Dock** buoy is the big flashing ring on the chart, and the same name rides an arrow on the band. Fly into that buoy from any heading. Within about 50–100 m the pad moors the keel even if the helm still says Tactical. The line reads **Moored**. Cast off and Board are both on screen again. On the band the card also shows `Helion Dock` and the meters to the buoy, which is not the scale-bar length. A held W sits on the pad until you release it, then W or Cast off leaves.
 6. Board. Take the Aegis scan. Probe. Bring the keel back if you left. When the dossier seals, Purse becomes 80.
 7. Take the ice-ring crate. Touch the ring. Bring it back to the pad. Purse becomes 200 if the scan was already paid, or 120 if this is the only job. The crate is gone.
 

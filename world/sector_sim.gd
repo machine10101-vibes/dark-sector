@@ -6,9 +6,9 @@ const ROCK_SCALE := 4.2
 const DOCK_GAP := 320.0
 const DOCK_BUOY_ANGLE := -0.7
 const DOCK_BUOY_OUT := 700.0
-const DOCK_HALO_KM := 3200.0
+const DOCK_HALO_KM := 9000.0
 const DOCK_LEAVE := 520.0
-const DOCK_CATCH := 460.0
+const DOCK_CATCH := 160.0
 
 var defs: Dictionary = {}
 var seed_value = 0
@@ -695,7 +695,7 @@ func _step(dt: float, cmd: Dictionary) -> void:
 	_step_stream(dt)
 	_step_traffic(dt)
 	_step_scale(before_pos)
-	_try_pad_return()
+	_try_pad_return(dt)
 	Homestead.step(self, dt)
 	QuestBoard.pulse(self, dt)
 	DockBoard.pulse(self, dt)
@@ -2351,10 +2351,11 @@ func _enter_band(body: Dictionary) -> void:
 		if inward.length() < 1.0:
 			inward = Vector2.RIGHT
 		inward = inward.normalized()
-		player.pos = beacon_pos - inward * 180.0
-		player.vel = inward * 70.0
+		player.pos = beacon_pos - inward * 40.0
+		player.vel = inward * 36.0
 		player.rot = inward.angle()
-		say("Helion Dock is ahead. Ease in — the pad takes the keel.")
+		quest_flags.pad_departed = true
+		say("Helion Dock is ahead. The pad takes the keel.")
 		return
 	var dir: Vector2 = player.pos.normalized()
 	if dir.length() < 0.2:
@@ -2382,8 +2383,11 @@ func _step_chart() -> void:
 	if home != null and _is_helion_pad(home):
 		var in_well: bool = world.distance_to(home.chart_km) < ScaleFrame.soi_km(home)
 		var at_buoy: bool = world.distance_to(dock_buoy_km()) <= DOCK_HALO_KM
-		if in_well or at_buoy:
-			_begin_dock_approach(home, world, at_buoy and in_well == false)
+		if at_buoy:
+			_snap_dock_moor(home)
+			return
+		if in_well:
+			_begin_dock_approach(home, world, false)
 			return
 	var best = null
 	var best_d := 1.0e12
@@ -2443,7 +2447,16 @@ func _dock_shell_km(body: Dictionary) -> float:
 	return ScaleFrame.radius_km(body) + mid + half + 80.0
 
 
-func _try_pad_return() -> void:
+func _snap_dock_moor(body: Dictionary) -> void:
+	layer = ScaleFrame.BAND
+	body_id = str(body.id)
+	band_id = str(ScaleFrame.primary_band(body).get("id", "band"))
+	local_origin = body.chart_km
+	quest_flags.pad_departed = true
+	_moor_at_pad()
+
+
+func _try_pad_return(dt: float) -> void:
 	if player.is_empty():
 		return
 	if str(defs.system.id) != "HC-V1-R1-S1":
@@ -2457,11 +2470,8 @@ func _try_pad_return() -> void:
 		quest_flags.pad_departed = true
 	if bool(player.get("moored", false)):
 		return
-	if bool(quest_flags.get("pad_departed", false)) == false:
-		return
-	if gap > DOCK_CATCH:
-		return
-	_moor_at_pad()
+	if bool(quest_flags.get("pad_departed", false)) and gap <= DOCK_CATCH:
+		_moor_at_pad()
 
 
 func _moor_at_pad() -> void:
