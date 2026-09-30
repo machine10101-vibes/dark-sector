@@ -13,6 +13,7 @@ var address_line: LineEdit
 var note: Label
 var intent := "offline"
 var keel_row: GridContainer
+var keel_scroll: ScrollContainer
 
 
 var backdrop: Control
@@ -136,7 +137,7 @@ func _ready() -> void:
 	select_box.add_child(prompt_line)
 	yard_line = ThemeKit.label("Needle is in the yard.", 14, Color("9eecf5"))
 	select_box.add_child(yard_line)
-	var keel_scroll := ScrollContainer.new()
+	keel_scroll = ScrollContainer.new()
 	keel_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	keel_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	keel_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -252,13 +253,19 @@ func _fit() -> void:
 			band = minf(band, screen.y * 0.62)
 			select_pos = Vector2(margin, screen.y - band - margin)
 			select_size = Vector2(screen.x - margin * 2.0, band)
-			col_h = maxf(160.0, select_pos.y - margin * 2.0)
 		elif not two:
 			var desk: Control = keel_row.get_child(0)
 			var desk_h := desk.get_combined_minimum_size().y
 			var band := clampf(desk_h + 128.0, 280.0, screen.y * 0.62)
 			select_pos = Vector2(margin, screen.y - band - margin)
 			select_size = Vector2(screen.x - margin * 2.0, band)
+	if keel_scroll != null:
+		if two and keel_row != null and keel_row.get_child_count() > 0:
+			keel_scroll.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+			keel_scroll.custom_minimum_size = Vector2(0, keel_row.get_combined_minimum_size().y)
+		else:
+			keel_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			keel_scroll.custom_minimum_size = Vector2(0, 0)
 	if slate_glass != null:
 		slate_glass.position = Vector2(margin, margin)
 		slate_glass.size = Vector2(col_w, col_h)

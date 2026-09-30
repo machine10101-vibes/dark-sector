@@ -37,6 +37,8 @@ func _check_title(screen: Vector2) -> void:
 	var glass: Control = menu.get("slate_glass")
 	_inside(glass, screen, "title glass")
 	_buttons(menu, screen, "title")
+	var cont: Button = menu.get("continue_button")
+	_inside_parent(cont, glass, "title continue")
 
 
 func _check_select(screen: Vector2) -> void:
@@ -46,6 +48,10 @@ func _check_select(screen: Vector2) -> void:
 	var glass: Control = menu.get("select_glass")
 	_inside(glass, screen, "select glass")
 	_buttons(menu, screen, "select")
+	var back := _find_button(menu, "Back")
+	_inside_parent(back, glass, "select back")
+	if back != null and screen.x > screen.y and screen.y < 520.0 and back.get_global_rect().end.y > screen.y - 24.0:
+		_bad("select back low %s" % back.get_global_rect())
 	var row: Node = menu.get("keel_row")
 	if row != null:
 		for card in row.get_children():
@@ -101,6 +107,16 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 		_apart(joy, primary, tag + " stick/primary")
 		_apart(gun, primary, tag + " gun/primary")
 		_apart(joy, actions, tag + " stick/actions")
+
+
+func _find_button(node: Node, text: String) -> Button:
+	if node is Button and (node as Button).text == text:
+		return node
+	for child in node.get_children():
+		var found := _find_button(child, text)
+		if found != null:
+			return found
+	return null
 
 
 func _buttons(host: Node, screen: Vector2, tag: String) -> void:
