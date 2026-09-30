@@ -123,7 +123,7 @@ static func _take_haul(sim) -> String:
 	sim._add_cargo(CRATE, 1)
 	sim.quest_flags.dock_haul = "active"
 	sim.quest_flags.dock_haul_ring = false
-	sim.say("Ring haul taken. Crate aboard. Fly it to the ice ring, then back. Pay %d." % HAUL_PAY)
+	sim.say("Ring haul taken. Crate aboard. Hold toward the ice ring — don't clear the band yet. Pay %d." % HAUL_PAY)
 	return ""
 
 

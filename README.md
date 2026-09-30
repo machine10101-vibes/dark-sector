@@ -71,7 +71,7 @@ A and D yaw while moored. They do not leave the pad. S, Q, and E do. Once you ar
 The **Board** button sits beside Cast off while the keel is on the Helion pad. The same slate is on the bottom action row. `[` opens it too.
 
 1. **Take Seal Aegis Prime.** Launch a probe (Probe button or 1). It reads Aegis Prime, not the nearer ice ring. When that dossier seals while Moored, or the next time the pad has the keel, the log says “Aegis scan filed. Helion Dock paid 80. Purse 80.”
-2. **Take Crate to the ice ring.** A dock crate enters the hold. Fly to the Aegis ice ring, then bring the crate back to the pad. The log says “Ring haul filed. Helion Dock paid 120.” The purse line on the helm shows the total.
+2. **Take Crate to the ice ring.** A dock crate enters the hold. The log says “Hold toward the ice ring — don't clear the band yet.” An amber marker reads **Aegis ice ring** and the meters. Hold toward it. That burn stays on the band. Touch the ring, then bring the crate back to the pad. The log says “Ring haul filed. Helion Dock paid 120.” The purse line on the helm shows the total.
 
 ### Open chart
 

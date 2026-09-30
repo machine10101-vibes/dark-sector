@@ -13,6 +13,9 @@ const DOCK_HALO_KM := 9000.0
 const DOCK_CATCH := 220.0
 ## The Dock button forces the same snap inside this, even if the bubble was never left.
 const DOCK_BUTTON := 500.0
+## While the ring crate is still outbound, band speed stays in this band.
+## A full burn no longer clears the shell and dumps the keel at chart range.
+const HAUL_BAND_CAP := 88.0
 
 var defs: Dictionary = {}
 var seed_value = 0
@@ -790,6 +793,7 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 	# One accepted cast-off frame has to show on the integer speed line.
 	if cast_off and unit.vel.length() < 12.0:
 		unit.vel = forward * 48.0
+	_haul_band_brake(unit, cmd, dt)
 	unit.pos += unit.vel * dt
 	if bool(cmd.get("fire", false)):
 		try_fire(unit, stats.gun)
@@ -2272,6 +2276,43 @@ func _bind_band() -> void:
 	said_city = false
 
 
+func haul_outbound() -> bool:
+	if str(quest_flags.get("dock_haul", "")) != "active":
+		return false
+	return bool(quest_flags.get("dock_haul_ring", false)) == false
+
+
+func _haul_band_brake(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
+	if str(unit.get("agent_id", "")) != str(player.get("agent_id", "")):
+		return
+	if haul_outbound() == false:
+		return
+	if int(layer) != ScaleFrame.BAND:
+		return
+	var thrust := float(cmd.get("thrust", 0.0))
+	var retro := float(cmd.get("retro", 0.0))
+	var strafe := float(cmd.get("strafe", 0.0))
+	if thrust <= 0.0 and retro <= 0.0 and absf(strafe) <= 0.0:
+		unit.vel *= 1.0 - 1.15 * dt
+	if unit.vel.length() > HAUL_BAND_CAP:
+		unit.vel = unit.vel.limit_length(HAUL_BAND_CAP)
+
+
+func _hold_for_ring(body: Dictionary, outer: float) -> void:
+	var from_center: Vector2 = player.pos - body.pos
+	if from_center.length() < 1.0:
+		from_center = Vector2.RIGHT
+	var outward := from_center.normalized()
+	player.pos = body.pos + outward * (outer - 36.0)
+	var out_spd := player.vel.dot(outward)
+	if out_spd > 0.0:
+		player.vel -= outward * out_spd
+	player.vel *= 0.35
+	if bool(quest_flags.get("haul_edge_said", false)) == false:
+		quest_flags.haul_edge_said = true
+		say("Hold toward the ice ring — don't clear the band yet.")
+
+
 func _step_scale(before: Vector2) -> void:
 	if int(layer) == ScaleFrame.SITE:
 		return
@@ -2284,7 +2325,10 @@ func _step_scale(before: Vector2) -> void:
 		var was: float = before.distance_to(center)
 		var now: float = player.pos.distance_to(center)
 		if was <= outer and now > outer:
-			_to_chart_from_band(body)
+			if haul_outbound():
+				_hold_for_ring(body, outer)
+			else:
+				_to_chart_from_band(body)
 		return
 	if int(layer) == ScaleFrame.APPROACH:
 		_step_approach()

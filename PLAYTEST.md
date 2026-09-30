@@ -11,6 +11,15 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 7. **Board.** On the pad, Board. Take Seal Aegis Prime. Probe. It reads Aegis Prime. When that dossier seals while Moored, or the next time you are on the pad, the log pays 80 and the helm reads Purse 80. Take the ring crate, fly to the ice ring, return until Moored. The log pays 120 and the crate leaves the hold.
 8. **Chart.** Cast off and hold W past the band. Speed stays above 0. The chart shows Aegis Prime, Homestead Road, Green Spine, and Writ Lane. The log does not lock you on a scrape.
 
+## Ready — ring haul
+
+Pages build. One fresh Needle. Moor and the scan purse already passed. This pass is the crate.
+
+1. Board. Take the haul. The log says **Hold toward the ice ring — don't clear the band yet.**
+2. Cast off and hold toward the amber **Aegis ice ring** marker. The card shows the meters. A full burn stays on the band. It does not open the chart or run out to tens of thousands of kilometers.
+3. Touch the ring. The log says the ring has the crate. Fly back until Moored. Purse is 200 if the scan already paid, or 120 if this is the only slip. The crate is gone.
+4. Without a crate aboard, holding W still leaves the band and opens the chart.
+
 ## Ready — moor and purse
 
 Pages build. One fresh Needle. Incognito is fine. The scale bar is zoom. The card’s `Helion Dock` meters are the range.

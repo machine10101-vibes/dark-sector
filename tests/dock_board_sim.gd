@@ -23,6 +23,7 @@ func _init() -> void:
 	_scan_pays_on_pad()
 	_probe_reads_prime()
 	_haul()
+	_haul_holds_the_band()
 	_pad_gate()
 	_save()
 	_return_and_pay()
@@ -138,6 +139,37 @@ func _haul() -> void:
 	full.player.cargo["raw_mass"] = 6
 	check(DockBoard.take(full, "haul") != "", "a full hold refuses the crate")
 	check(DockBoard.state(full, "dock_haul") == "open", "a refused haul stays on the board")
+
+
+func _haul_holds_the_band() -> void:
+	var sim := make()
+	var body = sim.planet("aegis_prime")
+	check(DockBoard.take(sim, "haul") == "", "haul arms the band hold")
+	var heard := false
+	for row in sim.lines:
+		if str(row.text).contains("don't clear the band yet"):
+			heard = true
+	check(heard, "the log says to hold toward the ice ring")
+	var away: Vector2 = sim.beacon_pos - body.pos
+	away = away.normalized()
+	sim.player.moored = false
+	sim.quest_flags.moor_latch = 0.0
+	sim.player.pos = sim.beacon_pos
+	sim.player.vel = Vector2.ZERO
+	sim.player.rot = away.angle()
+	var burn := {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false}
+	sim.tick(3.0, burn)
+	check(int(sim.layer) == ScaleFrame.BAND, "three seconds of haul thrust stays on the band")
+	check(sim.player.vel.length() <= SectorSim.HAUL_BAND_CAP + 1.0, "haul thrust stays under the band cap")
+	check(bool(sim.quest_flags.get("dock_haul_ring", false)) == false, "missing the ring does not mark the crate")
+	var open := make()
+	open.player.moored = false
+	open.quest_flags.moor_latch = 0.0
+	open.player.pos = open.beacon_pos
+	open.player.vel = Vector2.ZERO
+	open.player.rot = away.angle()
+	open.tick(3.0, burn)
+	check(open.player.vel.length() > 200.0 or int(open.layer) == ScaleFrame.CHART, "without the crate the same burn still runs")
 
 
 func _pad_gate() -> void:

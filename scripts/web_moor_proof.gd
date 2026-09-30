@@ -47,7 +47,27 @@ func _init() -> void:
 	DockBoard.pulse(sim, 0.2)
 	check(DockBoard.purse(sim) == 80, "pad contact pays 80")
 	check(DockBoard.take(sim, "haul") == "", "haul")
+	var heard := false
+	for row in sim.lines:
+		if str(row.text).contains("don't clear the band yet"):
+			heard = true
+	check(heard, "haul log names the ice ring")
+	var body = sim.planet("aegis_prime")
+	var away: Vector2 = (sim.beacon_pos - body.pos).normalized()
 	sim.player.moored = false
+	sim.quest_flags.moor_latch = 0.0
+	sim.player.pos = sim.beacon_pos
+	sim.player.vel = Vector2.ZERO
+	sim.player.rot = away.angle()
+	sim.layer = ScaleFrame.BAND
+	sim.body_id = "aegis_prime"
+	sim.tick(3.0, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
+	check(int(sim.layer) == ScaleFrame.BAND, "haul thrust stays on the band")
+	check(sim.player.vel.length() <= 110.0, "haul thrust stays slow")
+	sim.layer = ScaleFrame.BAND
+	sim.body_id = "aegis_prime"
+	sim.player.moored = false
+	sim.player.vel = Vector2.ZERO
 	sim.player.pos = ring.pos
 	DockBoard.pulse(sim, 0.2)
 	check(bool(sim.quest_flags.get("dock_haul_ring", false)), "ring marks the crate")

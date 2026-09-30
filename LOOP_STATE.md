@@ -1,8 +1,9 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Moor and purse
+Slice just completed: Ring haul cue
 Player-visible what works now:
+- Take haul puts an amber Aegis ice ring marker on the band, with meters and an edge arrow when it is off screen. The log says to hold toward the ice ring and not clear the band yet. While the crate is still outbound, thrust stays slow and the band does not dump the keel onto the chart. After the ring marks the crate, the return and the chart behave as before.
 - Cast off, fly out, and come back. When the card shows Helion Dock under 200 m the keel is Moored from any heading, speed, or stop, on Local or Tactical. Inside 500 m the Dock button forces that snap. A fresh cast-off that never leaves the bubble is not grabbed. The card meters are the range. The scale bar is zoom.
 - Take scan sends the probe to Aegis Prime. The ice ring is closer to the pad, and sealing it does not pay. When the Aegis Prime dossier seals while Moored, or on the next pad contact, Purse becomes 80. The ice-ring crate pays 120 on the next Moored pad, 200 if the scan was already paid, and the crate leaves the hold.
 - The title and the keel yard are the same 3D sky as the helm: Aegis as a limb, ice rings, and one hull. New keel opens that hull above the cards. Hover, or the top card on a phone, swaps Needle, Barn, and Beak. Take the Needle still moors at Helion Dock.
@@ -43,5 +44,10 @@ Files touched:
 - world/sector_sim.gd
 - world/sector_view.gd
 - world/stage3d.gd
+- world/overhead.gd
+- quests/dock_board.gd
+- scripts/web_moor_proof.gd
+- tests/dock_board_sim.gd
 - PLAYTEST.md
 - LOOP_STATE.md
+- README.md
