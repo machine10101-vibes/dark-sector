@@ -17,8 +17,8 @@ Pages build. One fresh Needle. Moor and Purse 80 already passed. This pass is th
 
 1. Board. Take haul. The helm and the log read **Ice ring N m — hold that way.** The amber beam runs from the keel to the ice ring, and the nose is on that beam. An arrow marks the ring end when it is off the glass. The log also says not to clear the band yet.
 2. Cast off or hold W. Speed leaves 0 and climbs through the tens toward a couple of hundred, along the beam. The ice-ring number falls every second until the drop. Holding W out to the shell does not open the chart before the drop.
-3. Touch the ring. The line becomes **Helion Dock N m — bring the crate back.**
-4. Return until Moored, or press Dock inside 500 m. Purse is 200 if the scan already paid, or 120 if this is the only slip. The crate is gone.
+3. Touch the ring. The line becomes **Helion Dock N m — bring the crate back.** The amber beam swings to run from the keel to the Helion pad, and the nose is on that beam.
+4. Hold W along that beam. The Helion Dock number falls every second until **Moored** (under 200 m), or press Dock inside 500 m. Purse is 200 if the scan already paid, or 120 if this is the only slip. The crate is gone.
 
 ## Ready — moor and purse
 

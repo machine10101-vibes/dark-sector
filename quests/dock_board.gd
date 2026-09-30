@@ -160,18 +160,36 @@ static func haul_line(sim) -> String:
 	return "Ice ring %d m — hold that way." % int(gap)
 
 
-## World vector from the keel to the ice-ring drop. The amber ribbon
-## and the cast-off nose both use this. Thrust along it closes the range.
-## Zero when the crate is not outbound.
+## World vector the amber ribbon and the nose share.
+## Outbound: keel → ice-ring drop. Return: keel → Helion pad.
+## Thrust along it closes that leg. Absolute world headings open it.
+## Zero when the crate is not on a leg.
 static func beam_aim(sim) -> Vector2:
 	if sim == null or sim.player.is_empty():
 		return Vector2.ZERO
-	if sim.haul_outbound() == false:
+	if str(sim.quest_flags.get("dock_haul", "")) != "active":
 		return Vector2.ZERO
+	if bool(sim.quest_flags.get("dock_haul_ring", false)):
+		if at_pad(sim):
+			return Vector2.ZERO
+		return sim.beacon_pos - sim.player.pos
 	var ring = sim.survey_node("aegis_ring")
 	if ring == null:
 		return Vector2.ZERO
 	return ring.pos - sim.player.pos
+
+
+## The ring touch swings the nose and the way-on onto the pad.
+## Leaving the outbound heading pointed makes Helion Dock meters climb.
+static func _face_pad(sim) -> void:
+	var home: Vector2 = sim.beacon_pos - sim.player.pos
+	if home.length() <= 8.0:
+		return
+	var dir := home.normalized()
+	sim.player.rot = dir.angle()
+	var spd: float = sim.player.vel.length()
+	if spd > 1.0:
+		sim.player.vel = dir * spd
 
 
 ## Same plane as the amber beam. The camera lives in render meters
@@ -237,6 +255,7 @@ static func _pulse_haul(sim) -> void:
 			sim.quest_flags.dock_haul_ring = true
 			sim.quest_flags.haul_back_bucket = -999
 			sim.say("Ice ring has the crate. Bring it back to the Helion pad.")
+			_face_pad(sim)
 	_cue_return(sim)
 	if bool(sim.quest_flags.get("dock_haul_ring", false)) and at_pad(sim):
 		sim.spend_cargo(CRATE, 1)
