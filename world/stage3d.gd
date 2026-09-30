@@ -1969,13 +1969,13 @@ func _banked(holder: Node3D, pos: Vector2, rot: float, height: float) -> void:
 	# camera, and it drops local +Z. That side is the screen-left wing
 	# when the nose points up the frame, so the visible right side rises
 	# into a left turn and drops into a right turn.
-	var want := clampf(rate * 0.16, -0.42, 0.42)
+	var want := clampf(rate * 0.22, -0.55, 0.55)
 	var shown := float(holder.get_meta("bank", 0.0))
-	shown = move_toward(shown, want, 2.2 * _frame_delta)
+	shown = move_toward(shown, want, 4.0 * _frame_delta)
 	holder.set_meta("bank", shown)
-	var want_pitch := 0.1 if bool(holder.get_meta("thrusting", false)) else 0.0
+	var want_pitch := 0.24 if bool(holder.get_meta("thrusting", false)) else 0.0
 	var pitch := float(holder.get_meta("pitch", 0.0))
-	pitch = move_toward(pitch, want_pitch, 0.55 * _frame_delta)
+	pitch = move_toward(pitch, want_pitch, 1.5 * _frame_delta)
 	holder.set_meta("pitch", pitch)
 	var xf := _flat_xform(pos, rot, height)
 	xf.basis = xf.basis * Basis(Vector3.RIGHT, shown) * Basis(Vector3(0.0, 0.0, 1.0), pitch)

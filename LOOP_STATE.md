@@ -1,8 +1,9 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Open chart past the Helion band
+Slice just completed: Helm tracks the keel
 Player-visible what works now:
+- W (or Cast off) leaves the pad and stays gone. A/D yaws and the velocity follows the nose, easing at high speed so the keel carves instead of spinning. Q/E strafes. The camera keeps the ship in frame once you leave the berth, with a lead along the nose. D is still yaw. I is still the dossier.
 - Leaving the Aegis band keeps outward speed and opens a readable chart. Aegis Prime and the lanes (Homestead Road, Green Spine, Writ Lane) stay on screen. The city crust still refuses a landing and tells you to turn outward. The web build hides the origin/focus/render overlay.
 - On the Helion pad, Board lists two paid slips. Seal Aegis Prime with a probe for 80; pay lands when the dossier seals, on the pad or already underway. Carry a dock crate to the ice ring and back for 120. The helm shows Purse. Each slip pays once and stays in the log.
 - Cast off is still W or the Cast off button. D yaws. I opens the dossier. The star sits on the chart offset.
@@ -22,6 +23,8 @@ Open design decisions (max 5):
 - The farm cassette carries a hold-kine. It does not grow a crop. Crops grow on a claim plot.
 - A pocket takes a core only when claim_slots.json names it. The red box on First Soil keeps the Perimeter atlas id.
 Files touched:
+- tests/slice1_sim.gd
+- world/sector_view.gd
 - quests/dock_board.gd
 - scripts/main.gd
 - data/craft.json
