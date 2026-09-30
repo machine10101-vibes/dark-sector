@@ -328,10 +328,10 @@ class ScaleReadout extends Control:
 			return
 		if int(sim.layer) != ScaleFrame.BAND:
 			return
-		var beam: Vector2 = DockBoard.beam_aim(sim)
+		var beam: Vector2 = DockBoard.cue_aim(sim)
 		if beam.length() < 8.0:
 			return
-		var caption := DockBoard.haul_line(sim)
+		var caption := DockBoard.slip_line(sim)
 		if caption == "":
 			return
 		var at := _guide_at(sim.player.pos + beam, 16.0)

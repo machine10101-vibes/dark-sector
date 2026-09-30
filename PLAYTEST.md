@@ -1,5 +1,14 @@
 # Playtest — Helion Dock helm
 
+## Ready — contract slips and board glass
+
+Pages build. One fresh Needle, moored. Sky, Market, and the corp field stay as they passed.
+
+1. **Tow tag.** Board. The glass lists Seal Aegis Prime pay 80, the ice-ring crate pay 120, Tow tag at Seized Hold pay 40, and Show the Compact the lane pay 60. Take salvage. The helm reads Seized Hold and a distance. Fly to the rocky pile, then back until Moored. The log pays 40 and Purse moves by 40.
+2. **Lane show.** Take escort. The helm reads Compact cutter and a distance. Fly to the Compact cutter, then back until Moored. The log pays 60 and Purse moves by 60.
+3. **Old slips.** Take scan, seal Aegis Prime on the pad, Purse +80. Take haul, ice ring, back to the pad, Purse +120. Scan then haul still lands on Purse 200 when those are the only pays. The amber ribbon still runs keel to ice ring, then keel to the pad.
+4. **Glass.** Board on a desk and on a phone, portrait and landscape. The four slips stay inside the glass. On a short landscape phone the list scrolls and stays clear of Speed, Purse, Cast off, the stick, and the gun.
+
 ## Ready — rocky hold and corona spokes
 
 Pages build. One fresh Needle, moored. City lamps already passed. The corp field stays as it is.

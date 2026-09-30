@@ -782,7 +782,7 @@ func _refresh_helm() -> void:
 	helm_zone.text = "%s  ·  %s  ·  %s%s%s" % [place, zoom_word, law_name, dock_word, link_word]
 	helm_zone.add_theme_color_override("font_color", Law.color_of(law_name))
 	if haul_cue != null:
-		var cue := DockBoard.haul_line(sim)
+		var cue := DockBoard.slip_line(sim)
 		haul_cue.text = cue
 		haul_cue.visible = cue != ""
 	var repair := ""
@@ -970,12 +970,14 @@ func _fill_board() -> void:
 	for slip in DockBoard.jobs(sim):
 		row = slip
 		var job_id := str(row.id)
-		board_box.add_child(ThemeKit.label("%s    pay %d    [%s]" % [str(row.title), int(row.pay), str(row.state)], 16))
-		board_box.add_child(ThemeKit.label(str(row.blurb), 13, Color("8d826c")))
+		var title := ThemeKit.label("%s    pay %d    [%s]" % [str(row.title), int(row.pay), str(row.state)], 16)
+		title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		board_box.add_child(title)
+		var blurb := ThemeKit.label(str(row.blurb), 13, Color("8d826c"))
+		blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		board_box.add_child(blurb)
 		if str(row.state) == "open":
-			var verb := "Take haul"
-			if job_id == "scan":
-				verb = "Take scan"
+			var verb := "Take %s" % job_id
 			var take := ThemeKit.button(verb)
 			take.pressed.connect(_take_dock_job.bind(job_id))
 			board_box.add_child(take)
