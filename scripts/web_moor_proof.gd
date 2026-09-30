@@ -108,12 +108,39 @@ func _init() -> void:
 	sim.tick(0.05, {})
 	check(bool(sim.player.moored), "under 200 m stops and moors")
 	check(DockBoard.at_pad(sim), "Board is live after the snap")
+	_cue_closes(defs)
 	_solo_port(defs)
 	if fails == 0:
 		print("WEB EXPORT MOOR PASS")
 	else:
 		print("WEB EXPORT MOOR FAIL %d" % fails)
 	quit(fails)
+
+
+func _cue_closes(defs: Dictionary) -> void:
+	var sim := SectorSim.new(defs)
+	sim.new_game("vesper")
+	sim.hold_npc = true
+	check(DockBoard.take(sim, "haul") == "", "cue haul")
+	var ring = sim.survey_node("aegis_ring")
+	var to_ring: Vector2 = ring.pos - sim.player.pos
+	var start: float = to_ring.length()
+	DockBoard.forced_origin = sim.player.pos
+	var marked: Vector2 = DockBoard.marker_xy(sim, ring.pos)
+	var keel: Vector2 = DockBoard.marker_xy(sim, sim.player.pos)
+	var cue: Vector2 = marked - keel
+	check(cue.normalized().dot(to_ring.normalized()) > 0.99, "the glass marker uses the ring bearing")
+	DockBoard.forced_origin = null
+	sim.player.moored = false
+	sim.quest_flags.moor_latch = 0.0
+	sim.player.vel = Vector2.ZERO
+	sim.player.rot = to_ring.angle()
+	sim.layer = ScaleFrame.BAND
+	sim.body_id = "aegis_prime"
+	sim.tick(1.2, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
+	check(sim.player.pos.distance_to(ring.pos) < start - 40.0, "the cue bearing closes the range")
+	check(int(sim.layer) == ScaleFrame.BAND, "the cue bearing stays on the band")
+	check(sim.player.vel.length() >= 60.0, "the cue bearing still leaves 0")
 
 
 func _solo_port(defs: Dictionary) -> void:

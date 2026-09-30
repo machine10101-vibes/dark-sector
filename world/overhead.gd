@@ -284,12 +284,11 @@ class ScaleReadout extends Control:
 		if layer == ScaleFrame.BAND:
 			var gap: float = sim.player.pos.distance_to(sim.beacon_pos)
 			caption = "Helion Dock  %d m" % int(gap)
-			at = Vector3(sim.beacon_pos.x, 80.0, -sim.beacon_pos.y)
+			at = _guide_at(sim.beacon_pos, 80.0)
 		elif layer == ScaleFrame.CHART:
-			var shown: Vector2 = ScaleFrame.chart_view(sim, sim.dock_buoy_km() - sim.local_origin)
 			var km: float = (sim.local_origin + sim.player.pos).distance_to(sim.dock_buoy_km())
 			caption = "Helion Dock  %.0f km" % km
-			at = Vector3(shown.x, 120.0, -shown.y)
+			at = _guide_at(sim.dock_buoy_km() - sim.local_origin, 120.0)
 		elif layer == ScaleFrame.APPROACH:
 			caption = "Helion Dock"
 			at = Vector3(0.0, 80.0, 0.0)
@@ -337,7 +336,7 @@ class ScaleReadout extends Control:
 		var caption := DockBoard.haul_line(sim)
 		if caption == "":
 			return
-		var at := Vector3(ring.pos.x, 90.0, -ring.pos.y)
+		var at := _guide_at(ring.pos, 90.0)
 		var sp := cam.unproject_position(at)
 		var behind := cam.is_position_behind(at)
 		var margin := 28.0
@@ -367,6 +366,11 @@ class ScaleReadout extends Control:
 		var side := Vector2(-aim.y, aim.x)
 		draw_colored_polygon(PackedVector2Array([hit + aim * 18.0, hit - aim * 10.0 + side * 10.0, hit - aim * 10.0 - side * 10.0]), ink)
 		draw_string(font, hit + side * 14.0 - Vector2(0, 10), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, ink)
+
+
+	func _guide_at(world: Vector2, height: float) -> Vector3:
+		var shown: Vector2 = DockBoard.marker_xy(Game.sim, world)
+		return Vector3(shown.x, height, -shown.y)
 
 
 	func _nearer_tag(a: Dictionary, b: Dictionary) -> bool:

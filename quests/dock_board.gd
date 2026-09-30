@@ -157,6 +157,26 @@ static func haul_line(sim) -> String:
 	return "Ice ring %d m — hold that way." % int(gap)
 
 
+## Same plane as the amber beam. The camera lives in render meters
+## (world minus the floating origin). Absolute world meters point the
+## other way from the pad, and the range number climbs.
+static var forced_origin: Variant = null
+
+
+static func marker_xy(sim, world: Vector2) -> Vector2:
+	var shown := world
+	if sim != null and int(sim.layer) == ScaleFrame.CHART:
+		shown = ScaleFrame.chart_view(sim, world)
+	var origin := Vector2.ZERO
+	if forced_origin is Vector2:
+		origin = forced_origin
+	else:
+		var gate: Variant = WorldCoord.gate()
+		if gate != null:
+			origin = gate.origin_m
+	return shown - origin
+
+
 static func _cue_outbound(sim) -> void:
 	if sim.haul_outbound() == false:
 		return

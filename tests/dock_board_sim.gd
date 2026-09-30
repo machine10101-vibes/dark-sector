@@ -25,6 +25,7 @@ func _init() -> void:
 	_haul()
 	_haul_holds_the_band()
 	_haul_cast_off_moves()
+	_haul_cue_closes()
 	_pad_gate()
 	_save()
 	_return_and_pay()
@@ -198,6 +199,57 @@ func _haul_cast_off_moves() -> void:
 	check(sim.player.vel.length() > 60.0, "W during the haul climbs through the tens")
 	check(sim.player.vel.length() <= SectorSim.HAUL_BAND_CAP + 1.0, "W during the haul stays under the shell cap")
 	check(int(sim.layer) == ScaleFrame.BAND, "that burn has not opened the chart")
+
+
+func _haul_cue_closes() -> void:
+	var sim := make()
+	check(DockBoard.take(sim, "haul") == "", "the cue haul is aboard")
+	var ring = sim.survey_node("aegis_ring")
+	var to_ring: Vector2 = ring.pos - sim.player.pos
+	var nose := Vector2.from_angle(sim.player.rot)
+	check(nose.dot(to_ring) < 0.0, "the pad nose points away from the ice ring")
+	var start: float = to_ring.length()
+	DockBoard.forced_origin = sim.player.pos
+	var marked: Vector2 = DockBoard.marker_xy(sim, ring.pos)
+	var keel: Vector2 = DockBoard.marker_xy(sim, sim.player.pos)
+	var cue: Vector2 = marked - keel
+	check(cue.normalized().dot(to_ring.normalized()) > 0.99, "the glass marker uses the ring bearing")
+	var stale: Vector2 = ring.pos - keel
+	check(stale.normalized().dot(to_ring.normalized()) < 0.2, "raw world meters point off the ring")
+	DockBoard.forced_origin = null
+	var wrong := make()
+	check(DockBoard.take(wrong, "haul") == "", "the wrong heading still has the crate")
+	var wrong_ring = wrong.survey_node("aegis_ring")
+	var wrong_start: float = wrong.player.pos.distance_to(wrong_ring.pos)
+	wrong.player.moored = false
+	wrong.quest_flags.moor_latch = 0.0
+	wrong.player.vel = Vector2.ZERO
+	wrong.player.rot = wrong_ring.pos.angle()
+	wrong.tick(1.2, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
+	check(wrong.player.pos.distance_to(wrong_ring.pos) > wrong_start + 30.0, "the absolute heading opens the range")
+	sim.player.moored = false
+	sim.quest_flags.moor_latch = 0.0
+	sim.player.vel = Vector2.ZERO
+	sim.player.rot = to_ring.angle()
+	var burn := {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false}
+	sim.tick(1.2, burn)
+	var mid: float = sim.player.pos.distance_to(ring.pos)
+	check(mid < start - 40.0, "thrust along the cue closes the range")
+	check(int(sim.layer) == ScaleFrame.BAND, "closing on the ring stays on the band")
+	var touched := false
+	var aim := Vector2.ZERO
+	for _i in 8:
+		aim = ring.pos - sim.player.pos
+		if aim.length() <= DockBoard.RING:
+			touched = true
+			break
+		sim.player.rot = aim.angle()
+		sim.tick(0.8, burn)
+	DockBoard.pulse(sim, 0.2)
+	check(touched or sim.player.pos.distance_to(ring.pos) <= DockBoard.RING, "the cue reach touches the ring")
+	check(bool(sim.quest_flags.get("dock_haul_ring", false)), "the ring takes the crate")
+	check(DockBoard.haul_line(sim).contains("bring the crate back"), "the return cue names Helion Dock")
+	check(int(sim.layer) == ScaleFrame.BAND, "the drop does not open the chart")
 
 
 func _pad_gate() -> void:
