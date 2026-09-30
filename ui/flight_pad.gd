@@ -38,22 +38,23 @@ func _ready() -> void:
 	zoom_out.pressed.connect(func() -> void: _zoom(-1.0))
 
 
-func place(screen: Vector2) -> void:
+func place(screen: Vector2, dock: float = 64.0) -> void:
 	position = Vector2.ZERO
 	size = screen
 	var joy_size := 150.0
 	radius = 62.0
-	joy.position = Vector2(12, screen.y - joy_size - 64)
+	var base := screen.y - dock
+	joy.position = Vector2(12, base - joy_size - 8)
 	joy.size = Vector2(joy_size, joy_size)
-	fire_button.position = Vector2(screen.x - 104, screen.y - 168)
+	fire_button.position = Vector2(screen.x - 104, base - 104)
 	fire_button.size = Vector2(88, 88)
-	strafe_left.position = Vector2(screen.x - 196, screen.y - 120)
+	strafe_left.position = Vector2(screen.x - 196, base - 56)
 	strafe_left.size = Vector2(80, 44)
-	strafe_right.position = Vector2(screen.x - 196, screen.y - 172)
+	strafe_right.position = Vector2(screen.x - 196, base - 108)
 	strafe_right.size = Vector2(80, 44)
-	zoom_in.position = Vector2(screen.x - 104, screen.y - 224)
+	zoom_in.position = Vector2(screen.x - 104, base - 160)
 	zoom_in.size = Vector2(40, 44)
-	zoom_out.position = Vector2(screen.x - 56, screen.y - 224)
+	zoom_out.position = Vector2(screen.x - 56, base - 160)
 	zoom_out.size = Vector2(40, 44)
 	joy.queue_redraw()
 

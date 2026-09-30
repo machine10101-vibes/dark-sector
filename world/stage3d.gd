@@ -721,7 +721,52 @@ func _sync_props(sim) -> void:
 		add_child(_beacon_light)
 	_beacon_light.visible = not on_chart
 	_beacon_light.position = chart(sim.beacon_pos, 38.0)
-	if not on_chart:
+	if not on_chart and str(sim.defs.system.id) == "HC-V1-R1-S1":
+		var flash := 0.55 + 0.45 * sin(float(sim.time) * 5.0)
+		var dock_ring := _prop("band_dock")
+		if str(dock_ring.get_meta("built", "")) != "yes":
+			var ring := TorusMesh.new()
+			ring.inner_radius = 72.0
+			ring.outer_radius = 118.0
+			ring.rings = 40
+			ring.ring_segments = 10
+			dock_ring.mesh = ring
+			var glow := StandardMaterial3D.new()
+			glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			glow.albedo_color = Color("d7fbff")
+			glow.emission_enabled = true
+			glow.emission = Color("7ee7f2")
+			dock_ring.material_override = glow
+			dock_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			dock_ring.set_meta("built", "yes")
+		dock_ring.position = chart(sim.beacon_pos, 6.0)
+		dock_ring.visible = true
+		var paint := dock_ring.material_override as StandardMaterial3D
+		if paint != null:
+			paint.emission_energy_multiplier = 0.8 + flash * 2.4
+		var beam := _prop("band_dock_beam")
+		if str(beam.get_meta("built", "")) != "yes":
+			var column := CylinderMesh.new()
+			column.top_radius = 3.5
+			column.bottom_radius = 8.0
+			column.height = 280.0
+			beam.mesh = column
+			var shaft := StandardMaterial3D.new()
+			shaft.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			shaft.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			shaft.albedo_color = Color(0.55, 0.92, 0.96, 0.45)
+			shaft.emission_enabled = true
+			shaft.emission = Color("9eecf5")
+			beam.material_override = shaft
+			beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			beam.set_meta("built", "yes")
+		beam.position = chart(sim.beacon_pos, 146.0)
+		beam.visible = true
+		var beam_paint := beam.material_override as StandardMaterial3D
+		if beam_paint != null:
+			beam_paint.emission_energy_multiplier = 0.6 + flash * 1.8
+		_tag("Helion Dock", chart(sim.beacon_pos + Vector2(-90.0, -30.0), 168.0), Color("9eecf5"), 22)
+	elif not on_chart:
 		_tag("Dock beacon", chart(sim.beacon_pos + Vector2(-70.0, -90.0), 78.0), Color("8aa896"), 13)
 	_sync_density(sim)
 	_sync_pocket(sim)
@@ -1297,6 +1342,50 @@ func _sync_chart_bodies(sim) -> void:
 		buoy.position = chart(at, 0.0)
 		buoy.visible = true
 		_tag(str(row.get("name", "Lane")), buoy.position + Vector3(0.0, 70.0, 0.0), Color("e6d7a8"), 18)
+	if str(sim.defs.system.id) == "HC-V1-R1-S1":
+		var flash := 0.55 + 0.45 * sin(float(sim.time) * 4.2)
+		var dock_mark := _prop("chart_dock")
+		if str(dock_mark.get_meta("built", "")) != "wide":
+			var ring := TorusMesh.new()
+			ring.inner_radius = 150.0
+			ring.outer_radius = 230.0
+			ring.rings = 48
+			ring.ring_segments = 10
+			dock_mark.mesh = ring
+			var glow := StandardMaterial3D.new()
+			glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			glow.albedo_color = Color("d7fbff")
+			glow.emission_enabled = true
+			glow.emission = Color("7ee7f2")
+			dock_mark.material_override = glow
+			dock_mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			dock_mark.set_meta("built", "wide")
+		var dock_at: Vector2 = sim.dock_buoy_km() - sim.local_origin
+		dock_mark.position = chart(dock_at, 0.0)
+		dock_mark.visible = true
+		var dock_glow := dock_mark.material_override as StandardMaterial3D
+		if dock_glow != null:
+			dock_glow.emission_energy_multiplier = 1.1 + flash * 2.2
+		var halo := _prop("chart_dock_halo")
+		if str(halo.get_meta("built", "")) != "wide":
+			var outer := TorusMesh.new()
+			outer.inner_radius = 250.0
+			outer.outer_radius = 310.0
+			outer.rings = 48
+			outer.ring_segments = 8
+			halo.mesh = outer
+			var wash := StandardMaterial3D.new()
+			wash.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			wash.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			wash.albedo_color = Color(0.62, 0.93, 0.97, 0.35)
+			wash.emission_enabled = true
+			wash.emission = Color("9eecf5")
+			halo.material_override = wash
+			halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			halo.set_meta("built", "wide")
+		halo.position = chart(dock_at, 12.0)
+		halo.visible = true
+		_tag("Helion Dock", dock_mark.position + Vector3(0.0, 220.0, 0.0), Color("9eecf5"), 28)
 	var mark := _prop("chart_ship")
 	if mark.mesh == null:
 		var dot := SphereMesh.new()

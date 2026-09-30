@@ -77,6 +77,8 @@ Hold W outward. Past the band the keel stays moving and the chart names Aegis Pr
 
 Slips are taken only on the pad. A full hold refuses the crate. Each slip pays once. Cast off is unchanged: W or the Cast off button still leaves the dock.
 
+To come back, fly into the flashing cyan **Helion Dock** buoy. A stop inside that buoy moors from any heading, and on the band about 50–100 m from the pad does the same even while the helm still says Tactical. The line reads Moored, and Cast off and Board are available again. The card’s Helion Dock meters are the range to the pad. The scale bar is only the zoom. A key that is still held down waits until you release it.
+
 Pick one keel at new game: Needle (Vesper), Barn (Anvil), or Beak (Kestrel). The yard has one module. Bolting it changes the top-down silhouette. It does not come off.
 
 ## Slice
