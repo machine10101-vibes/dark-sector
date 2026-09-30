@@ -43,41 +43,55 @@ void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 sun = normalize(to_star);
 	float ndl = dot(n, sun);
-	float day = smoothstep(-0.05, 0.22, ndl);
+	float day = smoothstep(-0.08, 0.28, ndl);
 	float field = fbm(n * 3.1 + vec3(seed, 1.7, seed * 0.4));
 	float detail = fbm(n * 8.5 + vec3(seed * 2.0, 0.4, 3.0));
-	float land_w = smoothstep(0.45, 0.57, field);
-	vec3 sea = mix(albedo.rgb, vec3(0.12, 0.24, 0.32), 0.62);
-	vec3 coast = mix(albedo.rgb, vec3(0.62, 0.56, 0.4), 0.35);
-	vec3 ground = mix(albedo.rgb, land.rgb, 0.55) * (0.78 + 0.4 * detail);
-	vec3 terrain = mix(sea, mix(coast, ground, smoothstep(0.5, 0.68, field)), land_w);
-	float polar = smoothstep(0.58, 0.9, abs(n.y));
-	terrain = mix(terrain, vec3(0.84, 0.9, 0.93), polar * 0.82);
-	vec3 col = terrain * (0.12 + 0.95 * day);
-	float twilight = smoothstep(-0.18, -0.02, ndl) * (1.0 - smoothstep(0.02, 0.2, ndl));
-	col += vec3(0.9, 0.42, 0.18) * twilight * 0.42;
+	float ridges = fbm(n * 14.0 + vec3(seed * 1.3, 0.2, 2.2));
+	float land_w = smoothstep(0.42, 0.58, field);
+	vec3 deep = vec3(0.05, 0.16, 0.28);
+	vec3 shoal = vec3(0.16, 0.42, 0.46);
+	float depth = smoothstep(0.18, 0.48, field);
+	vec3 sea = mix(deep, mix(albedo.rgb, shoal, 0.45), depth);
+	vec3 coast = mix(albedo.rgb, vec3(0.72, 0.64, 0.42), 0.4);
+	vec3 ground = mix(albedo.rgb, land.rgb, 0.62) * (0.72 + 0.38 * detail);
+	ground *= mix(0.62, 1.08, smoothstep(0.35, 0.72, ridges));
+	vec3 terrain = mix(sea, mix(coast, ground, smoothstep(0.48, 0.7, field)), land_w);
+	float polar = smoothstep(0.55, 0.92, abs(n.y));
+	float ice_cap = fbm(n * 6.0 + vec3(seed, 4.0, 0.2));
+	terrain = mix(terrain, vec3(0.86, 0.91, 0.94) * (0.85 + 0.2 * ice_cap), polar * 0.88);
+	vec3 night = terrain * 0.045 + vec3(0.02, 0.035, 0.06);
+	vec3 col = mix(night, terrain * (0.22 + 0.95 * day), day);
+	float twilight = smoothstep(-0.22, -0.02, ndl) * (1.0 - smoothstep(0.0, 0.18, ndl));
+	col += vec3(0.95, 0.38, 0.16) * twilight * 0.55;
+	col += vec3(0.25, 0.45, 0.72) * twilight * 0.22;
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float spec = pow(clamp(dot(n, normalize(sun + eye)), 0.0, 1.0), 56.0);
-	col += vec3(0.85, 0.93, 1.0) * spec * (1.0 - land_w) * day * 0.75;
+	vec3 halfv = normalize(sun + eye);
+	float spec = pow(clamp(dot(n, halfv), 0.0, 1.0), 28.0);
+	float broad = pow(clamp(dot(n, halfv), 0.0, 1.0), 6.0);
+	float water = (1.0 - land_w) * day;
+	col += vec3(0.72, 0.86, 0.95) * spec * water * 0.9;
+	col += vec3(0.45, 0.62, 0.7) * broad * water * 0.28;
 	float hi = fbm(n * 13.0 + vec3(seed * 2.4, 1.1, 0.6));
 	float lo = fbm(n * 13.0 + vec3(seed * 2.4, 1.1, 0.6) + n * 0.07);
 	float relief = clamp((hi - lo) * 5.5 + 0.55, 0.2, 1.15);
-	col *= mix(1.0, relief, 0.42 * day + 0.08);
+	col *= mix(1.0, relief, 0.5 * day + 0.06);
 	float lamps = 0.0;
 	if (city > 0.5) {
-		float cluster = smoothstep(0.58, 0.82, fbm(n * 5.2 + vec3(2.0, seed, 4.0)));
-		float dots = step(0.8, noise3(n * 24.0 + vec3(seed)));
-		lamps = dots * cluster * clamp(-ndl + 0.08, 0.0, 1.0) * land_w;
+		float cluster = smoothstep(0.52, 0.8, fbm(n * 4.4 + vec3(2.0, seed, 4.0)));
+		vec3 cell = fract(n * 22.0 + vec3(seed));
+		float window = step(0.72, cell.x) * step(0.72, cell.y);
+		float block = step(0.18, cell.z);
+		lamps = window * block * cluster * clamp(-ndl + 0.12, 0.0, 1.0) * land_w;
 	}
-	float shore = 1.0 - smoothstep(0.0, 0.05, abs(field - 0.51));
-	col += vec3(0.82, 0.88, 0.84) * shore * day * 0.45;
-	float cloud_shade = smoothstep(0.48, 0.72, fbm(n * 3.6 + vec3(seed, spin, 0.6)));
-	col *= 1.0 - cloud_shade * day * 0.34;
-	vec3 glow = vec3(1.0, 0.74, 0.38) * lamps * 2.4;
-	float rim = pow(clamp(1.0 - max(dot(n, eye), 0.0), 0.0, 1.0), 2.8);
-	col += albedo.rgb * rim * 0.16 + glow;
+	float shore = 1.0 - smoothstep(0.0, 0.035, abs(field - 0.5));
+	col += vec3(0.9, 0.93, 0.88) * shore * day * 0.55;
+	float cloud_shade = smoothstep(0.46, 0.74, fbm(n * 3.6 + vec3(seed, spin, 0.6)));
+	col *= 1.0 - cloud_shade * day * 0.42;
+	vec3 glow = vec3(1.0, 0.78, 0.42) * lamps * 3.1;
+	float rim = pow(clamp(1.0 - max(dot(n, eye), 0.0), 0.0, 1.0), 2.4);
+	col += vec3(0.55, 0.72, 0.88) * rim * 0.22 + glow;
 	ALBEDO = col;
-	EMISSION = glow + vec3(0.55, 0.7, 0.8) * rim * 0.2;
+	EMISSION = glow + vec3(0.45, 0.62, 0.78) * rim * 0.28 + vec3(0.9, 0.45, 0.18) * twilight * 0.15;
 }
 "
 
@@ -92,12 +106,19 @@ uniform float spin = 0.0;
 }
 void fragment() {
 	vec3 n = normalize(wnorm);
+	vec3 sun = normalize(to_star);
 	float cloud = fbm(n * 3.6 + vec3(seed, spin, 0.6));
 	float wisps = fbm(n * 9.0 + vec3(spin, 1.2, seed));
-	float cover = smoothstep(0.5, 0.74, cloud) * (0.65 + 0.35 * wisps);
-	float day = smoothstep(-0.12, 0.35, dot(n, normalize(to_star)));
-	ALBEDO = vec3(0.93, 0.95, 0.97) * (0.22 + 0.9 * day);
-	ALPHA = cover * (0.16 + 0.34 * day);
+	float puff = fbm(n * 16.0 + vec3(seed, spin * 2.0, 0.4));
+	float cover = smoothstep(0.46, 0.72, cloud) * (0.55 + 0.45 * wisps);
+	cover *= 0.75 + 0.25 * puff;
+	float ndl = dot(n, sun);
+	float day = smoothstep(-0.2, 0.45, ndl);
+	vec3 shade = vec3(0.45, 0.5, 0.58);
+	vec3 lit = vec3(0.96, 0.97, 0.98);
+	float silver = pow(clamp(ndl, 0.0, 1.0), 3.0) * cover;
+	ALBEDO = mix(shade, lit, day) + vec3(1.0) * silver * 0.18;
+	ALPHA = cover * (0.08 + 0.55 * day);
 }
 "
 
@@ -114,12 +135,15 @@ void vertex() {
 void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.7);
-	float sun = pow(clamp(dot(n, normalize(to_star)), 0.0, 1.0), 1.15);
-	vec3 col = mix(tint.rgb, vec3(1.0, 0.68, 0.38), sun * 0.7);
+	vec3 sun_dir = normalize(to_star);
+	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 2.05);
+	float sun = pow(clamp(dot(n, sun_dir), 0.0, 1.0), 1.4);
+	float grazing = pow(fres, 1.3);
+	vec3 scatter = mix(vec3(0.35, 0.55, 0.85), vec3(1.0, 0.62, 0.32), sun);
+	vec3 col = mix(tint.rgb, scatter, 0.72);
 	ALBEDO = col;
-	EMISSION = col * sun * 0.25;
-	ALPHA = fres * (0.22 + 0.5 * sun);
+	EMISSION = scatter * (0.15 + sun * 0.45) * grazing;
+	ALPHA = fres * (0.16 + 0.62 * sun) * (0.55 + 0.45 * grazing);
 }
 "
 
@@ -135,12 +159,15 @@ uniform vec4 albedo : source_color = vec4(1.0, 0.9, 0.7, 1.0);
 void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float limb = pow(clamp(dot(n, eye), 0.0, 1.0), 0.42);
-	float grain = noise3(n * 16.0);
-	vec3 hot = mix(albedo.rgb, vec3(1.0, 0.97, 0.9), 0.35);
-	vec3 col = hot * (0.62 + 0.5 * limb) * (0.86 + 0.22 * grain);
+	float facing = clamp(dot(n, eye), 0.0, 1.0);
+	float limb = pow(facing, 0.55);
+	float dark = mix(0.42, 1.0, limb);
+	float grain = fbm(n * 9.0);
+	float cells = fbm(n * 22.0);
+	vec3 hot = mix(albedo.rgb * 0.72, vec3(1.0, 0.96, 0.88), 0.55);
+	vec3 col = hot * dark * (0.78 + 0.28 * grain) * (0.9 + 0.16 * cells);
 	ALBEDO = col;
-	EMISSION = col;
+	EMISSION = col * (0.85 + 0.25 * facing);
 }
 "
 
@@ -307,11 +334,19 @@ uniform float seed = 0.0;
 }
 void fragment() {
 	vec3 n = normalize(wnorm);
+	vec3 sun = normalize(vec3(0.35, 0.86, 0.22));
+	float ndl = clamp(dot(n, sun), 0.0, 1.0);
 	float grit = fbm(n * 6.0 + vec3(seed));
-	float cavity = smoothstep(0.35, 0.7, fbm(n * 3.0 + vec3(seed * 2.0, 1.0, 0.2)));
-	ALBEDO = albedo.rgb * (0.55 + 0.6 * grit) * mix(1.0, 0.45, cavity);
-	ROUGHNESS = 0.92;
-	METALLIC = 0.04;
+	float cavity = smoothstep(0.32, 0.72, fbm(n * 3.2 + vec3(seed * 2.0, 1.0, 0.2)));
+	float pits = smoothstep(0.62, 0.82, noise3(n * 18.0 + vec3(seed)));
+	vec3 mineral = mix(albedo.rgb, albedo.rgb * vec3(1.15, 0.92, 0.78), grit * 0.45);
+	vec3 col = mineral * (0.18 + 0.9 * ndl) * mix(1.0, 0.38, cavity);
+	col *= 1.0 - pits * 0.35;
+	float rim = pow(1.0 - ndl, 2.2);
+	col += mineral * rim * 0.12;
+	ALBEDO = col;
+	ROUGHNESS = mix(0.78, 0.98, cavity);
+	METALLIC = 0.06;
 }
 "
 
@@ -1205,8 +1240,8 @@ func _body_node(bid: String) -> Node3D:
 	var ball := MeshInstance3D.new()
 	ball.name = "Ball"
 	var sphere := SphereMesh.new()
-	sphere.radial_segments = 64
-	sphere.rings = 32
+	sphere.radial_segments = 96
+	sphere.rings = 48
 	ball.mesh = sphere
 	var mat := ShaderMaterial.new()
 	mat.shader = _planet_shader
@@ -1216,8 +1251,8 @@ func _body_node(bid: String) -> Node3D:
 	var clouds := MeshInstance3D.new()
 	clouds.name = "Clouds"
 	var puff := SphereMesh.new()
-	puff.radial_segments = 48
-	puff.rings = 24
+	puff.radial_segments = 64
+	puff.rings = 32
 	clouds.mesh = puff
 	var cloud_mat := ShaderMaterial.new()
 	cloud_mat.shader = _cloud_shader
