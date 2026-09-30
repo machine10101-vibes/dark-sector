@@ -123,7 +123,9 @@ static func _take_haul(sim) -> String:
 	sim._add_cargo(CRATE, 1)
 	sim.quest_flags.dock_haul = "active"
 	sim.quest_flags.dock_haul_ring = false
+	sim.quest_flags.haul_cue_bucket = -999
 	sim.say("Ring haul taken. Crate aboard. Hold toward the ice ring — don't clear the band yet. Pay %d." % HAUL_PAY)
+	_cue_outbound(sim)
 	return ""
 
 
@@ -140,6 +142,50 @@ static func _pulse_scan(sim) -> void:
 	_pay(sim, SCAN_PAY, "Aegis scan filed. Helion Dock paid %d." % SCAN_PAY)
 
 
+static func haul_line(sim) -> String:
+	if state(sim, "dock_haul") != "active":
+		return ""
+	if bool(sim.quest_flags.get("dock_haul_ring", false)):
+		if at_pad(sim):
+			return ""
+		var back: float = sim.player.pos.distance_to(sim.beacon_pos)
+		return "Helion Dock %d m — bring the crate back." % int(back)
+	var ring = sim.survey_node("aegis_ring")
+	if ring == null:
+		return ""
+	var gap: float = sim.player.pos.distance_to(ring.pos)
+	return "Ice ring %d m — hold that way." % int(gap)
+
+
+static func _cue_outbound(sim) -> void:
+	if sim.haul_outbound() == false:
+		return
+	var ring = sim.survey_node("aegis_ring")
+	if ring == null:
+		return
+	var gap := int(sim.player.pos.distance_to(ring.pos))
+	var bucket := int(gap / 60)
+	if int(sim.quest_flags.get("haul_cue_bucket", -999)) == bucket:
+		return
+	sim.quest_flags.haul_cue_bucket = bucket
+	sim.say("Ice ring %d m — hold that way." % gap)
+
+
+static func _cue_return(sim) -> void:
+	if state(sim, "dock_haul") != "active":
+		return
+	if bool(sim.quest_flags.get("dock_haul_ring", false)) == false:
+		return
+	if at_pad(sim):
+		return
+	var gap := int(sim.player.pos.distance_to(sim.beacon_pos))
+	var bucket := int(gap / 60)
+	if int(sim.quest_flags.get("haul_back_bucket", -999)) == bucket:
+		return
+	sim.quest_flags.haul_back_bucket = bucket
+	sim.say("Helion Dock %d m — bring the crate back." % gap)
+
+
 static func _pulse_haul(sim) -> void:
 	if state(sim, "dock_haul") != "active":
 		return
@@ -148,10 +194,13 @@ static func _pulse_haul(sim) -> void:
 		sim.quest_flags.dock_haul_ring = false
 		sim.say("The ring crate is gone. The board put the slip back.")
 		return
+	_cue_outbound(sim)
 	if str(sim.defs.system.id) == "HC-V1-R1-S1" and _near_ring(sim):
 		if bool(sim.quest_flags.get("dock_haul_ring", false)) == false:
 			sim.quest_flags.dock_haul_ring = true
+			sim.quest_flags.haul_back_bucket = -999
 			sim.say("Ice ring has the crate. Bring it back to the Helion pad.")
+	_cue_return(sim)
 	if bool(sim.quest_flags.get("dock_haul_ring", false)) and at_pad(sim):
 		sim.spend_cargo(CRATE, 1)
 		sim.quest_flags.dock_haul = "done"

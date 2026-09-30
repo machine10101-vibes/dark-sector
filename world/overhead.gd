@@ -207,7 +207,7 @@ class ScaleReadout extends Control:
 					continue
 				var dist := cam.global_position.distance_to(at)
 				var reach := 2600.0
-				if str(item.t) == "Helion Dock" or str(item.t) == "Aegis ice ring":
+				if str(item.t) == "Helion Dock" or str(item.t) == "Ice ring":
 					reach = 24000.0
 				elif Game.sim != null:
 					var layer := int(Game.sim.layer)
@@ -334,8 +334,9 @@ class ScaleReadout extends Control:
 		var ring = sim.survey_node("aegis_ring")
 		if ring == null:
 			return
-		var gap: float = sim.player.pos.distance_to(ring.pos)
-		var caption := "Aegis ice ring  %d m" % int(gap)
+		var caption := DockBoard.haul_line(sim)
+		if caption == "":
+			return
 		var at := Vector3(ring.pos.x, 90.0, -ring.pos.y)
 		var sp := cam.unproject_position(at)
 		var behind := cam.is_position_behind(at)

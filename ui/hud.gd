@@ -4,6 +4,7 @@ var root: Control
 var helm_name: Label
 var helm_flight: Label
 var helm_zone: Label
+var haul_cue: Label
 var helm_cargo: Label
 var helm_craft: Label
 var banner: Label
@@ -364,6 +365,8 @@ func _build_helm() -> void:
 	stat_heat = _chip("HEAT")
 	stat_purse = _chip("PURSE 0")
 	box.add_child(helm_zone)
+	haul_cue = ThemeKit.label("", 18, Color("ffd27a"))
+	box.add_child(haul_cue)
 	helm_cargo = ThemeKit.label("", 13, Color("b7c9c4"))
 	helm_craft = ThemeKit.label("", 13, Color("8eb8c0"))
 	box.add_child(helm_cargo)
@@ -653,6 +656,10 @@ func _refresh_helm() -> void:
 		dock_word = "  ·  Helion Dock %d m" % int(gap)
 	helm_zone.text = "%s  ·  %s  ·  %s%s%s" % [place, zoom_word, law_name, dock_word, link_word]
 	helm_zone.add_theme_color_override("font_color", Law.color_of(law_name))
+	if haul_cue != null:
+		var cue := DockBoard.haul_line(sim)
+		haul_cue.text = cue
+		haul_cue.visible = cue != ""
 	var repair := ""
 	if sim.player.pos.distance_to(sim.beacon_pos) <= 170.0:
 		repair = "  ·  Weld live"

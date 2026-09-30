@@ -52,6 +52,7 @@ func _init() -> void:
 		if str(row.text).contains("don't clear the band yet"):
 			heard = true
 	check(heard, "haul log names the ice ring")
+	check(DockBoard.haul_line(sim).contains("hold that way"), "helm names the ice ring")
 	var body = sim.planet("aegis_prime")
 	var away: Vector2 = (sim.beacon_pos - body.pos).normalized()
 	sim.player.moored = false
@@ -71,6 +72,7 @@ func _init() -> void:
 	sim.player.pos = ring.pos
 	DockBoard.pulse(sim, 0.2)
 	check(bool(sim.quest_flags.get("dock_haul_ring", false)), "ring marks the crate")
+	check(DockBoard.haul_line(sim).contains("bring the crate back"), "return cue is up")
 	check(DockBoard.purse(sim) == 80, "ring does not pay the haul")
 	sim.player.moored = true
 	sim.player.pos = sim.beacon_pos

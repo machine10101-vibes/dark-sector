@@ -128,6 +128,7 @@ func _haul() -> void:
 	sim.player.pos = ring.pos
 	DockBoard.pulse(sim, 0.2)
 	check(bool(sim.quest_flags.get("dock_haul_ring", false)), "the ring marks the crate")
+	check(DockBoard.haul_line(sim).contains("bring the crate back"), "the helm points back to the pad")
 	check(DockBoard.purse(sim) == 0, "the ring does not pay by itself")
 	sim.player.pos = sim.beacon_pos
 	sim.player.moored = true
@@ -150,6 +151,12 @@ func _haul_holds_the_band() -> void:
 		if str(row.text).contains("don't clear the band yet"):
 			heard = true
 	check(heard, "the log says to hold toward the ice ring")
+	var ranged := false
+	for row in sim.lines:
+		if str(row.text).contains("hold that way"):
+			ranged = true
+	check(ranged, "the log gives Ice ring range")
+	check(DockBoard.haul_line(sim).contains("hold that way"), "the helm line names the ice ring")
 	var away: Vector2 = sim.beacon_pos - body.pos
 	away = away.normalized()
 	sim.player.moored = false

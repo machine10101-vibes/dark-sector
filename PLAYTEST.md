@@ -13,12 +13,12 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 
 ## Ready — ring haul
 
-Pages build. One fresh Needle. Moor and the scan purse already passed. This pass is the crate.
+Pages build. One fresh Needle. Moor and Purse 80 already passed. This pass is the crate.
 
-1. Board. Take the haul. The log says **Hold toward the ice ring — don't clear the band yet.**
-2. Cast off and hold toward the amber **Aegis ice ring** marker. The card shows the meters. A full burn stays on the band. It does not open the chart or run out to tens of thousands of kilometers.
-3. Touch the ring. The log says the ring has the crate. Fly back until Moored. Purse is 200 if the scan already paid, or 120 if this is the only slip. The crate is gone.
-4. Without a crate aboard, holding W still leaves the band and opens the chart.
+1. Board. Take haul. The helm and the log read **Ice ring N m — hold that way.** An amber beam marks that spot. An arrow points at it when it is off the glass. The log also says not to clear the band yet.
+2. Cast off. Short thrusts stay Local. Follow the arrow. The number falls. A long burn does not open the chart before the drop.
+3. Touch the ring. The line becomes **Helion Dock N m — bring the crate back.**
+4. Return until Moored, or press Dock inside 500 m. Purse is 200 if the scan already paid, or 120 if this is the only slip. The crate is gone.
 
 ## Ready — moor and purse
 

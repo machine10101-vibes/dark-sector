@@ -798,8 +798,8 @@ func _sync_haul_ring(sim) -> void:
 	var mark := _prop("haul_ring")
 	if str(mark.get_meta("built", "")) != "yes":
 		var torus := TorusMesh.new()
-		torus.inner_radius = 22.0
-		torus.outer_radius = 40.0
+		torus.inner_radius = 70.0
+		torus.outer_radius = 118.0
 		torus.rings = 28
 		torus.ring_segments = 8
 		mark.mesh = torus
@@ -821,7 +821,7 @@ func _sync_haul_ring(sim) -> void:
 		var column := CylinderMesh.new()
 		column.top_radius = 2.2
 		column.bottom_radius = 6.0
-		column.height = 240.0
+		column.height = 460.0
 		beam.mesh = column
 		var shaft := StandardMaterial3D.new()
 		shaft.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -832,12 +832,12 @@ func _sync_haul_ring(sim) -> void:
 		beam.material_override = shaft
 		beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		beam.set_meta("built", "yes")
-	beam.position = chart(at, 128.0)
+	beam.position = chart(at, 240.0)
 	beam.visible = true
 	var beam_paint := beam.material_override as StandardMaterial3D
 	if beam_paint != null:
 		beam_paint.emission_energy_multiplier = 0.8 + flash * 2.4
-	_tag("Aegis ice ring", chart(at + Vector2(18.0, -24.0), 168.0), Color("ffd27a"), 26)
+	_tag("Ice ring", chart(at + Vector2(18.0, -24.0), 280.0), Color("ffd27a"), 32)
 
 
 func _sync_pocket(sim) -> void:

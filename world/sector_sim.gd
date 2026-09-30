@@ -2299,12 +2299,14 @@ func _haul_band_brake(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 
 
 func _hold_for_ring(body: Dictionary, outer: float) -> void:
-	var from_center: Vector2 = player.pos - body.pos
+	var from_center: Vector2 = player.pos
+	from_center -= body.pos
 	if from_center.length() < 1.0:
 		from_center = Vector2.RIGHT
-	var outward := from_center.normalized()
+	var outward: Vector2 = from_center.normalized()
 	player.pos = body.pos + outward * (outer - 36.0)
-	var out_spd := player.vel.dot(outward)
+	var vel: Vector2 = player.vel
+	var out_spd: float = vel.dot(outward)
 	if out_spd > 0.0:
 		player.vel -= outward * out_spd
 	player.vel *= 0.35
