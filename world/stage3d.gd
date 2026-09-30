@@ -43,61 +43,98 @@ void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 sun = normalize(to_star);
 	float ndl = dot(n, sun);
-	float day = smoothstep(-0.05, 0.22, ndl);
+	float day = smoothstep(-0.08, 0.28, ndl);
 	float field = fbm(n * 3.1 + vec3(seed, 1.7, seed * 0.4));
 	float detail = fbm(n * 8.5 + vec3(seed * 2.0, 0.4, 3.0));
-	float land_w = smoothstep(0.45, 0.57, field);
-	vec3 sea = mix(albedo.rgb, vec3(0.12, 0.24, 0.32), 0.62);
-	vec3 coast = mix(albedo.rgb, vec3(0.62, 0.56, 0.4), 0.35);
-	vec3 ground = mix(albedo.rgb, land.rgb, 0.55) * (0.78 + 0.4 * detail);
-	vec3 terrain = mix(sea, mix(coast, ground, smoothstep(0.5, 0.68, field)), land_w);
-	float polar = smoothstep(0.58, 0.9, abs(n.y));
-	terrain = mix(terrain, vec3(0.84, 0.9, 0.93), polar * 0.82);
-	vec3 col = terrain * (0.12 + 0.95 * day);
-	float twilight = smoothstep(-0.18, -0.02, ndl) * (1.0 - smoothstep(0.02, 0.2, ndl));
-	col += vec3(0.9, 0.42, 0.18) * twilight * 0.42;
+	float ridges = fbm(n * 14.0 + vec3(seed * 1.3, 0.2, 2.2));
+	float land_w = smoothstep(0.42, 0.58, field);
+	vec3 deep = vec3(0.05, 0.16, 0.28);
+	vec3 shoal = vec3(0.16, 0.42, 0.46);
+	float depth = smoothstep(0.18, 0.48, field);
+	vec3 sea = mix(deep, mix(albedo.rgb, shoal, 0.45), depth);
+	vec3 coast = mix(albedo.rgb, vec3(0.72, 0.64, 0.42), 0.4);
+	vec3 ground = mix(albedo.rgb, land.rgb, 0.62) * (0.72 + 0.38 * detail);
+	ground *= mix(0.62, 1.08, smoothstep(0.35, 0.72, ridges));
+	vec3 terrain = mix(sea, mix(coast, ground, smoothstep(0.48, 0.7, field)), land_w);
+	float polar = smoothstep(0.55, 0.92, abs(n.y));
+	float ice_cap = fbm(n * 6.0 + vec3(seed, 4.0, 0.2));
+	terrain = mix(terrain, vec3(0.86, 0.91, 0.94) * (0.85 + 0.2 * ice_cap), polar * 0.88);
+	float mottled = fbm(wpos * 0.0055 + vec3(seed, 2.2, 0.4));
+	float fleck = fbm(wpos * 0.016 + n * 3.0);
+	terrain *= 0.74 + 0.38 * mottled;
+	terrain = mix(terrain, terrain * vec3(0.76, 0.92, 0.7), fleck * land_w * 0.45);
+	float dist = length(CAMERA_POSITION_WORLD - wpos);
+	float near = 1.0 - smoothstep(320.0, 1700.0, dist);
+	float fine = fbm(wpos * 0.06 + n * 6.0);
+	float scrub = fbm(wpos * 0.14 + vec3(seed, 0.4, 1.7));
+	terrain *= mix(1.0, 0.58 + 0.85 * fine, near);
+	terrain = mix(terrain, terrain * vec3(0.55, 0.5, 0.4), scrub * near * land_w * 0.7);
+	vec3 night = terrain * 0.05 + vec3(0.015, 0.03, 0.055);
+	vec3 col = mix(night, terrain * (0.32 + 0.58 * day), day);
+	float twilight = smoothstep(-0.22, -0.02, ndl) * (1.0 - smoothstep(0.0, 0.18, ndl));
+	col += vec3(0.95, 0.38, 0.16) * twilight * 0.55;
+	col += vec3(0.25, 0.45, 0.72) * twilight * 0.22;
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float spec = pow(clamp(dot(n, normalize(sun + eye)), 0.0, 1.0), 56.0);
-	col += vec3(0.85, 0.93, 1.0) * spec * (1.0 - land_w) * day * 0.75;
+	vec3 halfv = normalize(sun + eye);
+	float spec = pow(clamp(dot(n, halfv), 0.0, 1.0), 28.0);
+	float broad = pow(clamp(dot(n, halfv), 0.0, 1.0), 6.0);
+	float water = (1.0 - land_w) * day;
+	col += vec3(0.72, 0.86, 0.95) * spec * water * 0.9;
+	col += vec3(0.45, 0.62, 0.7) * broad * water * 0.28;
 	float hi = fbm(n * 13.0 + vec3(seed * 2.4, 1.1, 0.6));
 	float lo = fbm(n * 13.0 + vec3(seed * 2.4, 1.1, 0.6) + n * 0.07);
 	float relief = clamp((hi - lo) * 5.5 + 0.55, 0.2, 1.15);
-	col *= mix(1.0, relief, 0.42 * day + 0.08);
+	col *= mix(1.0, relief, 0.5 * day + 0.06);
 	float lamps = 0.0;
 	if (city > 0.5) {
-		float cluster = smoothstep(0.58, 0.82, fbm(n * 5.2 + vec3(2.0, seed, 4.0)));
-		float dots = step(0.8, noise3(n * 24.0 + vec3(seed)));
-		lamps = dots * cluster * clamp(-ndl + 0.08, 0.0, 1.0) * land_w;
+		float cluster = smoothstep(0.52, 0.8, fbm(n * 4.4 + vec3(2.0, seed, 4.0)));
+		vec3 cell = fract(n * 22.0 + vec3(seed));
+		float window = step(0.72, cell.x) * step(0.72, cell.y);
+		float block = step(0.18, cell.z);
+		lamps = window * block * cluster * clamp(-ndl + 0.12, 0.0, 1.0) * land_w;
 	}
-	float shore = 1.0 - smoothstep(0.0, 0.05, abs(field - 0.51));
-	col += vec3(0.82, 0.88, 0.84) * shore * day * 0.45;
-	float cloud_shade = smoothstep(0.48, 0.72, fbm(n * 3.6 + vec3(seed, spin, 0.6)));
-	col *= 1.0 - cloud_shade * day * 0.34;
-	vec3 glow = vec3(1.0, 0.74, 0.38) * lamps * 2.4;
-	float rim = pow(clamp(1.0 - max(dot(n, eye), 0.0), 0.0, 1.0), 2.8);
-	col += albedo.rgb * rim * 0.16 + glow;
+	float shore = 1.0 - smoothstep(0.0, 0.035, abs(field - 0.5));
+	col += vec3(0.9, 0.93, 0.88) * shore * day * 0.55;
+	float cloud_shade = smoothstep(0.46, 0.74, fbm(n * 3.6 + vec3(seed, spin, 0.6)));
+	col *= 1.0 - cloud_shade * day * 0.42;
+	vec3 glow = vec3(1.0, 0.78, 0.42) * lamps * 3.1;
+	float rim = pow(clamp(1.0 - max(dot(n, eye), 0.0), 0.0, 1.0), 2.4);
+	col += vec3(0.55, 0.72, 0.88) * rim * 0.22 + glow;
 	ALBEDO = col;
-	EMISSION = glow + vec3(0.55, 0.7, 0.8) * rim * 0.2;
+	EMISSION = glow + vec3(0.45, 0.62, 0.78) * rim * 0.28 + vec3(0.9, 0.45, 0.18) * twilight * 0.15;
 }
 "
 
 const CLOUD_SHADER := "shader_type spatial;
 render_mode blend_mix, unshaded, depth_draw_never, cull_back;
 varying vec3 wnorm;
+varying vec3 wpos;
 uniform vec3 to_star = vec3(1.0, 0.0, 0.0);
 uniform float seed = 0.0;
 uniform float spin = 0.0;
 " + _NOISE + "void vertex() {
 	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
 	vec3 n = normalize(wnorm);
+	vec3 sun = normalize(to_star);
 	float cloud = fbm(n * 3.6 + vec3(seed, spin, 0.6));
-	float wisps = fbm(n * 9.0 + vec3(spin, 1.2, seed));
-	float cover = smoothstep(0.5, 0.74, cloud) * (0.65 + 0.35 * wisps);
-	float day = smoothstep(-0.12, 0.35, dot(n, normalize(to_star)));
-	ALBEDO = vec3(0.93, 0.95, 0.97) * (0.22 + 0.9 * day);
-	ALPHA = cover * (0.16 + 0.34 * day);
+	float wisps = fbm(n * 9.0 + wpos * 0.004 + vec3(spin, 1.2, seed));
+	float puff = fbm(wpos * 0.012 + vec3(seed, spin * 2.0, 0.4));
+	float cover = smoothstep(0.46, 0.72, cloud) * (0.55 + 0.45 * wisps);
+	cover *= 0.75 + 0.25 * puff;
+	float dist = length(CAMERA_POSITION_WORLD - wpos);
+	float near = 1.0 - smoothstep(320.0, 1700.0, dist);
+	float mote = fbm(wpos * 0.045 + vec3(seed, spin, 2.0));
+	cover *= mix(1.0, 0.25 + 0.95 * mote, near);
+	float ndl = dot(n, sun);
+	float day = smoothstep(-0.2, 0.45, ndl);
+	vec3 shade = vec3(0.45, 0.5, 0.58);
+	vec3 lit = vec3(0.96, 0.97, 0.98);
+	float silver = pow(clamp(ndl, 0.0, 1.0), 3.0) * cover;
+	ALBEDO = mix(shade, lit, day) + vec3(1.0) * silver * 0.18;
+	ALPHA = cover * (0.08 + 0.55 * day);
 }
 "
 
@@ -114,12 +151,15 @@ void vertex() {
 void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.7);
-	float sun = pow(clamp(dot(n, normalize(to_star)), 0.0, 1.0), 1.15);
-	vec3 col = mix(tint.rgb, vec3(1.0, 0.68, 0.38), sun * 0.7);
+	vec3 sun_dir = normalize(to_star);
+	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 2.05);
+	float sun = pow(clamp(dot(n, sun_dir), 0.0, 1.0), 1.4);
+	float grazing = pow(fres, 1.3);
+	vec3 scatter = mix(vec3(0.35, 0.55, 0.85), vec3(1.0, 0.62, 0.32), sun);
+	vec3 col = mix(tint.rgb, scatter, 0.72);
 	ALBEDO = col;
-	EMISSION = col * sun * 0.25;
-	ALPHA = fres * (0.22 + 0.5 * sun);
+	EMISSION = scatter * (0.15 + sun * 0.45) * grazing;
+	ALPHA = fres * (0.16 + 0.62 * sun) * (0.55 + 0.45 * grazing);
 }
 "
 
@@ -135,12 +175,15 @@ uniform vec4 albedo : source_color = vec4(1.0, 0.9, 0.7, 1.0);
 void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float limb = pow(clamp(dot(n, eye), 0.0, 1.0), 0.42);
-	float grain = noise3(n * 16.0);
-	vec3 hot = mix(albedo.rgb, vec3(1.0, 0.97, 0.9), 0.35);
-	vec3 col = hot * (0.62 + 0.5 * limb) * (0.86 + 0.22 * grain);
+	float facing = clamp(dot(n, eye), 0.0, 1.0);
+	float limb = pow(facing, 0.55);
+	float dark = mix(0.42, 1.0, limb);
+	float grain = fbm(n * 9.0);
+	float cells = fbm(n * 22.0);
+	vec3 hot = mix(albedo.rgb * 0.72, vec3(1.0, 0.96, 0.88), 0.55);
+	vec3 col = hot * dark * (0.78 + 0.28 * grain) * (0.9 + 0.16 * cells);
 	ALBEDO = col;
-	EMISSION = col;
+	EMISSION = col * (0.85 + 0.25 * facing);
 }
 "
 
@@ -178,24 +221,37 @@ void vertex() {
 }
 void fragment() {
 	vec3 n = normalize(local_nrm);
-	float seam_x = smoothstep(0.45, 0.5, abs(fract(local_pos.x * 0.09) - 0.5));
-	float seam_z = smoothstep(0.42, 0.5, abs(fract(local_pos.z * 0.2) - 0.5));
-	float seam = max(seam_x, seam_z);
+	vec3 wn = normalize(wnorm);
+	vec2 cell = floor(local_pos.xz * vec2(0.07, 0.15));
+	float panel = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+	float seam_x = smoothstep(0.455, 0.5, abs(fract(local_pos.x * 0.07) - 0.5));
+	float seam_z = smoothstep(0.43, 0.5, abs(fract(local_pos.z * 0.15) - 0.5));
+	float seam = clamp(max(seam_x, seam_z), 0.0, 1.0);
 	float deck = clamp(n.y, 0.0, 1.0);
-	vec3 col = albedo.rgb * (0.55 + 0.55 * deck);
-	col = mix(col, col * 0.28, seam * 0.9);
-	float stripe = smoothstep(1.15, 0.0, abs(local_pos.z));
-	col = mix(col, col * 1.16, stripe * deck * 0.45);
-	float grit = fract(sin(dot(local_pos.xz, vec2(17.1, 9.4))) * 43758.5);
-	col *= 0.9 + 0.1 * grit;
+	vec3 col = albedo.rgb * (0.42 + 0.7 * deck);
+	col *= 0.82 + 0.22 * panel;
+	col = mix(col, col * vec3(0.18, 0.2, 0.22), seam);
+	float brush = 0.9 + 0.1 * sin(local_pos.x * 2.2 + local_pos.z * 11.0);
+	col *= brush;
+	float along_x = fract(local_pos.x * 0.35);
+	float along_z = fract(local_pos.z * 0.55);
+	float rivet = max(seam_z * smoothstep(0.07, 0.0, abs(along_x - 0.5)), seam_x * smoothstep(0.07, 0.0, abs(along_z - 0.5)));
+	col = mix(col, col * vec3(0.42, 0.46, 0.5), clamp(rivet, 0.0, 1.0) * 0.8);
+	float aft = smoothstep(6.0, -22.0, local_pos.x);
+	col = mix(col, col * vec3(1.22, 0.68, 0.38), aft * 0.34);
+	float wear = smoothstep(0.45, 0.92, 1.0 - abs(n.y));
+	col = mix(col, col * vec3(0.7, 0.68, 0.62), wear * 0.4);
+	float stripe = smoothstep(1.35, 0.05, abs(local_pos.z));
+	col = mix(col, col * vec3(1.04, 1.08, 1.02), stripe * deck * 0.4);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float spec = pow(clamp(dot(normalize(wnorm), normalize(vec3(0.15, 1.0, 0.05) + eye)), 0.0, 1.0), 24.0);
-	col += vec3(0.75, 0.82, 0.9) * spec * deck * (1.0 - seam) * 0.55;
-	float edge = pow(clamp(1.0 - abs(dot(normalize(wnorm), eye)), 0.0, 1.0), 1.8);
-	col += vec3(0.82, 0.88, 0.94) * edge * 0.42;
+	vec3 halfv = normalize(normalize(vec3(0.25, 1.0, 0.12)) + eye);
+	float spec = pow(clamp(dot(wn, halfv), 0.0, 1.0), 64.0);
+	float edge = pow(clamp(1.0 - abs(dot(wn, eye)), 0.0, 1.0), 2.2);
+	col += vec3(0.78, 0.86, 0.94) * spec * (1.0 - seam) * (0.25 + 0.55 * deck);
+	col += albedo.rgb * edge * 0.22;
 	ALBEDO = col;
-	METALLIC = 0.78;
-	ROUGHNESS = mix(0.22, 0.72, seam);
+	METALLIC = mix(0.84, 0.35, seam);
+	ROUGHNESS = mix(0.24, 0.88, max(seam, 1.0 - deck));
 }
 "
 
@@ -211,12 +267,13 @@ void vertex() {
 void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.6);
-	ALBEDO = mix(albedo.rgb * 0.35, vec3(0.85, 0.95, 1.0), fres);
-	EMISSION = vec3(0.55, 0.8, 0.85) * 0.18;
-	ROUGHNESS = 0.05;
-	METALLIC = 0.05;
-	ALPHA = clamp(albedo.a + fres * 0.55, 0.0, 1.0);
+	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.85);
+	float room = 0.55 + 0.45 * sin(wpos.x * 0.35 + wpos.z * 0.2);
+	ALBEDO = mix(albedo.rgb * 0.22 * room, vec3(0.9, 0.97, 1.0), fres);
+	EMISSION = vec3(0.42, 0.72, 0.78) * (0.08 + fres * 0.22);
+	ROUGHNESS = mix(0.04, 0.2, 1.0 - fres);
+	METALLIC = 0.08;
+	ALPHA = clamp(0.16 + fres * 0.7, 0.0, 0.82);
 }
 "
 
@@ -226,11 +283,16 @@ uniform vec4 albedo : source_color = vec4(1.0, 0.7, 0.3, 0.8);
 uniform float core = 0.0;
 void fragment() {
 	float along = clamp(UV.x, 0.0, 1.0);
-	float fade = (1.0 - smoothstep(0.12, 1.0, along));
-	vec3 hot = mix(albedo.rgb, vec3(1.0, 0.97, 0.9), core * (1.0 - along));
+	float across = clamp(1.0 - abs(UV.y * 2.0 - 1.0), 0.0, 1.0);
+	float flicker = 0.84 + 0.16 * sin(TIME * 31.0 + along * 18.0);
+	float diamonds = 0.78 + 0.22 * sin(along * 34.0 - TIME * 16.0);
+	float fade = (1.0 - smoothstep(0.04, 1.0, along)) * (0.28 + 0.72 * across);
+	vec3 sheath = mix(vec3(0.85, 0.28, 0.05), albedo.rgb, 0.45);
+	vec3 hot = mix(sheath, vec3(1.0, 0.97, 0.9), core * (1.0 - along) * flicker);
+	hot *= mix(1.0, diamonds, across * (1.0 - along));
 	ALBEDO = hot;
-	EMISSION = hot * (1.2 + core);
-	ALPHA = albedo.a * fade;
+	EMISSION = hot * flicker * (1.35 + core * 1.8);
+	ALPHA = albedo.a * fade * flicker;
 }
 "
 
@@ -253,6 +315,8 @@ void fragment() {
 	col *= 1.0 - max(gap, lane * 0.65) * 0.8;
 	float grit = fract(sin(dot(UV, vec2(91.7, 47.3)) + seed) * 43758.5);
 	col *= 0.84 + 0.16 * grit;
+	float spark = step(0.86, fract(sin(dot(UV * 48.0, vec2(19.1, 7.7)) + seed) * 43758.5));
+	col += vec3(0.92, 0.96, 1.0) * spark * 0.45;
 	vec3 radial = wpos - planet_pos;
 	float lit = 0.7;
 	if (dot(radial, radial) > 4.0) {
@@ -277,11 +341,13 @@ uniform float seed = 0.0;
 void fragment() {
 	vec3 n = normalize(wnorm);
 	float cloud = fbm(n * 2.8 + vec3(seed, 1.4, seed * 0.5));
-	float dens = smoothstep(0.38, 0.78, cloud);
+	float lane = smoothstep(0.4, 0.72, fbm(n * 1.3 + vec3(seed * 2.1, 0.4, 1.0)));
+	float dens = smoothstep(0.3, 0.74, cloud) * mix(0.28, 1.0, lane);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
 	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.4);
-	ALBEDO = tint.rgb;
-	ALPHA = tint.a * dens * (0.35 + 0.9 * fres);
+	vec3 warm = tint.rgb * vec3(1.25, 0.82, 0.55);
+	ALBEDO = mix(tint.rgb, warm, lane * 0.65);
+	ALPHA = tint.a * dens * (0.4 + 0.85 * fres);
 }
 "
 
@@ -307,11 +373,21 @@ uniform float seed = 0.0;
 }
 void fragment() {
 	vec3 n = normalize(wnorm);
+	vec3 sun = normalize(vec3(0.35, 0.86, 0.22));
+	float ndl = clamp(dot(n, sun), 0.0, 1.0);
 	float grit = fbm(n * 6.0 + vec3(seed));
-	float cavity = smoothstep(0.35, 0.7, fbm(n * 3.0 + vec3(seed * 2.0, 1.0, 0.2)));
-	ALBEDO = albedo.rgb * (0.55 + 0.6 * grit) * mix(1.0, 0.45, cavity);
-	ROUGHNESS = 0.92;
-	METALLIC = 0.04;
+	float cavity = smoothstep(0.32, 0.72, fbm(n * 3.2 + vec3(seed * 2.0, 1.0, 0.2)));
+	float pits = smoothstep(0.62, 0.82, noise3(n * 18.0 + vec3(seed)));
+	vec3 mineral = mix(albedo.rgb, albedo.rgb * vec3(1.15, 0.92, 0.78), grit * 0.45);
+	vec3 col = mineral * (0.18 + 0.9 * ndl) * mix(1.0, 0.38, cavity);
+	col *= 1.0 - pits * 0.35;
+	float vein = smoothstep(0.52, 0.74, fbm(n * 11.0 + vec3(seed, 2.2, 0.5)));
+	col = mix(col, mineral * vec3(0.62, 0.48, 0.32), vein * 0.42);
+	float rim = pow(1.0 - ndl, 2.2);
+	col += mineral * rim * 0.12;
+	ALBEDO = col;
+	ROUGHNESS = mix(0.78, 0.98, cavity);
+	METALLIC = 0.06;
 }
 "
 
@@ -333,9 +409,26 @@ void fragment() {
 	float line = max(minor * 0.45, major);
 	if (line < 0.04) { discard; }
 	float dist = length(p - CAMERA_POSITION_WORLD.xz);
-	float fade = 1.0 - smoothstep(500.0, 7200.0, dist);
-	ALBEDO = mix(vec3(0.38, 0.46, 0.52), vec3(0.62, 0.7, 0.62), major);
-	ALPHA = line * fade * 0.55;
+	float fade = 1.0 - smoothstep(280.0, 3600.0, dist);
+	ALBEDO = mix(vec3(0.28, 0.34, 0.4), vec3(0.5, 0.58, 0.5), major);
+	ALPHA = line * fade * 0.26;
+}
+"
+
+const GROUND_SHADER := "shader_type spatial;
+varying vec3 wpos;
+" + _NOISE + "void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	float soil = fbm(wpos.xz * 0.035);
+	float tuft = fbm(wpos.xz * 0.11);
+	vec3 dirt = vec3(0.34, 0.27, 0.16);
+	vec3 grass = vec3(0.34, 0.5, 0.26);
+	vec3 col = mix(dirt, grass, smoothstep(0.32, 0.68, soil));
+	col *= 0.72 + 0.4 * tuft;
+	ALBEDO = col;
+	ROUGHNESS = 0.92;
 }
 "
 
@@ -378,6 +471,7 @@ var _nebula_shader: Shader
 var _gate_shader: Shader
 var _rock_shader: Shader
 var _wake_shader: Shader
+var _ground_shader: Shader
 var _fill: DirectionalLight3D
 var _beacon_light: OmniLight3D
 var _frame_delta := 0.016
@@ -398,6 +492,7 @@ func _ready() -> void:
 	_gate_shader = _compile(GATE_SHADER)
 	_rock_shader = _compile(ROCK_SHADER)
 	_wake_shader = _compile(WAKE_SHADER)
+	_ground_shader = _compile(GROUND_SHADER)
 	_build_grid()
 	_sun = DirectionalLight3D.new()
 	_sun.name = "Sun"
@@ -561,7 +656,7 @@ func _sync_props(sim) -> void:
 		var slab := BoxMesh.new()
 		slab.size = Vector3(22.0, 2.4, 22.0)
 		pad.mesh = slab
-		pad.material_override = _metal(Color("5c5348"))
+		pad.material_override = _hull_mat(Color("6a5e50"))
 		pad.set_meta("built", "yes")
 	pad.position = chart(sim.beacon_pos, 1.2)
 	var halo := _prop("beacon_halo")
@@ -692,6 +787,15 @@ func _sync_shots(sim) -> void:
 			mat.emission = Color("e7b15a")
 			mat.emission_energy_multiplier = 2.0
 			bolt.material_override = mat
+		var shot_vel: Vector2 = row.vel
+		var reach := 2.4
+		var aim := Vector2.RIGHT
+		if shot_vel.length() > 1.0:
+			aim = shot_vel.normalized()
+			reach = clampf(shot_vel.length() * 0.045, 6.0, 22.0)
+		var shot_x := Vector3(aim.x, 0.0, -aim.y)
+		var shot_z := Vector3(-aim.y, 0.0, -aim.x)
+		bolt.basis = Basis(shot_x, Vector3.UP, shot_z).scaled(Vector3(reach, 2.2, 2.2))
 		bolt.position = chart(row.pos, 8.0)
 
 
@@ -905,8 +1009,8 @@ func _sync_planets(sim) -> void:
 		(ball.mesh as SphereMesh).radius = radius
 		(ball.mesh as SphereMesh).height = radius * 2.0
 		var air := node.get_node("Air") as MeshInstance3D
-		(air.mesh as SphereMesh).radius = radius * 1.045
-		(air.mesh as SphereMesh).height = radius * 2.09
+		(air.mesh as SphereMesh).radius = radius * 1.012
+		(air.mesh as SphereMesh).height = radius * 2.024
 		var colors: Array = row.get("colors", ["#889088"])
 		var mat := ball.material_override as ShaderMaterial
 		var albedo := Color(str(colors[0]))
@@ -1151,7 +1255,9 @@ func _sync_site(sim) -> void:
 		var slab := BoxMesh.new()
 		slab.size = Vector3(520.0, 2.0, 520.0)
 		ground.mesh = slab
-		ground.material_override = _hull_mat(Color("6f8a52"))
+		var turf := ShaderMaterial.new()
+		turf.shader = _ground_shader
+		ground.material_override = turf
 	ground.position = chart(sim.site_pos, -1.0)
 	var dome := _prop("site_dome")
 	if dome.mesh == null:
@@ -1205,8 +1311,8 @@ func _body_node(bid: String) -> Node3D:
 	var ball := MeshInstance3D.new()
 	ball.name = "Ball"
 	var sphere := SphereMesh.new()
-	sphere.radial_segments = 64
-	sphere.rings = 32
+	sphere.radial_segments = 96
+	sphere.rings = 48
 	ball.mesh = sphere
 	var mat := ShaderMaterial.new()
 	mat.shader = _planet_shader
@@ -1216,8 +1322,8 @@ func _body_node(bid: String) -> Node3D:
 	var clouds := MeshInstance3D.new()
 	clouds.name = "Clouds"
 	var puff := SphereMesh.new()
-	puff.radial_segments = 48
-	puff.rings = 24
+	puff.radial_segments = 64
+	puff.rings = 32
 	clouds.mesh = puff
 	var cloud_mat := ShaderMaterial.new()
 	cloud_mat.shader = _cloud_shader
@@ -1355,6 +1461,8 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 			elif part.begins_with("Trim"):
 				paint = accent
 			_paint_hull(child, paint)
+	var thrusting := bool(ship.get("thrusting", false))
+	holder.set_meta("thrusting", thrusting)
 	if int(sim.layer) == ScaleFrame.SITE and key == "player":
 		holder.scale = Vector3(0.28, 0.28, 0.28)
 		holder.position = chart(sim.site_pos + Vector2(36.0, -20.0), 280.0)
@@ -1362,7 +1470,7 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 	else:
 		holder.scale = Vector3.ONE
 		_banked(holder, ship.pos, float(ship.rot), 2.0)
-	var thrusting := bool(ship.get("thrusting", false))
+	_pulse_lamps(holder)
 	var exhaust := holder.get_node_or_null("Exhaust") as MeshInstance3D
 	if exhaust != null:
 		exhaust.visible = thrusting
@@ -1408,6 +1516,14 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	pane.set_shader_parameter("albedo", Color(0.45, 0.78, 0.82, 0.4))
 	glass.material_override = pane
 	holder.add_child(glass)
+	var mast := MeshInstance3D.new()
+	mast.name = "Mast"
+	var rod := BoxMesh.new()
+	rod.size = Vector3(0.4, maxf(height * 0.42, 6.0), 0.4)
+	mast.mesh = rod
+	mast.position = bridge.position + Vector3(-deck_size.x * 0.2, deck_size.y * 0.5 + rod.size.y * 0.5, 0.0)
+	mast.material_override = _hull_mat(Color("242a30"))
+	holder.add_child(mast)
 	var bell := MeshInstance3D.new()
 	bell.name = "Bell"
 	bell.mesh = _bell_mesh(7.5, 1.15, 2.7)
@@ -1428,6 +1544,30 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	spine.position = Vector3((nose + tail) * 0.5, height * 1.08, 0.0)
 	spine.material_override = _hull_mat(Color("14181c"))
 	holder.add_child(spine)
+	var fin_mesh := BoxMesh.new()
+	fin_mesh.size = Vector3(span * 0.22, 0.45, 2.6)
+	var fin_port := MeshInstance3D.new()
+	fin_port.name = "FinPort"
+	fin_port.mesh = fin_mesh
+	fin_port.position = Vector3(tail * 0.35, height * 0.22, 3.4)
+	fin_port.material_override = _hull_mat(Color("12161a"))
+	holder.add_child(fin_port)
+	var fin_stbd := MeshInstance3D.new()
+	fin_stbd.name = "FinStbd"
+	fin_stbd.mesh = fin_mesh
+	fin_stbd.position = Vector3(tail * 0.35, height * 0.22, -3.4)
+	fin_stbd.material_override = _hull_mat(Color("12161a"))
+	holder.add_child(fin_stbd)
+	var throat := MeshInstance3D.new()
+	throat.name = "Throat"
+	throat.mesh = _bell_mesh(4.8, 0.45, 1.35)
+	throat.position = Vector3(tail - 0.2, height * 0.42, 0.0)
+	var coke := _metal(Color("1a120e"))
+	coke.emission_enabled = true
+	coke.emission = Color("ffb15a")
+	coke.emission_energy_multiplier = 0.35
+	throat.material_override = coke
+	holder.add_child(throat)
 	_nav_lamp(holder, "LampNose", Vector3(nose * 0.86, height * 0.62, 0.0), Color("d8fff6"), 1.05)
 	_nav_lamp(holder, "LampPort", Vector3(tail * 0.55, height * 0.28, 2.1), Color("d4553a"), 0.75)
 	_nav_lamp(holder, "LampStbd", Vector3(tail * 0.55, height * 0.28, -2.1), Color("7dcea0"), 0.75)
@@ -1590,6 +1730,27 @@ func _craft_holder(key: String, kind: String) -> Node3D:
 		glow.emission_energy_multiplier = 1.4
 		lamp.material_override = glow
 		node.add_child(lamp)
+		var canopy := MeshInstance3D.new()
+		canopy.name = "Glass"
+		var pane_mesh := BoxMesh.new()
+		pane_mesh.size = Vector3(2.8, 0.9, 1.4)
+		canopy.mesh = pane_mesh
+		canopy.position = Vector3(2.4, 5.2, 0.0)
+		var pane := ShaderMaterial.new()
+		pane.shader = _glass_shader
+		pane.set_shader_parameter("albedo", Color(0.55, 0.82, 0.86, 0.35))
+		canopy.material_override = pane
+		node.add_child(canopy)
+		var nozzle := MeshInstance3D.new()
+		nozzle.name = "Exhaust"
+		nozzle.mesh = _plume_mesh(6.5, 0.7)
+		nozzle.position = Vector3(-7.2, 2.2, 0.0)
+		var burn := ShaderMaterial.new()
+		burn.shader = _plume_shader
+		burn.set_shader_parameter("albedo", Color(0.95, 0.62, 0.28, 0.45))
+		burn.set_shader_parameter("core", 0.35)
+		nozzle.material_override = burn
+		node.add_child(nozzle)
 	add_child(node)
 	_craft[key] = node
 	return node
@@ -1651,7 +1812,7 @@ func _sync_sky(sim) -> void:
 		var star: Dictionary = sim.stars[i]
 		var p: Vector2 = star.pos
 		var lift := float(absi(hash(str(i))) % 500) - 250.0
-		var scale := 2.4 + float(star.a) * 3.2
+		var scale := 1.6 + float(star.a) * 5.4
 		var basis := Basis.IDENTITY.scaled(Vector3(scale, scale, scale))
 		mm.set_instance_transform(i, Transform3D(basis, Vector3(p.x, lift, -p.y)))
 		var temp := float(star.a)
@@ -1683,12 +1844,20 @@ func _banked(holder: Node3D, pos: Vector2, rot: float, height: float) -> void:
 	var dyaw := wrapf(rot - prev, -PI, PI)
 	holder.set_meta("prev_rot", rot)
 	var rate := dyaw / _frame_delta
+	# Positive sim yaw is a screen-left turn under the mirrored overhead
+	# camera, and it drops local +Z. That side is the screen-left wing
+	# when the nose points up the frame, so the visible right side rises
+	# into a left turn and drops into a right turn.
 	var want := clampf(rate * 0.16, -0.42, 0.42)
 	var shown := float(holder.get_meta("bank", 0.0))
 	shown = move_toward(shown, want, 2.2 * _frame_delta)
 	holder.set_meta("bank", shown)
+	var want_pitch := 0.1 if bool(holder.get_meta("thrusting", false)) else 0.0
+	var pitch := float(holder.get_meta("pitch", 0.0))
+	pitch = move_toward(pitch, want_pitch, 0.55 * _frame_delta)
+	holder.set_meta("pitch", pitch)
 	var xf := _flat_xform(pos, rot, height)
-	xf.basis = xf.basis * Basis(Vector3.RIGHT, shown)
+	xf.basis = xf.basis * Basis(Vector3.RIGHT, shown) * Basis(Vector3(0.0, 0.0, 1.0), pitch)
 	holder.transform = xf
 
 
@@ -1791,6 +1960,23 @@ func _hull_mat(color: Color) -> ShaderMaterial:
 	mat.shader = _hull_shader
 	mat.set_shader_parameter("albedo", color)
 	return mat
+
+
+func _pulse_lamps(holder: Node3D) -> void:
+	var t := Time.get_ticks_msec() * 0.001
+	_pulse_lamp(holder, "LampPort", 0.45 + 0.55 * maxf(sin(t * 3.2), 0.0))
+	_pulse_lamp(holder, "LampStbd", 0.45 + 0.55 * maxf(sin(t * 3.2 + 2.2), 0.0))
+	_pulse_lamp(holder, "LampNose", 0.7 + 0.3 * sin(t * 1.6))
+
+
+func _pulse_lamp(holder: Node3D, lamp_name: String, energy: float) -> void:
+	var lamp := holder.get_node_or_null(lamp_name) as MeshInstance3D
+	if lamp == null:
+		return
+	var glow := lamp.material_override as StandardMaterial3D
+	if glow == null:
+		return
+	glow.emission_energy_multiplier = energy * 2.4
 
 
 func _nav_lamp(holder: Node3D, lamp_name: String, at: Vector3, color: Color, radius: float) -> void:
