@@ -8,6 +8,20 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 4. **Zoom.** Out until the star and Aegis read together. In until the silhouette is readable.
 5. **Gun.** Space fires a shot.
 6. **Log.** F5. Leave the dock. F9 or Continue log. Same hull, same place, still Helion Dock.
+7. **Board.** On the pad, Board. Take Seal Aegis Prime. Probe. When the dossier seals, the log pays 80 and the helm reads Purse 80. Take the ring crate, fly to the ice ring, return to the pad. The log pays 120 and the crate leaves the hold.
+
+## Ready — dock board
+
+Windowed or the Pages build. One fresh Needle. Incognito is fine.
+
+1. Spawn still reads moored at Helion Dock, hull beside Aegis, not inside the star.
+2. W or Cast off leaves the pad. Speed leaves 0. Log has Cast off, then Undocked.
+3. D yaws. I opens the dossier. D does not open it.
+4. Fly out of the band. The chart stays visible (stars, well, HUD).
+5. Return to the pad (or start a new keel and stay moored). Board is on screen. Take the Aegis scan. Probe. Purse becomes 80 when the dossier seals and you are on the pad.
+6. Take the ice-ring crate. Touch the ring. Bring it back. Purse becomes 200 if the scan was already paid, or 120 if this is the only job. The crate is gone.
+
+If keys are quiet, click the sky once. The Board, Take, Probe, and Cast off buttons do not need the keyboard.
 
 ```bash
 godot --headless --path . --script res://tests/slice1_sim.gd

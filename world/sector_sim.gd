@@ -394,6 +394,8 @@ func resource_name(id: String) -> String:
 		return "Claim Core"
 	if id == "food_mass":
 		return "food mass"
+	if id == "dock_crate":
+		return "dock crate"
 	if id == "milk_analogue":
 		return "milk analogue"
 	if id == "fodder":
@@ -690,6 +692,7 @@ func _step(dt: float, cmd: Dictionary) -> void:
 	_step_scale(before_pos)
 	Homestead.step(self, dt)
 	QuestBoard.pulse(self, dt)
+	DockBoard.pulse(self, dt)
 	_step_compact()
 
 

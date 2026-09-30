@@ -31,6 +31,9 @@ var chat_open := false
 var helm_box: VBoxContainer
 var hint_label: Label
 var cast_button: Button
+var board_button: Button
+var board_box: VBoxContainer
+var board_sig := ""
 var action_scroll: ScrollContainer
 var action_row: HBoxContainer
 var pad: Control
@@ -57,7 +60,7 @@ func _ready() -> void:
 	pad.visible = touch_on
 	root.add_child(pad)
 	hint_label = ThemeKit.label(
-		"Hold W to cast off and thrust. S retro. A/D yaw. Q/E strafe. Space gun. I opens the scan dossier.",
+		"Hold W to cast off and thrust. Board posts dock jobs on the pad. S retro. A/D yaw. Q/E strafe. Space gun. I opens the scan dossier.",
 		12,
 		Color("8d826c")
 	)
@@ -71,6 +74,12 @@ func _ready() -> void:
 		Game.request_cast_off()
 	)
 	root.add_child(cast_button)
+	board_button = ThemeKit.button("Board")
+	board_button.visible = false
+	board_button.pressed.connect(func() -> void:
+		_toggle("board")
+	)
+	root.add_child(board_button)
 	stick_button = ThemeKit.button("Stick")
 	stick_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	stick_button.custom_minimum_size = Vector2(88, 44)
@@ -162,6 +171,7 @@ func _fit() -> void:
 		cast_button.visible = moored
 		cast_button.position = Vector2(16, 96 if compact else 108)
 		cast_button.size = Vector2(148, 44)
+	_place_board_button(compact)
 	if action_scroll != null:
 		action_scroll.position = Vector2(8, screen.y - bar_h - 4.0)
 		action_scroll.size = Vector2(screen.x - 16.0, bar_h)
@@ -202,6 +212,8 @@ func _process(_delta: float) -> void:
 		panel_body.text = _quest_text()
 	elif panel_kind == "claim":
 		panel_body.text = _claim_text()
+	elif panel_kind == "board":
+		_fill_board()
 	elif panel_kind == "bay":
 		_refresh_bay_text()
 
@@ -235,6 +247,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_toggle("heat")
 		KEY_J:
 			_toggle("quest")
+		KEY_BRACKETLEFT:
+			_toggle("board")
 		KEY_Y:
 			_say_result(QuestBoard.mark(Game.sim))
 		KEY_O:
@@ -349,6 +363,10 @@ func _build_panel() -> void:
 	dossier_box = VBoxContainer.new()
 	dossier_box.visible = false
 	inner.add_child(dossier_box)
+	board_box = VBoxContainer.new()
+	board_box.visible = false
+	board_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.add_child(board_box)
 
 
 func _build_pause() -> void:
@@ -404,6 +422,7 @@ func _build_actions() -> void:
 	_action("Hail", func() -> void: Game.tap("hail", true))
 	_action("Flag", func() -> void: Game.tap("flag", true))
 	_action("Bay", func() -> void: _toggle("bay"))
+	_action("Board", func() -> void: _toggle("board"))
 	_action("Quests", func() -> void: _toggle("quest"))
 	_action("Claim", func() -> void: _toggle("claim"))
 	_action("Site", func() -> void:
@@ -482,6 +501,7 @@ func _refresh_helm() -> void:
 	var moored := bool(sim.player.get("moored", false))
 	if cast_button != null:
 		cast_button.visible = moored
+	_place_board_button(compact)
 	if compact:
 		helm_name.text = "%s    %s" % [str(sim.defs.system.name).to_upper(), hull.callsign]
 		if moored:
@@ -541,7 +561,7 @@ func _refresh_helm() -> void:
 	var gate := sim.nearby_gate()
 	if not gate.is_empty():
 		repair += "    Lane %s" % str(gate.name)
-	helm_cargo.text = _cargo_line(sim, stats) + repair
+	helm_cargo.text = _cargo_line(sim, stats) + repair + "    Purse %d" % DockBoard.purse(sim)
 	helm_craft.text = _craft_line(sim)
 	var bits: Array = []
 	for line in sim.lines:
@@ -596,6 +616,7 @@ func _toggle(kind: String) -> void:
 	bay_box.visible = kind == "bay"
 	hangar_box.visible = kind == "hangar"
 	dossier_box.visible = kind == "dossier"
+	board_box.visible = kind == "board"
 	match kind:
 		"bay":
 			panel_title.text = "Ship bay"
@@ -612,6 +633,10 @@ func _toggle(kind: String) -> void:
 		"quest":
 			panel_title.text = "Quest log"
 			panel_body.text = _quest_text()
+		"board":
+			panel_title.text = "Helion Dock board"
+			board_sig = ""
+			_fill_board()
 		"claim":
 			panel_title.text = "Homestead"
 			panel_body.text = _claim_text()
@@ -620,6 +645,60 @@ func _toggle(kind: String) -> void:
 func _close_panel() -> void:
 	panel_kind = ""
 	panel.hide()
+
+
+func _place_board_button(is_compact: bool) -> void:
+	if board_button == null:
+		return
+	var at := false
+	if Game.sim != null and Game.mode == "sector":
+		at = DockBoard.at_pad(Game.sim)
+	board_button.visible = at
+	var x := 16.0
+	if cast_button != null and cast_button.visible:
+		x = 172.0
+	board_button.position = Vector2(x, 96.0 if is_compact else 108.0)
+	board_button.size = Vector2(148, 44)
+
+
+func _fill_board() -> void:
+	if Game.sim == null or board_box == null:
+		return
+	var sim = Game.sim
+	var sig := "%s|%d" % [DockBoard.at_pad(sim), DockBoard.purse(sim)]
+	var row: Dictionary = {}
+	for job in DockBoard.jobs(sim):
+		row = job
+		sig += "|%s:%s:%s" % [str(row.id), str(row.state), str(row.blurb)]
+	if sig == board_sig and board_box.get_child_count() > 0:
+		return
+	board_sig = sig
+	for child in board_box.get_children():
+		child.queue_free()
+	var where := "Stand the Helion pad to take a slip. Pay lands in the purse."
+	if DockBoard.at_pad(sim):
+		where = "You are on the Helion pad. Take a slip. Pay lands in the purse."
+	board_box.add_child(ThemeKit.label(where, 14, Color("cbb892")))
+	board_box.add_child(ThemeKit.label("Purse %d" % DockBoard.purse(sim), 16, Color("d7e6c8")))
+	for slip in DockBoard.jobs(sim):
+		row = slip
+		var job_id := str(row.id)
+		board_box.add_child(ThemeKit.label("%s    pay %d    [%s]" % [str(row.title), int(row.pay), str(row.state)], 16))
+		board_box.add_child(ThemeKit.label(str(row.blurb), 13, Color("8d826c")))
+		if str(row.state) == "open":
+			var take := ThemeKit.button("Take %s" % str(row.title))
+			take.pressed.connect(_take_dock_job.bind(job_id))
+			board_box.add_child(take)
+		board_box.add_child(ThemeKit.label(" ", 8))
+
+
+func _take_dock_job(job_id: String) -> void:
+	if Game.sim == null:
+		return
+	var message := DockBoard.take(Game.sim, job_id)
+	if message != "":
+		Game.sim.say(message)
+	board_sig = ""
 
 
 func _toggle_chat() -> void:

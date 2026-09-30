@@ -1,8 +1,10 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Scale + Ecosystem
+Slice just completed: Helion Dock board
 Player-visible what works now:
+- On the Helion pad, Board lists two paid slips. Seal Aegis Prime with a probe, then stand the pad, for 80. Carry a dock crate to the ice ring and back for 120. The helm shows Purse. Each slip pays once and stays in the log.
+- Cast off is still W or the Cast off button. D yaws. I opens the dossier. The star sits on the chart offset. Leaving the band keeps a visible chart.
 - Helion Dock opens on the Aegis Prime band. The planet is a limb that fills the helm. The keel is a speck on that band, not a toy ball beside a marble. Burning toward the city scrapes the crust and stays in the band. Flying out of the band returns to the chart. The chart is icons and wells. Entering a well is approach, in kilometers, and matching the shell drops back into the band. The capital ship does not land.
 - Starters are 40–180 m. Probes are 4–14 m. Aegis Prime is planetary (6400 km). Green Wound is 320 km across. Quiet Hollow is one 520 m valley. Ash Shelf, Reed Basin, and Glass Scar are other land. The site layer walks the valley at meter scale while the keel stays in the sky. Grow-lights read as a pin from orbit. Animals stay in the pen.
 - Aegis traffic is civic, cargo, and PDO shells, plus the yard. Belts and meteor streams are volumes. A probe scan is a flight you can watch, and the time scales with altitude and body size. A lost craft keeps kilometer coordinates.
