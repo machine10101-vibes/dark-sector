@@ -38,7 +38,9 @@ If the URL 404s, the repo still needs Pages pointed at the `gh-pages` branch, fo
 
 | Input | Action |
 |---|---|
-| W / S | Thrust / retro |
+| W / Up | Thrust. From the dock this casts off. Hold it. |
+| S / Down | Retro. Also casts off. |
+| Cast off | Button under the flight line while moored. Same as holding W. |
 | A / D | Yaw nose left / nose right. D is yaw. |
 | Q / E | Strafe |
 | Space | Gun |
@@ -50,6 +52,16 @@ If the URL 404s, the repo still needs Pages pointed at the `gh-pages` branch, fo
 | F5 / F9 | Write / read the log without pausing |
 
 Some window managers bind Esc and F5. The **Hold** button on the helm opens the same card.
+
+### Cast off
+
+A new Needle starts moored at the Helion Dock pad. The flight line reads “Moored at Helion Dock. Hold W or Cast off.”
+
+1. In the browser build the canvas is focused when the sector starts. If the keys stay quiet, click the sky once.
+2. Hold **W** or **Up**. The log says “Cast off. Helion Dock is behind you.” and speed leaves 0.
+3. The **Cast off** button does that same shove if a hint, scroll, or leftover text field has focus. W is also the UI “up” key, so the helm records it before any focused control can eat it.
+
+A and D yaw while moored. They do not leave the pad. S, Q, and E do.
 
 Pick one keel at new game: Needle (Vesper), Barn (Anvil), or Beak (Kestrel). The yard has one module. Bolting it changes the top-down silhouette. It does not come off.
 

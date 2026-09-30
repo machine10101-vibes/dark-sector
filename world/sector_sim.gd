@@ -706,8 +706,9 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 		unit.pos += unit.vel * dt
 		return
 	_release_mooring(unit)
+	var cast_off := false
 	if bool(unit.get("moored", false)):
-		var leaving := float(cmd.get("thrust", 0.0)) > 0.15 or float(cmd.get("retro", 0.0)) > 0.15 or absf(float(cmd.get("strafe", 0.0))) > 0.15
+		var leaving := float(cmd.get("thrust", 0.0)) > 0.15 or float(cmd.get("retro", 0.0)) > 0.15 or absf(float(cmd.get("strafe", 0.0))) > 0.15 or bool(cmd.get("cast_off", false))
 		if not leaving:
 			var held = Fit.stats(defs, unit)
 			unit.rot += float(cmd.get("rot", 0.0)) * float(held.turn) * dt
@@ -716,6 +717,7 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 			unit.pos = Vector2(float(unit.get("dock_x", unit.pos.x)), float(unit.get("dock_y", unit.pos.y)))
 			return
 		unit.moored = false
+		cast_off = true
 		if str(unit.get("agent_id", "")) == str(player.agent_id):
 			say("Cast off. Helion Dock is behind you.")
 	var stats = Fit.stats(defs, unit)
@@ -745,6 +747,9 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 		cap = 80.0
 	if unit.vel.length() > cap:
 		unit.vel = unit.vel.limit_length(cap)
+	# One accepted cast-off frame has to show on the integer speed line.
+	if cast_off and unit.vel.length() < 12.0:
+		unit.vel = forward * 48.0
 	unit.pos += unit.vel * dt
 	if bool(cmd.get("fire", false)):
 		try_fire(unit, stats.gun)

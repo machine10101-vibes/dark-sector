@@ -76,8 +76,58 @@ func _unhandled_input(event: InputEvent) -> void:
 		board.push_unhandled_input(event)
 
 
+func _input(event: InputEvent) -> void:
+	if Game.mode != "sector" or not (event is InputEventKey):
+		return
+	var hud := get_node_or_null("Hud")
+	if hud != null and bool(hud.get("chat_open")):
+		return
+	var key_ev := event as InputEventKey
+	if _is_flight_key(key_ev.keycode) == false and _is_flight_key(key_ev.physical_keycode) == false:
+		return
+	if key_ev.echo:
+		return
+	# Record before GUI focus navigation. W is ui_up, so a focused scroll,
+	# hint, or leftover line edit would otherwise eat the cast-off.
+	Game.note_flight_key(key_ev.keycode, key_ev.pressed)
+	Game.note_flight_key(key_ev.physical_keycode, key_ev.pressed)
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var owner := vp.gui_get_focus_owner()
+	var chat: Node = hud.get("chat_line") if hud != null else null
+	if owner != null and owner != chat:
+		vp.gui_release_focus()
+	vp.set_input_as_handled()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		Game.clear_flight_keys()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_focus_canvas()
+
+
+func _is_flight_key(code: Key) -> bool:
+	match code:
+		KEY_W, KEY_A, KEY_S, KEY_D, KEY_Q, KEY_E, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_SPACE:
+			return true
+		_:
+			return false
+
+
+func _focus_canvas() -> void:
+	var vp := get_viewport()
+	if vp != null:
+		vp.gui_release_focus()
+	if OS.has_feature("web") == false:
+		return
+	JavaScriptBridge.eval("var c=document.getElementById('canvas');if(c){c.setAttribute('tabindex','0');c.focus();}", true)
+
+
 func _enter_sector() -> void:
 	menu.hide()
+	_focus_canvas()
 	if helm == null:
 		helm = preload("res://world/overhead.gd").new()
 		helm.name = "Helm"

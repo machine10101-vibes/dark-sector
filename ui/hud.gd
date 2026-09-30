@@ -30,6 +30,7 @@ var chat_line: LineEdit
 var chat_open := false
 var helm_box: VBoxContainer
 var hint_label: Label
+var cast_button: Button
 var action_scroll: ScrollContainer
 var action_row: HBoxContainer
 var pad: Control
@@ -56,12 +57,20 @@ func _ready() -> void:
 	pad.visible = touch_on
 	root.add_child(pad)
 	hint_label = ThemeKit.label(
-		"W thrust   S retro   A/D yaw   Q/E strafe   Space gun. I opens the scan dossier.",
+		"Hold W to cast off and thrust. S retro. A/D yaw. Q/E strafe. Space gun. I opens the scan dossier.",
 		12,
 		Color("8d826c")
 	)
 	hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(hint_label)
+	cast_button = ThemeKit.button("Cast off")
+	cast_button.visible = false
+	cast_button.pressed.connect(func() -> void:
+		if Game.sim == null:
+			return
+		Game.request_cast_off()
+	)
+	root.add_child(cast_button)
 	stick_button = ThemeKit.button("Stick")
 	stick_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	stick_button.custom_minimum_size = Vector2(88, 44)
@@ -146,6 +155,13 @@ func _fit() -> void:
 		hint_label.visible = not touch_on
 		hint_label.position = Vector2(16, screen.y - bar_h - 22.0)
 		hint_label.size = Vector2(maxf(120.0, screen.x - 32.0), 20)
+	if cast_button != null:
+		var moored := false
+		if Game.sim != null and Game.mode == "sector":
+			moored = bool(Game.sim.player.get("moored", false))
+		cast_button.visible = moored
+		cast_button.position = Vector2(16, 96 if compact else 108)
+		cast_button.size = Vector2(148, 44)
 	if action_scroll != null:
 		action_scroll.position = Vector2(8, screen.y - bar_h - 4.0)
 		action_scroll.size = Vector2(screen.x - 16.0, bar_h)
@@ -311,6 +327,7 @@ func _build_panel() -> void:
 	close.pressed.connect(_close_panel)
 	box.add_child(close)
 	var scroll := ScrollContainer.new()
+	scroll.focus_mode = Control.FOCUS_NONE
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -371,6 +388,7 @@ func _build_actions() -> void:
 	action_scroll = ScrollContainer.new()
 	action_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	action_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	action_scroll.focus_mode = Control.FOCUS_NONE
 	action_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
 	action_scroll.gui_input.connect(_scroll_actions)
 	root.add_child(action_scroll)
@@ -462,10 +480,12 @@ func _refresh_helm() -> void:
 		zoom_word = "Local"
 	var keel := "Keel complaining." if stats.keel_warn else "Keel within tolerance."
 	var moored := bool(sim.player.get("moored", false))
+	if cast_button != null:
+		cast_button.visible = moored
 	if compact:
 		helm_name.text = "%s    %s" % [str(sim.defs.system.name).to_upper(), hull.callsign]
 		if moored:
-			helm_flight.text = "Moored at the pad. W casts off."
+			helm_flight.text = "Moored. Hold W or Cast off."
 		else:
 			helm_flight.text = "hull %d/%d    %d m/s    %s    %s" % [
 				int(sim.player.hp),
@@ -477,7 +497,7 @@ func _refresh_helm() -> void:
 	else:
 		helm_name.text = "%s    %s    %s" % [str(sim.defs.system.name).to_upper(), hull.class_name, hull.callsign]
 		if moored:
-			helm_flight.text = "Moored at Helion Dock. W casts off.    %s" % keel
+			helm_flight.text = "Moored at Helion Dock. Hold W or Cast off.    %s" % keel
 		else:
 			var alt_km := 0.0
 			var focus = sim.planet(str(sim.body_id))

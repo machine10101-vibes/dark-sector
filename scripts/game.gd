@@ -14,6 +14,10 @@ var flight := {
 var mode := "menu"
 var paused := false
 var zoom := 0.58
+## Keys seen in _input before any focused control can eat them.
+var key_down: Dictionary = {}
+## Seconds of thrust after the Cast off control, so one click leaves the pad.
+var cast_pulse := 0.0
 
 
 func _ready() -> void:
@@ -95,6 +99,32 @@ func clear_flight() -> void:
 		"strafe": 0.0,
 		"fire": false,
 	}
+
+
+func note_flight_key(code: Key, down: bool) -> void:
+	if code == KEY_NONE:
+		return
+	if down:
+		key_down[int(code)] = true
+	else:
+		key_down.erase(int(code))
+
+
+func clear_flight_keys() -> void:
+	key_down = {}
+
+
+func flight_down(code: Key) -> bool:
+	if key_down.has(int(code)):
+		return true
+	if Input.is_key_pressed(code):
+		return true
+	return Input.is_physical_key_pressed(code)
+
+
+func request_cast_off() -> void:
+	tap("cast_off", true)
+	cast_pulse = maxf(cast_pulse, 0.55)
 
 
 func _drop_link() -> void:
