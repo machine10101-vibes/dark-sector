@@ -476,6 +476,11 @@ var _fill: DirectionalLight3D
 var _beacon_light: OmniLight3D
 var _frame_delta := 0.016
 var _used: Dictionary = {}
+var menu_show := false
+var menu_class := "vesper"
+var menu_hero := false
+var _yard_t := 0.0
+var _yard_ready := false
 
 
 func _ready() -> void:
@@ -517,6 +522,10 @@ func _compile(code: String) -> Shader:
 
 func _process(delta: float) -> void:
 	_frame_delta = maxf(delta, 0.001)
+	if menu_show:
+		if str(Game.mode) != "sector":
+			_step_yard(delta)
+		return
 	if Game.sim == null or Game.mode != "sector":
 		return
 	_used.clear()
@@ -2496,3 +2505,223 @@ func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, norm
 	st.set_normal(normal)
 	st.set_uv(uv_d)
 	st.add_vertex(d)
+
+
+func show_yard(class_id: String, hero: bool) -> void:
+	menu_show = true
+	if class_id != "":
+		menu_class = class_id
+	menu_hero = hero
+
+
+func _step_yard(delta: float) -> void:
+	_yard_t += delta
+	if _grid != null:
+		_grid.visible = false
+	if _yard_ready == false:
+		_build_yard()
+		_yard_ready = true
+	_dress_yard()
+
+
+func _build_yard() -> void:
+	var planet := _body_node("yard_aegis")
+	planet.position = Vector3(860.0, -220.0, -30.0)
+	var radius := 640.0
+	var ball := planet.get_node("Ball") as MeshInstance3D
+	(ball.mesh as SphereMesh).radius = radius
+	(ball.mesh as SphereMesh).height = radius * 2.0
+	var air := planet.get_node("Air") as MeshInstance3D
+	(air.mesh as SphereMesh).radius = radius * 1.012
+	(air.mesh as SphereMesh).height = radius * 2.024
+	var clouds := planet.get_node("Clouds") as MeshInstance3D
+	clouds.visible = true
+	(clouds.mesh as SphereMesh).radius = radius * 1.018
+	(clouds.mesh as SphereMesh).height = radius * 2.036
+	var to_star := Vector3(-1.0, 0.42, -0.18).normalized()
+	var mat := ball.material_override as ShaderMaterial
+	var albedo := Color("6e8f86")
+	var land := Color("8d9a78")
+	mat.set_shader_parameter("albedo", albedo)
+	mat.set_shader_parameter("land", land)
+	mat.set_shader_parameter("to_star", to_star)
+	mat.set_shader_parameter("seed", 1.7)
+	mat.set_shader_parameter("city", 1.0)
+	var cloud_mat := clouds.material_override as ShaderMaterial
+	cloud_mat.set_shader_parameter("to_star", to_star)
+	cloud_mat.set_shader_parameter("seed", 1.7)
+	var air_mat := air.material_override as ShaderMaterial
+	air_mat.set_shader_parameter("to_star", to_star)
+	air_mat.set_shader_parameter("tint", albedo.lerp(Color(0.55, 0.78, 0.88), 0.55))
+	_sync_ring(planet, {"ring": true, "ring_kind": "ice"}, radius, to_star)
+	_parallax(planet, radius, 0.0, true)
+	if _star_mesh == null:
+		_star_mesh = MeshInstance3D.new()
+		_star_mesh.name = "Star"
+		var core_mesh := SphereMesh.new()
+		core_mesh.radial_segments = 48
+		core_mesh.rings = 24
+		core_mesh.radius = 78.0
+		core_mesh.height = 156.0
+		_star_mesh.mesh = core_mesh
+		var star_mat := ShaderMaterial.new()
+		star_mat.shader = _star_shader
+		star_mat.set_shader_parameter("albedo", Color("ffd7a2"))
+		_star_mesh.material_override = star_mat
+		_star_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_star_mesh)
+		_star_glow = MeshInstance3D.new()
+		_star_glow.name = "Corona"
+		var haze := SphereMesh.new()
+		haze.radial_segments = 32
+		haze.rings = 16
+		haze.radius = 130.0
+		haze.height = 260.0
+		_star_glow.mesh = haze
+		var glow := ShaderMaterial.new()
+		glow.shader = _corona_shader
+		glow.set_shader_parameter("albedo", Color("f0b56a"))
+		_star_glow.material_override = glow
+		_star_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_star_glow)
+	_star_mesh.position = Vector3(-1680.0, 920.0, -420.0)
+	_star_glow.position = _star_mesh.position
+	_star_mesh.visible = true
+	_star_glow.visible = true
+	if _star_far != null:
+		_star_far.visible = false
+	var ring := _prop("yard_dock")
+	if str(ring.get_meta("built", "")) != "yes":
+		var torus := TorusMesh.new()
+		torus.inner_radius = 22.0
+		torus.outer_radius = 38.0
+		torus.rings = 48
+		torus.ring_segments = 12
+		ring.mesh = torus
+		var wash := StandardMaterial3D.new()
+		wash.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		wash.albedo_color = Color("d7fbff")
+		wash.emission_enabled = true
+		wash.emission = Color("7ee7f2")
+		ring.material_override = wash
+		ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		ring.set_meta("built", "yes")
+	ring.position = Vector3(470.0, 48.0, 18.0)
+	ring.rotation = Vector3(1.2, 0.35, 0.15)
+	for i in 5:
+		var pylon := _prop("yard_pylon%d" % i)
+		if pylon.mesh == null:
+			var box := BoxMesh.new()
+			box.size = Vector3(3.2, 16.0 + float(i) * 2.0, 3.2)
+			pylon.mesh = box
+			var metal := StandardMaterial3D.new()
+			metal.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			metal.albedo_color = Color("9eecf5")
+			metal.emission_enabled = true
+			metal.emission = Color("7ee7f2")
+			metal.emission_energy_multiplier = 0.8
+			pylon.material_override = metal
+			pylon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var ang := float(i) * TAU / 5.0
+		pylon.position = ring.position + Vector3(cos(ang) * 34.0, 8.0, sin(ang) * 14.0)
+	if _sky == null:
+		_sky = MultiMeshInstance3D.new()
+		_sky.name = "YardStars"
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		var dot := SphereMesh.new()
+		dot.radius = 1.0
+		dot.height = 2.0
+		dot.radial_segments = 6
+		dot.rings = 3
+		mm.mesh = dot
+		mm.instance_count = 220
+		_sky.multimesh = mm
+		var sky_mat := StandardMaterial3D.new()
+		sky_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		sky_mat.vertex_color_use_as_albedo = true
+		_sky.material_override = sky_mat
+		_sky.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(_sky)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 48291
+		for i in mm.instance_count:
+			var dir := Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.2, 1.0), rng.randf_range(-1.0, 1.0))
+			if dir.length_squared() < 0.01:
+				dir = Vector3.UP
+			dir = dir.normalized()
+			var dist := rng.randf_range(1800.0, 4200.0)
+			var scale := rng.randf_range(1.4, 4.8)
+			var basis := Basis.IDENTITY.scaled(Vector3(scale, scale, scale))
+			mm.set_instance_transform(i, Transform3D(basis, dir * dist))
+			var tint := Color(0.75, 0.84, 0.98) if rng.randf() < 0.4 else Color(0.98, 0.9, 0.72)
+			mm.set_instance_color(i, tint)
+	_sky.visible = true
+	if _sun != null:
+		_sun.look_at(_sun.global_position - to_star, Vector3.UP)
+
+
+func _dress_yard() -> void:
+	var planet := _body_node("yard_aegis")
+	planet.rotation.y = _yard_t * 0.05
+	var ball := planet.get_node("Ball") as MeshInstance3D
+	var mat := ball.material_override as ShaderMaterial
+	if mat != null:
+		mat.set_shader_parameter("spin", _yard_t * 0.02)
+	var clouds := planet.get_node("Clouds") as MeshInstance3D
+	var cloud_mat := clouds.material_override as ShaderMaterial
+	if cloud_mat != null:
+		cloud_mat.set_shader_parameter("spin", _yard_t * 0.03)
+	var ring := _prop("yard_dock")
+	var paint := ring.material_override as StandardMaterial3D
+	if paint != null:
+		paint.emission_energy_multiplier = 0.7 + 0.55 * sin(_yard_t * 3.2)
+	for i in 5:
+		var pylon := _prop("yard_pylon%d" % i)
+		var lamp := pylon.material_override as StandardMaterial3D
+		if lamp != null:
+			lamp.emission_energy_multiplier = 0.45 + 0.55 * maxf(sin(_yard_t * 2.4 + float(i)), 0.0)
+	if Game.defs.is_empty() or Game.defs.has("ships") == false:
+		return
+	if Game.defs.ships.has(menu_class) == false:
+		return
+	var holder := _ship_holder("yard")
+	var shapes: Array = Silhouette.shapes_of(Game.defs, [])
+	var layers: Array = Silhouette.layers_of(Game.defs, [])
+	var mesh_key := menu_class + "|yard"
+	if str(holder.get_meta("mesh_key", "")) != mesh_key:
+		_fill_ship(holder, menu_class, shapes, layers)
+		holder.set_meta("mesh_key", mesh_key)
+	var hull: Dictionary = Game.defs.ships[menu_class]
+	var body := Color(str(hull.color))
+	var accent := Color(str(hull.accent))
+	for child in holder.get_children():
+		var part := str(child.name)
+		if _hull_part(part):
+			var tone := body
+			if part == "Deck":
+				tone = body.lightened(0.16)
+			elif part.begins_with("Trim"):
+				tone = accent
+			_paint_hull(child, tone)
+	var yaw := -0.95 + sin(_yard_t * 0.22) * 0.1
+	holder.rotation = Vector3(0.18, yaw, sin(_yard_t * 0.3) * 0.05)
+	if menu_hero:
+		holder.position = Vector3(6.0, 28.0, 0.0)
+		holder.scale = Vector3(1.85, 1.85, 1.85)
+	else:
+		holder.position = Vector3(168.0, 36.0, 24.0)
+		holder.scale = Vector3(1.55, 1.55, 1.55)
+	holder.visible = true
+	_pulse_lamps(holder)
+	var flame := holder.get_node_or_null("Exhaust") as MeshInstance3D
+	if flame != null:
+		flame.visible = true
+		var burn := flame.material_override as ShaderMaterial
+		if burn != null:
+			var glow := 0.45 + 0.25 * sin(_yard_t * 7.0)
+			burn.set_shader_parameter("albedo", Color(1.0, 0.62, 0.22, glow))
+	var core := holder.get_node_or_null("ExhaustCore") as MeshInstance3D
+	if core != null:
+		core.visible = true
