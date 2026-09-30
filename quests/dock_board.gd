@@ -123,7 +123,12 @@ static func _take_haul(sim) -> String:
 	sim._add_cargo(CRATE, 1)
 	sim.quest_flags.dock_haul = "active"
 	sim.quest_flags.dock_haul_ring = false
-	sim.say("Ring haul taken. Crate aboard. Fly it to the ice ring, then back. Pay %d." % HAUL_PAY)
+	sim.quest_flags.haul_cue_bucket = -999
+	var face: Vector2 = beam_aim(sim)
+	if face.length() > 8.0:
+		sim.player.rot = face.angle()
+	sim.say("Ring haul taken. Crate aboard. Hold toward the ice ring — don't clear the band yet. Pay %d." % HAUL_PAY)
+	_cue_outbound(sim)
 	return ""
 
 
@@ -140,6 +145,84 @@ static func _pulse_scan(sim) -> void:
 	_pay(sim, SCAN_PAY, "Aegis scan filed. Helion Dock paid %d." % SCAN_PAY)
 
 
+static func haul_line(sim) -> String:
+	if state(sim, "dock_haul") != "active":
+		return ""
+	if bool(sim.quest_flags.get("dock_haul_ring", false)):
+		if at_pad(sim):
+			return ""
+		var back: float = sim.player.pos.distance_to(sim.beacon_pos)
+		return "Helion Dock %d m — bring the crate back." % int(back)
+	var ring = sim.survey_node("aegis_ring")
+	if ring == null:
+		return ""
+	var gap: float = sim.player.pos.distance_to(ring.pos)
+	return "Ice ring %d m — hold that way." % int(gap)
+
+
+## World vector from the keel to the ice-ring drop. The amber ribbon
+## and the cast-off nose both use this. Thrust along it closes the range.
+## Zero when the crate is not outbound.
+static func beam_aim(sim) -> Vector2:
+	if sim == null or sim.player.is_empty():
+		return Vector2.ZERO
+	if sim.haul_outbound() == false:
+		return Vector2.ZERO
+	var ring = sim.survey_node("aegis_ring")
+	if ring == null:
+		return Vector2.ZERO
+	return ring.pos - sim.player.pos
+
+
+## Same plane as the amber beam. The camera lives in render meters
+## (world minus the floating origin). Absolute world meters point the
+## other way from the pad, and the range number climbs.
+static var forced_origin: Variant = null
+
+
+static func marker_xy(sim, world: Vector2) -> Vector2:
+	var shown := world
+	if sim != null and int(sim.layer) == ScaleFrame.CHART:
+		shown = ScaleFrame.chart_view(sim, world)
+	var origin := Vector2.ZERO
+	if forced_origin is Vector2:
+		origin = forced_origin
+	else:
+		var gate: Variant = WorldCoord.gate()
+		if gate != null:
+			origin = gate.origin_m
+	return shown - origin
+
+
+static func _cue_outbound(sim) -> void:
+	if sim.haul_outbound() == false:
+		return
+	var ring = sim.survey_node("aegis_ring")
+	if ring == null:
+		return
+	var gap := int(sim.player.pos.distance_to(ring.pos))
+	var bucket := int(gap / 60)
+	if int(sim.quest_flags.get("haul_cue_bucket", -999)) == bucket:
+		return
+	sim.quest_flags.haul_cue_bucket = bucket
+	sim.say("Ice ring %d m — hold that way." % gap)
+
+
+static func _cue_return(sim) -> void:
+	if state(sim, "dock_haul") != "active":
+		return
+	if bool(sim.quest_flags.get("dock_haul_ring", false)) == false:
+		return
+	if at_pad(sim):
+		return
+	var gap := int(sim.player.pos.distance_to(sim.beacon_pos))
+	var bucket := int(gap / 60)
+	if int(sim.quest_flags.get("haul_back_bucket", -999)) == bucket:
+		return
+	sim.quest_flags.haul_back_bucket = bucket
+	sim.say("Helion Dock %d m — bring the crate back." % gap)
+
+
 static func _pulse_haul(sim) -> void:
 	if state(sim, "dock_haul") != "active":
 		return
@@ -148,10 +231,13 @@ static func _pulse_haul(sim) -> void:
 		sim.quest_flags.dock_haul_ring = false
 		sim.say("The ring crate is gone. The board put the slip back.")
 		return
+	_cue_outbound(sim)
 	if str(sim.defs.system.id) == "HC-V1-R1-S1" and _near_ring(sim):
 		if bool(sim.quest_flags.get("dock_haul_ring", false)) == false:
 			sim.quest_flags.dock_haul_ring = true
+			sim.quest_flags.haul_back_bucket = -999
 			sim.say("Ice ring has the crate. Bring it back to the Helion pad.")
+	_cue_return(sim)
 	if bool(sim.quest_flags.get("dock_haul_ring", false)) and at_pad(sim):
 		sim.spend_cargo(CRATE, 1)
 		sim.quest_flags.dock_haul = "done"

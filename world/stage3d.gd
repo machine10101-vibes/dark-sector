@@ -775,6 +775,7 @@ func _sync_props(sim) -> void:
 		if beam_paint != null:
 			beam_paint.emission_energy_multiplier = 0.6 + flash * 1.8
 		_tag("Helion Dock", chart(sim.beacon_pos + Vector2(-90.0, -30.0), 168.0), Color("9eecf5"), 22)
+		_sync_haul_ring(sim)
 	elif not on_chart:
 		_tag("Dock beacon", chart(sim.beacon_pos + Vector2(-70.0, -90.0), 78.0), Color("8aa896"), 13)
 	_sync_density(sim)
@@ -784,6 +785,94 @@ func _sync_props(sim) -> void:
 	_sync_wrecks(sim)
 	_sync_meteors(sim)
 	_sync_claim(sim)
+
+
+func _sync_haul_ring(sim) -> void:
+	if sim.haul_outbound() == false:
+		return
+	var aim: Vector2 = DockBoard.beam_aim(sim)
+	if aim.length() < 8.0:
+		return
+	var flash := 0.35 + 0.65 * absf(sin(float(sim.time) * 7.5))
+	var at: Vector2 = sim.player.pos + aim
+	_lay_haul_beam(sim.player.pos, at, flash)
+	var mark := _prop("haul_ring")
+	if str(mark.get_meta("built", "")) != "yes":
+		var torus := TorusMesh.new()
+		torus.inner_radius = 70.0
+		torus.outer_radius = 118.0
+		torus.rings = 28
+		torus.ring_segments = 8
+		mark.mesh = torus
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.albedo_color = Color("fff1c9")
+		glow.emission_enabled = true
+		glow.emission = Color("ffb04a")
+		mark.material_override = glow
+		mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mark.set_meta("built", "yes")
+	mark.position = chart(at, 8.0)
+	mark.visible = true
+	var paint := mark.material_override as StandardMaterial3D
+	if paint != null:
+		paint.emission_energy_multiplier = 1.4 + flash * 3.2
+	var pin := _prop("haul_ring_pin")
+	if str(pin.get_meta("built", "")) != "yes":
+		var column := CylinderMesh.new()
+		column.top_radius = 1.6
+		column.bottom_radius = 3.2
+		column.height = 48.0
+		pin.mesh = column
+		var shaft := StandardMaterial3D.new()
+		shaft.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		shaft.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		shaft.albedo_color = Color(1.0, 0.72, 0.28, 0.7)
+		shaft.emission_enabled = true
+		shaft.emission = Color("ffb04a")
+		pin.material_override = shaft
+		pin.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pin.set_meta("built", "yes")
+	pin.position = chart(at, 28.0)
+	pin.visible = true
+	var pin_paint := pin.material_override as StandardMaterial3D
+	if pin_paint != null:
+		pin_paint.emission_energy_multiplier = 0.8 + flash * 2.4
+	_tag("Ice ring", chart(at + Vector2(18.0, -24.0), 64.0), Color("ffd27a"), 32)
+
+
+func _lay_haul_beam(keel: Vector2, drop: Vector2, flash: float) -> void:
+	var from := chart(keel, 8.0)
+	var to := chart(drop, 8.0)
+	var span := to - from
+	var length := span.length()
+	if length < 8.0:
+		return
+	var beam := _prop("haul_ring_beam")
+	if str(beam.get_meta("built", "")) != "ribbon":
+		var slab := BoxMesh.new()
+		slab.size = Vector3(1.0, 1.0, 1.0)
+		beam.mesh = slab
+		var shaft := StandardMaterial3D.new()
+		shaft.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		shaft.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		shaft.albedo_color = Color(1.0, 0.72, 0.28, 0.72)
+		shaft.emission_enabled = true
+		shaft.emission = Color("ffb04a")
+		beam.material_override = shaft
+		beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		beam.set_meta("built", "ribbon")
+	var dir := span / length
+	var side := Vector3(-dir.z, 0.0, dir.x)
+	if side.length_squared() < 0.0001:
+		side = Vector3.RIGHT
+	side = side.normalized()
+	var up := side.cross(dir).normalized()
+	beam.transform = Transform3D(Basis(dir * length, up * 3.0, side * 14.0), (from + to) * 0.5)
+	beam.visible = true
+	var beam_paint := beam.material_override as StandardMaterial3D
+	if beam_paint != null:
+		beam_paint.emission_energy_multiplier = 0.8 + flash * 2.4
 
 
 func _sync_pocket(sim) -> void:

@@ -50,6 +50,9 @@ func _ready() -> void:
 	host.pressed.connect(func(): _show_select("host"))
 	var dedicated := ThemeKit.button("Dedicated host")
 	dedicated.pressed.connect(func():
+		if OS.has_feature("web"):
+			back_to_slate(ListenLink.JOIN_LINE)
+			return
 		set_note("Same sim. Headless: godot --headless --path . --script res://scripts/headless_host.gd")
 		_show_select("host")
 	)
@@ -136,7 +139,22 @@ func show_root() -> void:
 	show()
 
 
+func back_to_slate(text: String) -> void:
+	print(text)
+	_release_focus()
+	_show_root()
+	set_note(text)
+	show()
+
+
+func _release_focus() -> void:
+	var vp := get_viewport()
+	if vp != null:
+		vp.gui_release_focus()
+
+
 func _show_root() -> void:
+	_release_focus()
 	root_box.show()
 	select_box.hide()
 	var has := Game.has_save()
@@ -145,6 +163,7 @@ func _show_root() -> void:
 
 
 func _show_select(next: String) -> void:
+	_release_focus()
 	intent = next
 	root_box.hide()
 	select_box.show()

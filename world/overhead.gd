@@ -207,7 +207,7 @@ class ScaleReadout extends Control:
 					continue
 				var dist := cam.global_position.distance_to(at)
 				var reach := 2600.0
-				if str(item.t) == "Helion Dock":
+				if str(item.t) == "Helion Dock" or str(item.t) == "Ice ring":
 					reach = 24000.0
 				elif Game.sim != null:
 					var layer := int(Game.sim.layer)
@@ -268,6 +268,7 @@ class ScaleReadout extends Control:
 		if font != null:
 			draw_string(font, origin + Vector2(0, -18), "%d m" % int(length), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("cbb892"))
 		_draw_dock_guide(cam, font)
+		_draw_ring_guide(cam, font)
 
 	func _draw_dock_guide(cam: Camera3D, font: Font) -> void:
 		var sim = Game.sim
@@ -283,12 +284,11 @@ class ScaleReadout extends Control:
 		if layer == ScaleFrame.BAND:
 			var gap: float = sim.player.pos.distance_to(sim.beacon_pos)
 			caption = "Helion Dock  %d m" % int(gap)
-			at = Vector3(sim.beacon_pos.x, 80.0, -sim.beacon_pos.y)
+			at = _guide_at(sim.beacon_pos, 80.0)
 		elif layer == ScaleFrame.CHART:
-			var shown: Vector2 = ScaleFrame.chart_view(sim, sim.dock_buoy_km() - sim.local_origin)
 			var km: float = (sim.local_origin + sim.player.pos).distance_to(sim.dock_buoy_km())
 			caption = "Helion Dock  %.0f km" % km
-			at = Vector3(shown.x, 120.0, -shown.y)
+			at = _guide_at(sim.dock_buoy_km() - sim.local_origin, 120.0)
 		elif layer == ScaleFrame.APPROACH:
 			caption = "Helion Dock"
 			at = Vector3(0.0, 80.0, 0.0)
@@ -321,6 +321,57 @@ class ScaleReadout extends Control:
 		var side := Vector2(-aim.y, aim.x)
 		draw_colored_polygon(PackedVector2Array([hit + aim * 14.0, hit - aim * 8.0 + side * 8.0, hit - aim * 8.0 - side * 8.0]), Color("9eecf5"))
 		draw_string(font, hit + side * 12.0 - Vector2(0, 8), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color("9eecf5"))
+
+	func _draw_ring_guide(cam: Camera3D, font: Font) -> void:
+		var sim = Game.sim
+		if cam == null or font == null or sim == null or sim.player.is_empty():
+			return
+		if sim.has_method("haul_outbound") == false or sim.haul_outbound() == false:
+			return
+		if int(sim.layer) != ScaleFrame.BAND:
+			return
+		var ring = sim.survey_node("aegis_ring")
+		if ring == null:
+			return
+		var caption := DockBoard.haul_line(sim)
+		if caption == "":
+			return
+		var at := _guide_at(ring.pos, 16.0)
+		var sp := cam.unproject_position(at)
+		var behind := cam.is_position_behind(at)
+		var margin := 28.0
+		var edge := Rect2(Vector2(margin, margin), size - Vector2(margin * 2.0, margin * 2.0 + 96.0))
+		var center := size * 0.5
+		var pulse := 0.72 + 0.28 * absf(sin(Time.get_ticks_msec() * 0.008))
+		var ink := Color(1.0, 0.78, 0.28, pulse)
+		var on_screen := behind == false and edge.has_point(sp)
+		if on_screen:
+			draw_rect(Rect2(sp + Vector2(-11, -11), Vector2(22, 22)), ink, false, 3.0)
+			draw_rect(Rect2(sp + Vector2(-4, -4), Vector2(8, 8)), ink, true)
+			draw_string(font, sp + Vector2(16, 6), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, ink)
+			return
+		var aim := sp - center
+		if behind:
+			aim = -aim
+		if aim.length() < 1.0:
+			aim = Vector2.RIGHT
+		aim = aim.normalized()
+		var limit := edge.size * 0.5
+		var scale := 1.0e6
+		if absf(aim.x) > 0.001:
+			scale = minf(scale, limit.x / absf(aim.x))
+		if absf(aim.y) > 0.001:
+			scale = minf(scale, limit.y / absf(aim.y))
+		var hit := center + aim * scale
+		var side := Vector2(-aim.y, aim.x)
+		draw_colored_polygon(PackedVector2Array([hit + aim * 18.0, hit - aim * 10.0 + side * 10.0, hit - aim * 10.0 - side * 10.0]), ink)
+		draw_string(font, hit + side * 14.0 - Vector2(0, 10), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, ink)
+
+
+	func _guide_at(world: Vector2, height: float) -> Vector3:
+		var shown: Vector2 = DockBoard.marker_xy(Game.sim, world)
+		return Vector3(shown.x, height, -shown.y)
+
 
 	func _nearer_tag(a: Dictionary, b: Dictionary) -> bool:
 		return float(a.dist) < float(b.dist)

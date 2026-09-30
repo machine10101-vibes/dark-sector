@@ -4,6 +4,11 @@ extends RefCounted
 ## Listen-server. One host keeps Helion Dock and First Soil. A second captain joins by IP or code.
 
 const PORT := 24565
+const SOLO_LINE := "No listen port on this board. Flying solo."
+const JOIN_LINE := "No listen port on this page. New keel still flies solo."
+
+## Headless tests close the port without touching ENet. The web build is already closed.
+static var block_port := false
 
 var role := "offline"
 var code := ""
@@ -18,7 +23,16 @@ var player_id := ""
 var last_error := ""
 
 
+func no_port() -> bool:
+	return OS.has_feature("web") or block_port
+
+
 func open_host() -> String:
+	if no_port():
+		last_error = SOLO_LINE
+		conn = null
+		role = "offline"
+		return last_error
 	conn = ENetConnection.new()
 	var err: int = conn.create_host_bound("0.0.0.0", PORT, 8)
 	if err != OK:
@@ -34,6 +48,12 @@ func open_host() -> String:
 
 
 func join(address: String, ship_class: String, who: String) -> String:
+	if no_port():
+		last_error = JOIN_LINE
+		conn = null
+		local_peer = null
+		role = "offline"
+		return last_error
 	var parsed := parse_address(address)
 	conn = ENetConnection.new()
 	var err: int = conn.create_host(2)

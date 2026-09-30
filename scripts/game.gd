@@ -55,12 +55,20 @@ func begin_host(class_id: String) -> String:
 	Catalog.arm_yards(sim)
 	zoom = 0.58
 	paused = false
-	mode = "sector"
 	link = ListenLink.new()
 	var err := link.open_host()
 	if err != "":
-		link = null
+		var down := link.no_port()
+		_drop_link()
+		if down:
+			print(ListenLink.SOLO_LINE)
+			sim.say(ListenLink.SOLO_LINE)
+			mode = "sector"
+			return ""
+		sim = null
+		mode = "menu"
 		return err
+	mode = "sector"
 	if resumed:
 		sim.say("Host is back on port %s. The world log kept the claim. A second captain joins with that code." % link.code)
 	else:
@@ -69,14 +77,23 @@ func begin_host(class_id: String) -> String:
 
 
 func begin_join(class_id: String, address: String) -> String:
-	begin_new(class_id)
-	link = ListenLink.new()
+	_drop_link()
+	var probe := ListenLink.new()
 	var who := "captain-%d" % int(Time.get_unix_time_from_system())
-	sim.player.player_id = who
-	var err := link.join(address, class_id, who)
+	var err := probe.join(address, class_id, who)
 	if err != "":
-		link = null
+		probe.close()
+		sim = null
+		mode = "menu"
 		return err
+	link = probe
+	sim = SectorSim.new(defs)
+	sim.new_game(class_id)
+	Catalog.arm_yards(sim)
+	sim.player.player_id = who
+	zoom = 0.58
+	paused = false
+	mode = "sector"
 	sim.say("Joining %s. The host keeps the world." % address)
 	return ""
 

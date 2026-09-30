@@ -11,6 +11,15 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 7. **Board.** On the pad, Board. Take Seal Aegis Prime. Probe. It reads Aegis Prime. When that dossier seals while Moored, or the next time you are on the pad, the log pays 80 and the helm reads Purse 80. Take the ring crate, fly to the ice ring, return until Moored. The log pays 120 and the crate leaves the hold.
 8. **Chart.** Cast off and hold W past the band. Speed stays above 0. The chart shows Aegis Prime, Homestead Road, Green Spine, and Writ Lane. The log does not lock you on a scrape.
 
+## Ready — ring haul
+
+Pages build. One fresh Needle. Moor and Purse 80 already passed. This pass is the crate.
+
+1. Board. Take haul. The helm and the log read **Ice ring N m — hold that way.** The amber beam runs from the keel to the ice ring, and the nose is on that beam. An arrow marks the ring end when it is off the glass. The log also says not to clear the band yet.
+2. Cast off or hold W. Speed leaves 0 and climbs through the tens toward a couple of hundred, along the beam. The ice-ring number falls every second until the drop. Holding W out to the shell does not open the chart before the drop.
+3. Touch the ring. The line becomes **Helion Dock N m — bring the crate back.**
+4. Return until Moored, or press Dock inside 500 m. Purse is 200 if the scan already paid, or 120 if this is the only slip. The crate is gone.
+
 ## Ready — moor and purse
 
 Pages build. One fresh Needle. Incognito is fine. The scale bar is zoom. The card’s `Helion Dock` meters are the range.
@@ -24,9 +33,9 @@ Pages build. One fresh Needle. Incognito is fine. The scale bar is zoom. The car
 
 Windowed or the Pages build. One fresh launch.
 
-1. The title is the Helion limb, the ice rings, and a keel in front of that sky. New keel, Host, Join, and Continue log are still on the left.
-2. New keel. One hull is in the yard above the cards. The line names it. Hover a card, or on a phone scroll so that card is the top one. Needle, Barn, and Beak each take the yard in turn.
-3. Take the Needle. The helm is still moored at Helion Dock. Cast off and Board are up. Purse is 0.
+1. The title is the Helion limb, the ice rings, and a keel in front of that sky. New keel, Host, Join, and Continue log are still on the left. Continue reads **No log on the slate** until a log exists. That line is not a lock.
+2. New keel. One hull is in the yard above the cards. The line names it. Hover a card, or on a phone scroll so that card is the top one. Needle, Barn, and Beak each take the yard in turn. Take the Needle. The helm is moored. No listen port is required.
+3. Host the dock, then Take the Needle. On the page the helm still opens. The log reads **No listen port on this board. Flying solo.** Leave the dock. Join a dock and take a keel. The slate returns, New keel still works, and the note reads **No listen port on this page. New keel still flies solo.**
 
 ## Ready — dock board
 
