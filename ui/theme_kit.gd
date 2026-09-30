@@ -28,29 +28,44 @@ static func build() -> Theme:
 
 static func glass(strong: bool = false) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
-	box.bg_color = Color(0.03, 0.05, 0.08, 0.82 if strong else 0.7)
-	box.border_color = Color(0.45, 0.82, 0.9, 0.55 if strong else 0.38)
+	box.bg_color = Color(0.025, 0.04, 0.06, 0.78 if strong else 0.58)
+	box.border_color = Color(0.55, 0.86, 0.94, 0.62 if strong else 0.32)
 	box.set_border_width_all(1)
-	box.set_corner_radius_all(12)
-	box.content_margin_left = 14
-	box.content_margin_right = 14
-	box.content_margin_top = 10
-	box.content_margin_bottom = 10
-	box.shadow_color = Color(0, 0, 0, 0.35)
-	box.shadow_size = 10
+	box.set_corner_radius_all(14)
+	box.content_margin_left = 12
+	box.content_margin_right = 12
+	box.content_margin_top = 8
+	box.content_margin_bottom = 8
+	box.shadow_color = Color(0, 0, 0, 0.45)
+	box.shadow_size = 16
 	return box
 
 
-static func chip_box() -> StyleBoxFlat:
+static func veil() -> StyleBoxFlat:
+	var box := glass(false)
+	box.bg_color = Color(0.02, 0.035, 0.05, 0.5)
+	box.border_color = Color(0.62, 0.86, 0.92, 0.42)
+	box.content_margin_left = 14
+	box.content_margin_right = 14
+	box.content_margin_top = 12
+	box.content_margin_bottom = 12
+	return box
+
+
+static func chip_box(strong: bool = false) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
-	box.bg_color = Color(0.05, 0.12, 0.15, 0.72)
-	box.border_color = Color(0.5, 0.86, 0.92, 0.4)
+	if strong:
+		box.bg_color = Color(0.07, 0.13, 0.16, 0.9)
+		box.border_color = Color(0.78, 0.93, 0.98, 0.82)
+	else:
+		box.bg_color = Color(0.04, 0.08, 0.1, 0.55)
+		box.border_color = Color(0.45, 0.7, 0.76, 0.28)
 	box.set_border_width_all(1)
 	box.set_corner_radius_all(8)
-	box.content_margin_left = 10
-	box.content_margin_right = 10
-	box.content_margin_top = 6
-	box.content_margin_bottom = 6
+	box.content_margin_left = 8
+	box.content_margin_right = 8
+	box.content_margin_top = 5
+	box.content_margin_bottom = 5
 	return box
 
 
@@ -103,7 +118,7 @@ static func button(text: String, primary: bool = false) -> Button:
 	node.text = text
 	node.focus_mode = Control.FOCUS_NONE
 	node.mouse_filter = Control.MOUSE_FILTER_STOP
-	node.custom_minimum_size = Vector2(0, 48 if primary else 40)
+	node.custom_minimum_size = Vector2(0, 48 if primary else 44)
 	node.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	node.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	paint(node, primary)

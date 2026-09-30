@@ -3,6 +3,8 @@ extends SubViewportContainer
 var vp: SubViewport
 var cam: Camera3D
 var yard: Node3D
+var _screen := Vector2(1280, 720)
+var _hero := false
 
 
 func _ready() -> void:
@@ -41,11 +43,14 @@ func _ready() -> void:
 func fit(screen: Vector2) -> void:
 	position = Vector2.ZERO
 	size = screen
+	_screen = screen
 	if vp != null:
 		vp.size = Vector2i(maxi(int(screen.x), 2), maxi(int(screen.y), 2))
+	_aim(_hero)
 
 
 func set_keel(class_id: String, hero: bool) -> void:
+	_hero = hero
 	if yard != null and yard.has_method("show_yard"):
 		yard.show_yard(class_id, hero)
 	_aim(hero)
@@ -62,9 +67,27 @@ func set_live(on: bool) -> void:
 func _aim(hero: bool) -> void:
 	if cam == null:
 		return
+	var narrow := _screen.x < 860.0
+	var landscape := _screen.x > _screen.y
+	if yard != null:
+		yard.set("menu_bias", -42.0 if hero and narrow and landscape else 0.0)
 	if hero:
-		cam.position = Vector3(-18.0, 36.0, 210.0)
-		cam.look_at(Vector3(8.0, 22.0, 0.0), Vector3.UP)
+		if narrow and landscape:
+			cam.position = Vector3(-70.0, 34.0, 230.0)
+			cam.look_at(Vector3(-36.0, 16.0, 0.0), Vector3.UP)
+		elif narrow:
+			cam.position = Vector3(-8.0, 48.0, 292.0)
+			cam.look_at(Vector3(6.0, 16.0, 0.0), Vector3.UP)
+		else:
+			cam.position = Vector3(-18.0, 36.0, 210.0)
+			cam.look_at(Vector3(8.0, 22.0, 0.0), Vector3.UP)
 	else:
-		cam.position = Vector3(-210.0, 168.0, 460.0)
-		cam.look_at(Vector3(220.0, 10.0, 40.0), Vector3.UP)
+		if narrow and landscape:
+			cam.position = Vector3(-240.0, 150.0, 520.0)
+			cam.look_at(Vector3(80.0, 8.0, 20.0), Vector3.UP)
+		elif narrow:
+			cam.position = Vector3(-180.0, 200.0, 560.0)
+			cam.look_at(Vector3(140.0, 4.0, 16.0), Vector3.UP)
+		else:
+			cam.position = Vector3(-210.0, 168.0, 460.0)
+			cam.look_at(Vector3(220.0, 10.0, 40.0), Vector3.UP)

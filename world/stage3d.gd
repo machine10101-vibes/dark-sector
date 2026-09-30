@@ -200,7 +200,7 @@ void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
 	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.25);
-	float ray = 0.72 + 0.28 * sin(atan(n.y, n.x) * 8.0);
+	float ray = 0.62 + 0.38 * sin(atan(n.y, n.x) * 14.0);
 	ALBEDO = albedo.rgb;
 	EMISSION = albedo.rgb * 0.6;
 	ALPHA = fres * fres * 0.7 * ray;
@@ -229,7 +229,7 @@ void fragment() {
 	float seam = clamp(max(seam_x, seam_z), 0.0, 1.0);
 	float deck = clamp(n.y, 0.0, 1.0);
 	vec3 col = albedo.rgb * (0.42 + 0.7 * deck);
-	col *= 0.82 + 0.22 * panel;
+	col *= 0.7 + 0.38 * panel;
 	col = mix(col, col * vec3(0.18, 0.2, 0.22), seam);
 	float brush = 0.9 + 0.1 * sin(local_pos.x * 2.2 + local_pos.z * 11.0);
 	col *= brush;
@@ -238,7 +238,7 @@ void fragment() {
 	float rivet = max(seam_z * smoothstep(0.07, 0.0, abs(along_x - 0.5)), seam_x * smoothstep(0.07, 0.0, abs(along_z - 0.5)));
 	col = mix(col, col * vec3(0.42, 0.46, 0.5), clamp(rivet, 0.0, 1.0) * 0.8);
 	float aft = smoothstep(6.0, -22.0, local_pos.x);
-	col = mix(col, col * vec3(1.22, 0.68, 0.38), aft * 0.34);
+	col = mix(col, col * vec3(1.45, 0.55, 0.22), aft * 0.58);
 	float wear = smoothstep(0.45, 0.92, 1.0 - abs(n.y));
 	col = mix(col, col * vec3(0.7, 0.68, 0.62), wear * 0.4);
 	float stripe = smoothstep(1.35, 0.05, abs(local_pos.z));
@@ -247,8 +247,8 @@ void fragment() {
 	vec3 halfv = normalize(normalize(vec3(0.25, 1.0, 0.12)) + eye);
 	float spec = pow(clamp(dot(wn, halfv), 0.0, 1.0), 64.0);
 	float edge = pow(clamp(1.0 - abs(dot(wn, eye)), 0.0, 1.0), 2.2);
-	col += vec3(0.78, 0.86, 0.94) * spec * (1.0 - seam) * (0.25 + 0.55 * deck);
-	col += albedo.rgb * edge * 0.22;
+	col += vec3(0.86, 0.93, 0.98) * spec * (1.0 - seam) * (0.45 + 0.7 * deck);
+	col += albedo.rgb * edge * 0.38;
 	ALBEDO = col;
 	METALLIC = mix(0.84, 0.35, seam);
 	ROUGHNESS = mix(0.24, 0.88, max(seam, 1.0 - deck));
@@ -315,8 +315,8 @@ void fragment() {
 	col *= 1.0 - max(gap, lane * 0.65) * 0.8;
 	float grit = fract(sin(dot(UV, vec2(91.7, 47.3)) + seed) * 43758.5);
 	col *= 0.84 + 0.16 * grit;
-	float spark = step(0.86, fract(sin(dot(UV * 48.0, vec2(19.1, 7.7)) + seed) * 43758.5));
-	col += vec3(0.92, 0.96, 1.0) * spark * 0.45;
+	float spark = step(0.74, fract(sin(dot(UV * 48.0, vec2(19.1, 7.7)) + seed) * 43758.5));
+	col += vec3(0.94, 0.98, 1.0) * spark * 0.72;
 	vec3 radial = wpos - planet_pos;
 	float lit = 0.7;
 	if (dot(radial, radial) > 4.0) {
@@ -379,7 +379,7 @@ void fragment() {
 	float cavity = smoothstep(0.32, 0.72, fbm(n * 3.2 + vec3(seed * 2.0, 1.0, 0.2)));
 	float pits = smoothstep(0.62, 0.82, noise3(n * 18.0 + vec3(seed)));
 	vec3 mineral = mix(albedo.rgb, albedo.rgb * vec3(1.15, 0.92, 0.78), grit * 0.45);
-	vec3 col = mineral * (0.18 + 0.9 * ndl) * mix(1.0, 0.38, cavity);
+	vec3 col = mineral * (0.32 + 1.2 * ndl) * mix(1.0, 0.28, cavity);
 	col *= 1.0 - pits * 0.35;
 	float vein = smoothstep(0.52, 0.74, fbm(n * 11.0 + vec3(seed, 2.2, 0.5)));
 	col = mix(col, mineral * vec3(0.62, 0.48, 0.32), vein * 0.42);
@@ -479,6 +479,7 @@ var _used: Dictionary = {}
 var menu_show := false
 var menu_class := "vesper"
 var menu_hero := false
+var menu_bias := 0.0
 var _yard_t := 0.0
 var _yard_ready := false
 
@@ -2725,27 +2726,41 @@ func _build_yard() -> void:
 		dot.radial_segments = 6
 		dot.rings = 3
 		mm.mesh = dot
-		mm.instance_count = 220
+		mm.instance_count = 420
 		_sky.multimesh = mm
-		var sky_mat := StandardMaterial3D.new()
-		sky_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		sky_mat.vertex_color_use_as_albedo = true
+		var sky_mat := ShaderMaterial.new()
+		var twinkle := Shader.new()
+		twinkle.code = "shader_type spatial; render_mode unshaded, cull_disabled; void fragment() { float tw = 0.45 + 0.55 * sin(TIME * (1.2 + COLOR.r * 3.0) + COLOR.g * 18.0); ALBEDO = COLOR.rgb * tw; EMISSION = COLOR.rgb * tw * 0.8; }"
+		sky_mat.shader = twinkle
 		_sky.material_override = sky_mat
 		_sky.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_sky)
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 48291
 		for i in mm.instance_count:
-			var dir := Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.2, 1.0), rng.randf_range(-1.0, 1.0))
+			var dir := Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.15, 1.0), rng.randf_range(-1.0, 1.0))
 			if dir.length_squared() < 0.01:
 				dir = Vector3.UP
 			dir = dir.normalized()
-			var dist := rng.randf_range(1800.0, 4200.0)
-			var scale := rng.randf_range(1.4, 4.8)
+			var belt := absf(dir.y) < 0.18
+			var dist := rng.randf_range(1600.0, 4600.0)
+			var scale := rng.randf_range(1.6, 5.4)
+			if belt:
+				scale *= 1.35
 			var basis := Basis.IDENTITY.scaled(Vector3(scale, scale, scale))
 			mm.set_instance_transform(i, Transform3D(basis, dir * dist))
-			var tint := Color(0.75, 0.84, 0.98) if rng.randf() < 0.4 else Color(0.98, 0.9, 0.72)
+			var tint := Color(0.72, 0.84, 1.0) if rng.randf() < 0.45 else Color(1.0, 0.9, 0.7)
+			if belt:
+				tint = tint.lerp(Color(0.85, 0.78, 0.95), 0.35)
 			mm.set_instance_color(i, tint)
+		var key := OmniLight3D.new()
+		key.name = "YardKey"
+		key.light_color = Color("fff3d8")
+		key.light_energy = 2.2
+		key.omni_range = 360.0
+		key.shadow_enabled = false
+		key.position = Vector3(-36.0, 78.0, 150.0)
+		add_child(key)
 	_sky.visible = true
 	if _sun != null:
 		_sun.look_at(_sun.global_position - to_star, Vector3.UP)
@@ -2794,10 +2809,12 @@ func _dress_yard() -> void:
 			elif part.begins_with("Trim"):
 				tone = accent
 			_paint_hull(child, tone)
-	var yaw := -0.95 + sin(_yard_t * 0.22) * 0.1
-	holder.rotation = Vector3(0.18, yaw, sin(_yard_t * 0.3) * 0.05)
+	var yaw := -0.95 + sin(_yard_t * 0.22) * 0.08
 	if menu_hero:
-		holder.position = Vector3(6.0, 28.0, 0.0)
+		yaw = _yard_t * 0.42
+	holder.rotation = Vector3(0.14 if menu_hero else 0.18, yaw, sin(_yard_t * 0.35) * 0.04)
+	if menu_hero:
+		holder.position = Vector3(6.0 + menu_bias, 28.0, 0.0)
 		holder.scale = Vector3(1.85, 1.85, 1.85)
 	else:
 		holder.position = Vector3(168.0, 36.0, 24.0)
