@@ -535,6 +535,18 @@ func _process(delta: float) -> void:
 	_hide_stale(_props)
 
 
+func _limb_gap() -> float:
+	# The overhead camera sits behind and above the keel. The old 420-unit
+	# gap put that camera inside the 15000-unit limb. Keep the surface
+	# farther than the camera can reach, plus the air shell.
+	var zoom := maxf(Game.zoom, 0.12)
+	var height := 920.0 / zoom
+	var back := height * 0.62
+	var reach := Vector2(back, height).length()
+	var shell := ScaleFrame.LIMB_RADIUS * 0.02
+	return reach + shell + 240.0
+
+
 func chart(p: Vector2, height: float = 0.0) -> Vector3:
 	var render: Vector2 = p
 	var gate: Variant = WorldCoord.gate()
@@ -694,7 +706,7 @@ func _sync_props(sim) -> void:
 		_beacon_light.shadow_enabled = false
 		add_child(_beacon_light)
 	_beacon_light.position = chart(sim.beacon_pos, 38.0)
-	_tag("Dock beacon", chart(sim.beacon_pos, 52.0), Color("8aa896"), 13)
+	_tag("Dock beacon", chart(sim.beacon_pos + Vector2(-70.0, -90.0), 78.0), Color("8aa896"), 13)
 	_sync_density(sim)
 	_sync_pocket(sim)
 	_sync_nebula()
@@ -991,7 +1003,11 @@ func _sync_planets(sim) -> void:
 		var row: Dictionary = body
 		var bid := str(row.get("id", "planet"))
 		var node := _body_node(bid)
-		var limb := bid == str(sim.body_id)
+		var body_pos: Vector2 = row.pos
+		var clearance: float = sim.player.pos.distance_to(body_pos) - float(row.radius)
+		# The giant limb is only for a keel scraping the crust. At the dock pad
+		# the real body stays a world in clear space, so the camera is not inside it.
+		var limb: bool = bid == str(sim.body_id) and clearance < 220.0
 		var radius := float(row.radius)
 		if limb:
 			radius = ScaleFrame.LIMB_RADIUS
@@ -1000,7 +1016,7 @@ func _sync_planets(sim) -> void:
 			if away.length() < 1.0:
 				away = Vector2.RIGHT
 			away = away.normalized()
-			var center2 := ship - away * (radius + 420.0)
+			var center2 := ship - away * (radius + _limb_gap())
 			node.position = chart(center2, -140.0)
 		else:
 			node.position = chart(row.pos, 0.0)
@@ -1055,7 +1071,11 @@ func _sync_planets(sim) -> void:
 		_parallax(node, radius, float(sim.time), limb)
 		var label_at := chart(row.pos, float(row.radius) + 28.0)
 		if limb:
-			label_at = chart(sim.player.pos, 80.0)
+			var outward: Vector2 = sim.player.pos - row.pos
+			if outward.length() < 1.0:
+				outward = Vector2.RIGHT
+			outward = outward.normalized()
+			label_at = chart(sim.player.pos - outward * minf(_limb_gap() * 0.45, 900.0), 260.0)
 		_tag(str(row.get("name", "")), label_at, Color("e6d7bf"), 16)
 	var star_name := str(sim.defs.system.star.name)
 	_tag(star_name, Vector3(0.0, float(sim.star_radius) + 40.0, 0.0), Color("f0c27a"), 16)

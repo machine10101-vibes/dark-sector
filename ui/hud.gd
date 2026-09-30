@@ -461,33 +461,40 @@ func _refresh_helm() -> void:
 	elif Game.zoom < 0.7:
 		zoom_word = "Local"
 	var keel := "Keel complaining." if stats.keel_warn else "Keel within tolerance."
+	var moored := bool(sim.player.get("moored", false))
 	if compact:
 		helm_name.text = "%s    %s" % [str(sim.defs.system.name).to_upper(), hull.callsign]
-		helm_flight.text = "hull %d/%d    %d m/s    %s    %s" % [
-			int(sim.player.hp),
-			int(sim.player.max_hp),
-			int(sim.player.vel.length()),
-			zoom_word,
-			ScaleFrame.layer_name(int(sim.layer)),
-		]
+		if moored:
+			helm_flight.text = "Moored at the pad. W casts off."
+		else:
+			helm_flight.text = "hull %d/%d    %d m/s    %s    %s" % [
+				int(sim.player.hp),
+				int(sim.player.max_hp),
+				int(sim.player.vel.length()),
+				zoom_word,
+				ScaleFrame.layer_name(int(sim.layer)),
+			]
 	else:
 		helm_name.text = "%s    %s    %s" % [str(sim.defs.system.name).to_upper(), hull.class_name, hull.callsign]
-		var alt_km := 0.0
-		var focus = sim.planet(str(sim.body_id))
-		if focus != null:
-			alt_km = ScaleFrame.band_alt(focus)
-		helm_flight.text = "hull %d/%d    %d m/s    yaw %.0f°/s    %s    sig %s    %s    %s    %s %.0f km" % [
-			int(sim.player.hp),
-			int(sim.player.max_hp),
-			int(sim.player.vel.length()),
-			stats.yaw_deg,
-			_mass_line(stats),
-			stats.signature_word,
-			keel,
-			zoom_word,
-			ScaleFrame.layer_name(int(sim.layer)),
-			alt_km,
-		]
+		if moored:
+			helm_flight.text = "Moored at Helion Dock. W casts off.    %s" % keel
+		else:
+			var alt_km := 0.0
+			var focus = sim.planet(str(sim.body_id))
+			if focus != null:
+				alt_km = ScaleFrame.band_alt(focus)
+			helm_flight.text = "hull %d/%d    %d m/s    yaw %.0f°/s    %s    sig %s    %s    %s    %s %.0f km" % [
+				int(sim.player.hp),
+				int(sim.player.max_hp),
+				int(sim.player.vel.length()),
+				stats.yaw_deg,
+				_mass_line(stats),
+				stats.signature_word,
+				keel,
+				zoom_word,
+				ScaleFrame.layer_name(int(sim.layer)),
+				alt_km,
+			]
 	var law_name := Law.at(sim, sim.player.pos)
 	helm_zone.add_theme_color_override("font_color", Law.color_of(law_name))
 	var link_word := ""
