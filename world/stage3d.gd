@@ -59,8 +59,12 @@ void fragment() {
 	float polar = smoothstep(0.55, 0.92, abs(n.y));
 	float ice_cap = fbm(n * 6.0 + vec3(seed, 4.0, 0.2));
 	terrain = mix(terrain, vec3(0.86, 0.91, 0.94) * (0.85 + 0.2 * ice_cap), polar * 0.88);
-	vec3 night = terrain * 0.045 + vec3(0.02, 0.035, 0.06);
-	vec3 col = mix(night, terrain * (0.22 + 0.95 * day), day);
+	float mottled = fbm(wpos * 0.0055 + vec3(seed, 2.2, 0.4));
+	float fleck = fbm(wpos * 0.016 + n * 3.0);
+	terrain *= 0.74 + 0.38 * mottled;
+	terrain = mix(terrain, terrain * vec3(0.76, 0.92, 0.7), fleck * land_w * 0.45);
+	vec3 night = terrain * 0.05 + vec3(0.015, 0.03, 0.055);
+	vec3 col = mix(night, terrain * (0.32 + 0.58 * day), day);
 	float twilight = smoothstep(-0.22, -0.02, ndl) * (1.0 - smoothstep(0.0, 0.18, ndl));
 	col += vec3(0.95, 0.38, 0.16) * twilight * 0.55;
 	col += vec3(0.25, 0.45, 0.72) * twilight * 0.22;
@@ -98,18 +102,20 @@ void fragment() {
 const CLOUD_SHADER := "shader_type spatial;
 render_mode blend_mix, unshaded, depth_draw_never, cull_back;
 varying vec3 wnorm;
+varying vec3 wpos;
 uniform vec3 to_star = vec3(1.0, 0.0, 0.0);
 uniform float seed = 0.0;
 uniform float spin = 0.0;
 " + _NOISE + "void vertex() {
 	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 sun = normalize(to_star);
 	float cloud = fbm(n * 3.6 + vec3(seed, spin, 0.6));
-	float wisps = fbm(n * 9.0 + vec3(spin, 1.2, seed));
-	float puff = fbm(n * 16.0 + vec3(seed, spin * 2.0, 0.4));
+	float wisps = fbm(n * 9.0 + wpos * 0.004 + vec3(spin, 1.2, seed));
+	float puff = fbm(wpos * 0.012 + vec3(seed, spin * 2.0, 0.4));
 	float cover = smoothstep(0.46, 0.72, cloud) * (0.55 + 0.45 * wisps);
 	cover *= 0.75 + 0.25 * puff;
 	float ndl = dot(n, sun);
@@ -289,6 +295,8 @@ void fragment() {
 	col *= 1.0 - max(gap, lane * 0.65) * 0.8;
 	float grit = fract(sin(dot(UV, vec2(91.7, 47.3)) + seed) * 43758.5);
 	col *= 0.84 + 0.16 * grit;
+	float spark = step(0.86, fract(sin(dot(UV * 48.0, vec2(19.1, 7.7)) + seed) * 43758.5));
+	col += vec3(0.92, 0.96, 1.0) * spark * 0.45;
 	vec3 radial = wpos - planet_pos;
 	float lit = 0.7;
 	if (dot(radial, radial) > 4.0) {
@@ -313,11 +321,13 @@ uniform float seed = 0.0;
 void fragment() {
 	vec3 n = normalize(wnorm);
 	float cloud = fbm(n * 2.8 + vec3(seed, 1.4, seed * 0.5));
-	float dens = smoothstep(0.38, 0.78, cloud);
+	float lane = smoothstep(0.4, 0.72, fbm(n * 1.3 + vec3(seed * 2.1, 0.4, 1.0)));
+	float dens = smoothstep(0.3, 0.74, cloud) * mix(0.28, 1.0, lane);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
 	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.4);
-	ALBEDO = tint.rgb;
-	ALPHA = tint.a * dens * (0.35 + 0.9 * fres);
+	vec3 warm = tint.rgb * vec3(1.25, 0.82, 0.55);
+	ALBEDO = mix(tint.rgb, warm, lane * 0.65);
+	ALPHA = tint.a * dens * (0.4 + 0.85 * fres);
 }
 "
 
@@ -377,9 +387,26 @@ void fragment() {
 	float line = max(minor * 0.45, major);
 	if (line < 0.04) { discard; }
 	float dist = length(p - CAMERA_POSITION_WORLD.xz);
-	float fade = 1.0 - smoothstep(500.0, 7200.0, dist);
-	ALBEDO = mix(vec3(0.38, 0.46, 0.52), vec3(0.62, 0.7, 0.62), major);
-	ALPHA = line * fade * 0.55;
+	float fade = 1.0 - smoothstep(280.0, 3600.0, dist);
+	ALBEDO = mix(vec3(0.28, 0.34, 0.4), vec3(0.5, 0.58, 0.5), major);
+	ALPHA = line * fade * 0.26;
+}
+"
+
+const GROUND_SHADER := "shader_type spatial;
+varying vec3 wpos;
+" + _NOISE + "void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	float soil = fbm(wpos.xz * 0.035);
+	float tuft = fbm(wpos.xz * 0.11);
+	vec3 dirt = vec3(0.34, 0.27, 0.16);
+	vec3 grass = vec3(0.34, 0.5, 0.26);
+	vec3 col = mix(dirt, grass, smoothstep(0.32, 0.68, soil));
+	col *= 0.72 + 0.4 * tuft;
+	ALBEDO = col;
+	ROUGHNESS = 0.92;
 }
 "
 
@@ -422,6 +449,7 @@ var _nebula_shader: Shader
 var _gate_shader: Shader
 var _rock_shader: Shader
 var _wake_shader: Shader
+var _ground_shader: Shader
 var _fill: DirectionalLight3D
 var _beacon_light: OmniLight3D
 var _frame_delta := 0.016
@@ -442,6 +470,7 @@ func _ready() -> void:
 	_gate_shader = _compile(GATE_SHADER)
 	_rock_shader = _compile(ROCK_SHADER)
 	_wake_shader = _compile(WAKE_SHADER)
+	_ground_shader = _compile(GROUND_SHADER)
 	_build_grid()
 	_sun = DirectionalLight3D.new()
 	_sun.name = "Sun"
@@ -605,7 +634,7 @@ func _sync_props(sim) -> void:
 		var slab := BoxMesh.new()
 		slab.size = Vector3(22.0, 2.4, 22.0)
 		pad.mesh = slab
-		pad.material_override = _metal(Color("5c5348"))
+		pad.material_override = _hull_mat(Color("6a5e50"))
 		pad.set_meta("built", "yes")
 	pad.position = chart(sim.beacon_pos, 1.2)
 	var halo := _prop("beacon_halo")
@@ -736,6 +765,15 @@ func _sync_shots(sim) -> void:
 			mat.emission = Color("e7b15a")
 			mat.emission_energy_multiplier = 2.0
 			bolt.material_override = mat
+		var shot_vel: Vector2 = row.vel
+		var reach := 2.4
+		var aim := Vector2.RIGHT
+		if shot_vel.length() > 1.0:
+			aim = shot_vel.normalized()
+			reach = clampf(shot_vel.length() * 0.045, 6.0, 22.0)
+		var shot_x := Vector3(aim.x, 0.0, -aim.y)
+		var shot_z := Vector3(-aim.y, 0.0, -aim.x)
+		bolt.basis = Basis(shot_x, Vector3.UP, shot_z).scaled(Vector3(reach, 2.2, 2.2))
 		bolt.position = chart(row.pos, 8.0)
 
 
@@ -1195,7 +1233,9 @@ func _sync_site(sim) -> void:
 		var slab := BoxMesh.new()
 		slab.size = Vector3(520.0, 2.0, 520.0)
 		ground.mesh = slab
-		ground.material_override = _hull_mat(Color("6f8a52"))
+		var turf := ShaderMaterial.new()
+		turf.shader = _ground_shader
+		ground.material_override = turf
 	ground.position = chart(sim.site_pos, -1.0)
 	var dome := _prop("site_dome")
 	if dome.mesh == null:
@@ -1740,7 +1780,7 @@ func _sync_sky(sim) -> void:
 		var star: Dictionary = sim.stars[i]
 		var p: Vector2 = star.pos
 		var lift := float(absi(hash(str(i))) % 500) - 250.0
-		var scale := 2.4 + float(star.a) * 3.2
+		var scale := 1.6 + float(star.a) * 5.4
 		var basis := Basis.IDENTITY.scaled(Vector3(scale, scale, scale))
 		mm.set_instance_transform(i, Transform3D(basis, Vector3(p.x, lift, -p.y)))
 		var temp := float(star.a)
