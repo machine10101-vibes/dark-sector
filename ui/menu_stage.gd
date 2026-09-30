@@ -63,8 +63,9 @@ func _aim(hero: bool) -> void:
 	if cam == null:
 		return
 	if hero:
-		cam.position = Vector3(-18.0, 36.0, 210.0)
-		cam.look_at(Vector3(8.0, 22.0, 0.0), Vector3.UP)
+		# Far enough to hold a spine mast, a wide bay, or wing guns on the same keel.
+		cam.position = Vector3(-36.0, 78.0, 390.0)
+		cam.look_at(Vector3(8.0, 26.0, 0.0), Vector3.UP)
 	else:
 		cam.position = Vector3(-210.0, 168.0, 460.0)
 		cam.look_at(Vector3(220.0, 10.0, 40.0), Vector3.UP)
