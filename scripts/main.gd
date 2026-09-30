@@ -10,6 +10,7 @@ var origin_hud: CanvasLayer
 
 
 func _ready() -> void:
+	_hold_browser_keys()
 	tones = preload("res://audio/tones.gd").new()
 	add_child(tones)
 	menu = preload("res://ui/menu.gd").new()
@@ -30,8 +31,11 @@ func _process(_delta: float) -> void:
 		set_meta("host_save_t", saved)
 	if Game.sim == null or Game.mode != "sector":
 		return
+	Game.text_entry = _editing_text()
+	if Game.text_entry:
+		Game.clear_flight_keys()
 	if tones != null and tones.has_method("play"):
-		var thrusting: bool = (Input.is_key_pressed(KEY_W) or float(Game.flight.get("thrust", 0.0)) > 0.2) and bool(Game.sim.player.alive) and not Game.paused
+		var thrusting: bool = (not Game.text_entry) and (Input.is_key_pressed(KEY_W) or float(Game.flight.get("thrust", 0.0)) > 0.2) and bool(Game.sim.player.alive) and not Game.paused
 		if thrusting and not bool(get_meta("was_thrust", false)):
 			tones.play("thrust")
 		set_meta("was_thrust", thrusting)
@@ -80,8 +84,15 @@ func _input(event: InputEvent) -> void:
 	if Game.mode != "sector" or not (event is InputEventKey):
 		return
 	var hud := get_node_or_null("Hud")
-	if hud != null and bool(hud.get("chat_open")):
+	if _editing_text():
+		Game.text_entry = true
+		Game.clear_flight_keys()
 		return
+	if hud != null and bool(hud.get("chat_open")):
+		Game.text_entry = true
+		Game.clear_flight_keys()
+		return
+	Game.text_entry = false
 	var key_ev := event as InputEventKey
 	if _is_flight_key(key_ev.keycode) == false and _is_flight_key(key_ev.physical_keycode) == false:
 		return
@@ -95,8 +106,7 @@ func _input(event: InputEvent) -> void:
 	if vp == null:
 		return
 	var owner := vp.gui_get_focus_owner()
-	var chat: Node = hud.get("chat_line") if hud != null else null
-	if owner != null and owner != chat:
+	if owner != null:
 		vp.gui_release_focus()
 	vp.set_input_as_handled()
 
@@ -118,11 +128,24 @@ func _is_flight_key(code: Key) -> bool:
 
 func _focus_canvas() -> void:
 	var vp := get_viewport()
-	if vp != null:
+	if vp != null and _editing_text() == false:
 		vp.gui_release_focus()
 	if OS.has_feature("web") == false:
 		return
 	JavaScriptBridge.eval("var c=document.getElementById('canvas');if(c){c.setAttribute('tabindex','0');c.focus();}", true)
+
+
+func _editing_text() -> bool:
+	var vp := get_viewport()
+	if vp == null:
+		return false
+	return vp.gui_get_focus_owner() is LineEdit
+
+
+func _hold_browser_keys() -> void:
+	if OS.has_feature("web") == false:
+		return
+	JavaScriptBridge.eval("if(!window.__dsKeys){window.__dsKeys=1;window.addEventListener('keydown',function(e){if(e.code==='F5'||e.code==='F9'||e.key==='F5'||e.key==='F9'){e.preventDefault();}},true);}", true)
 
 
 func _enter_sector() -> void:

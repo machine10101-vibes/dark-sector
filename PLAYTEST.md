@@ -16,8 +16,8 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 Pages build. Phone landscape, about 844×390. One fresh Needle. This pass is only the open Market and the tag line.
 
 1. Market opens a glass that stays clear of Speed, Purse, Cast off, Board, Quests, Probe, the quiet strip (Market, Lane, Weld), the stick, and the gun. The goods list scrolls inside that glass. The scrollbar stays on the glass.
-2. Set tag `Red-Keel`. The helm shows one short line, **Red-Keel**. The scan dossier reads `Corp tag  Red-Keel`. The overhead name on the keel shows it too.
-3. F5, then F9. The helm still reads **Red-Keel**.
+2. Click the corp field. Type `Red-Keel!!`. The field keeps the whole string, including the letters that also fly the keel. Set tag. The helm shows one short line, **Red-Keel**. The scan dossier reads `Corp tag  Red-Keel`. The overhead name on the keel shows it too.
+3. F5 writes the log and stays on the helm. F9 reads it back. The helm still reads **Red-Keel**, and any glasswheat is still in the hold. The page does not jump back to the title.
 
 Desk and portrait market glass stay as they passed. Buy still charges 12 and sell still pays 8, and only on the pad. Haul ribbons and Purse 200 stay.
 

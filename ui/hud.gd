@@ -339,6 +339,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			_close_chat()
 			get_viewport().set_input_as_handled()
 		return
+	if tag_edit != null and is_instance_valid(tag_edit) and tag_edit.has_focus():
+		if key == KEY_ESCAPE:
+			tag_edit.release_focus()
+			Game.text_entry = false
+			get_viewport().set_input_as_handled()
+		return
 	if key == KEY_ESCAPE:
 		if panel_kind != "":
 			_close_panel()
@@ -880,6 +886,9 @@ func _toggle(kind: String) -> void:
 
 
 func _close_panel() -> void:
+	if tag_edit != null and is_instance_valid(tag_edit):
+		tag_edit.release_focus()
+	Game.text_entry = false
 	panel_kind = ""
 	panel.hide()
 	_fit()
@@ -978,7 +987,10 @@ func _fill_market() -> void:
 		return
 	var sim = Game.sim
 	var focused := tag_edit != null and is_instance_valid(tag_edit) and tag_edit.has_focus()
-	if focused and market_box.get_child_count() > 0:
+	var draft := ""
+	if tag_edit != null and is_instance_valid(tag_edit):
+		draft = tag_edit.text
+	if market_box.get_child_count() > 0 and (focused or draft != DockBoard.tag_of(sim)):
 		_paint_market(sim)
 		return
 	var sig := "%s|%d|%d|%s" % [DockBoard.at_pad(sim), DockBoard.purse(sim), DockBoard.holding(sim), DockBoard.tag_of(sim)]
@@ -1004,16 +1016,33 @@ func _fill_market() -> void:
 	market_box.add_child(sell)
 	market_box.add_child(_flat("Corp tag", 14, Color("cbb892")))
 	tag_edit = LineEdit.new()
+	tag_edit.name = "CorpTag"
 	tag_edit.placeholder_text = "Corp tag"
 	tag_edit.max_length = DockBoard.TAG_LEN
 	tag_edit.text = DockBoard.tag_of(sim)
-	tag_edit.custom_minimum_size = Vector2(160, 44)
+	tag_edit.custom_minimum_size = Vector2(180, 44)
 	tag_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tag_edit.focus_mode = Control.FOCUS_ALL
+	tag_edit.mouse_filter = Control.MOUSE_FILTER_STOP
+	tag_edit.context_menu_enabled = false
+	tag_edit.caret_blink = true
+	tag_edit.gui_input.connect(_focus_tag)
 	tag_edit.text_submitted.connect(func(_text: String) -> void: _apply_tag())
 	market_box.add_child(tag_edit)
 	var set_tag := ThemeKit.button("Set tag")
 	set_tag.pressed.connect(_apply_tag)
 	market_box.add_child(set_tag)
+
+
+func _focus_tag(event: InputEvent) -> void:
+	if tag_edit == null or not (event is InputEventMouseButton):
+		return
+	var click := event as InputEventMouseButton
+	if click.pressed == false:
+		return
+	tag_edit.grab_focus()
+	Game.text_entry = true
+	Game.clear_flight_keys()
 
 
 func _paint_market(sim) -> void:
