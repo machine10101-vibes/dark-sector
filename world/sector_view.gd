@@ -119,29 +119,32 @@ func _cmd(delta: float) -> Dictionary:
 	# Screen-right on the overhead camera is world -X, so positive sim yaw
 	# (clockwise) swings the nose to screen-left. Negate live helm input
 	# here. sim.tick still adds rot as given; headless tests pass rot directly.
-	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+	if Game.flight_down(KEY_A) or Game.flight_down(KEY_LEFT):
 		rot += 1.0
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+	if Game.flight_down(KEY_D) or Game.flight_down(KEY_RIGHT):
 		rot -= 1.0
 	if rot == 0.0:
 		rot = -float(stick.get("rot", 0.0))
 	helm_yaw = move_toward(helm_yaw, rot, 8.5 * delta)
 	rot = helm_yaw
 	var strafe := 0.0
-	if Input.is_key_pressed(KEY_Q):
+	if Game.flight_down(KEY_Q):
 		strafe -= 1.0
-	if Input.is_key_pressed(KEY_E):
+	if Game.flight_down(KEY_E):
 		strafe += 1.0
 	if strafe == 0.0:
 		strafe = float(stick.get("strafe", 0.0))
-	var thrust := 1.0 if (Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)) else float(stick.get("thrust", 0.0))
-	var retro := 1.0 if (Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)) else float(stick.get("retro", 0.0))
+	var pulsed := Game.cast_pulse > 0.0
+	if pulsed:
+		Game.cast_pulse = maxf(0.0, Game.cast_pulse - delta)
+	var thrust := 1.0 if (Game.flight_down(KEY_W) or Game.flight_down(KEY_UP) or pulsed) else float(stick.get("thrust", 0.0))
+	var retro := 1.0 if (Game.flight_down(KEY_S) or Game.flight_down(KEY_DOWN)) else float(stick.get("retro", 0.0))
 	var cmd := {
 		"thrust": thrust,
 		"retro": retro,
 		"rot": rot,
 		"strafe": strafe,
-		"fire": Input.is_key_pressed(KEY_SPACE) or bool(stick.get("fire", false)),
+		"fire": Game.flight_down(KEY_SPACE) or bool(stick.get("fire", false)),
 	}
 	var verbs: Dictionary = Game.take_verbs()
 	for key in verbs.keys():
