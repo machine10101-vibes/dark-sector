@@ -1,9 +1,23 @@
 extends SceneTree
 
 var fails := 0
+var frames := 0
 
 
-func _init() -> void:
+func _process(_delta: float) -> bool:
+	frames += 1
+	if frames < 3:
+		return false
+	_run()
+	if fails == 0:
+		print("HULL MOUNTS PASS")
+	else:
+		print("HULL MOUNTS FAIL %d" % fails)
+	quit(fails)
+	return true
+
+
+func _run() -> void:
 	var stage: Node = load("res://world/stage3d.gd").new()
 	stage.call("_ready")
 	var roles: Array = ["mast", "blister", "sponson", "probes"]
@@ -47,11 +61,6 @@ func _init() -> void:
 	check(str(yard_needle[0]) == "sensor_mast", "yard Needle wears the mast")
 	check(str(yard_barn[0]) == "cargo_blister", "yard Barn wears the bay")
 	check(str(yard_beak[0]) == "gun_sponson", "yard Beak wears the guns")
-	if fails == 0:
-		print("HULL MOUNTS PASS")
-	else:
-		print("HULL MOUNTS FAIL %d" % fails)
-	quit(fails)
 
 
 func check(cond: bool, message: String) -> void:
