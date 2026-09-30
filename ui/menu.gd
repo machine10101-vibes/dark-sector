@@ -19,6 +19,11 @@ var backdrop: Control
 var root: Control
 var stage: SubViewportContainer
 var yard_line: Label
+var prompt_line: Label
+var title_label: Label
+var sky_label: Label
+var tagline: Label
+var slate_actions: GridContainer
 var pinned_keel := ""
 var slate_glass: Control
 var slate_scroll: ScrollContainer
@@ -58,12 +63,18 @@ func _ready() -> void:
 	root_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root_box.add_theme_constant_override("separation", 8)
 	slate_scroll.add_child(root_box)
-	root_box.add_child(ThemeKit.label("DARK SECTOR", 42, Color("e6d7bf")))
+	title_label = ThemeKit.label("DARK SECTOR", 42, Color("e6d7bf"))
+	title_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	root_box.add_child(title_label)
 	var sky := "HELION DOCK"
 	if Game.defs.has("system"):
 		sky = str(Game.defs.system.name).to_upper()
-	root_box.add_child(ThemeKit.label(sky, 16, Color("8a7344")))
-	root_box.add_child(ThemeKit.label("One keel. The dock is a place, not a menu.", 14, Color("b7ab96")))
+	sky_label = ThemeKit.label(sky, 16, Color("8a7344"))
+	sky_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	root_box.add_child(sky_label)
+	tagline = ThemeKit.label("One keel. The dock is a place, not a menu.", 14, Color("b7ab96"))
+	tagline.autowrap_mode = TextServer.AUTOWRAP_OFF
+	root_box.add_child(tagline)
 	var new_game := ThemeKit.button("New keel")
 	new_game.pressed.connect(func(): _show_select("offline"))
 	var host := ThemeKit.button("Host the dock")
@@ -86,16 +97,23 @@ func _ready() -> void:
 	continue_button.pressed.connect(func(): continue_game.emit())
 	var quit := ThemeKit.button("Leave")
 	quit.pressed.connect(func(): quit_game.emit())
-	root_box.add_child(new_game)
-	root_box.add_child(host)
-	root_box.add_child(dedicated)
-	root_box.add_child(address_line)
-	root_box.add_child(join)
-	root_box.add_child(continue_button)
-	note = ThemeKit.label("", 13, Color("c4512c"))
-	root_box.add_child(note)
+	slate_actions = GridContainer.new()
+	slate_actions.columns = 1
+	slate_actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slate_actions.add_theme_constant_override("h_separation", 8)
+	slate_actions.add_theme_constant_override("v_separation", 6)
+	slate_actions.add_child(new_game)
+	slate_actions.add_child(host)
+	slate_actions.add_child(dedicated)
+	slate_actions.add_child(address_line)
+	slate_actions.add_child(join)
+	slate_actions.add_child(continue_button)
 	if not OS.has_feature("web"):
-		root_box.add_child(quit)
+		slate_actions.add_child(quit)
+	root_box.add_child(slate_actions)
+	note = ThemeKit.label("", 13, Color("c4512c"))
+	note.visible = false
+	root_box.add_child(note)
 	select_glass = Control.new()
 	select_glass.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	select_glass.clip_contents = true
@@ -114,7 +132,8 @@ func _ready() -> void:
 	select_box.offset_right = -8
 	select_box.offset_bottom = -8
 	select_glass.add_child(select_box)
-	select_box.add_child(ThemeKit.label("Choose the keel. The other two stay in someone else's yard.", 16, Color("cbb892")))
+	prompt_line = ThemeKit.label("Choose the keel. The other two stay in someone else's yard.", 16, Color("cbb892"))
+	select_box.add_child(prompt_line)
 	yard_line = ThemeKit.label("Needle is in the yard.", 14, Color("9eecf5"))
 	select_box.add_child(yard_line)
 	var keel_scroll := ScrollContainer.new()
@@ -148,44 +167,119 @@ func _fit() -> void:
 		stage.fit(screen)
 	root.position = Vector2.ZERO
 	root.size = screen
-	var phone := screen.x < 860.0
+	var phone := screen.x < 900.0 or screen.y < 560.0
 	var landscape := screen.x > screen.y
-	var margin := 12.0
+	var margin := 8.0 if phone else 12.0
+	var two := phone and landscape
+	if title_label != null:
+		title_label.add_theme_font_size_override("font_size", 26 if two else 42)
+	if sky_label != null:
+		sky_label.add_theme_font_size_override("font_size", 13 if two else 16)
+	if tagline != null:
+		tagline.visible = not two
+	if root_box != null:
+		root_box.add_theme_constant_override("separation", 4 if two else 8)
+	if slate_actions != null:
+		slate_actions.columns = 2 if two else 1
+		slate_actions.add_theme_constant_override("v_separation", 4 if two else 6)
+		for action in slate_actions.get_children():
+			if action is Button:
+				action.add_theme_font_size_override("font_size", 13 if two else 14)
+	if prompt_line != null:
+		prompt_line.text = "Choose the keel." if phone else "Choose the keel. The other two stay in someone else's yard."
+		prompt_line.add_theme_font_size_override("font_size", 14 if phone else 16)
+		prompt_line.autowrap_mode = TextServer.AUTOWRAP_OFF
+		prompt_line.clip_text = phone
+	if yard_line != null:
+		yard_line.add_theme_font_size_override("font_size", 13 if phone else 14)
+		yard_line.autowrap_mode = TextServer.AUTOWRAP_OFF
+	if select_box != null:
+		select_box.add_theme_constant_override("separation", 4 if phone else 8)
+		var inset := 6.0 if phone else 8.0
+		select_box.offset_left = inset
+		select_box.offset_top = inset
+		select_box.offset_right = -inset
+		select_box.offset_bottom = -inset
 	var col_w := minf(440.0, screen.x - margin * 2.0)
 	var col_h := screen.y - margin * 2.0
-	if phone and landscape:
-		col_w = minf(300.0, screen.x * 0.46)
-	elif phone:
-		col_h = minf(screen.y * 0.62, screen.y - margin * 2.0)
+	var select_pos := Vector2(margin, screen.y * 0.56)
+	var select_size := Vector2(screen.x - margin * 2.0, screen.y * 0.44 - margin)
+	if two:
+		col_w = minf(360.0, screen.x * 0.44)
+		select_pos = Vector2(margin + col_w + 6.0, margin)
+		select_size = Vector2(screen.x - select_pos.x - margin, screen.y - margin * 2.0)
+	if keel_row != null:
+		var stacked := phone and not two
+		keel_row.columns = 1 if stacked else 3
+		keel_row.add_theme_constant_override("h_separation", 6 if phone else 12)
+		keel_row.add_theme_constant_override("v_separation", 6 if phone else 12)
+		var show_detail := not phone
+		var show_art := not phone and screen.y >= 640.0
+		var card_w := 220.0
+		if two:
+			card_w = maxf(96.0, (select_size.x - 36.0) / 3.0)
+		elif phone:
+			card_w = maxf(120.0, screen.x - margin * 2.0 - 36.0)
+		for card in keel_row.get_children():
+			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if phone else Control.SIZE_EXPAND_FILL
+			card.custom_minimum_size = Vector2(card_w, 0)
+			var box := card.get_child(0) as VBoxContainer
+			if box != null and box.get_child_count() > 0 and box.get_child(0) is Label:
+				(box.get_child(0) as Label).add_theme_font_size_override("font_size", 16 if phone else 22)
+			if box != null and box.get_child_count() > 1 and box.get_child(1) is Label:
+				var class_line := box.get_child(1) as Label
+				class_line.add_theme_font_size_override("font_size", 11 if two else 13)
+				class_line.clip_text = two
+			for part in card.find_children("*", "Button", true, false):
+				if part is Button:
+					var take := part as Button
+					take.add_theme_font_size_override("font_size", 12 if two else 14)
+					take.clip_text = two
+					if two:
+						_tighten_button(take)
+			for part_name in ["Previews", "Blurb", "Stats", "Rack"]:
+				var part := card.find_child(part_name, true, false)
+				if part == null:
+					continue
+				part.visible = show_art if part_name == "Previews" else show_detail
+		if phone and not two:
+			var sample: Control = keel_row.get_child(0)
+			var one := sample.get_combined_minimum_size().y
+			var rows := float(keel_row.get_child_count())
+			var cards_h := one * rows + 8.0 * maxf(rows - 1.0, 0.0)
+			var band := cards_h + 132.0
+			band = minf(band, screen.y * 0.62)
+			select_pos = Vector2(margin, screen.y - band - margin)
+			select_size = Vector2(screen.x - margin * 2.0, band)
+			col_h = maxf(160.0, select_pos.y - margin * 2.0)
+		elif not two:
+			var desk: Control = keel_row.get_child(0)
+			var desk_h := desk.get_combined_minimum_size().y
+			var band := clampf(desk_h + 128.0, 280.0, screen.y * 0.62)
+			select_pos = Vector2(margin, screen.y - band - margin)
+			select_size = Vector2(screen.x - margin * 2.0, band)
 	if slate_glass != null:
 		slate_glass.position = Vector2(margin, margin)
 		slate_glass.size = Vector2(col_w, col_h)
 	if root_box != null:
-		root_box.custom_minimum_size = Vector2(maxf(160.0, col_w - 36.0), 0)
+		root_box.custom_minimum_size = Vector2(maxf(120.0, col_w - 28.0), 0)
 	if address_line != null:
-		address_line.custom_minimum_size = Vector2(maxf(160.0, col_w - 36.0), 44)
-	var select_pos := Vector2(margin, screen.y * 0.56)
-	var select_size := Vector2(screen.x - margin * 2.0, screen.y * 0.44 - margin)
-	if phone and landscape:
-		select_pos = Vector2(screen.x * 0.5, margin)
-		select_size = Vector2(screen.x * 0.5 - margin, screen.y - margin * 2.0)
-	elif not phone:
-		select_pos = Vector2(margin, screen.y - minf(320.0, screen.y * 0.42))
-		select_size = Vector2(screen.x - margin * 2.0, minf(308.0, screen.y * 0.42) - 4.0)
+		var addr_w := 0.0 if two else maxf(160.0, col_w - 36.0)
+		address_line.custom_minimum_size = Vector2(addr_w, 44)
 	if select_glass != null:
 		select_glass.position = select_pos
 		select_glass.size = select_size
-	if keel_row != null:
-		var stacked := phone
-		keel_row.columns = 1 if stacked else 3
-		var show_art := not phone and screen.y >= 640.0
-		for card in keel_row.get_children():
-			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			var card_w := select_size.x - 36.0 if stacked else 220.0
-			card.custom_minimum_size = Vector2(maxf(140.0, card_w), 0)
-			var art := card.find_child("Previews", true, false)
-			if art != null:
-				art.visible = show_art
+	if select_box != null:
+		var box_inset := 6.0 if phone else 8.0
+		select_box.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		select_box.position = Vector2(box_inset, box_inset)
+		select_box.size = Vector2(
+			maxf(40.0, select_size.x - box_inset * 2.0),
+			maxf(40.0, select_size.y - box_inset * 2.0)
+		)
+	if note != null:
+		note.visible = note.text != ""
 	backdrop.queue_redraw()
 
 
@@ -282,6 +376,21 @@ func _unpin_keel(class_id: String) -> void:
 		pinned_keel = ""
 
 
+func _tighten_button(button: Button) -> void:
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var style := button.get_theme_stylebox(state)
+		if style == null:
+			continue
+		var copy := style.duplicate() as StyleBoxFlat
+		if copy == null:
+			continue
+		copy.content_margin_left = 6
+		copy.content_margin_right = 6
+		copy.content_margin_top = 4
+		copy.content_margin_bottom = 4
+		button.add_theme_stylebox_override(state, copy)
+
+
 func _choose(class_id: String) -> void:
 	if intent == "host":
 		host_game.emit(class_id)
@@ -294,6 +403,7 @@ func _choose(class_id: String) -> void:
 func set_note(text: String) -> void:
 	if note != null:
 		note.text = text
+		note.visible = text != ""
 
 
 func _card(class_id: String) -> PanelContainer:
@@ -307,8 +417,12 @@ func _card(class_id: String) -> PanelContainer:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	card.add_child(box)
-	box.add_child(ThemeKit.label(str(hull.callsign), 22))
-	box.add_child(ThemeKit.label(str(hull.class_name), 13, Color("8a7344")))
+	var callsign := ThemeKit.label(str(hull.callsign), 22)
+	callsign.autowrap_mode = TextServer.AUTOWRAP_OFF
+	box.add_child(callsign)
+	var class_line := ThemeKit.label(str(hull.class_name), 13, Color("8a7344"))
+	class_line.autowrap_mode = TextServer.AUTOWRAP_OFF
+	box.add_child(class_line)
 	var previews := HBoxContainer.new()
 	previews.name = "Previews"
 	previews.add_theme_constant_override("separation", 4)
@@ -317,17 +431,27 @@ func _card(class_id: String) -> PanelContainer:
 	if not yard.is_empty():
 		previews.add_child(_preview(class_id, [str(yard[0])], "Bolted"))
 	box.add_child(previews)
-	box.add_child(ThemeKit.label(str(hull.select_blurb), 13, Color("d9d0c2")))
+	var blurb := ThemeKit.label(str(hull.select_blurb), 13, Color("d9d0c2"))
+	blurb.name = "Blurb"
+	blurb.custom_minimum_size = Vector2(220, 0)
+	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(blurb)
 	var stats := Fit.stats(Game.defs, {"class_id": class_id, "modules": []})
-	box.add_child(ThemeKit.label(
+	var stats_line := ThemeKit.label(
 		"Yaw %.0f°/s. Mass %.0f. Hold %d. Signature %s." % [stats.yaw_deg, stats.mass, stats.cargo_cap, stats.signature_word],
 		13,
 		Color("cbb892")
-	))
+	)
+	stats_line.name = "Stats"
+	stats_line.autowrap_mode = TextServer.AUTOWRAP_OFF
+	box.add_child(stats_line)
 	var craft_bits: Array = []
 	for entry in hull.starting_craft:
 		craft_bits.append("%d %s" % [int(entry.count), str(Game.defs.craft[entry.id].name)])
-	box.add_child(ThemeKit.label("Rack: " + ", ".join(craft_bits), 13, Color("9fd0c8")))
+	var rack := ThemeKit.label("Rack: " + ", ".join(craft_bits), 13, Color("9fd0c8"))
+	rack.name = "Rack"
+	rack.autowrap_mode = TextServer.AUTOWRAP_OFF
+	box.add_child(rack)
 	var choose := ThemeKit.button("Take the %s" % hull.callsign)
 	choose.pressed.connect(_choose.bind(class_id))
 	box.add_child(choose)
@@ -342,7 +466,9 @@ func _preview(class_id: String, modules: Array, caption: String) -> VBoxContaine
 	preview.custom_minimum_size = Vector2(140, 110)
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(preview)
-	col.add_child(ThemeKit.label(caption, 12, Color("8a7344")))
+	var caption_line := ThemeKit.label(caption, 12, Color("8a7344"))
+	caption_line.autowrap_mode = TextServer.AUTOWRAP_OFF
+	col.add_child(caption_line)
 	return col
 
 

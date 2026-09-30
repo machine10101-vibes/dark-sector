@@ -41,9 +41,9 @@ func _ready() -> void:
 func place(screen: Vector2, dock: float = 8.0, short: bool = false) -> void:
 	position = Vector2.ZERO
 	size = screen
-	var joy_size := 112.0 if short else 148.0
-	radius = 46.0 if short else 60.0
-	var gun := 72.0 if short else 88.0
+	var joy_size := 96.0 if short else 148.0
+	radius = 40.0 if short else 60.0
+	var gun := 64.0 if short else 88.0
 	var base := screen.y - dock
 	joy.position = Vector2(8, base - joy_size - 4)
 	joy.size = Vector2(joy_size, joy_size)
@@ -61,8 +61,11 @@ func place(screen: Vector2, dock: float = 8.0, short: bool = false) -> void:
 
 
 func band_top(screen: Vector2, short: bool) -> float:
-	var joy_size := 112.0 if short else 148.0
-	return screen.y - 8.0 - joy_size - 8.0
+	var joy_size := 96.0 if short else 148.0
+	var gun := 64.0 if short else 88.0
+	var cluster := gun + 56.0
+	var pad_h := maxf(joy_size, cluster)
+	return screen.y - 8.0 - pad_h - 10.0
 
 
 func _process(_delta: float) -> void:

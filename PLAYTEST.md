@@ -11,15 +11,16 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 7. **Board.** On the pad, Board. Take Seal Aegis Prime. Probe. It reads Aegis Prime. When that dossier seals while Moored, or the next time you are on the pad, the log pays 80 and the helm reads Purse 80. Take the ring crate, fly to the ice ring, return until Moored. The log pays 120 and the crate leaves the hold.
 8. **Chart.** Cast off and hold W past the band. Speed stays above 0. The chart shows Aegis Prime, Homestead Road, Green Spine, and Writ Lane. The log does not lock you on a scrape.
 
-## Ready — Beta #4 yard and glass
+## Ready — Beta #4 phone reflow
 
-Pages build. One fresh Needle. Check three windows: a desk about 1280×720, a phone portrait about 390×844, and a phone landscape about 844×390. The haul loop already passed. This pass is the picture and the glass.
+Pages build. One fresh Needle. The desk at 1280×720 already passed title, 3D ship-select, and helm hierarchy — do not regress it. This pass is the phone: portrait about 390×844, then landscape about 844×390. The haul loop already passed (Ice ring meters fall, then Helion Dock meters fall, Purse 200).
 
-1. **Title.** The slate is glass over a lit Helion limb, ice, and a twinkling starfield. New keel, Host, Join, and Continue stay on the glass. No chip or primary runs off the screen. Continue stays dark, **No log on the slate**, until a log exists.
-2. **Ship-select.** New keel. Needle, Barn, and Beak are lit 3D hulls on a turntable under a key light. Hover a card, or on a phone make that card the top one. The yard hull swaps. Take the Needle still moors at Helion Dock. Cards and Take stay reachable. Touch targets are usable.
-3. **Helm HUD.** Speed and Purse are the strong chips. Cast off, Board, Quests, and Probe stay on the glass and do not cover each other. On a phone the stick and gun sit under that bar and stay on screen. Hold and Stick stay reachable. The page hides the origin overlay.
-4. **In-world sample.** The Needle reads as metal with a hot aft. Aegis is a limb. The ice has sparkle. A rock or piece of debris reads as rock, not a flat card. Do not re-fly the whole haul unless the ribbon looks wrong. If you do: Ice ring meters fall to the touch, then Helion Dock meters fall to Moored, and Purse is 200 when the scan already paid.
-5. **Solo.** Host with no listen port still opens the helm and the log says flying solo. Join returns to the slate. New keel never opens a socket.
+1. **Portrait title.** The slate is glass over the Helion limb. New keel stays on the glass. Continue stays dark, **No log on the slate**, until a log exists, and that line is fully on the screen.
+2. **Portrait ship-select.** New keel. Needle, Barn, and Beak are three cards. Each card shows the callsign, the class, and Take. No card clips the glass or runs off the screen. Take the Needle still moors at Helion Dock. The yard hull above the cards swaps when a card is the one you are on.
+3. **Landscape title.** Turn the phone sideways. New keel and Continue (or **No log on the slate**) are both fully on the glass. Nothing is cut off the bottom or the right edge.
+4. **Landscape ship-select.** The three cards sit in one row. Each Take is on screen. Back is on screen. No card spills past the glass.
+5. **Landscape helm.** Speed and Purse read on the status glass. Cast off, Board, Quests, and Probe sit on the bar and do not cover each other or the status line. The stick and the gun sit under that bar and stay on screen.
+6. **Solo, unchanged.** Host with no listen port still opens the helm and the log says flying solo. Join returns to the slate. New keel never opens a socket.
 
 ## Ready — ring haul
 
