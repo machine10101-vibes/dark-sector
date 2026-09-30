@@ -36,7 +36,13 @@ uniform float city = 0.0;
 uniform float seed = 0.0;
 uniform float spin = 0.0;
 " + _NOISE + "void vertex() {
-	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	vec3 nrm = normalize(NORMAL);
+	float lift = fbm(nrm * 4.2 + vec3(seed, 0.4, seed * 0.3));
+	float lift_x = fbm((nrm + vec3(0.025, 0.0, 0.0)) * 4.2 + vec3(seed, 0.4, seed * 0.3));
+	float lift_y = fbm((nrm + vec3(0.0, 0.025, 0.0)) * 4.2 + vec3(seed, 0.4, seed * 0.3));
+	vec3 bumped = normalize(nrm + vec3(lift_x - lift, lift_y - lift, (lift_x + lift_y) * 0.5 - lift) * 3.2);
+	VERTEX += nrm * (lift - 0.48) * 0.011 * length(VERTEX);
+	wnorm = normalize((MODEL_MATRIX * vec4(bumped, 0.0)).xyz);
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
@@ -59,6 +65,11 @@ void fragment() {
 	float polar = smoothstep(0.55, 0.92, abs(n.y));
 	float ice_cap = fbm(n * 6.0 + vec3(seed, 4.0, 0.2));
 	terrain = mix(terrain, vec3(0.86, 0.91, 0.94) * (0.85 + 0.2 * ice_cap), polar * 0.88);
+	float bowl = noise3(n * 6.5 + vec3(seed * 2.2, 3.1, 0.4));
+	float crater = smoothstep(0.68, 0.84, bowl);
+	float rim_c = smoothstep(0.58, 0.7, bowl) * (1.0 - crater);
+	terrain = mix(terrain, terrain * vec3(0.45, 0.42, 0.4), crater * land_w * 0.85);
+	terrain += vec3(0.18, 0.16, 0.13) * rim_c * land_w;
 	float mottled = fbm(wpos * 0.0055 + vec3(seed, 2.2, 0.4));
 	float fleck = fbm(wpos * 0.016 + n * 3.0);
 	terrain *= 0.74 + 0.38 * mottled;
@@ -91,7 +102,8 @@ void fragment() {
 		vec3 cell = fract(n * 22.0 + vec3(seed));
 		float window = step(0.72, cell.x) * step(0.72, cell.y);
 		float block = step(0.18, cell.z);
-		lamps = window * block * cluster * clamp(-ndl + 0.12, 0.0, 1.0) * land_w;
+		float artery = step(0.9, fract(n.x * 9.0 + seed)) + step(0.9, fract(n.z * 9.0 + seed));
+		lamps = (window * block + artery * 0.28) * cluster * clamp(-ndl + 0.12, 0.0, 1.0) * land_w;
 	}
 	float shore = 1.0 - smoothstep(0.0, 0.035, abs(field - 0.5));
 	col += vec3(0.9, 0.93, 0.88) * shore * day * 0.55;
@@ -178,10 +190,12 @@ void fragment() {
 	float facing = clamp(dot(n, eye), 0.0, 1.0);
 	float limb = pow(facing, 0.55);
 	float dark = mix(0.42, 1.0, limb);
-	float grain = fbm(n * 9.0);
-	float cells = fbm(n * 22.0);
-	vec3 hot = mix(albedo.rgb * 0.72, vec3(1.0, 0.96, 0.88), 0.55);
-	vec3 col = hot * dark * (0.78 + 0.28 * grain) * (0.9 + 0.16 * cells);
+	float grain = fbm(n * 11.0 + vec3(TIME * 0.04));
+	float cells = fbm(n * 26.0 + vec3(TIME * 0.07, 1.2, 0.3));
+	float spot = smoothstep(0.58, 0.82, fbm(n * 4.5 + vec3(TIME * 0.015)));
+	vec3 hot = mix(albedo.rgb * 0.62, vec3(1.0, 0.97, 0.9), 0.62);
+	vec3 col = hot * dark * (0.7 + 0.4 * grain) * (0.82 + 0.28 * cells);
+	col = mix(col, col * vec3(0.55, 0.38, 0.22), spot * 0.42);
 	ALBEDO = col;
 	EMISSION = col * (0.85 + 0.25 * facing);
 }
@@ -192,18 +206,22 @@ render_mode blend_mix, unshaded, cull_disabled, depth_draw_never;
 varying vec3 wnorm;
 varying vec3 wpos;
 uniform vec4 albedo : source_color = vec4(1.0, 0.8, 0.5, 1.0);
-void vertex() {
+" + _NOISE + "void vertex() {
 	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.25);
-	float ray = 0.62 + 0.38 * sin(atan(n.y, n.x) * 14.0);
-	ALBEDO = albedo.rgb;
-	EMISSION = albedo.rgb * 0.6;
-	ALPHA = fres * fres * 0.7 * ray;
+	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.15);
+	float ang = atan(n.y, n.x);
+	float gust = fbm(n * 3.4 + vec3(TIME * 0.05, 0.2, TIME * 0.02));
+	float ray = pow(0.5 + 0.5 * sin(ang * 13.0 + gust * 5.0 + TIME * 0.35), 2.4);
+	float spike = pow(max(sin(ang * 27.0 - TIME * 0.55 + gust * 3.0), 0.0), 10.0);
+	vec3 col = mix(albedo.rgb, vec3(1.0, 0.95, 0.82), spike * 0.65);
+	ALBEDO = col;
+	EMISSION = col * (0.7 + spike * 1.4);
+	ALPHA = fres * fres * (0.28 + 0.72 * ray) * (0.62 + spike);
 }
 "
 
@@ -243,6 +261,8 @@ void fragment() {
 	col = mix(col, col * vec3(0.7, 0.68, 0.62), wear * 0.4);
 	float stripe = smoothstep(1.35, 0.05, abs(local_pos.z));
 	col = mix(col, col * vec3(1.04, 1.08, 1.02), stripe * deck * 0.4);
+	float scratch = smoothstep(0.72, 0.9, fract(sin(local_pos.x * 3.7 + local_pos.z * 19.0) * 91.3));
+	col = mix(col, col * vec3(0.62, 0.64, 0.66), scratch * 0.35);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
 	vec3 halfv = normalize(normalize(vec3(0.25, 1.0, 0.12)) + eye);
 	float spec = pow(clamp(dot(wn, halfv), 0.0, 1.0), 64.0);
@@ -303,6 +323,7 @@ uniform vec4 albedo : source_color = vec4(0.84, 0.9, 0.94, 0.9);
 uniform vec3 planet_pos = vec3(0.0);
 uniform vec3 to_star = vec3(1.0, 0.0, 0.0);
 uniform float seed = 0.2;
+uniform float glitter = 1.0;
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
@@ -315,8 +336,12 @@ void fragment() {
 	col *= 1.0 - max(gap, lane * 0.65) * 0.8;
 	float grit = fract(sin(dot(UV, vec2(91.7, 47.3)) + seed) * 43758.5);
 	col *= 0.84 + 0.16 * grit;
-	float spark = step(0.74, fract(sin(dot(UV * 48.0, vec2(19.1, 7.7)) + seed) * 43758.5));
-	col += vec3(0.94, 0.98, 1.0) * spark * 0.72;
+	float cell = floor(UV.y * 72.0 + TIME * 0.4);
+	float spark = step(0.8, fract(sin(cell * 12.9 + floor(u * 18.0) * 3.1 + seed * 9.0) * 43758.5));
+	float tw = pow(max(sin(TIME * 4.8 + cell), 0.0), 3.0);
+	col += vec3(0.95, 0.98, 1.0) * spark * tw * 1.45 * glitter;
+	float lane_glint = pow(max(sin(u * 42.0 - TIME * 1.7 + seed * 3.0), 0.0), 8.0);
+	col += vec3(0.8, 0.93, 1.0) * lane_glint * 0.4 * glitter;
 	vec3 radial = wpos - planet_pos;
 	float lit = 0.7;
 	if (dot(radial, radial) > 4.0) {
@@ -589,12 +614,13 @@ func _sync_props(sim) -> void:
 				center += point
 			if verts.size() > 0:
 				center /= float(verts.size())
-			var local := PackedVector2Array()
-			for point in verts:
-				local.append(point - center)
 			var span := float(row.get("size", 12.0))
-			chunk.mesh = _prism(local, maxf(8.0, span * 0.62))
-			chunk.transform = _flat_xform(center, float(absi(hash(str(index))) % 7) * 0.2, 0.0)
+			var radius := maxf(8.0, span * 0.72)
+			chunk.mesh = _rock_mesh(index + 3, radius)
+			var tumble := float(absi(hash(str(index))) % 628) * 0.01
+			var laid := _flat_xform(center, tumble, radius * 0.45)
+			laid.basis = laid.basis * Basis(Vector3(1.0, 0.0, 0.0), 0.55)
+			chunk.transform = laid
 			var stone := ShaderMaterial.new()
 			stone.shader = _rock_shader
 			stone.set_shader_parameter("albedo", Color(str(row.get("tint", "#6a6258"))))
@@ -611,9 +637,15 @@ func _sync_props(sim) -> void:
 		index += 1
 		if str(scrap.get_meta("built", "")) != "yes":
 			var scale := float(row.get("scale", 1.0))
-			var poly := _trash_poly(int(row.get("kind", 0)), scale)
-			scrap.mesh = _prism(poly, maxf(4.0, 5.5 * scale))
+			var radius := maxf(6.0, 9.5 * scale)
+			scrap.mesh = _rock_mesh(index + 40, radius)
 			scrap.material_override = _hull_mat(Color("6a5344"))
+			var chip := MeshInstance3D.new()
+			chip.name = "Chip"
+			chip.mesh = _rock_mesh(index + 90, radius * 0.46)
+			chip.position = Vector3(radius * 0.85, radius * 0.15, radius * 0.28)
+			chip.material_override = _rock_shader_mat(Color("5c4638"), float(index) * 0.2)
+			scrap.add_child(chip)
 			scrap.set_meta("built", "yes")
 		scrap.visible = not on_chart
 		scrap.transform = _flat_xform(row.pos, float(row.rot), 1.0)
@@ -701,6 +733,7 @@ func _sync_props(sim) -> void:
 		ring_mat.set_shader_parameter("albedo", Color(0.72, 0.86, 0.74, 0.55))
 		ring_mat.set_shader_parameter("planet_pos", chart(sim.beacon_pos, 0.0))
 		ring_mat.set_shader_parameter("to_star", Vector3(0.0, 1.0, 0.0))
+		ring_mat.set_shader_parameter("glitter", 0.0)
 		halo.material_override = ring_mat
 		halo.set_meta("built", "yes")
 	halo.visible = not on_chart
@@ -980,16 +1013,14 @@ func _sync_wrecks(sim) -> void:
 		var hulk := _prop("wreck%d" % index)
 		index += 1
 		if str(hulk.get_meta("built", "")) != "yes":
-			var poly := PackedVector2Array([Vector2(12, 2), Vector2(-6, 9), Vector2(-14, -2), Vector2(3, -8)])
-			hulk.mesh = _prism(poly, 7.0)
+			hulk.mesh = _rock_mesh(index + 11, 11.0)
 			hulk.material_override = _hull_mat(Color("5a4038"))
 			hulk.set_meta("built", "yes")
-		hulk.transform = _flat_xform(row.pos, 0.4, 1.0)
+		hulk.transform = _flat_xform(row.pos, 0.4, 5.0)
 		var shard := _prop("wreckbit%d" % (index - 1))
 		if str(shard.get_meta("built", "")) != "yes":
-			var bit := PackedVector2Array([Vector2(5, 1), Vector2(-4, 3), Vector2(-6, -1), Vector2(2, -3)])
-			shard.mesh = _prism(bit, 3.4)
-			shard.material_override = _hull_mat(Color("3a2a26"))
+			shard.mesh = _rock_mesh(index + 21, 4.6)
+			shard.material_override = _rock_shader_mat(Color("3a2a26"), float(index))
 			shard.set_meta("built", "yes")
 		var pos: Vector2 = row.pos
 		shard.transform = _flat_xform(pos + Vector2(8.0, 6.0), 1.1, 2.4)
@@ -1002,17 +1033,13 @@ func _sync_meteors(sim) -> void:
 		var row: Dictionary = rock
 		var node := _prop("meteor%d" % index)
 		index += 1
-		if node.mesh == null:
-			var ball := SphereMesh.new()
-			ball.radius = float(row.get("size", 4.0)) * 2.2
-			ball.height = ball.radius * 2.0
-			node.mesh = ball
-			var mat := ShaderMaterial.new()
-			mat.shader = _rock_shader
-			mat.set_shader_parameter("albedo", Color("8a3c22"))
-			mat.set_shader_parameter("seed", float(index) * 0.37)
-			node.material_override = mat
+		if str(node.get_meta("built", "")) != "yes":
+			var radius := float(row.get("size", 4.0)) * 2.2
+			node.mesh = _rock_mesh(index + 17, radius)
+			node.material_override = _rock_shader_mat(Color("8a3c22"), float(index) * 0.37)
+			node.set_meta("built", "yes")
 		node.position = chart(row.pos, float(row.get("size", 4.0)))
+		node.rotation = Vector3(float(index) * 0.4, float(index) * 0.7, 0.2)
 
 
 func _sync_claim(sim) -> void:
@@ -1308,6 +1335,14 @@ func _sync_density(sim) -> void:
 			hull.size = Vector3(18.0, 6.0, 8.0)
 			craft.mesh = hull
 			craft.material_override = _hull_mat(Color("8a9390"))
+			var nose := MeshInstance3D.new()
+			nose.name = "Nose"
+			var wedge := BoxMesh.new()
+			wedge.size = Vector3(8.0, 3.2, 4.2)
+			nose.mesh = wedge
+			nose.position = Vector3(12.0, 0.3, 0.0)
+			nose.material_override = _hull_mat(Color("9aa39a"))
+			craft.add_child(nose)
 		craft.position = chart(row.pos, 8.0)
 		craft.visible = int(sim.layer) == ScaleFrame.BAND
 	var pin := _prop("claim_pin")
@@ -1594,8 +1629,8 @@ func _body_node(bid: String) -> Node3D:
 	var ball := MeshInstance3D.new()
 	ball.name = "Ball"
 	var sphere := SphereMesh.new()
-	sphere.radial_segments = 96
-	sphere.rings = 48
+	sphere.radial_segments = 120
+	sphere.rings = 60
 	ball.mesh = sphere
 	var mat := ShaderMaterial.new()
 	mat.shader = _planet_shader
@@ -1672,6 +1707,7 @@ func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3) 
 	ring_mat.set_shader_parameter("planet_pos", node.position)
 	ring_mat.set_shader_parameter("to_star", to_star)
 	ring_mat.set_shader_parameter("seed", 0.2)
+	ring_mat.set_shader_parameter("glitter", 1.0)
 	var outer_mat := outer.material_override as ShaderMaterial
 	var dust := ice
 	dust.a = 0.42
@@ -1679,6 +1715,9 @@ func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3) 
 	outer_mat.set_shader_parameter("planet_pos", node.position)
 	outer_mat.set_shader_parameter("to_star", to_star)
 	outer_mat.set_shader_parameter("seed", 1.4)
+	outer_mat.set_shader_parameter("glitter", 0.65)
+	if str(row.get("ring_kind", "")) == "ice":
+		_ice_sparks(ring, radius + band * 1.25, band)
 
 
 func _sync_moon(node: Node3D, sim, row: Dictionary, radius: float) -> void:
@@ -1956,6 +1995,7 @@ func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array) 
 		circle_i += 1
 	_add_bridge(holder, class_id, height, float(geom.tail))
 	_mount_roles(holder, class_id, shapes, height)
+	_dress_volume(holder, class_id, height)
 
 
 func _signature_mount(class_id: String) -> Array:
@@ -2237,10 +2277,11 @@ func _sync_sky(sim) -> void:
 		dot.rings = 4
 		mm.mesh = dot
 		_sky.multimesh = mm
-		var mat := StandardMaterial3D.new()
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.vertex_color_use_as_albedo = true
-		_sky.material_override = mat
+		var sky_mat := ShaderMaterial.new()
+		var twinkle := Shader.new()
+		twinkle.code = "shader_type spatial; render_mode unshaded, cull_disabled; void fragment() { float tw = 0.42 + 0.58 * sin(TIME * (1.1 + COLOR.r * 2.8) + COLOR.g * 17.0); ALBEDO = COLOR.rgb * tw; EMISSION = COLOR.rgb * tw * 0.85; }"
+		sky_mat.shader = twinkle
+		_sky.material_override = sky_mat
 		_sky.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_sky)
 	var mm := _sky.multimesh
@@ -2399,7 +2440,9 @@ func _flat_xform(pos: Vector2, rot: float, height: float) -> Transform3D:
 
 
 func _hull_part(part: String) -> bool:
-	if part == "Plate" or part == "Deck" or part.begins_with("TrimC"):
+	if part == "Plate" or part == "Deck" or part == "Keel" or part.begins_with("TrimC"):
+		return true
+	if part.begins_with("Panel") or part.begins_with("Vane") or part.begins_with("Rib") or part.begins_with("Cheek"):
 		return true
 	if part.begins_with("Trim") and part.trim_prefix("Trim").is_valid_int():
 		return true
@@ -2618,6 +2661,162 @@ func _metal(color: Color) -> StandardMaterial3D:
 	mat.metallic = 0.62
 	mat.roughness = 0.38
 	return mat
+
+
+func _rock_shader_mat(color: Color, seed: float) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = _rock_shader
+	mat.set_shader_parameter("albedo", color)
+	mat.set_shader_parameter("seed", seed)
+	return mat
+
+
+func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
+	var bucket := int(round(radius))
+	var key := "rockvol|%d|%d" % [posmod(seed, 11), bucket]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var lat := 6
+	var lon := 9
+	var rng := RandomNumberGenerator.new()
+	rng.seed = absi(seed) + 17
+	var rads := PackedFloat32Array()
+	rads.resize((lat + 1) * lon)
+	var wobble := 0.0
+	for yi in lat + 1:
+		for xi in lon:
+			wobble = 0.62 + rng.randf() * 0.58
+			if (yi + xi) % 3 == 0:
+				wobble *= 0.76
+			if yi == 0 or yi == lat:
+				wobble = 0.72 + rng.randf() * 0.2
+			rads[yi * lon + xi] = wobble
+	var a := Vector3.ZERO
+	var b := Vector3.ZERO
+	var c := Vector3.ZERO
+	var d := Vector3.ZERO
+	var nrm := Vector3.UP
+	for y0 in lat:
+		for x0 in lon:
+			a = _rock_vert(y0, x0, lat, lon, rads, radius)
+			b = _rock_vert(y0, x0 + 1, lat, lon, rads, radius)
+			c = _rock_vert(y0 + 1, x0 + 1, lat, lon, rads, radius)
+			d = _rock_vert(y0 + 1, x0, lat, lon, rads, radius)
+			nrm = (b - a).cross(d - a)
+			if nrm.length_squared() < 0.0001:
+				nrm = a.normalized()
+			_rock_tri(st, a, b, d, nrm.normalized())
+			nrm = (c - b).cross(d - b)
+			if nrm.length_squared() < 0.0001:
+				nrm = d.normalized()
+			_rock_tri(st, b, c, d, nrm.normalized())
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _rock_vert(y: int, x: int, lat: int, lon: int, rads: PackedFloat32Array, radius: float) -> Vector3:
+	var yy := clampi(y, 0, lat)
+	var xx := posmod(x, lon)
+	var theta := float(yy) / float(lat) * PI
+	var phi := float(xx) / float(lon) * TAU
+	var wobble := rads[yy * lon + xx]
+	var r := radius * wobble
+	return Vector3(sin(theta) * cos(phi), cos(theta), sin(theta) * sin(phi)) * r
+
+
+func _rock_tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, nrm: Vector3) -> void:
+	st.set_normal(nrm)
+	st.add_vertex(a)
+	st.set_normal(nrm)
+	st.add_vertex(b)
+	st.set_normal(nrm)
+	st.add_vertex(c)
+
+
+func _ice_sparks(ring: MeshInstance3D, mid: float, band: float) -> void:
+	if ring.get_node_or_null("Sparks") != null:
+		return
+	var sparks := Node3D.new()
+	sparks.name = "Sparks"
+	ring.add_child(sparks)
+	var ang := 0.0
+	var rad := 0.0
+	var s := 0.0
+	for chip_i in 28:
+		var chip := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		s = maxf(1.8, band * 0.16) * (0.7 + float(chip_i % 4) * 0.18)
+		box.size = Vector3(s, s * 0.28, s * 0.55)
+		chip.mesh = box
+		ang = float(chip_i) * TAU / 28.0 + float(chip_i * chip_i) * 0.002
+		rad = mid + sin(float(chip_i) * 1.7) * band * 0.28
+		chip.position = Vector3(cos(ang) * rad, maxf(1.2, band * 0.08), sin(ang) * rad)
+		chip.rotation.y = ang
+		var film := ShaderMaterial.new()
+		var blink := Shader.new()
+		blink.code = "shader_type spatial; render_mode blend_mix, unshaded, cull_disabled, depth_draw_never; uniform float phase = 0.0; void fragment() { float tw = pow(max(sin(TIME * 5.2 + phase), 0.0), 5.0); ALBEDO = vec3(0.93, 0.97, 1.0); EMISSION = ALBEDO * (1.4 + tw * 7.0); ALPHA = 0.2 + tw * 0.8; }"
+		film.shader = blink
+		film.set_shader_parameter("phase", float(chip_i) * 0.73)
+		chip.material_override = film
+		chip.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		sparks.add_child(chip)
+
+
+func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
+	var nose := float(holder.get_meta("nose", 40.0))
+	var tail := float(holder.get_meta("tail", -16.0))
+	var span := maxf(nose - tail, 12.0)
+	var belly := MeshInstance3D.new()
+	belly.name = "Keel"
+	var ball := SphereMesh.new()
+	ball.radius = height * 0.22
+	ball.height = height * 0.36
+	ball.radial_segments = 14
+	ball.rings = 8
+	belly.mesh = ball
+	belly.position = Vector3(tail + span * 0.42, height * 0.16, 0.0)
+	belly.scale = Vector3(span / maxf(ball.radius, 1.0) * 0.22, 0.72, 0.9)
+	belly.material_override = _hull_mat(Color("7a8084"))
+	holder.add_child(belly)
+	var x := 0.0
+	var z := 0.0
+	for i in 5:
+		var plate := MeshInstance3D.new()
+		plate.name = "Panel%d" % i
+		var box := BoxMesh.new()
+		box.size = Vector3(span * 0.1, 0.45, maxf(height * 0.16, 2.4))
+		plate.mesh = box
+		x = tail + span * (0.16 + float(i) * 0.15)
+		z = height * 0.2 if i % 2 == 0 else -height * 0.2
+		plate.position = Vector3(x, height * 0.72, z)
+		plate.material_override = _hull_mat(Color("8e9498"))
+		holder.add_child(plate)
+	if class_id == "anvil":
+		_fairing(holder, "RibP", Vector3(span * 0.16, 1.1, 3.2), Vector3(tail + span * 0.4, height * 0.55, 8.0))
+		_fairing(holder, "RibS", Vector3(span * 0.16, 1.1, 3.2), Vector3(tail + span * 0.4, height * 0.55, -8.0))
+	elif class_id == "kestrel":
+		var port := _fairing(holder, "CheekP", Vector3(span * 0.2, 0.7, 2.4), Vector3(tail + span * 0.55, height * 0.34, 6.5))
+		port.rotation.y = -0.45
+		var starboard := _fairing(holder, "CheekS", Vector3(span * 0.2, 0.7, 2.4), Vector3(tail + span * 0.55, height * 0.34, -6.5))
+		starboard.rotation.y = 0.45
+	else:
+		_fairing(holder, "VaneP", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 0.78, 1.4))
+		_fairing(holder, "VaneS", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 0.78, -1.4))
+
+
+func _fairing(holder: Node3D, part_name: String, size: Vector3, at: Vector3) -> MeshInstance3D:
+	var node := MeshInstance3D.new()
+	node.name = part_name
+	var box := BoxMesh.new()
+	box.size = size
+	node.mesh = box
+	node.position = at
+	node.material_override = _hull_mat(Color("9aa0a6"))
+	holder.add_child(node)
+	return node
 
 
 func _prism(poly: PackedVector2Array, height: float, top_scale: float = 0.86) -> ArrayMesh:
