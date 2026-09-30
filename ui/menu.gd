@@ -20,6 +20,9 @@ var root: Control
 var stage: SubViewportContainer
 var yard_line: Label
 var pinned_keel := ""
+var slate_glass: Control
+var slate_scroll: ScrollContainer
+var select_glass: Control
 
 
 func _ready() -> void:
@@ -34,10 +37,27 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.theme = ThemeKit.build()
 	add_child(root)
+	slate_glass = Control.new()
+	slate_glass.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slate_glass.clip_contents = true
+	root.add_child(slate_glass)
+	var slate_panel := Panel.new()
+	slate_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slate_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	slate_panel.add_theme_stylebox_override("panel", ThemeKit.veil())
+	slate_glass.add_child(slate_panel)
+	slate_scroll = ScrollContainer.new()
+	slate_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	slate_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	slate_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slate_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	slate_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	slate_glass.add_child(slate_scroll)
 	root_box = VBoxContainer.new()
-	root_box.custom_minimum_size = Vector2(520, 280)
-	root_box.add_theme_constant_override("separation", 10)
-	root.add_child(root_box)
+	root_box.custom_minimum_size = Vector2(280, 0)
+	root_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root_box.add_theme_constant_override("separation", 8)
+	slate_scroll.add_child(root_box)
 	root_box.add_child(ThemeKit.label("DARK SECTOR", 42, Color("e6d7bf")))
 	var sky := "HELION DOCK"
 	if Game.defs.has("system"):
@@ -76,10 +96,24 @@ func _ready() -> void:
 	root_box.add_child(note)
 	if not OS.has_feature("web"):
 		root_box.add_child(quit)
+	select_glass = Control.new()
+	select_glass.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	select_glass.clip_contents = true
+	select_glass.visible = false
+	root.add_child(select_glass)
+	var select_panel := Panel.new()
+	select_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	select_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	select_panel.add_theme_stylebox_override("panel", ThemeKit.veil())
+	select_glass.add_child(select_panel)
 	select_box = VBoxContainer.new()
 	select_box.add_theme_constant_override("separation", 8)
-	select_box.visible = false
-	root.add_child(select_box)
+	select_box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	select_box.offset_left = 8
+	select_box.offset_top = 8
+	select_box.offset_right = -8
+	select_box.offset_bottom = -8
+	select_glass.add_child(select_box)
 	select_box.add_child(ThemeKit.label("Choose the keel. The other two stay in someone else's yard.", 16, Color("cbb892")))
 	yard_line = ThemeKit.label("Needle is in the yard.", 14, Color("9eecf5"))
 	select_box.add_child(yard_line)
@@ -114,23 +148,44 @@ func _fit() -> void:
 		stage.fit(screen)
 	root.position = Vector2.ZERO
 	root.size = screen
-	var wide := minf(460.0, screen.x - 24.0)
-	var tall := minf(520.0, screen.y * 0.72)
-	var left := 28.0 if screen.x > 860.0 else 12.0
-	root_box.position = Vector2(left, maxf(16.0, screen.y * 0.06))
-	root_box.size = Vector2(wide, tall)
+	var phone := screen.x < 860.0
+	var landscape := screen.x > screen.y
+	var margin := 12.0
+	var col_w := minf(440.0, screen.x - margin * 2.0)
+	var col_h := screen.y - margin * 2.0
+	if phone and landscape:
+		col_w = minf(300.0, screen.x * 0.46)
+	elif phone:
+		col_h = minf(screen.y * 0.62, screen.y - margin * 2.0)
+	if slate_glass != null:
+		slate_glass.position = Vector2(margin, margin)
+		slate_glass.size = Vector2(col_w, col_h)
+	if root_box != null:
+		root_box.custom_minimum_size = Vector2(maxf(160.0, col_w - 36.0), 0)
 	if address_line != null:
-		address_line.custom_minimum_size = Vector2(minf(480.0, wide - 8.0), 40)
-	var select_h := minf(340.0, screen.y * 0.46) if screen.x > 860.0 else minf(screen.y * 0.58, screen.y - 36.0)
-	select_box.position = Vector2(12, screen.y - select_h - 8.0)
-	select_box.size = Vector2(screen.x - 24.0, select_h)
+		address_line.custom_minimum_size = Vector2(maxf(160.0, col_w - 36.0), 44)
+	var select_pos := Vector2(margin, screen.y * 0.56)
+	var select_size := Vector2(screen.x - margin * 2.0, screen.y * 0.44 - margin)
+	if phone and landscape:
+		select_pos = Vector2(screen.x * 0.5, margin)
+		select_size = Vector2(screen.x * 0.5 - margin, screen.y - margin * 2.0)
+	elif not phone:
+		select_pos = Vector2(margin, screen.y - minf(320.0, screen.y * 0.42))
+		select_size = Vector2(screen.x - margin * 2.0, minf(308.0, screen.y * 0.42) - 4.0)
+	if select_glass != null:
+		select_glass.position = select_pos
+		select_glass.size = select_size
 	if keel_row != null:
-		var stacked := screen.x < 860.0
+		var stacked := phone
 		keel_row.columns = 1 if stacked else 3
+		var show_art := not phone and screen.y >= 640.0
 		for card in keel_row.get_children():
 			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			var card_w := screen.x - 36.0 if stacked else 240.0
-			card.custom_minimum_size = Vector2(card_w, 0)
+			var card_w := select_size.x - 36.0 if stacked else 220.0
+			card.custom_minimum_size = Vector2(maxf(140.0, card_w), 0)
+			var art := card.find_child("Previews", true, false)
+			if art != null:
+				art.visible = show_art
 	backdrop.queue_redraw()
 
 
@@ -155,8 +210,12 @@ func _release_focus() -> void:
 
 func _show_root() -> void:
 	_release_focus()
+	if slate_glass != null:
+		slate_glass.show()
+	if select_glass != null:
+		select_glass.hide()
 	root_box.show()
-	select_box.hide()
+	select_box.show()
 	var has := Game.has_save()
 	continue_button.disabled = not has
 	continue_button.text = "Continue log" if has else "No log on the slate"
@@ -165,6 +224,10 @@ func _show_root() -> void:
 func _show_select(next: String) -> void:
 	_release_focus()
 	intent = next
+	if slate_glass != null:
+		slate_glass.hide()
+	if select_glass != null:
+		select_glass.show()
 	root_box.hide()
 	select_box.show()
 
@@ -247,6 +310,7 @@ func _card(class_id: String) -> PanelContainer:
 	box.add_child(ThemeKit.label(str(hull.callsign), 22))
 	box.add_child(ThemeKit.label(str(hull.class_name), 13, Color("8a7344")))
 	var previews := HBoxContainer.new()
+	previews.name = "Previews"
 	previews.add_theme_constant_override("separation", 4)
 	previews.add_child(_preview(class_id, [], "As launched"))
 	var yard: Array = hull.yard
@@ -292,10 +356,12 @@ class Backdrop extends Control:
 			stars.append(Vector2(rng.randf(), rng.randf()))
 
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, Vector2(size.x, 64.0)), Color(0.02, 0.03, 0.05, 0.42), true)
-		draw_rect(Rect2(Vector2(0.0, size.y - 72.0), Vector2(size.x, 72.0)), Color(0.02, 0.03, 0.05, 0.5), true)
-		draw_line(Vector2(40, 22), Vector2(size.x - 40, 22), Color("8a7344"), 1.0)
-		draw_line(Vector2(40, size.y - 22), Vector2(size.x - 40, size.y - 22), Color("8a7344"), 1.0)
+		if size.x >= 860.0:
+			draw_rect(Rect2(0, 0, minf(520.0, size.x * 0.42), size.y), Color(0.015, 0.02, 0.03, 0.28), true)
+		elif size.y > size.x:
+			draw_rect(Rect2(0, 0, size.x, minf(280.0, size.y * 0.34)), Color(0.015, 0.02, 0.03, 0.22), true)
+		else:
+			draw_rect(Rect2(0, 0, minf(340.0, size.x * 0.48), size.y), Color(0.015, 0.02, 0.03, 0.26), true)
 
 
 class KeelPreview extends Control:

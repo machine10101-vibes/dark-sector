@@ -172,56 +172,91 @@ func _fit() -> void:
 	if pad != null:
 		pad.visible = touch_on
 		if touch_on and pad.has_method("place"):
-			var dock := 118.0 if compact else 108.0
-			pad.place(screen, dock)
+			pad.place(screen, 8.0, screen.y < 520.0)
 		elif not touch_on:
 			Game.clear_flight()
 
 
 func _layout_chrome(screen: Vector2) -> void:
-	var margin := 12.0
-	var secondary_h := 46.0
-	var primary_h := 72.0 if compact else 76.0
-	var helm_w := screen.x - 118.0 if compact else minf(560.0, screen.x - 220.0)
-	if not compact and panel != null and panel.visible:
-		helm_w = minf(helm_w, screen.x - 500.0)
-	helm_w = maxf(200.0, helm_w)
+	var margin := 10.0
+	var short := screen.y < 520.0
+	if helm_name != null:
+		helm_name.visible = not short
+	if helm_flight != null:
+		helm_flight.visible = screen.y >= 430.0
+	if haul_cue != null:
+		haul_cue.add_theme_font_size_override("font_size", 15 if short else 20)
+	var corner := 84.0
+	if hold_button != null:
+		hold_button.position = Vector2(screen.x - corner - 8.0, 8.0)
+		hold_button.size = Vector2(corner, 40.0)
+	if stick_button != null:
+		stick_button.position = Vector2(screen.x - corner - 8.0, 52.0)
+		stick_button.size = Vector2(corner, 40.0)
+	var helm_w := screen.x - margin - corner - 16.0
+	if not compact:
+		helm_w = minf(520.0, screen.x - 220.0)
+		if panel != null and panel.visible:
+			helm_w = minf(helm_w, screen.x - 500.0)
+	helm_w = clampf(helm_w, 148.0, screen.x - margin * 2.0)
+	var primary_h := 56.0 if short else (64.0 if compact else 72.0)
+	var secondary_h := 44.0
+	var pad_top := screen.y - 8.0
+	if touch_on and pad != null and pad.has_method("band_top"):
+		pad_top = pad.band_top(screen, short)
+	var gap := 6.0
+	var secondary_y := pad_top - secondary_h - gap
+	var primary_y := secondary_y - primary_h - gap
+	primary_y = maxf(primary_y, 96.0)
+	secondary_y = primary_y + primary_h + gap
+	var left := margin
+	var right := screen.x - margin
+	if touch_on and not compact:
+		left = 176.0
+		right = screen.x - 210.0
+	var bar_room := right - left
+	_size_primary(compact or short or bar_room < 620.0)
+	if primary_bar != null:
+		var primary_w := right - left
+		if not compact and not touch_on:
+			var hug := primary_row.get_combined_minimum_size().x + 28.0 if primary_row != null else primary_w
+			primary_w = minf(primary_w, maxf(hug, 180.0))
+		primary_bar.position = Vector2(left, primary_y)
+		primary_bar.size = Vector2(maxf(primary_w, 120.0), primary_h)
+	if action_scroll != null:
+		action_scroll.position = Vector2(left, secondary_y)
+		action_scroll.size = Vector2(maxf(right - left, 120.0), secondary_h)
+	var status_top := 8.0
+	var room_bottom := primary_y - 8.0
 	if status_card != null:
-		status_card.position = Vector2(margin, 10)
-		status_card.size = Vector2(helm_w, status_card.get_combined_minimum_size().y)
-	var status_bottom := 150.0
+		status_card.position = Vector2(margin, status_top)
+		var want := status_card.get_combined_minimum_size().y
+		var cap := maxf(72.0, room_bottom - status_top - 8.0)
+		status_card.size = Vector2(helm_w, minf(want, cap))
+		status_card.clip_contents = want > cap + 1.0
+	var status_bottom := status_top + 80.0
 	if status_card != null:
 		status_bottom = status_card.position.y + status_card.size.y
 	if banner != null:
-		banner.position = Vector2(margin, status_bottom + 6.0)
-		banner.size = Vector2(helm_w, 36)
-	var bars_top := screen.y - secondary_h - primary_h - 16.0
-	_size_primary(compact)
-	if primary_bar != null:
-		var primary_w := screen.x - margin * 2.0 if compact else minf(640.0, screen.x - margin * 2.0)
-		var hug := primary_row.get_combined_minimum_size().x + 28.0 if primary_row != null else primary_w
-		if not compact:
-			primary_w = minf(primary_w, maxf(hug, 180.0))
-		primary_bar.position = Vector2(margin, bars_top)
-		primary_bar.size = Vector2(primary_w, primary_h)
-	if action_scroll != null:
-		action_scroll.position = Vector2(margin, screen.y - secondary_h - 8.0)
-		action_scroll.size = Vector2(screen.x - margin * 2.0, secondary_h)
+		var banner_y := status_bottom + 4.0
+		banner.position = Vector2(margin, banner_y)
+		banner.size = Vector2(helm_w, 28.0 if short else 32.0)
+		banner.visible = banner.text != "" and banner_y + banner.size.y < room_bottom - 36.0
 	if log_card != null:
-		if compact:
-			var log_y := status_bottom + 8.0
-			if banner != null and banner.visible and banner.text != "":
-				log_y = banner.position.y + banner.size.y + 6.0
-			log_card.position = Vector2(margin, log_y)
-			log_card.size = Vector2(screen.x - margin * 2.0, 68.0)
-		else:
-			var log_w := minf(620.0, screen.x - margin * 2.0)
-			var log_h := 78.0
-			log_card.position = Vector2(margin, bars_top - log_h - 8.0)
-			log_card.size = Vector2(log_w, log_h)
+		var log_y := status_bottom + 6.0
+		if banner != null and banner.visible:
+			log_y = banner.position.y + banner.size.y + 4.0
+		var log_h := 36.0 if short else (52.0 if compact else 72.0)
+		var fits := log_y + log_h <= room_bottom
+		log_card.position = Vector2(margin, log_y)
+		log_card.size = Vector2(helm_w if compact or short else minf(620.0, screen.x - margin * 2.0), log_h)
+		if log_label != null and log_label.text == "":
+			log_card.visible = false
+		elif fits == false:
+			log_card.visible = false
 	if chat_line != null:
-		chat_line.position = Vector2(margin, bars_top - 40.0)
-		chat_line.size = Vector2(minf(480.0, screen.x - margin * 2.0), 32)
+		chat_line.position = Vector2(margin, maxf(8.0, primary_y - 36.0))
+		chat_line.size = Vector2(minf(420.0, helm_w), 32)
 	if hint_label != null:
 		hint_label.visible = false
 
@@ -229,13 +264,13 @@ func _layout_chrome(screen: Vector2) -> void:
 func _process(_delta: float) -> void:
 	if Game.mode != "sector" or Game.sim == null:
 		return
-	_refresh_helm()
 	if banner != null:
 		var text := ""
 		if Game.sim.banner != "" and Game.sim.banner_t < 9.0:
 			text = Game.sim.banner
 		banner.text = text
 		banner.visible = text != ""
+	_refresh_helm()
 	if not Game.sim.player.alive:
 		dead_box.show()
 		pause_box.hide()
@@ -360,10 +395,10 @@ func _build_helm() -> void:
 	box.add_child(helm_name)
 	box.add_child(helm_flight)
 	box.add_child(stats_grid)
-	stat_hull = _chip("HULL")
-	stat_speed = _chip("0 m/s")
-	stat_heat = _chip("HEAT")
-	stat_purse = _chip("PURSE 0")
+	stat_hull = _chip("HULL", false)
+	stat_speed = _chip("0 m/s", true)
+	stat_heat = _chip("HEAT", false)
+	stat_purse = _chip("PURSE 0", true)
 	box.add_child(helm_zone)
 	haul_cue = ThemeKit.label("", 18, Color("ffd27a"))
 	box.add_child(haul_cue)
@@ -384,12 +419,12 @@ func _build_helm() -> void:
 	log_card.add_child(log_label)
 
 
-func _chip(text: String) -> Label:
+func _chip(text: String, strong: bool) -> Label:
 	var chip := PanelContainer.new()
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chip.add_theme_stylebox_override("panel", ThemeKit.chip_box())
-	var lab := ThemeKit.label(text, 14, Color("e9fbff"))
+	chip.add_theme_stylebox_override("panel", ThemeKit.chip_box(strong))
+	var lab := ThemeKit.label(text, 16 if strong else 13, Color("f4fcff") if strong else Color("c5d6dc"))
 	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	chip.add_child(lab)
 	stats_grid.add_child(chip)
@@ -478,14 +513,19 @@ func _build_dead() -> void:
 
 func _size_primary(is_compact: bool) -> void:
 	var wide := Control.SIZE_EXPAND_FILL if is_compact else Control.SIZE_SHRINK_CENTER
-	var slot := 0.0 if is_compact else 112.0
+	var slot := 0.0 if is_compact else 108.0
+	if cast_button != null:
+		cast_button.text = "Cast" if is_compact else "Cast off"
+		cast_button.add_theme_font_size_override("font_size", 14 if is_compact else 16)
 	for node in [cast_button, dock_button, board_button, quest_button, probe_button]:
 		if node == null:
 			continue
 		var button := node as Button
-		var span := 124.0 if (button == cast_button or button == dock_button) and not is_compact else slot
+		var span := 120.0 if (button == cast_button or button == dock_button) and not is_compact else slot
 		button.size_flags_horizontal = wide
 		button.custom_minimum_size = Vector2(span, 44)
+		if is_compact:
+			button.add_theme_font_size_override("font_size", 14)
 
 
 func _mount_primary() -> void:
@@ -566,7 +606,7 @@ func _build_actions() -> void:
 func _action(text: String, call: Callable) -> void:
 	var node := ThemeKit.button(text, false)
 	node.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	node.custom_minimum_size = Vector2(78, 36)
+	node.custom_minimum_size = Vector2(84, 44)
 	node.pressed.connect(call)
 	action_row.add_child(node)
 
