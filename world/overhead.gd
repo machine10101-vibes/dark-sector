@@ -95,19 +95,22 @@ func _aim() -> void:
 		return
 	var zoom := maxf(Game.zoom, 0.12)
 	var chase: Vector2 = sector._chase_pos()
+	var layer := int(Game.sim.layer)
+	if layer == ScaleFrame.CHART:
+		var well := _chart_well(Game.sim)
+		chase = chase.lerp(well, 0.45)
 	var gate: Variant = WorldCoord.gate()
 	if gate != null:
 		chase = gate.render_of_world(chase)
 	var height := 920.0 / zoom
 	var far := 80000.0
 	var density := 0.000012
-	var layer := int(Game.sim.layer)
 	if layer == ScaleFrame.CHART:
-		height = 52000.0 / zoom
-		far = 420000.0
+		height = 7800.0 / zoom
+		far = 80000.0
 		density = 0.0000025
 	elif layer == ScaleFrame.APPROACH:
-		height = 160.0 / zoom
+		height = 14000.0 / zoom
 		far = 120000.0
 		density = 0.000004
 	elif layer == ScaleFrame.SITE:
@@ -156,6 +159,23 @@ func _aim() -> void:
 	cam3.look_at(target, Vector3(0.0, 0.0, 1.0))
 
 
+func _chart_well(sim) -> Vector2:
+	var best := Vector2.ZERO
+	var best_d := 1.0e12
+	var found := false
+	for body in sim.planets:
+		var row: Dictionary = body
+		var rel: Vector2 = row.chart_km - sim.local_origin
+		var dist: float = rel.distance_to(sim.player.pos)
+		if dist < best_d:
+			best = rel
+			best_d = dist
+			found = true
+	if found == false:
+		return sim.view_focus()
+	return ScaleFrame.chart_view(sim, best)
+
+
 func set_live(on: bool) -> void:
 	if cam3 != null:
 		cam3.current = on
@@ -184,7 +204,12 @@ class ScaleReadout extends Control:
 				if cam.is_position_behind(at):
 					continue
 				var dist := cam.global_position.distance_to(at)
-				if dist > 2600.0:
+				var reach := 2600.0
+				if Game.sim != null:
+					var layer := int(Game.sim.layer)
+					if layer == ScaleFrame.CHART or layer == ScaleFrame.APPROACH:
+						reach = 48000.0
+				if dist > reach:
 					continue
 				ranked.append({"item": item, "at": at, "dist": dist})
 			ranked.sort_custom(Callable(self, "_nearer_tag"))

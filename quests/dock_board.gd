@@ -56,9 +56,9 @@ static func scan_blurb(sim) -> String:
 		return "Filed. The dock already paid %d." % SCAN_PAY
 	if value == "active":
 		if sim.dossier_complete("aegis_prime"):
-			return "The dossier is sealed. Stand the Helion pad for %d." % SCAN_PAY
-		return "Launch a probe on Aegis Prime. Stand the pad when the dossier seals. Pay %d." % SCAN_PAY
-	return "Launch a probe on Aegis Prime, then stand the pad. Pay %d." % SCAN_PAY
+			return "The dossier is sealed. Pay %d is on its way." % SCAN_PAY
+		return "Launch a probe on Aegis Prime. The dock pays %d when the dossier seals." % SCAN_PAY
+	return "Launch a probe on Aegis Prime. Pay %d when the dossier seals." % SCAN_PAY
 
 
 static func haul_blurb(sim) -> String:
@@ -120,8 +120,6 @@ static func _pulse_scan(sim) -> void:
 	if state(sim, "dock_scan") != "active":
 		return
 	if sim.dossier_complete("aegis_prime") == false:
-		return
-	if at_pad(sim) == false:
 		return
 	sim.quest_flags.dock_scan = "done"
 	_pay(sim, SCAN_PAY, "Aegis scan filed. Helion Dock paid %d." % SCAN_PAY)

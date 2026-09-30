@@ -15,6 +15,7 @@ const CHART_KM_PER_UNIT := 40.0
 const BAND_KM_PER_UNIT := 0.1
 const REBASE_KM := 4000.0
 const LIMB_RADIUS := 15000.0
+const CHART_VIEW_RADIUS := 2200.0
 
 
 static func layer_name(layer: int) -> String:
@@ -141,6 +142,22 @@ static func scan_pace(sim, place: Dictionary) -> float:
 		alt += 15.0
 	var pace := 1.0 + alt / 520.0 + radius / 9000.0
 	return clampf(pace, 1.2, 4.2)
+
+
+static func chart_span(sim) -> float:
+	var far := 6000.0
+	for body in sim.planets:
+		var row: Dictionary = body
+		far = maxf(far, soi_km(row) + 1600.0)
+	return far
+
+
+static func chart_view(sim, km: Vector2) -> Vector2:
+	# Chart kilometers are a system across. Fold them into a disk the helm
+	# can read on a phone, without changing the kilometer positions the
+	# layer logic uses.
+	var span := chart_span(sim)
+	return km * (CHART_VIEW_RADIUS / span)
 
 
 static func local_km(sim, pos: Vector2) -> Vector2:
