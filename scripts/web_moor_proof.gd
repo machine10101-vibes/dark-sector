@@ -149,7 +149,7 @@ func _cue_closes(defs: Dictionary) -> void:
 	var gap := start
 	var guard := 0
 	var marked_ring := false
-	while guard < 12:
+	while guard < 80:
 		marked_ring = bool(sim.quest_flags.get("dock_haul_ring", false))
 		if gap <= DockBoard.RING or marked_ring:
 			break
@@ -157,9 +157,14 @@ func _cue_closes(defs: Dictionary) -> void:
 		if aim.length() < 8.0:
 			break
 		sim.player.rot = aim.angle()
-		sim.tick(1.0, burn)
+		var step_dt := 0.05 if gap <= 360.0 else 1.0
+		sim.tick(step_dt, burn)
 		gap = sim.player.pos.distance_to(ring.pos)
-		ranges.append(gap)
+		marked_ring = bool(sim.quest_flags.get("dock_haul_ring", false))
+		if step_dt > 0.5 or gap <= DockBoard.RING or marked_ring:
+			ranges.append(gap)
+		if gap <= DockBoard.RING or marked_ring:
+			break
 		guard += 1
 	var fell := true
 	var prev := ranges[0]
@@ -183,14 +188,40 @@ func _cue_closes(defs: Dictionary) -> void:
 	check(int(sim.layer) == ScaleFrame.BAND, "the cue bearing stays on the band")
 	check(bool(sim.quest_flags.get("dock_haul_ring", false)), "the ring takes the crate")
 	check(DockBoard.haul_line(sim).contains("bring the crate back"), "the return cue names Helion Dock")
+	var home: Vector2 = DockBoard.beam_aim(sim)
+	var nose_home := Vector2.from_angle(sim.player.rot)
+	check(home.length() > 100.0, "the return beam runs from the keel to the pad")
+	check(nose_home.dot(home.normalized()) > 0.99, "the keel faces the pad after the ring")
+	check(sim.player.vel.normalized().dot(home.normalized()) > 0.99, "the way-on swings onto the pad")
+	var dock_ranges: Array[float] = [sim.player.pos.distance_to(sim.beacon_pos)]
 	var back := 0
-	var home := Vector2.ZERO
 	while bool(sim.player.moored) == false and back < 16:
-		home = sim.beacon_pos - sim.player.pos
+		home = DockBoard.beam_aim(sim)
 		if home.length() > 1.0:
 			sim.player.rot = home.angle()
-		sim.tick(1.0, burn)
+		sim.tick(0.2, burn)
 		back += 1
+		if bool(sim.player.moored):
+			dock_ranges.append(0.0)
+		else:
+			dock_ranges.append(sim.player.pos.distance_to(sim.beacon_pos))
+	var dock_fell := true
+	var dock_prev := dock_ranges[0]
+	var dock_step := 1
+	while dock_step < dock_ranges.size():
+		if dock_ranges[dock_step] >= dock_prev - 5.0:
+			dock_fell = false
+		dock_prev = dock_ranges[dock_step]
+		dock_step += 1
+	var dock_text := ""
+	var dock_shown := 0
+	while dock_shown < dock_ranges.size():
+		if dock_shown > 0:
+			dock_text += " → "
+		dock_text += str(int(dock_ranges[dock_shown]))
+		dock_shown += 1
+	print("RETURN TRACE %s" % dock_text)
+	check(dock_fell, "Helion Dock range falls every second along the return beam")
 	check(bool(sim.player.moored), "the return cue moors on the pad")
 	check(DockBoard.purse(sim) == 200, "purse is 200 after the return")
 

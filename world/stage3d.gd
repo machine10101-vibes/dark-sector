@@ -788,11 +788,10 @@ func _sync_props(sim) -> void:
 
 
 func _sync_haul_ring(sim) -> void:
-	if sim.haul_outbound() == false:
-		return
 	var aim: Vector2 = DockBoard.beam_aim(sim)
 	if aim.length() < 8.0:
 		return
+	var inbound: bool = sim.haul_outbound() == false
 	var flash := 0.35 + 0.65 * absf(sin(float(sim.time) * 7.5))
 	var at: Vector2 = sim.player.pos + aim
 	_lay_haul_beam(sim.player.pos, at, flash)
@@ -838,7 +837,8 @@ func _sync_haul_ring(sim) -> void:
 	var pin_paint := pin.material_override as StandardMaterial3D
 	if pin_paint != null:
 		pin_paint.emission_energy_multiplier = 0.8 + flash * 2.4
-	_tag("Ice ring", chart(at + Vector2(18.0, -24.0), 64.0), Color("ffd27a"), 32)
+	var label := "Helion Dock" if inbound else "Ice ring"
+	_tag(label, chart(at + Vector2(18.0, -24.0), 64.0), Color("ffd27a"), 32)
 
 
 func _lay_haul_beam(keel: Vector2, drop: Vector2, flash: float) -> void:

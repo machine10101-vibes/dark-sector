@@ -326,17 +326,15 @@ class ScaleReadout extends Control:
 		var sim = Game.sim
 		if cam == null or font == null or sim == null or sim.player.is_empty():
 			return
-		if sim.has_method("haul_outbound") == false or sim.haul_outbound() == false:
-			return
 		if int(sim.layer) != ScaleFrame.BAND:
 			return
-		var ring = sim.survey_node("aegis_ring")
-		if ring == null:
+		var beam: Vector2 = DockBoard.beam_aim(sim)
+		if beam.length() < 8.0:
 			return
 		var caption := DockBoard.haul_line(sim)
 		if caption == "":
 			return
-		var at := _guide_at(ring.pos, 16.0)
+		var at := _guide_at(sim.player.pos + beam, 16.0)
 		var sp := cam.unproject_position(at)
 		var behind := cam.is_position_behind(at)
 		var margin := 28.0
