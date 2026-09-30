@@ -281,7 +281,7 @@ class ScaleReadout extends Control:
 		var caption := "Helion Dock"
 		var layer := int(sim.layer)
 		if layer == ScaleFrame.BAND:
-			var gap := sim.player.pos.distance_to(sim.beacon_pos)
+			var gap: float = sim.player.pos.distance_to(sim.beacon_pos)
 			caption = "Helion Dock  %d m" % int(gap)
 			at = Vector3(sim.beacon_pos.x, 80.0, -sim.beacon_pos.y)
 		elif layer == ScaleFrame.CHART:
