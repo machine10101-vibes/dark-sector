@@ -11,6 +11,22 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 7. **Board.** On the pad, Board. Take Seal Aegis Prime. Probe. It reads Aegis Prime. When that dossier seals while Moored, or the next time you are on the pad, the log pays 80 and the helm reads Purse 80. Take the ring crate, fly to the ice ring, return until Moored. The log pays 120 and the crate leaves the hold.
 8. **Chart.** Cast off and hold W past the band. Speed stays above 0. The chart shows Aegis Prime, Homestead Road, Green Spine, and Writ Lane. The log does not lock you on a scrape.
 
+## Ready — Beta #4 hull mounts
+
+Pages build. One fresh launch. This pass is the three keels looking like different jobs. The phone reflow already passed.
+
+1. **Needle.** New keel, leave the Needle card up. The yard hull wears a long spine mast and a glass dish on the nose. The line reads **Needle is in the yard. Spine mast.**
+2. **Barn.** Hover the Barn card, or on a phone make that card the top one. The mast is gone. A wide cargo bay sits across the flanks. The line reads **Wide bay.**
+3. **Beak.** Same for the Beak. Wing guns sweep off the cheeks. The line reads **Wing guns.** The three hulls are not the same mesh with a sticker.
+
+## Ready — Beta #3 upgrade functions
+
+Same page. The mounts are hardware. The bolts still do the old jobs.
+
+1. Take the Needle. Board. Fit the survey mast if it is in the yard list. The sensor reach grows. The 3D hull grows a spine, not a bay.
+2. A cargo blister still adds hold. On the Barn it reads as the wide bay. On the Needle it reads as flank pods. The purse path is unchanged: scan 80 on the pad, haul 120 after the ring, Purse 200.
+3. A cheek gun still adds damage. On the Beak the barrels sweep off the wings. Cast off, the haul ribbon, and New keel solo stay as they were.
+
 ## Ready — Beta #4 phone edges
 
 Pages build. One fresh Needle. Two checks, then a glance that the rest still holds.
