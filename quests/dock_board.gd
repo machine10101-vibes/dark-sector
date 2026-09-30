@@ -3,8 +3,12 @@ extends RefCounted
 
 const SCAN_PAY := 80
 const HAUL_PAY := 120
+const SALVAGE_PAY := 40
+const ESCORT_PAY := 60
 const PAD := 220.0
 const RING := 160.0
+const HOLD_REACH := 200.0
+const CUTTER_REACH := 180.0
 const CRATE := "dock_crate"
 const GOOD := "glasswheat"
 const BUY_PRICE := 12
@@ -44,6 +48,20 @@ static func jobs(sim) -> Array:
 			"state": state(sim, "dock_haul"),
 			"blurb": haul_blurb(sim),
 		},
+		{
+			"id": "salvage",
+			"title": "Tow tag at Seized Hold",
+			"pay": SALVAGE_PAY,
+			"state": state(sim, "dock_salvage"),
+			"blurb": salvage_blurb(sim),
+		},
+		{
+			"id": "escort",
+			"title": "Show the Compact the lane",
+			"pay": ESCORT_PAY,
+			"state": state(sim, "dock_escort"),
+			"blurb": escort_blurb(sim),
+		},
 	]
 
 
@@ -76,6 +94,28 @@ static func haul_blurb(sim) -> String:
 	return "Carry a sealed crate to the Aegis ice ring and bring it back. Pay %d." % HAUL_PAY
 
 
+static func salvage_blurb(sim) -> String:
+	var value := state(sim, "dock_salvage")
+	if value == "done":
+		return "Filed. The dock already paid %d for the tow tag." % SALVAGE_PAY
+	if value == "active" and bool(sim.quest_flags.get("dock_salvage_cut", false)):
+		return "The tag is cut. Bring it to the Helion pad. Pay %d." % SALVAGE_PAY
+	if value == "active":
+		return "Target Seized Hold. Strip the tow tag, then stand the pad. Pay %d." % SALVAGE_PAY
+	return "Fly to Seized Hold, strip one tow tag, and bring it back. Pay %d." % SALVAGE_PAY
+
+
+static func escort_blurb(sim) -> String:
+	var value := state(sim, "dock_escort")
+	if value == "done":
+		return "Filed. The dock already paid %d for the lane show." % ESCORT_PAY
+	if value == "active" and bool(sim.quest_flags.get("dock_escort_met", false)):
+		return "The Compact cutter saw the keel. Stand the Helion pad. Pay %d." % ESCORT_PAY
+	if value == "active":
+		return "Target the Compact cutter. Show it the lane, then stand the pad. Pay %d." % ESCORT_PAY
+	return "Fly out to the Compact cutter and come back to the pad. Pay %d." % ESCORT_PAY
+
+
 static func take(sim, job_id: String) -> String:
 	if not at_pad(sim):
 		return "The board is at the Helion Dock pad."
@@ -83,6 +123,10 @@ static func take(sim, job_id: String) -> String:
 		return _take_scan(sim)
 	if job_id == "haul":
 		return _take_haul(sim)
+	if job_id == "salvage":
+		return _take_salvage(sim)
+	if job_id == "escort":
+		return _take_escort(sim)
 	return "That slip is blank."
 
 
@@ -91,6 +135,8 @@ static func pulse(sim, _dt: float) -> void:
 		return
 	_pulse_scan(sim)
 	_pulse_haul(sim)
+	_pulse_salvage(sim)
+	_pulse_escort(sim)
 
 
 static func _take_scan(sim) -> String:
@@ -134,6 +180,42 @@ static func _take_haul(sim) -> String:
 	sim.say("Ring haul taken. Crate aboard. Hold toward the ice ring — don't clear the band yet. Pay %d." % HAUL_PAY)
 	_cue_outbound(sim)
 	return ""
+
+
+static func _take_salvage(sim) -> String:
+	var value := state(sim, "dock_salvage")
+	if value == "done":
+		return "The tow tag is already filed."
+	if value == "active":
+		return "The tow tag is already on the slate."
+	sim.quest_flags.dock_salvage = "active"
+	sim.quest_flags.dock_salvage_cut = false
+	sim.quest_flags.salvage_cue_bucket = -999
+	_face(sim, sim.trash_pos)
+	sim.say("Tow tag taken. Seized Hold is the target. Pay %d on the pad." % SALVAGE_PAY)
+	return ""
+
+
+static func _take_escort(sim) -> String:
+	var value := state(sim, "dock_escort")
+	if value == "done":
+		return "The lane show is already filed."
+	if value == "active":
+		return "The Compact show is already on the slate."
+	sim.quest_flags.dock_escort = "active"
+	sim.quest_flags.dock_escort_met = false
+	sim.quest_flags.escort_cue_bucket = -999
+	_face(sim, cutter_pos(sim))
+	sim.say("Lane show taken. Find the Compact cutter. Pay %d on the pad." % ESCORT_PAY)
+	return ""
+
+
+static func _face(sim, world: Vector2) -> void:
+	if world == Vector2.ZERO:
+		return
+	var face: Vector2 = world - sim.player.pos
+	if face.length() > 8.0:
+		sim.player.rot = face.angle()
 
 
 static func _pulse_scan(sim) -> void:
@@ -181,6 +263,86 @@ static func beam_aim(sim) -> Vector2:
 	if ring == null:
 		return Vector2.ZERO
 	return ring.pos - sim.player.pos
+
+
+## Helm text. A live haul keeps the ice-ring line. Otherwise the open slip.
+static func slip_line(sim) -> String:
+	var haul := haul_line(sim)
+	if haul != "":
+		return haul
+	var salvage := salvage_line(sim)
+	if salvage != "":
+		return salvage
+	return escort_line(sim)
+
+
+static func salvage_line(sim) -> String:
+	if state(sim, "dock_salvage") != "active":
+		return ""
+	if bool(sim.quest_flags.get("dock_salvage_cut", false)):
+		if at_pad(sim):
+			return ""
+		var back: float = sim.player.pos.distance_to(sim.beacon_pos)
+		return "Helion Dock %d m — bring the tag back." % int(back)
+	if sim.trash_pos == Vector2.ZERO:
+		return ""
+	var gap: float = sim.player.pos.distance_to(sim.trash_pos)
+	return "Seized Hold %d m — strip the tag." % int(gap)
+
+
+static func escort_line(sim) -> String:
+	if state(sim, "dock_escort") != "active":
+		return ""
+	if bool(sim.quest_flags.get("dock_escort_met", false)):
+		if at_pad(sim):
+			return ""
+		var back: float = sim.player.pos.distance_to(sim.beacon_pos)
+		return "Helion Dock %d m — the cutter saw you." % int(back)
+	var cutter := cutter_pos(sim)
+	if cutter == Vector2.ZERO:
+		return ""
+	var gap: float = sim.player.pos.distance_to(cutter)
+	return "Compact cutter %d m — show the lane." % int(gap)
+
+
+## World point the glass arrow stands on. Haul still owns it while the crate is out.
+static func cue_point(sim) -> Vector2:
+	var aim := cue_aim(sim)
+	if sim == null or sim.player.is_empty() or aim.length() <= 8.0:
+		return Vector2.ZERO
+	return sim.player.pos + aim
+
+
+## Arrow aim. Haul still owns it while the crate is out.
+## Always keel → target. An absolute world heading opens the range.
+static func cue_aim(sim) -> Vector2:
+	var haul := beam_aim(sim)
+	if haul.length() > 8.0:
+		return haul
+	if state(sim, "dock_salvage") == "active":
+		if bool(sim.quest_flags.get("dock_salvage_cut", false)):
+			if at_pad(sim):
+				return Vector2.ZERO
+			return sim.beacon_pos - sim.player.pos
+		if sim.trash_pos != Vector2.ZERO:
+			return sim.trash_pos - sim.player.pos
+	if state(sim, "dock_escort") == "active":
+		if bool(sim.quest_flags.get("dock_escort_met", false)):
+			if at_pad(sim):
+				return Vector2.ZERO
+			return sim.beacon_pos - sim.player.pos
+		var cutter := cutter_pos(sim)
+		if cutter != Vector2.ZERO:
+			return cutter - sim.player.pos
+	return Vector2.ZERO
+
+
+static func cutter_pos(sim) -> Vector2:
+	for shell in sim.traffic:
+		var row: Dictionary = shell
+		if str(row.get("kind", "")) == "pdo":
+			return row.pos
+	return Vector2.ZERO
 
 
 ## The ring touch swings the nose and the way-on onto the pad.
@@ -268,6 +430,82 @@ static func _pulse_haul(sim) -> void:
 		_pay(sim, HAUL_PAY, "Ring haul filed. Helion Dock paid %d." % HAUL_PAY)
 
 
+static func _pulse_salvage(sim) -> void:
+	if state(sim, "dock_salvage") != "active":
+		return
+	if str(sim.defs.system.id) != "HC-V1-R1-S1":
+		return
+	if bool(sim.quest_flags.get("dock_salvage_cut", false)) == false and at_pad(sim) == false and _near_hold(sim):
+		sim.quest_flags.dock_salvage_cut = true
+		sim.quest_flags.salvage_back_bucket = -999
+		sim.say("Seized Hold has the tag. Bring it back to the Helion pad.")
+	_cue_salvage(sim)
+	if bool(sim.quest_flags.get("dock_salvage_cut", false)) and at_pad(sim):
+		sim.quest_flags.dock_salvage = "done"
+		sim.quest_flags.dock_salvage_cut = false
+		_pay(sim, SALVAGE_PAY, "Tow tag filed. Helion Dock paid %d." % SALVAGE_PAY)
+
+
+static func _steer(sim, world: Vector2) -> void:
+	if sim.player.is_empty() or world == Vector2.ZERO:
+		return
+	var face: Vector2 = world - sim.player.pos
+	if face.length() <= 8.0:
+		return
+	var dir := face.normalized()
+	sim.player.rot = dir.angle()
+	var spd: float = sim.player.vel.length()
+	if spd > 1.0 and sim.player.vel.normalized().dot(dir) < 0.45:
+		sim.player.vel = dir * spd
+
+
+static func _pulse_escort(sim) -> void:
+	if state(sim, "dock_escort") != "active":
+		return
+	if str(sim.defs.system.id) != "HC-V1-R1-S1":
+		return
+	# The cutter orbits. A heading taken once points outward within a few seconds.
+	if bool(sim.quest_flags.get("dock_escort_met", false)):
+		_steer(sim, sim.beacon_pos)
+	else:
+		_steer(sim, cutter_pos(sim))
+	if bool(sim.quest_flags.get("dock_escort_met", false)) == false and at_pad(sim) == false and _near_cutter(sim):
+		sim.quest_flags.dock_escort_met = true
+		sim.quest_flags.escort_back_bucket = -999
+		sim.say("The Compact cutter saw the keel. Bring it back to the Helion pad.")
+	_cue_escort(sim)
+	if bool(sim.quest_flags.get("dock_escort_met", false)) and at_pad(sim):
+		sim.quest_flags.dock_escort = "done"
+		sim.quest_flags.dock_escort_met = false
+		_pay(sim, ESCORT_PAY, "Lane show filed. Helion Dock paid %d." % ESCORT_PAY)
+
+
+static func _cue_salvage(sim) -> void:
+	var line := salvage_line(sim)
+	if line == "":
+		return
+	var bucket := int(sim.player.pos.distance_to(sim.trash_pos if bool(sim.quest_flags.get("dock_salvage_cut", false)) == false else sim.beacon_pos) / 60)
+	var key := "salvage_back_bucket" if bool(sim.quest_flags.get("dock_salvage_cut", false)) else "salvage_cue_bucket"
+	if int(sim.quest_flags.get(key, -999)) == bucket:
+		return
+	sim.quest_flags[key] = bucket
+	sim.say(line)
+
+
+static func _cue_escort(sim) -> void:
+	var line := escort_line(sim)
+	if line == "":
+		return
+	var cutter := cutter_pos(sim)
+	var anchor: Vector2 = sim.beacon_pos if bool(sim.quest_flags.get("dock_escort_met", false)) else cutter
+	var bucket := int(sim.player.pos.distance_to(anchor) / 60)
+	var key := "escort_back_bucket" if bool(sim.quest_flags.get("dock_escort_met", false)) else "escort_cue_bucket"
+	if int(sim.quest_flags.get(key, -999)) == bucket:
+		return
+	sim.quest_flags[key] = bucket
+	sim.say(line)
+
+
 static func holding(sim) -> int:
 	return int(sim.player.cargo.get(GOOD, 0))
 
@@ -324,6 +562,19 @@ static func set_tag(sim, raw: String) -> String:
 	else:
 		sim.say("Corp tag set to %s." % clean)
 	return clean
+
+
+static func _near_hold(sim) -> bool:
+	if sim.trash_pos == Vector2.ZERO:
+		return false
+	return sim.player.pos.distance_to(sim.trash_pos) <= HOLD_REACH
+
+
+static func _near_cutter(sim) -> bool:
+	var at := cutter_pos(sim)
+	if at == Vector2.ZERO:
+		return false
+	return sim.player.pos.distance_to(at) <= CUTTER_REACH
 
 
 static func _near_ring(sim) -> bool:

@@ -29,6 +29,11 @@ func _init() -> void:
 	_pad_gate()
 	_save()
 	_return_and_pay()
+	_jobs()
+	_salvage()
+	_escort()
+	_escort_closes()
+	_haul_still_owns_the_beam()
 	if fails == 0:
 		print("DOCKBOARD PASS")
 	else:
@@ -440,3 +445,196 @@ func _save() -> void:
 	copy.from_dict(sim.to_dict())
 	check(DockBoard.state(copy, "dock_scan") == "active", "a save keeps the open scan")
 	check(DockBoard.purse(copy) == 40, "a save keeps the purse")
+
+
+func _jobs() -> void:
+	var sim := make()
+	var found := {}
+	for slip in DockBoard.jobs(sim):
+		var row: Dictionary = slip
+		found[str(row.id)] = row
+	check(found.has("salvage") and found.has("escort"), "the board lists the tow tag and the lane show")
+	check(int(found.salvage.pay) == DockBoard.SALVAGE_PAY, "the tow tag pays 40")
+	check(int(found.escort.pay) == DockBoard.ESCORT_PAY, "the lane show pays 60")
+	check(str(found.salvage.blurb).contains("Seized Hold") and str(found.salvage.blurb).contains("40"), "the tow tag names the hold and the pay")
+	check(str(found.escort.blurb).contains("Compact") and str(found.escort.blurb).contains("60"), "the lane show names the cutter and the pay")
+	check(int(found.scan.pay) == 80 and int(found.haul.pay) == 120, "scan and haul pay stay 80 and 120")
+
+
+func _off_pad(sim) -> void:
+	sim.player.moored = false
+	sim.quest_flags.moor_latch = 0.0
+	sim.quest_flags.pad_departed = true
+	sim.layer = ScaleFrame.BAND
+	sim.body_id = "aegis_prime"
+
+
+func _salvage() -> void:
+	var sim := make()
+	_off_pad(sim)
+	sim.player.pos = sim.beacon_pos + Vector2(800, 0)
+	check(DockBoard.take(sim, "salvage") != "", "the tow tag cannot be taken off the pad")
+	sim.player.pos = sim.beacon_pos
+	sim.player.moored = true
+	check(DockBoard.take(sim, "salvage") == "", "the tow tag is taken on the pad")
+	check(DockBoard.purse(sim) == 0, "taking the tow tag does not pay yet")
+	check(int(sim.player.cargo.get(DockBoard.CRATE, 0)) == 0, "the tow tag does not put a crate in the hold")
+	check(DockBoard.state(sim, "dock_haul") == "open", "the tow tag does not open the ring haul")
+	check(DockBoard.beam_aim(sim) == Vector2.ZERO, "the amber beam stays dark without a crate")
+	check(DockBoard.haul_line(sim) == "", "the ice-ring line stays quiet")
+	check(DockBoard.slip_line(sim).contains("Seized Hold"), "the helm names Seized Hold")
+	var aim: Vector2 = DockBoard.cue_aim(sim)
+	var want: Vector2 = sim.trash_pos - sim.player.pos
+	check(aim.length() > 8.0 and aim.normalized().dot(want.normalized()) > 0.99, "the cue points at Seized Hold")
+	_off_pad(sim)
+	sim.player.pos = sim.trash_pos
+	check(DockBoard.at_pad(sim) == false, "Seized Hold is not the pad")
+	DockBoard.pulse(sim, 0.2)
+	check(bool(sim.quest_flags.get("dock_salvage_cut", false)), "the hold cuts the tag")
+	check(DockBoard.purse(sim) == 0, "the hold does not pay")
+	check(DockBoard.slip_line(sim).contains("bring the tag back"), "the return cue names the tag")
+	sim.player.pos = sim.beacon_pos
+	sim.player.moored = true
+	DockBoard.pulse(sim, 0.2)
+	check(DockBoard.state(sim, "dock_salvage") == "done", "the pad files the tow tag")
+	check(DockBoard.purse(sim) == DockBoard.SALVAGE_PAY, "the tow tag pays 40")
+	var said := false
+	for line in sim.lines:
+		if "Tow tag filed" in str(line.text) and "Purse 40" in str(line.text):
+			said = true
+	check(said, "the log names the tow-tag pay")
+
+
+func _escort() -> void:
+	var sim := make()
+	sim.tick(0.2, {})
+	var cutter: Vector2 = DockBoard.cutter_pos(sim)
+	check(cutter != Vector2.ZERO, "a Compact cutter is on the band")
+	check(DockBoard.take(sim, "escort") == "", "the lane show is taken on the pad")
+	check(DockBoard.purse(sim) == 0, "taking the lane show does not pay yet")
+	check(DockBoard.slip_line(sim).contains("Compact cutter"), "the helm names the Compact cutter")
+	check(DockBoard.beam_aim(sim) == Vector2.ZERO, "the lane show does not light the amber beam")
+	var away: Vector2 = cutter - sim.beacon_pos
+	if away.length() < 1.0:
+		away = Vector2.RIGHT
+	away = away.normalized()
+	_off_pad(sim)
+	sim.player.pos = cutter
+	if DockBoard.at_pad(sim):
+		sim.player.pos = cutter + away * 140.0
+	check(DockBoard.at_pad(sim) == false, "the cutter meet is off the pad")
+	check(sim.player.pos.distance_to(cutter) <= DockBoard.CUTTER_REACH, "the keel is in reach of the cutter")
+	DockBoard.pulse(sim, 0.2)
+	check(bool(sim.quest_flags.get("dock_escort_met", false)), "the cutter sees the keel")
+	check(DockBoard.purse(sim) == 0, "the cutter does not pay")
+	check(DockBoard.slip_line(sim).contains("the cutter saw you"), "the return cue names the cutter")
+	sim.player.pos = sim.beacon_pos
+	sim.player.moored = true
+	DockBoard.pulse(sim, 0.2)
+	check(DockBoard.state(sim, "dock_escort") == "done", "the pad files the lane show")
+	check(DockBoard.purse(sim) == DockBoard.ESCORT_PAY, "the lane show pays 60")
+	var said := false
+	for line in sim.lines:
+		if "Lane show filed" in str(line.text) and "Purse 60" in str(line.text):
+			said = true
+	check(said, "the log names the lane-show pay")
+
+
+func _escort_closes() -> void:
+	var sim := make()
+	sim.tick(0.3, {})
+	check(DockBoard.take(sim, "escort") == "", "the closing lane show is taken")
+	var cutter: Vector2 = DockBoard.cutter_pos(sim)
+	var aim: Vector2 = DockBoard.cue_aim(sim)
+	check(aim.length() > 8.0 and aim.normalized().dot((cutter - sim.player.pos).normalized()) > 0.99, "the lane aim is keel to cutter")
+	check(Vector2.from_angle(sim.player.rot).dot(aim.normalized()) > 0.99, "the keel faces the cutter")
+	var absolute := cutter.angle()
+	check(absf(wrapf(sim.player.rot - absolute, -PI, PI)) > 0.4, "the lane heading is not the cutter's absolute angle")
+	sim.player.moored = false
+	sim.quest_flags.moor_latch = 0.0
+	sim.player.vel = Vector2.ZERO
+	sim.layer = ScaleFrame.BAND
+	sim.body_id = "aegis_prime"
+	var burn := {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false}
+	var ranges: Array[float] = []
+	var guard := 0
+	var gap: float = sim.player.pos.distance_to(DockBoard.cutter_pos(sim))
+	while guard < 80 and bool(sim.quest_flags.get("dock_escort_met", false)) == false:
+		if guard % 4 == 0:
+			ranges.append(gap)
+		sim.tick(0.25, burn)
+		gap = sim.player.pos.distance_to(DockBoard.cutter_pos(sim))
+		guard += 1
+	ranges.append(gap)
+	var text := ""
+	var shown := 0
+	while shown < ranges.size():
+		if shown > 0:
+			text += " → "
+		text += str(int(ranges[shown]))
+		shown += 1
+	print("ESCORT TRACE %s" % text)
+	var fell := true
+	var prev := ranges[0]
+	var step := 1
+	while step < ranges.size():
+		if ranges[step] >= prev - 5.0:
+			fell = false
+		prev = ranges[step]
+		step += 1
+	check(fell, "Compact cutter range falls every second along the cue")
+	check(bool(sim.quest_flags.get("dock_escort_met", false)), "the cue reaches the cutter")
+	check(DockBoard.purse(sim) == 0, "meeting the cutter does not pay")
+	var back: Array[float] = [sim.player.pos.distance_to(sim.beacon_pos)]
+	var home_guard := 0
+	while bool(sim.player.moored) == false and home_guard < 24:
+		sim.tick(0.5, burn)
+		home_guard += 1
+		if bool(sim.player.moored):
+			back.append(0.0)
+		else:
+			back.append(sim.player.pos.distance_to(sim.beacon_pos))
+	var back_text := ""
+	var back_i := 0
+	while back_i < back.size():
+		if back_i > 0:
+			back_text += " → "
+		back_text += str(int(back[back_i]))
+		back_i += 1
+	print("ESCORT RETURN %s" % back_text)
+	var back_fell := true
+	var back_prev := back[0]
+	var back_step := 1
+	while back_step < back.size():
+		if back[back_step] >= back_prev - 5.0:
+			back_fell = false
+		back_prev = back[back_step]
+		back_step += 1
+	check(back_fell, "Helion Dock range falls on the way back from the cutter")
+	check(bool(sim.player.moored), "the lane show returns to a moored pad")
+	check(DockBoard.purse(sim) == DockBoard.ESCORT_PAY, "the lane show pays 60 on the pad")
+
+
+func _haul_still_owns_the_beam() -> void:
+	var sim := make()
+	check(DockBoard.take(sim, "scan") == "", "scan is taken beside the new slips")
+	check(DockBoard.take(sim, "haul") == "", "haul is taken beside the new slips")
+	check(DockBoard.take(sim, "salvage") == "", "salvage can sit beside a live haul")
+	check(DockBoard.slip_line(sim) == DockBoard.haul_line(sim), "a live haul keeps the helm line")
+	check(DockBoard.cue_aim(sim).is_equal_approx(DockBoard.beam_aim(sim)), "a live haul keeps the cue")
+	check(DockBoard.haul_line(sim).contains("hold that way"), "the ice-ring line is unchanged")
+	for layer in CraftOrders.LAYERS:
+		sim.reveal_layer("aegis_prime", layer)
+	DockBoard.pulse(sim, 0.2)
+	check(DockBoard.purse(sim) == DockBoard.SCAN_PAY, "scan still pays 80 with the new slips open")
+	var ring = sim.survey_node("aegis_ring")
+	_off_pad(sim)
+	sim.player.pos = ring.pos
+	DockBoard.pulse(sim, 0.2)
+	check(bool(sim.quest_flags.get("dock_haul_ring", false)), "the ring still marks the crate")
+	sim.player.pos = sim.beacon_pos
+	sim.player.moored = true
+	DockBoard.pulse(sim, 0.2)
+	check(DockBoard.purse(sim) == DockBoard.SCAN_PAY + DockBoard.HAUL_PAY, "scan and haul still add to 200")
+	check(int(sim.player.cargo.get(DockBoard.CRATE, 0)) == 0, "the dock still clears the crate")
+	check(DockBoard.state(sim, "dock_salvage") == "active", "the tow tag waits while the crate pays")

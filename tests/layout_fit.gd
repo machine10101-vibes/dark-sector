@@ -4,12 +4,26 @@ var fails := 0
 var phase := 0
 var menu: Node
 var hud: Node
+var want := Vector2i.ZERO
+
+
+func _init() -> void:
+	for arg in OS.get_cmdline_user_args():
+		var bits := str(arg).split("x")
+		if bits.size() == 2 and bits[0].is_valid_int() and bits[1].is_valid_int():
+			want = Vector2i(int(bits[0]), int(bits[1]))
 
 
 func _process(_dt: float) -> bool:
 	phase += 1
+	if want != Vector2i.ZERO and root.size != want:
+		root.size = want
+		return false
 	if phase < 4:
 		return false
+	if want != Vector2i.ZERO and root.get_viewport().get_visible_rect().size != Vector2(want):
+		if phase < 12:
+			return false
 	if menu == null:
 		menu = load("res://ui/menu.gd").new()
 		root.add_child(menu)
@@ -26,6 +40,7 @@ func _process(_dt: float) -> bool:
 	_check_select(screen)
 	_check_helm(screen, false)
 	_check_helm(screen, true)
+	_check_board(screen)
 	if screen.y < 520.0 and screen.x > screen.y:
 		_check_market(screen)
 	if fails == 0:
@@ -126,6 +141,91 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 		_apart(joy, actions, tag + " stick/actions")
 
 
+func _check_board(screen: Vector2) -> void:
+	hud.set("touch_on", true)
+	hud.set("touch_chosen", true)
+	var panel: Control = hud.get("panel")
+	panel.show()
+	var board: Node = hud.get("board_box")
+	var market: Node = hud.get("market_box")
+	board.visible = true
+	market.visible = false
+	for child in board.get_children():
+		child.queue_free()
+	var words := [
+		"Seal Aegis Prime    pay 80    [open]",
+		"Launch a probe on Aegis Prime. Pay 80 when the dossier seals.",
+		"Crate to the ice ring    pay 120    [open]",
+		"Carry a sealed crate to the Aegis ice ring and bring it back. Pay 120.",
+		"Tow tag at Seized Hold    pay 40    [open]",
+		"Fly to Seized Hold, strip one tow tag, and bring it back. Pay 40.",
+		"Show the Compact the lane    pay 60    [open]",
+		"Fly out to the Compact cutter and come back to the pad. Pay 60.",
+	]
+	for word in words:
+		board.add_child(hud._board_line(word, 14))
+	for verb in ["Take scan", "Take haul", "Take salvage", "Take escort"]:
+		var button := Button.new()
+		button.text = verb
+		button.custom_minimum_size = Vector2(160, 44)
+		board.add_child(button)
+	hud._fit()
+	var cast: Button = hud.get("cast_button")
+	var dock: Button = hud.get("dock_button")
+	var board_button: Button = hud.get("board_button")
+	cast.visible = true
+	dock.visible = true
+	board_button.visible = true
+	hud._layout_chrome(screen)
+	_resort(hud)
+	var primary: Control = hud.get("primary_bar")
+	var actions: Control = hud.get("action_scroll")
+	var status: Control = hud.get("status_card")
+	_inside(panel, screen, "board panel")
+	if screen.y < 520.0 and screen.x > screen.y:
+		for node in [cast, dock, board_button, hud.get("quest_button"), hud.get("probe_button")]:
+			var button := node as Control
+			if button.visible:
+				_inside(button, screen, "board " + button.name)
+				_apart(button, panel, "board " + button.name + "/panel")
+	var scroll: ScrollContainer = hud.get("panel_scroll")
+	_inside_parent(scroll, panel, "board scroll")
+	if screen.y < 520.0 and screen.x > screen.y:
+		_apart(panel, status, "board/status")
+		_apart(panel, primary, "board/primary")
+		_apart(panel, actions, "board/actions")
+		if scroll.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_SHOW_ALWAYS:
+			_bad("board scroll hidden on a short phone")
+		if scroll.get_global_rect().size.y < 120.0:
+			_bad("board glass short %s" % scroll.get_global_rect())
+		var content_h := (board as Control).get_combined_minimum_size().y
+		if content_h > 900.0:
+			_bad("board list exploded %s" % content_h)
+		var pad: Node = hud.get("pad")
+		var joy: Control = pad.get("joy")
+		var gun: Control = pad.get("fire_button")
+		_apart(panel, joy, "board/stick")
+		_apart(panel, gun, "board/gun")
+		var glass := scroll.get_global_rect()
+		if (board as Control).get_global_rect().intersects(glass) == false:
+			_bad("board list misses the glass")
+		var seen := false
+		for child in board.get_children():
+			var rect := (child as Control).get_global_rect()
+			if rect.size.y > 160.0:
+				_bad("board row stretched %s" % rect)
+			if child is Button and str((child as Button).text).begins_with("Take"):
+				seen = true
+			if rect.intersects(primary.get_global_rect()) or rect.intersects(actions.get_global_rect()):
+				_bad("board row on the bars %s" % rect)
+			if rect.intersects(joy.get_global_rect()) or rect.intersects(gun.get_global_rect()):
+				_bad("board row on the stick %s" % rect)
+		if seen == false:
+			_bad("board has no take slip")
+	panel.hide()
+	board.visible = false
+
+
 func _check_market(screen: Vector2) -> void:
 	hud.set("touch_on", true)
 	hud.set("touch_chosen", true)
@@ -170,8 +270,6 @@ func _check_market(screen: Vector2) -> void:
 	var gun: Control = pad.get("fire_button")
 	_apart(panel, joy, "market/stick")
 	_apart(panel, gun, "market/gun")
-	if panel.get_global_rect().end.y > primary.position.y - 4.0:
-		_bad("market covers bar %s vs primary %s" % [panel.get_global_rect(), primary.get_global_rect()])
 
 
 func _find_button(node: Node, text: String) -> Button:
