@@ -1,6 +1,8 @@
-# Dark Sector
+# Dark Sector Online
 
-Top-down working-captain sector. One persistent keel, detachable craft, heat, and a claim pocket. This repo is the Ashen Reach helm slice.
+Dark Sector Online is the game. Ashen Reach is the starter star system inside it, not a separate product. This build opens on Helion Dock.
+
+Top-down working-captain sector. One persistent keel, detachable craft, heat, and a claim pocket.
 
 ## Run
 
@@ -16,7 +18,7 @@ Headless rules check:
 godot --headless --path . --script res://tests/slice1_sim.gd
 ```
 
-The log is `user://dark_sector_save.json` (on Linux, under the Godot app-userdata folder for “Dark Sector”). In the browser build that same path is the origin’s IndexedDB, so Continue log stays on this machine.
+The log is `user://dark_sector_save.json` (on Linux, under the Godot app-userdata folder for “Dark Sector”, kept stable so older logs still open). In the browser build that same path is the origin’s IndexedDB, so Continue stays on this machine.
 
 ## Browser
 

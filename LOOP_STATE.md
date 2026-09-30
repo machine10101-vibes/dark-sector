@@ -1,5 +1,6 @@
 LOOP STATE
 ==========
+Product: Dark Sector Online. Ashen Reach is the starter system, not the title. This slice opens on Helion Dock.
 Build: Godot 4.7.2 stable, GL Compatibility
 Slice just completed: Scale + Ecosystem
 Player-visible what works now:

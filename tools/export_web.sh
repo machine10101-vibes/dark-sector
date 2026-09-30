@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Export Dark Sector as a single-thread Godot 4.7 HTML5 build for GitHub Pages.
+# Export Dark Sector Online as a single-thread Godot 4.7 HTML5 build for GitHub Pages.
 # Pages cannot send Cross-Origin-Isolation headers, so threads stay off.
 set -euo pipefail
 
@@ -48,12 +48,12 @@ cat >"$OUT/404.html" <<'HTML'
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Dark Sector</title>
+<title>Dark Sector Online</title>
 <meta http-equiv="refresh" content="0; url=/dark-sector/">
 <link rel="canonical" href="/dark-sector/">
 </head>
 <body style="background:#07080c;color:#e6d7bf;font-family:sans-serif">
-<p>This path is empty. The Reach is at <a href="/dark-sector/">/dark-sector/</a>.</p>
+<p>This path is empty. Dark Sector Online is at <a href="/dark-sector/">/dark-sector/</a>. Ashen Reach is a system inside the game.</p>
 </body>
 </html>
 HTML

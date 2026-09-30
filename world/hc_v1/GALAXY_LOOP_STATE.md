@@ -5,7 +5,7 @@ Galaxy: HC-V1 The Dark Sector
 Slice just completed: G1 region map and spine lanes
 
 Player-visible what works now:
-- Nothing in-engine. Ashen Reach is still the only flyable system.
+- The flyable helm opens on Helion Dock. Ashen Reach is the starter system name, not the game title.
 - Eight regions have coordinates. The atlas spine is a lane graph from Helion Dock to every region, including Black Quay. Travel times are blank.
 
 What is next (ordered):

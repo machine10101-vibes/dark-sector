@@ -1,6 +1,7 @@
 extends CanvasLayer
 
 var root: Control
+var helm_product: Label
 var helm_name: Label
 var helm_flight: Label
 var helm_zone: Label
@@ -127,7 +128,7 @@ func _fit() -> void:
 		var helm_w := screen.x - 108.0 if compact else screen.x - 210.0
 		if not compact and panel != null and panel.visible:
 			helm_w = minf(760.0, screen.x - 500.0)
-		helm_box.size = Vector2(maxf(160.0, helm_w), 160)
+		helm_box.size = Vector2(maxf(160.0, helm_w), 180)
 	if compact:
 		if log_label != null:
 			log_label.position = Vector2(16, 168)
@@ -273,11 +274,13 @@ func _build_helm() -> void:
 	helm_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(helm_box)
 	var box := helm_box
-	helm_name = ThemeKit.label("DARK SECTOR", 13, Color("8a7344"))
+	helm_product = ThemeKit.label("DARK SECTOR ONLINE", 12, Color("8a7344"))
+	helm_name = ThemeKit.label("", 13, Color("e6d7bf"))
 	helm_flight = ThemeKit.label("", 16, Color("e6d7bf"))
 	helm_zone = ThemeKit.label("", 14, Color("cbb892"))
 	helm_cargo = ThemeKit.label("", 14, Color("d7e6c8"))
 	helm_craft = ThemeKit.label("", 14, Color("9fd0c8"))
+	box.add_child(helm_product)
 	box.add_child(helm_name)
 	box.add_child(helm_flight)
 	box.add_child(helm_zone)
