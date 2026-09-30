@@ -63,6 +63,10 @@ void fragment() {
 	float fleck = fbm(wpos * 0.016 + n * 3.0);
 	terrain *= 0.74 + 0.38 * mottled;
 	terrain = mix(terrain, terrain * vec3(0.76, 0.92, 0.7), fleck * land_w * 0.45);
+	float grit = fbm(wpos * 0.048 + n * 22.0);
+	float scrub = fbm(wpos * 0.11 + vec3(seed, 0.4, 1.7));
+	terrain *= 0.84 + 0.22 * grit;
+	terrain = mix(terrain, terrain * vec3(0.62, 0.58, 0.5), scrub * land_w * 0.28);
 	vec3 night = terrain * 0.05 + vec3(0.015, 0.03, 0.055);
 	vec3 col = mix(night, terrain * (0.32 + 0.58 * day), day);
 	float twilight = smoothstep(-0.22, -0.02, ndl) * (1.0 - smoothstep(0.0, 0.18, ndl));
@@ -223,6 +227,14 @@ void fragment() {
 	col = mix(col, col * vec3(0.18, 0.2, 0.22), seam);
 	float brush = 0.9 + 0.1 * sin(local_pos.x * 2.2 + local_pos.z * 11.0);
 	col *= brush;
+	float along_x = fract(local_pos.x * 0.35);
+	float along_z = fract(local_pos.z * 0.55);
+	float rivet = max(seam_z * smoothstep(0.07, 0.0, abs(along_x - 0.5)), seam_x * smoothstep(0.07, 0.0, abs(along_z - 0.5)));
+	col = mix(col, col * vec3(0.42, 0.46, 0.5), clamp(rivet, 0.0, 1.0) * 0.8);
+	float aft = smoothstep(6.0, -22.0, local_pos.x);
+	col = mix(col, col * vec3(1.22, 0.68, 0.38), aft * 0.34);
+	float wear = smoothstep(0.45, 0.92, 1.0 - abs(n.y));
+	col = mix(col, col * vec3(0.7, 0.68, 0.62), wear * 0.4);
 	float stripe = smoothstep(1.35, 0.05, abs(local_pos.z));
 	col = mix(col, col * vec3(1.04, 1.08, 1.02), stripe * deck * 0.4);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
@@ -267,9 +279,11 @@ void fragment() {
 	float along = clamp(UV.x, 0.0, 1.0);
 	float across = clamp(1.0 - abs(UV.y * 2.0 - 1.0), 0.0, 1.0);
 	float flicker = 0.84 + 0.16 * sin(TIME * 31.0 + along * 18.0);
+	float diamonds = 0.78 + 0.22 * sin(along * 34.0 - TIME * 16.0);
 	float fade = (1.0 - smoothstep(0.04, 1.0, along)) * (0.28 + 0.72 * across);
 	vec3 sheath = mix(vec3(0.85, 0.28, 0.05), albedo.rgb, 0.45);
 	vec3 hot = mix(sheath, vec3(1.0, 0.97, 0.9), core * (1.0 - along) * flicker);
+	hot *= mix(1.0, diamonds, across * (1.0 - along));
 	ALBEDO = hot;
 	EMISSION = hot * flicker * (1.35 + core * 1.8);
 	ALPHA = albedo.a * fade * flicker;
@@ -361,6 +375,8 @@ void fragment() {
 	vec3 mineral = mix(albedo.rgb, albedo.rgb * vec3(1.15, 0.92, 0.78), grit * 0.45);
 	vec3 col = mineral * (0.18 + 0.9 * ndl) * mix(1.0, 0.38, cavity);
 	col *= 1.0 - pits * 0.35;
+	float vein = smoothstep(0.52, 0.74, fbm(n * 11.0 + vec3(seed, 2.2, 0.5)));
+	col = mix(col, mineral * vec3(0.62, 0.48, 0.32), vein * 0.42);
 	float rim = pow(1.0 - ndl, 2.2);
 	col += mineral * rim * 0.12;
 	ALBEDO = col;
@@ -1439,6 +1455,8 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 			elif part.begins_with("Trim"):
 				paint = accent
 			_paint_hull(child, paint)
+	var thrusting := bool(ship.get("thrusting", false))
+	holder.set_meta("thrusting", thrusting)
 	if int(sim.layer) == ScaleFrame.SITE and key == "player":
 		holder.scale = Vector3(0.28, 0.28, 0.28)
 		holder.position = chart(sim.site_pos + Vector2(36.0, -20.0), 280.0)
@@ -1446,7 +1464,7 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 	else:
 		holder.scale = Vector3.ONE
 		_banked(holder, ship.pos, float(ship.rot), 2.0)
-	var thrusting := bool(ship.get("thrusting", false))
+	_pulse_lamps(holder)
 	var exhaust := holder.get_node_or_null("Exhaust") as MeshInstance3D
 	if exhaust != null:
 		exhaust.visible = thrusting
@@ -1492,6 +1510,14 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	pane.set_shader_parameter("albedo", Color(0.45, 0.78, 0.82, 0.4))
 	glass.material_override = pane
 	holder.add_child(glass)
+	var mast := MeshInstance3D.new()
+	mast.name = "Mast"
+	var rod := BoxMesh.new()
+	rod.size = Vector3(0.4, maxf(height * 0.42, 6.0), 0.4)
+	mast.mesh = rod
+	mast.position = bridge.position + Vector3(-deck_size.x * 0.2, deck_size.y * 0.5 + rod.size.y * 0.5, 0.0)
+	mast.material_override = _hull_mat(Color("242a30"))
+	holder.add_child(mast)
 	var bell := MeshInstance3D.new()
 	bell.name = "Bell"
 	bell.mesh = _bell_mesh(7.5, 1.15, 2.7)
@@ -1812,12 +1838,20 @@ func _banked(holder: Node3D, pos: Vector2, rot: float, height: float) -> void:
 	var dyaw := wrapf(rot - prev, -PI, PI)
 	holder.set_meta("prev_rot", rot)
 	var rate := dyaw / _frame_delta
+	# Positive sim yaw is a screen-left turn under the mirrored overhead
+	# camera, and it drops local +Z. That side is the screen-left wing
+	# when the nose points up the frame, so the visible right side rises
+	# into a left turn and drops into a right turn.
 	var want := clampf(rate * 0.16, -0.42, 0.42)
 	var shown := float(holder.get_meta("bank", 0.0))
 	shown = move_toward(shown, want, 2.2 * _frame_delta)
 	holder.set_meta("bank", shown)
+	var want_pitch := 0.1 if bool(holder.get_meta("thrusting", false)) else 0.0
+	var pitch := float(holder.get_meta("pitch", 0.0))
+	pitch = move_toward(pitch, want_pitch, 0.55 * _frame_delta)
+	holder.set_meta("pitch", pitch)
 	var xf := _flat_xform(pos, rot, height)
-	xf.basis = xf.basis * Basis(Vector3.RIGHT, shown)
+	xf.basis = xf.basis * Basis(Vector3.RIGHT, shown) * Basis(Vector3(0.0, 0.0, 1.0), pitch)
 	holder.transform = xf
 
 
@@ -1920,6 +1954,23 @@ func _hull_mat(color: Color) -> ShaderMaterial:
 	mat.shader = _hull_shader
 	mat.set_shader_parameter("albedo", color)
 	return mat
+
+
+func _pulse_lamps(holder: Node3D) -> void:
+	var t := Time.get_ticks_msec() * 0.001
+	_pulse_lamp(holder, "LampPort", 0.45 + 0.55 * maxf(sin(t * 3.2), 0.0))
+	_pulse_lamp(holder, "LampStbd", 0.45 + 0.55 * maxf(sin(t * 3.2 + 2.2), 0.0))
+	_pulse_lamp(holder, "LampNose", 0.7 + 0.3 * sin(t * 1.6))
+
+
+func _pulse_lamp(holder: Node3D, lamp_name: String, energy: float) -> void:
+	var lamp := holder.get_node_or_null(lamp_name) as MeshInstance3D
+	if lamp == null:
+		return
+	var glow := lamp.material_override as StandardMaterial3D
+	if glow == null:
+		return
+	glow.emission_energy_multiplier = energy * 2.4
 
 
 func _nav_lamp(holder: Node3D, lamp_name: String, at: Vector3, color: Color, radius: float) -> void:

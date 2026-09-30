@@ -116,12 +116,15 @@ func _cmd(delta: float) -> Dictionary:
 		return {}
 	var stick: Dictionary = Game.flight
 	var rot := 0.0
+	# Screen-right on the overhead camera is world -X, so positive sim yaw
+	# (clockwise) swings the nose to screen-left. Negate live helm input
+	# here. sim.tick still adds rot as given; headless tests pass rot directly.
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
-		rot -= 1.0
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
 		rot += 1.0
+	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		rot -= 1.0
 	if rot == 0.0:
-		rot = float(stick.get("rot", 0.0))
+		rot = -float(stick.get("rot", 0.0))
 	helm_yaw = move_toward(helm_yaw, rot, 8.5 * delta)
 	rot = helm_yaw
 	var strafe := 0.0
