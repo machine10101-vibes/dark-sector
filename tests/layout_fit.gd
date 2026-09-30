@@ -76,6 +76,10 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 	speed.text = "220 m/s"
 	var purse: Label = hud.get("stat_purse")
 	purse.text = "PURSE  200"
+	hud.set("show_tag", true)
+	var flight: Label = hud.get("helm_flight")
+	flight.text = "Needle  ·  Red-Keel"
+	flight.visible = true
 	hud._layout_chrome(screen)
 	_resort(hud)
 	var tag := "helm touch" if touch else "helm keys"
@@ -92,6 +96,8 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 	_inside_parent(cue, status, tag + " cue")
 	_inside_parent(speed, status, tag + " speed")
 	_inside_parent(purse, status, tag + " purse")
+	_inside_parent(flight, status, tag + " tag")
+	_apart(flight, primary, tag + " tag/primary")
 	for node in [cast, dock, board, hud.get("quest_button"), hud.get("probe_button")]:
 		var button := node as Control
 		if button.visible:

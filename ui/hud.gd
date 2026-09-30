@@ -43,7 +43,13 @@ var dock_button: Button
 var quest_button: Button
 var probe_button: Button
 var board_box: VBoxContainer
+var market_box: VBoxContainer
 var board_sig := ""
+var market_sig := ""
+var tag_edit: LineEdit
+var market_purse: Label
+var market_hold: Label
+var show_tag := false
 var action_scroll: ScrollContainer
 var action_row: HBoxContainer
 var primary_bar: PanelContainer
@@ -137,9 +143,11 @@ func _fit() -> void:
 	var side := 460.0
 	if panel != null:
 		if compact:
+			panel.custom_minimum_size = Vector2(0, 0)
 			panel.position = Vector2(8, screen.y * 0.22)
 			panel.size = Vector2(screen.x - 16.0, screen.y * 0.5)
 		else:
+			panel.custom_minimum_size = Vector2(420, 400)
 			panel.position = Vector2(screen.x - side - 16.0, 16)
 			panel.size = Vector2(side, screen.y - 150.0)
 	if panel_inner != null:
@@ -186,7 +194,12 @@ func _layout_chrome(screen: Vector2) -> void:
 	if helm_name != null:
 		helm_name.visible = not short
 	if helm_flight != null:
-		helm_flight.visible = screen.y >= 430.0
+		helm_flight.visible = screen.y >= 430.0 or show_tag
+		helm_flight.clip_text = true
+		if show_tag and screen.y < 430.0:
+			helm_flight.add_theme_font_size_override("font_size", 14)
+		else:
+			helm_flight.add_theme_font_size_override("font_size", 18)
 	if helm_zone != null:
 		helm_zone.visible = not short
 	if helm_cargo != null:
@@ -314,6 +327,8 @@ func _process(_delta: float) -> void:
 		panel_body.text = _claim_text()
 	elif panel_kind == "board":
 		_fill_board()
+	elif panel_kind == "market":
+		_fill_market()
 	elif panel_kind == "bay":
 		_refresh_bay_text()
 
@@ -516,6 +531,10 @@ func _build_panel() -> void:
 	board_box.visible = false
 	board_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	inner.add_child(board_box)
+	market_box = VBoxContainer.new()
+	market_box.visible = false
+	market_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.add_child(market_box)
 
 
 func _build_pause() -> void:
@@ -609,6 +628,7 @@ func _build_actions() -> void:
 	action_row = HBoxContainer.new()
 	action_row.add_theme_constant_override("separation", 6)
 	action_scroll.add_child(action_row)
+	_action("Market", func() -> void: _toggle("market"))
 	_action("Lane", func() -> void:
 		if Game.sim == null:
 			return
@@ -696,10 +716,17 @@ func _refresh_helm() -> void:
 		dock_button.visible = sim.can_force_dock()
 	_place_board_button(compact)
 	helm_name.text = str(sim.defs.system.name).to_upper()
+	var tag := DockBoard.tag_of(sim)
+	show_tag = tag != ""
 	if compact:
-		helm_flight.text = str(hull.callsign)
+		helm_flight.text = str(hull.callsign) if tag == "" else "%s  ·  %s" % [str(hull.callsign), tag]
 	else:
 		helm_flight.text = "%s   ·   %s" % [str(hull.callsign), str(hull.class_name)]
+		if tag != "":
+			helm_flight.text += "   ·   %s" % tag
+	if helm_flight != null:
+		var screen := get_viewport().get_visible_rect().size
+		helm_flight.visible = screen.y >= 430.0 or show_tag
 	var hp_now := int(sim.player.hp)
 	var hp_max := int(sim.player.max_hp)
 	stat_hull.text = "HULL  %d/%d" % [hp_now, hp_max]
@@ -810,6 +837,8 @@ func _toggle(kind: String) -> void:
 	hangar_box.visible = kind == "hangar"
 	dossier_box.visible = kind == "dossier"
 	board_box.visible = kind == "board"
+	if market_box != null:
+		market_box.visible = kind == "market"
 	match kind:
 		"bay":
 			panel_title.text = "Ship bay"
@@ -830,6 +859,9 @@ func _toggle(kind: String) -> void:
 			panel_title.text = "Helion Dock board"
 			board_sig = ""
 			_fill_board()
+		"market":
+			panel_title.text = "Helion market"
+			_fill_market()
 		"claim":
 			panel_title.text = "Homestead"
 			panel_body.text = _claim_text()
@@ -866,8 +898,11 @@ func _fill_board() -> void:
 	var where := "Stand the Helion pad to take a slip. Pay lands in the purse."
 	if DockBoard.at_pad(sim):
 		where = "You are on the Helion pad. Take a slip. Pay lands in the purse."
-	board_box.add_child(ThemeKit.label(where, 14, Color("cbb892")))
-	board_box.add_child(ThemeKit.label("Purse %d" % DockBoard.purse(sim), 16, Color("d7e6c8")))
+	board_box.add_child(_flat(where, 14, Color("cbb892")))
+	board_box.add_child(_flat("Purse %d" % DockBoard.purse(sim), 16, Color("d7e6c8")))
+	var market := ThemeKit.button("Market")
+	market.pressed.connect(func() -> void: _toggle("market"))
+	board_box.add_child(market)
 	for slip in DockBoard.jobs(sim):
 		row = slip
 		var job_id := str(row.id)
@@ -881,6 +916,98 @@ func _fill_board() -> void:
 			take.pressed.connect(_take_dock_job.bind(job_id))
 			board_box.add_child(take)
 		board_box.add_child(ThemeKit.label(" ", 8))
+
+
+func _fill_market() -> void:
+	if Game.sim == null or market_box == null:
+		return
+	var sim = Game.sim
+	var focused := tag_edit != null and is_instance_valid(tag_edit) and tag_edit.has_focus()
+	if focused and market_box.get_child_count() > 0:
+		_paint_market(sim)
+		return
+	var sig := "%s|%d|%d|%s" % [DockBoard.at_pad(sim), DockBoard.purse(sim), DockBoard.holding(sim), DockBoard.tag_of(sim)]
+	if sig == market_sig and market_box.get_child_count() > 0:
+		return
+	market_sig = sig
+	for child in market_box.get_children():
+		child.queue_free()
+	tag_edit = null
+	var where := "The Helion market stands on the pad."
+	if DockBoard.at_pad(sim):
+		where = "Glasswheat on the Helion pad. Buy %d. Sell %d." % [DockBoard.BUY_PRICE, DockBoard.SELL_PRICE]
+	market_box.add_child(_flat(where, 14, Color("cbb892")))
+	market_purse = _flat("Purse %d" % DockBoard.purse(sim), 16, Color("d7e6c8"))
+	market_box.add_child(market_purse)
+	market_hold = _flat("Glasswheat in the hold  %d" % DockBoard.holding(sim), 15)
+	market_box.add_child(market_hold)
+	var buy := ThemeKit.button("Buy glasswheat")
+	buy.pressed.connect(_buy_good)
+	market_box.add_child(buy)
+	var sell := ThemeKit.button("Sell glasswheat")
+	sell.pressed.connect(_sell_good)
+	market_box.add_child(sell)
+	market_box.add_child(_flat("Corp tag", 14, Color("cbb892")))
+	tag_edit = LineEdit.new()
+	tag_edit.placeholder_text = "Corp tag"
+	tag_edit.max_length = DockBoard.TAG_LEN
+	tag_edit.text = DockBoard.tag_of(sim)
+	tag_edit.custom_minimum_size = Vector2(160, 44)
+	tag_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tag_edit.text_submitted.connect(func(_text: String) -> void: _apply_tag())
+	market_box.add_child(tag_edit)
+	var set_tag := ThemeKit.button("Set tag")
+	set_tag.pressed.connect(_apply_tag)
+	market_box.add_child(set_tag)
+
+
+func _paint_market(sim) -> void:
+	if market_purse != null and is_instance_valid(market_purse):
+		market_purse.text = "Purse %d" % DockBoard.purse(sim)
+	if market_hold != null and is_instance_valid(market_hold):
+		market_hold.text = "Glasswheat in the hold  %d" % DockBoard.holding(sim)
+	var where := "The Helion market stands on the pad."
+	if DockBoard.at_pad(sim):
+		where = "Glasswheat on the Helion pad. Buy %d. Sell %d." % [DockBoard.BUY_PRICE, DockBoard.SELL_PRICE]
+	if market_box.get_child_count() > 0 and market_box.get_child(0) is Label:
+		(market_box.get_child(0) as Label).text = where
+
+
+func _flat(text: String, size: int, color: Color = Color("e7f3f6")) -> Label:
+	var node := ThemeKit.label(text, size, color)
+	node.autowrap_mode = TextServer.AUTOWRAP_OFF
+	node.clip_text = true
+	return node
+
+
+func _buy_good() -> void:
+	if Game.sim == null:
+		return
+	var message := DockBoard.buy_good(Game.sim)
+	if message != "":
+		Game.sim.say(message)
+	market_sig = ""
+	_fill_market()
+
+
+func _sell_good() -> void:
+	if Game.sim == null:
+		return
+	var message := DockBoard.sell_good(Game.sim)
+	if message != "":
+		Game.sim.say(message)
+	market_sig = ""
+	_fill_market()
+
+
+func _apply_tag() -> void:
+	if Game.sim == null or tag_edit == null or not is_instance_valid(tag_edit):
+		return
+	var clean := DockBoard.set_tag(Game.sim, tag_edit.text)
+	tag_edit.text = clean
+	tag_edit.release_focus()
+	market_sig = ""
+	_fill_market()
 
 
 func _take_dock_job(job_id: String) -> void:
@@ -1161,6 +1288,9 @@ func _fill_dossier() -> void:
 	for child in dossier_box.get_children():
 		child.queue_free()
 	var sim = Game.sim
+	var tag := DockBoard.tag_of(sim)
+	var shown := tag if tag != "" else "none"
+	dossier_box.add_child(_flat("Corp tag  %s" % shown, 15, Color("d7e6c8")))
 	var order := ["orbit", "atmosphere", "surface", "crust", "biosign", "ruins", "legal"]
 	for place in sim.nodes:
 		var title := "%s    %d m" % [place.name, int(sim.player.pos.distance_to(place.pos))]

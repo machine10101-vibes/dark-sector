@@ -110,6 +110,7 @@ func _init() -> void:
 	check(DockBoard.at_pad(sim), "Board is live after the snap")
 	_cue_closes(defs)
 	_solo_port(defs)
+	_trade_tag(defs)
 	if fails == 0:
 		print("WEB EXPORT MOOR PASS")
 	else:
@@ -224,6 +225,24 @@ func _cue_closes(defs: Dictionary) -> void:
 	check(dock_fell, "Helion Dock range falls every second along the return beam")
 	check(bool(sim.player.moored), "the return cue moors on the pad")
 	check(DockBoard.purse(sim) == 200, "purse is 200 after the return")
+
+
+func _trade_tag(defs: Dictionary) -> void:
+	var sim := SectorSim.new(defs)
+	sim.new_game("vesper")
+	sim.hold_npc = true
+	var posted := int(sim.market.glasswheat)
+	sim.quest_flags.purse = 80
+	check(DockBoard.buy_good(sim) == "", "pad buy")
+	check(DockBoard.purse(sim) == 68, "buy charges 12")
+	check(DockBoard.holding(sim) == 1, "hold has glasswheat")
+	check(DockBoard.sell_good(sim) == "", "pad sell")
+	check(DockBoard.purse(sim) == 76, "sell pays 8")
+	check(int(sim.market.glasswheat) == posted, "posted price stays")
+	check(DockBoard.set_tag(sim, "Red-Keel!!") == "Red-Keel", "tag clips")
+	var copy := SectorSim.new(defs)
+	copy.from_dict(sim.to_dict())
+	check(DockBoard.tag_of(copy) == "Red-Keel", "tag survives the log")
 
 
 func _solo_port(defs: Dictionary) -> void:
