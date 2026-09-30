@@ -16,7 +16,7 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 Pages build. One fresh Needle. Moor and Purse 80 already passed. This pass is the crate.
 
 1. Board. Take haul. The helm and the log read **Ice ring N m — hold that way.** An amber beam marks that spot. An arrow points at it when it is off the glass. The log also says not to clear the band yet.
-2. Cast off. Short thrusts stay Local. Follow the arrow. The number falls. A long burn does not open the chart before the drop.
+2. Cast off or hold W. Speed leaves 0 and climbs through the tens toward a couple of hundred. Follow the arrow. The number falls. Holding W out to the shell does not open the chart before the drop.
 3. Touch the ring. The line becomes **Helion Dock N m — bring the crate back.**
 4. Return until Moored, or press Dock inside 500 m. Purse is 200 if the scan already paid, or 120 if this is the only slip. The crate is gone.
 

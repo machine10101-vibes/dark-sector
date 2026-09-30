@@ -13,9 +13,9 @@ const DOCK_HALO_KM := 9000.0
 const DOCK_CATCH := 220.0
 ## The Dock button forces the same snap inside this, even if the bubble was never left.
 const DOCK_BUTTON := 500.0
-## While the ring crate is still outbound, band speed stays in this band.
-## A full burn no longer clears the shell and dumps the keel at chart range.
-const HAUL_BAND_CAP := 88.0
+## While the ring crate is still outbound, band speed stays under a real burn.
+## The shell catch stops a chart dump. Cast off and W are not braked to a stop.
+const HAUL_BAND_CAP := 220.0
 
 var defs: Dictionary = {}
 var seed_value = 0
@@ -2282,18 +2282,13 @@ func haul_outbound() -> bool:
 	return bool(quest_flags.get("dock_haul_ring", false)) == false
 
 
-func _haul_band_brake(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
+func _haul_band_brake(unit: Dictionary, _cmd: Dictionary, _dt: float) -> void:
 	if str(unit.get("agent_id", "")) != str(player.get("agent_id", "")):
 		return
 	if haul_outbound() == false:
 		return
 	if int(layer) != ScaleFrame.BAND:
 		return
-	var thrust := float(cmd.get("thrust", 0.0))
-	var retro := float(cmd.get("retro", 0.0))
-	var strafe := float(cmd.get("strafe", 0.0))
-	if thrust <= 0.0 and retro <= 0.0 and absf(strafe) <= 0.0:
-		unit.vel *= 1.0 - 1.15 * dt
 	if unit.vel.length() > HAUL_BAND_CAP:
 		unit.vel = unit.vel.limit_length(HAUL_BAND_CAP)
 
@@ -2309,7 +2304,6 @@ func _hold_for_ring(body: Dictionary, outer: float) -> void:
 	var out_spd: float = vel.dot(outward)
 	if out_spd > 0.0:
 		player.vel -= outward * out_spd
-	player.vel *= 0.35
 	if bool(quest_flags.get("haul_edge_said", false)) == false:
 		quest_flags.haul_edge_said = true
 		say("Hold toward the ice ring — don't clear the band yet.")

@@ -62,9 +62,12 @@ func _init() -> void:
 	sim.player.rot = away.angle()
 	sim.layer = ScaleFrame.BAND
 	sim.body_id = "aegis_prime"
-	sim.tick(3.0, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
+	sim.tick(1.0, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
 	check(int(sim.layer) == ScaleFrame.BAND, "haul thrust stays on the band")
-	check(sim.player.vel.length() <= 110.0, "haul thrust stays slow")
+	check(sim.player.vel.length() >= 60.0, "haul thrust leaves 0")
+	check(sim.player.vel.length() <= 250.0, "haul thrust stays under the shell cap")
+	sim.tick(2.0, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
+	check(int(sim.layer) == ScaleFrame.BAND, "a longer haul burn still stays on the band")
 	sim.layer = ScaleFrame.BAND
 	sim.body_id = "aegis_prime"
 	sim.player.moored = false

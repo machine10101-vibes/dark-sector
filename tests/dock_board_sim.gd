@@ -24,6 +24,7 @@ func _init() -> void:
 	_probe_reads_prime()
 	_haul()
 	_haul_holds_the_band()
+	_haul_cast_off_moves()
 	_pad_gate()
 	_save()
 	_return_and_pay()
@@ -167,6 +168,7 @@ func _haul_holds_the_band() -> void:
 	var burn := {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false}
 	sim.tick(3.0, burn)
 	check(int(sim.layer) == ScaleFrame.BAND, "three seconds of haul thrust stays on the band")
+	check(sim.player.vel.length() >= 80.0, "haul thrust is a real burn")
 	check(sim.player.vel.length() <= SectorSim.HAUL_BAND_CAP + 1.0, "haul thrust stays under the band cap")
 	check(bool(sim.quest_flags.get("dock_haul_ring", false)) == false, "missing the ring does not mark the crate")
 	var open := make()
@@ -177,6 +179,25 @@ func _haul_holds_the_band() -> void:
 	open.player.rot = away.angle()
 	open.tick(3.0, burn)
 	check(open.player.vel.length() > 200.0 or int(open.layer) == ScaleFrame.CHART, "without the crate the same burn still runs")
+
+
+func _haul_cast_off_moves() -> void:
+	var sim := make()
+	check(DockBoard.take(sim, "haul") == "", "haul is aboard before cast off")
+	check(bool(sim.player.moored), "the haul starts moored")
+	var shove := {"thrust": 0.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false, "cast_off": true}
+	sim.tick(0.25, shove)
+	check(bool(sim.player.moored) == false, "cast off leaves the pad during a haul")
+	check(sim.player.vel.length() > 20.0, "cast off shows speed")
+	var coast := {"thrust": 0.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false}
+	sim.tick(1.5, coast)
+	check(sim.player.vel.length() > 12.0, "the cast-off shove is still moving")
+	check(int(sim.layer) == ScaleFrame.BAND, "coasting the haul stays on the band")
+	var burn := {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false}
+	sim.tick(1.0, burn)
+	check(sim.player.vel.length() > 60.0, "W during the haul climbs through the tens")
+	check(sim.player.vel.length() <= SectorSim.HAUL_BAND_CAP + 1.0, "W during the haul stays under the shell cap")
+	check(int(sim.layer) == ScaleFrame.BAND, "that burn has not opened the chart")
 
 
 func _pad_gate() -> void:
