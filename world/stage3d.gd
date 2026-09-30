@@ -205,24 +205,29 @@ void vertex() {
 }
 void fragment() {
 	vec3 n = normalize(local_nrm);
-	float seam_x = smoothstep(0.45, 0.5, abs(fract(local_pos.x * 0.09) - 0.5));
-	float seam_z = smoothstep(0.42, 0.5, abs(fract(local_pos.z * 0.2) - 0.5));
-	float seam = max(seam_x, seam_z);
+	vec3 wn = normalize(wnorm);
+	vec2 cell = floor(local_pos.xz * vec2(0.07, 0.15));
+	float panel = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+	float seam_x = smoothstep(0.455, 0.5, abs(fract(local_pos.x * 0.07) - 0.5));
+	float seam_z = smoothstep(0.43, 0.5, abs(fract(local_pos.z * 0.15) - 0.5));
+	float seam = clamp(max(seam_x, seam_z), 0.0, 1.0);
 	float deck = clamp(n.y, 0.0, 1.0);
-	vec3 col = albedo.rgb * (0.55 + 0.55 * deck);
-	col = mix(col, col * 0.28, seam * 0.9);
-	float stripe = smoothstep(1.15, 0.0, abs(local_pos.z));
-	col = mix(col, col * 1.16, stripe * deck * 0.45);
-	float grit = fract(sin(dot(local_pos.xz, vec2(17.1, 9.4))) * 43758.5);
-	col *= 0.9 + 0.1 * grit;
+	vec3 col = albedo.rgb * (0.42 + 0.7 * deck);
+	col *= 0.82 + 0.22 * panel;
+	col = mix(col, col * vec3(0.18, 0.2, 0.22), seam);
+	float brush = 0.9 + 0.1 * sin(local_pos.x * 2.2 + local_pos.z * 11.0);
+	col *= brush;
+	float stripe = smoothstep(1.35, 0.05, abs(local_pos.z));
+	col = mix(col, col * vec3(1.04, 1.08, 1.02), stripe * deck * 0.4);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float spec = pow(clamp(dot(normalize(wnorm), normalize(vec3(0.15, 1.0, 0.05) + eye)), 0.0, 1.0), 24.0);
-	col += vec3(0.75, 0.82, 0.9) * spec * deck * (1.0 - seam) * 0.55;
-	float edge = pow(clamp(1.0 - abs(dot(normalize(wnorm), eye)), 0.0, 1.0), 1.8);
-	col += vec3(0.82, 0.88, 0.94) * edge * 0.42;
+	vec3 halfv = normalize(normalize(vec3(0.25, 1.0, 0.12)) + eye);
+	float spec = pow(clamp(dot(wn, halfv), 0.0, 1.0), 64.0);
+	float edge = pow(clamp(1.0 - abs(dot(wn, eye)), 0.0, 1.0), 2.2);
+	col += vec3(0.78, 0.86, 0.94) * spec * (1.0 - seam) * (0.25 + 0.55 * deck);
+	col += albedo.rgb * edge * 0.22;
 	ALBEDO = col;
-	METALLIC = 0.78;
-	ROUGHNESS = mix(0.22, 0.72, seam);
+	METALLIC = mix(0.84, 0.35, seam);
+	ROUGHNESS = mix(0.24, 0.88, max(seam, 1.0 - deck));
 }
 "
 
@@ -238,12 +243,13 @@ void vertex() {
 void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.6);
-	ALBEDO = mix(albedo.rgb * 0.35, vec3(0.85, 0.95, 1.0), fres);
-	EMISSION = vec3(0.55, 0.8, 0.85) * 0.18;
-	ROUGHNESS = 0.05;
-	METALLIC = 0.05;
-	ALPHA = clamp(albedo.a + fres * 0.55, 0.0, 1.0);
+	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.85);
+	float room = 0.55 + 0.45 * sin(wpos.x * 0.35 + wpos.z * 0.2);
+	ALBEDO = mix(albedo.rgb * 0.22 * room, vec3(0.9, 0.97, 1.0), fres);
+	EMISSION = vec3(0.42, 0.72, 0.78) * (0.08 + fres * 0.22);
+	ROUGHNESS = mix(0.04, 0.2, 1.0 - fres);
+	METALLIC = 0.08;
+	ALPHA = clamp(0.16 + fres * 0.7, 0.0, 0.82);
 }
 "
 
@@ -253,11 +259,14 @@ uniform vec4 albedo : source_color = vec4(1.0, 0.7, 0.3, 0.8);
 uniform float core = 0.0;
 void fragment() {
 	float along = clamp(UV.x, 0.0, 1.0);
-	float fade = (1.0 - smoothstep(0.12, 1.0, along));
-	vec3 hot = mix(albedo.rgb, vec3(1.0, 0.97, 0.9), core * (1.0 - along));
+	float across = clamp(1.0 - abs(UV.y * 2.0 - 1.0), 0.0, 1.0);
+	float flicker = 0.84 + 0.16 * sin(TIME * 31.0 + along * 18.0);
+	float fade = (1.0 - smoothstep(0.04, 1.0, along)) * (0.28 + 0.72 * across);
+	vec3 sheath = mix(vec3(0.85, 0.28, 0.05), albedo.rgb, 0.45);
+	vec3 hot = mix(sheath, vec3(1.0, 0.97, 0.9), core * (1.0 - along) * flicker);
 	ALBEDO = hot;
-	EMISSION = hot * (1.2 + core);
-	ALPHA = albedo.a * fade;
+	EMISSION = hot * flicker * (1.35 + core * 1.8);
+	ALPHA = albedo.a * fade * flicker;
 }
 "
 
@@ -940,8 +949,8 @@ func _sync_planets(sim) -> void:
 		(ball.mesh as SphereMesh).radius = radius
 		(ball.mesh as SphereMesh).height = radius * 2.0
 		var air := node.get_node("Air") as MeshInstance3D
-		(air.mesh as SphereMesh).radius = radius * 1.045
-		(air.mesh as SphereMesh).height = radius * 2.09
+	(air.mesh as SphereMesh).radius = radius * 1.012
+	(air.mesh as SphereMesh).height = radius * 2.024
 		var colors: Array = row.get("colors", ["#889088"])
 		var mat := ball.material_override as ShaderMaterial
 		var albedo := Color(str(colors[0]))
@@ -1463,6 +1472,30 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	spine.position = Vector3((nose + tail) * 0.5, height * 1.08, 0.0)
 	spine.material_override = _hull_mat(Color("14181c"))
 	holder.add_child(spine)
+	var fin_mesh := BoxMesh.new()
+	fin_mesh.size = Vector3(span * 0.22, 0.45, 2.6)
+	var fin_port := MeshInstance3D.new()
+	fin_port.name = "FinPort"
+	fin_port.mesh = fin_mesh
+	fin_port.position = Vector3(tail * 0.35, height * 0.22, 3.4)
+	fin_port.material_override = _hull_mat(Color("12161a"))
+	holder.add_child(fin_port)
+	var fin_stbd := MeshInstance3D.new()
+	fin_stbd.name = "FinStbd"
+	fin_stbd.mesh = fin_mesh
+	fin_stbd.position = Vector3(tail * 0.35, height * 0.22, -3.4)
+	fin_stbd.material_override = _hull_mat(Color("12161a"))
+	holder.add_child(fin_stbd)
+	var throat := MeshInstance3D.new()
+	throat.name = "Throat"
+	throat.mesh = _bell_mesh(4.8, 0.45, 1.35)
+	throat.position = Vector3(tail - 0.2, height * 0.42, 0.0)
+	var coke := _metal(Color("1a120e"))
+	coke.emission_enabled = true
+	coke.emission = Color("ffb15a")
+	coke.emission_energy_multiplier = 0.35
+	throat.material_override = coke
+	holder.add_child(throat)
 	_nav_lamp(holder, "LampNose", Vector3(nose * 0.86, height * 0.62, 0.0), Color("d8fff6"), 1.05)
 	_nav_lamp(holder, "LampPort", Vector3(tail * 0.55, height * 0.28, 2.1), Color("d4553a"), 0.75)
 	_nav_lamp(holder, "LampStbd", Vector3(tail * 0.55, height * 0.28, -2.1), Color("7dcea0"), 0.75)
@@ -1625,6 +1658,27 @@ func _craft_holder(key: String, kind: String) -> Node3D:
 		glow.emission_energy_multiplier = 1.4
 		lamp.material_override = glow
 		node.add_child(lamp)
+		var canopy := MeshInstance3D.new()
+		canopy.name = "Glass"
+		var pane_mesh := BoxMesh.new()
+		pane_mesh.size = Vector3(2.8, 0.9, 1.4)
+		canopy.mesh = pane_mesh
+		canopy.position = Vector3(2.4, 5.2, 0.0)
+		var pane := ShaderMaterial.new()
+		pane.shader = _glass_shader
+		pane.set_shader_parameter("albedo", Color(0.55, 0.82, 0.86, 0.35))
+		canopy.material_override = pane
+		node.add_child(canopy)
+		var nozzle := MeshInstance3D.new()
+		nozzle.name = "Exhaust"
+		nozzle.mesh = _plume_mesh(6.5, 0.7)
+		nozzle.position = Vector3(-7.2, 2.2, 0.0)
+		var burn := ShaderMaterial.new()
+		burn.shader = _plume_shader
+		burn.set_shader_parameter("albedo", Color(0.95, 0.62, 0.28, 0.45))
+		burn.set_shader_parameter("core", 0.35)
+		nozzle.material_override = burn
+		node.add_child(nozzle)
 	add_child(node)
 	_craft[key] = node
 	return node
