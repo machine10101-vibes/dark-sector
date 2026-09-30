@@ -7,6 +7,7 @@ var world_vp: SubViewport
 var cam3: Camera3D
 var board: MeshInstance3D
 var stage: Node3D
+var env: Environment
 
 
 func _ready() -> void:
@@ -38,7 +39,7 @@ func _ready() -> void:
 	rig.add_child(stage)
 	var world := WorldEnvironment.new()
 	world.name = "Sky"
-	var env := Environment.new()
+	env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color("07080c")
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -52,8 +53,10 @@ func _ready() -> void:
 	env.glow_hdr_threshold = 0.8
 	env.fog_enabled = true
 	env.fog_light_color = Color("07080c")
-	env.fog_density = 0.000045
-	env.fog_aerial_perspective = 0.35
+	# Band density used to reach optical depth ~4 inside the far clip, so a
+	# chart-height camera faded the whole sector to the clear color.
+	env.fog_density = 0.000012
+	env.fog_aerial_perspective = 0.22
 	world.environment = env
 	rig.add_child(world)
 	board = MeshInstance3D.new()
@@ -97,16 +100,35 @@ func _aim() -> void:
 		chase = gate.render_of_world(chase)
 	var height := 920.0 / zoom
 	var far := 80000.0
+	var density := 0.000012
 	var layer := int(Game.sim.layer)
 	if layer == ScaleFrame.CHART:
 		height = 52000.0 / zoom
 		far = 420000.0
+		density = 0.0000025
 	elif layer == ScaleFrame.APPROACH:
 		height = 160.0 / zoom
 		far = 120000.0
+		density = 0.000004
 	elif layer == ScaleFrame.SITE:
 		height = 220.0 / zoom
 		far = 6000.0
+		density = 0.00004
+	elif layer == ScaleFrame.BAND:
+		# Berth height keeps the same angle (back = height * 0.62, fov 50).
+		# At the pad the cruise height leaves the Needle a speck on the disc.
+		var berth := 168.0 / zoom
+		var player: Dictionary = Game.sim.player
+		var ship: Vector2 = player.pos
+		var pad := Vector2(float(player.get("dock_x", ship.x)), float(player.get("dock_y", ship.y)))
+		var away: float = ship.distance_to(pad)
+		var moored := bool(player.get("moored", false))
+		if moored or away < 40.0:
+			height = berth
+		elif away < 900.0:
+			height = lerpf(berth, height, clampf(away / 900.0, 0.0, 1.0))
+	if env != null:
+		env.fog_density = density
 	var back := height * 0.62
 	var target := Vector3(chase.x, 0.0, -chase.y)
 	cam3.fov = 50.0

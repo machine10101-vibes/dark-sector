@@ -526,6 +526,7 @@ func _process(delta: float) -> void:
 	_sync_ships(Game.sim)
 	_sync_craft(Game.sim)
 	_sync_sky(Game.sim)
+	_sync_grid(Game.sim)
 	_sync_band()
 	_sync_props(Game.sim)
 	_aim_sun(Game.sim)
@@ -933,8 +934,34 @@ func _build_grid() -> void:
 	add_child(_grid)
 
 
+func _sync_grid(sim) -> void:
+	if _grid == null:
+		return
+	var layer := int(sim.layer)
+	if layer == ScaleFrame.SITE:
+		_grid.visible = false
+		return
+	_grid.visible = true
+	# The plane used to sit at render zero, which is the floating origin,
+	# so it slid out from under the keel between rebases.
+	_grid.position = chart(sim.player.pos, -18.0)
+	var plane := _grid.mesh as PlaneMesh
+	if layer == ScaleFrame.CHART:
+		plane.size = Vector2(220000.0, 220000.0)
+	elif layer == ScaleFrame.APPROACH:
+		plane.size = Vector2(160000.0, 160000.0)
+	else:
+		plane.size = Vector2(48000.0, 48000.0)
+
+
 func _sync_star(sim) -> void:
+	var layer := int(sim.layer)
 	var radius := float(sim.star_radius)
+	var at := chart(Vector2.ZERO, 0.0)
+	if layer == ScaleFrame.CHART:
+		radius = 1600.0
+		var origin: Vector2 = sim.local_origin
+		at = chart(Vector2.ZERO - origin, 0.0)
 	if _star_mesh == null:
 		_star_mesh = MeshInstance3D.new()
 		_star_mesh.name = "Star"
@@ -982,10 +1009,18 @@ func _sync_star(sim) -> void:
 	var far_col := core
 	far_col.a = 0.45
 	(_star_far.material_override as ShaderMaterial).set_shader_parameter("albedo", far_col)
-	var show_star := int(sim.layer) == ScaleFrame.BAND
+	# The meshes used to stay at 3D zero. The camera's render origin is the
+	# keel, so that put Helion around the dock and buried the hull.
+	_star_mesh.position = at
+	_star_glow.position = at
+	_star_far.position = at
+	var show_star := layer == ScaleFrame.BAND or layer == ScaleFrame.CHART
 	_star_mesh.visible = show_star
 	_star_glow.visible = show_star
 	_star_far.visible = show_star
+	if show_star:
+		var star_name := str(sim.defs.system.star.name)
+		_tag(star_name, at + Vector3(0.0, radius + 40.0, 0.0), Color("f0c27a"), 16)
 
 
 func _sync_planets(sim) -> void:
@@ -1077,8 +1112,6 @@ func _sync_planets(sim) -> void:
 			outward = outward.normalized()
 			label_at = chart(sim.player.pos - outward * minf(_limb_gap() * 0.45, 900.0), 260.0)
 		_tag(str(row.get("name", "")), label_at, Color("e6d7bf"), 16)
-	var star_name := str(sim.defs.system.star.name)
-	_tag(star_name, Vector3(0.0, float(sim.star_radius) + 40.0, 0.0), Color("f0c27a"), 16)
 
 
 func _sync_density(sim) -> void:
@@ -1157,7 +1190,7 @@ func _sync_belt_volume(sim, belt: Dictionary) -> void:
 	var width := maxf(float(belt.get("width", 40.0)), 24.0)
 	(hoop.mesh as TorusMesh).inner_radius = maxf(radius - width, 8.0)
 	(hoop.mesh as TorusMesh).outer_radius = radius + width
-	hoop.position = Vector3.ZERO
+	hoop.position = chart(Vector2.ZERO, 0.0)
 	hoop.visible = int(sim.layer) == ScaleFrame.BAND
 
 
@@ -1247,7 +1280,7 @@ func _sync_approach_body(sim) -> void:
 			_used.erase("body:" + str(row.id))
 			continue
 		var radius := ScaleFrame.radius_km(row)
-		node.position = Vector3.ZERO
+		node.position = chart(Vector2.ZERO, 0.0)
 		var ball := node.get_node("Ball") as MeshInstance3D
 		(ball.mesh as SphereMesh).radius = radius
 		(ball.mesh as SphereMesh).height = radius * 2.0
@@ -1262,7 +1295,7 @@ func _sync_approach_body(sim) -> void:
 		var well := node.get_node_or_null("Well") as MeshInstance3D
 		if well != null:
 			well.visible = false
-		_tag(str(row.name), Vector3(0.0, radius * 0.15, 0.0), Color("e6d7bf"), 16)
+		_tag(str(row.name), chart(Vector2.ZERO, radius * 0.15), Color("e6d7bf"), 16)
 
 
 func _sync_site(sim) -> void:
@@ -1828,13 +1861,31 @@ func _sync_sky(sim) -> void:
 	var count: int = sim.stars.size()
 	if mm.instance_count != count:
 		mm.instance_count = count
+	var layer := int(sim.layer)
+	var shell := 6400.0
+	if layer == ScaleFrame.CHART:
+		shell = 64000.0
+	elif layer == ScaleFrame.APPROACH:
+		shell = 36000.0
+	elif layer == ScaleFrame.SITE:
+		shell = 2200.0
+	# Backdrop rides with the keel. A shell glued to world zero vanishes
+	# once the band exit jumps into chart kilometers.
+	var anchor := chart(sim.player.pos, 0.0)
 	for i in count:
 		var star: Dictionary = sim.stars[i]
 		var p: Vector2 = star.pos
-		var lift := float(absi(hash(str(i))) % 500) - 250.0
-		var scale := 1.6 + float(star.a) * 5.4
+		var ang := p.angle()
+		var u := clampf((p.length() - 200.0) / 9000.0, 0.0, 1.0)
+		var elev := lerpf(-0.35, 1.15, float(star.a))
+		var dir := Vector3(cos(ang) * cos(elev), sin(elev), -sin(ang) * cos(elev))
+		if dir.length_squared() < 0.001:
+			dir = Vector3.UP
+		dir = dir.normalized()
+		var radius := lerpf(shell * 0.55, shell, u)
+		var scale := radius * 0.012 * (0.55 + float(star.a))
 		var basis := Basis.IDENTITY.scaled(Vector3(scale, scale, scale))
-		mm.set_instance_transform(i, Transform3D(basis, Vector3(p.x, lift, -p.y)))
+		mm.set_instance_transform(i, Transform3D(basis, anchor + dir * radius))
 		var temp := float(star.a)
 		var tint := Color(0.72, 0.8, 0.95) if temp < 0.4 else Color(0.95, 0.9, 0.78)
 		if temp > 0.7:

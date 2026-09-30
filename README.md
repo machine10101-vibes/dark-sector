@@ -39,12 +39,13 @@ If the URL 404s, the repo still needs Pages pointed at the `gh-pages` branch, fo
 | Input | Action |
 |---|---|
 | W / S | Thrust / retro |
-| A / D | Yaw |
+| A / D | Yaw nose left / nose right. D is yaw. |
 | Q / E | Strafe |
 | Space | Gun |
 | Wheel, = / - | Zoom, tactical to sector |
 | 1 / 2 / 3 | Launch probe / harvester / boat |
-| B H D F J K | Bay, hangar, dossier, heat, quests, claim |
+| I | Scan dossier |
+| B H I F J K | Bay, hangar, dossier, heat, quests, claim |
 | Hold, or Esc | Pause. Write or read the log from that card |
 | F5 / F9 | Write / read the log without pausing |
 

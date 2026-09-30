@@ -56,7 +56,7 @@ func _ready() -> void:
 	pad.visible = touch_on
 	root.add_child(pad)
 	hint_label = ThemeKit.label(
-		"W thrust   S retro   A/D yaw   Q/E strafe   Space gun. The row below does the rest.",
+		"W thrust   S retro   A/D yaw   Q/E strafe   Space gun. I opens the scan dossier.",
 		12,
 		Color("8d826c")
 	)
@@ -213,7 +213,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_toggle("bay")
 		KEY_H:
 			_toggle("hangar")
-		KEY_D:
+		KEY_I:
 			_toggle("dossier")
 		KEY_F:
 			_toggle("heat")
