@@ -186,6 +186,8 @@ func _haul_cast_off_moves() -> void:
 	var sim := make()
 	check(DockBoard.take(sim, "haul") == "", "haul is aboard before cast off")
 	check(bool(sim.player.moored), "the haul starts moored")
+	var ring = sim.survey_node("aegis_ring")
+	var start: float = sim.player.pos.distance_to(ring.pos)
 	var shove := {"thrust": 0.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false, "cast_off": true}
 	sim.tick(0.25, shove)
 	check(bool(sim.player.moored) == false, "cast off leaves the pad during a haul")
@@ -199,23 +201,34 @@ func _haul_cast_off_moves() -> void:
 	check(sim.player.vel.length() > 60.0, "W during the haul climbs through the tens")
 	check(sim.player.vel.length() <= SectorSim.HAUL_BAND_CAP + 1.0, "W during the haul stays under the shell cap")
 	check(int(sim.layer) == ScaleFrame.BAND, "that burn has not opened the chart")
+	check(sim.player.pos.distance_to(ring.pos) < start - 30.0, "cast off along the beam closes on the ring")
 
 
 func _haul_cue_closes() -> void:
 	var sim := make()
-	check(DockBoard.take(sim, "haul") == "", "the cue haul is aboard")
 	var ring = sim.survey_node("aegis_ring")
-	var to_ring: Vector2 = ring.pos - sim.player.pos
+	var parked := Vector2.from_angle(sim.player.rot)
+	var parked_aim: Vector2 = ring.pos - sim.player.pos
+	check(parked.dot(parked_aim) < 0.0, "the pad nose points away from the ice ring")
+	for layer_name in CraftOrders.LAYERS:
+		sim.reveal_layer("aegis_prime", layer_name)
+	check(DockBoard.take(sim, "scan") == "", "the trace scan is aboard")
+	DockBoard.pulse(sim, 0.2)
+	check(DockBoard.purse(sim) == DockBoard.SCAN_PAY, "the trace scan pays 80 on the pad")
+	check(DockBoard.take(sim, "haul") == "", "the cue haul is aboard")
+	var aim: Vector2 = DockBoard.beam_aim(sim)
 	var nose := Vector2.from_angle(sim.player.rot)
-	check(nose.dot(to_ring) < 0.0, "the pad nose points away from the ice ring")
-	var start: float = to_ring.length()
+	check(aim.length() > 100.0, "the beam runs from the keel to the ring")
+	check(nose.dot(aim.normalized()) > 0.99, "the keel faces along the beam")
+	print("HAUL DROP pad %s ring %s beam %s" % [sim.beacon_pos, ring.pos, aim])
+	var start: float = aim.length()
 	DockBoard.forced_origin = sim.player.pos
 	var marked: Vector2 = DockBoard.marker_xy(sim, ring.pos)
 	var keel: Vector2 = DockBoard.marker_xy(sim, sim.player.pos)
 	var cue: Vector2 = marked - keel
-	check(cue.normalized().dot(to_ring.normalized()) > 0.99, "the glass marker uses the ring bearing")
+	check(cue.normalized().dot(aim.normalized()) > 0.99, "the glass marker uses the ring bearing")
 	var stale: Vector2 = ring.pos - keel
-	check(stale.normalized().dot(to_ring.normalized()) < 0.2, "raw world meters point off the ring")
+	check(stale.normalized().dot(aim.normalized()) < 0.2, "raw world meters point off the ring")
 	DockBoard.forced_origin = null
 	var wrong := make()
 	check(DockBoard.take(wrong, "haul") == "", "the wrong heading still has the crate")
@@ -230,26 +243,57 @@ func _haul_cue_closes() -> void:
 	sim.player.moored = false
 	sim.quest_flags.moor_latch = 0.0
 	sim.player.vel = Vector2.ZERO
-	sim.player.rot = to_ring.angle()
+	sim.layer = ScaleFrame.BAND
+	sim.body_id = "aegis_prime"
+	var ranges: Array[float] = [start]
 	var burn := {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false}
-	sim.tick(1.2, burn)
-	var mid: float = sim.player.pos.distance_to(ring.pos)
-	check(mid < start - 40.0, "thrust along the cue closes the range")
-	check(int(sim.layer) == ScaleFrame.BAND, "closing on the ring stays on the band")
-	var touched := false
-	var aim := Vector2.ZERO
-	for _i in 8:
-		aim = ring.pos - sim.player.pos
-		if aim.length() <= DockBoard.RING:
-			touched = true
+	var gap := start
+	var guard := 0
+	var marked_ring := false
+	while guard < 12:
+		marked_ring = bool(sim.quest_flags.get("dock_haul_ring", false))
+		if gap <= DockBoard.RING or marked_ring:
+			break
+		aim = DockBoard.beam_aim(sim)
+		if aim.length() < 8.0:
 			break
 		sim.player.rot = aim.angle()
-		sim.tick(0.8, burn)
-	DockBoard.pulse(sim, 0.2)
-	check(touched or sim.player.pos.distance_to(ring.pos) <= DockBoard.RING, "the cue reach touches the ring")
+		sim.tick(1.0, burn)
+		gap = sim.player.pos.distance_to(ring.pos)
+		ranges.append(gap)
+		guard += 1
+	var fell := true
+	var prev := ranges[0]
+	var step := 1
+	while step < ranges.size():
+		if ranges[step] >= prev - 5.0:
+			fell = false
+		prev = ranges[step]
+		step += 1
+	var text := ""
+	var shown := 0
+	while shown < ranges.size():
+		if shown > 0:
+			text += " → "
+		text += str(int(ranges[shown]))
+		shown += 1
+	print("HAUL TRACE %s" % text)
+	check(fell, "ice ring range falls every second along the beam")
+	check(gap <= DockBoard.RING, "the beam reaches the ring")
 	check(bool(sim.quest_flags.get("dock_haul_ring", false)), "the ring takes the crate")
 	check(DockBoard.haul_line(sim).contains("bring the crate back"), "the return cue names Helion Dock")
 	check(int(sim.layer) == ScaleFrame.BAND, "the drop does not open the chart")
+	var back := 0
+	var home := Vector2.ZERO
+	while bool(sim.player.moored) == false and back < 16:
+		home = sim.beacon_pos - sim.player.pos
+		if home.length() > 1.0:
+			sim.player.rot = home.angle()
+		sim.tick(1.0, burn)
+		DockBoard.pulse(sim, 0.2)
+		back += 1
+	check(bool(sim.player.moored), "the return cue moors on the pad")
+	check(DockBoard.purse(sim) == DockBoard.SCAN_PAY + DockBoard.HAUL_PAY, "purse is 200 after the return")
 
 
 func _pad_gate() -> void:

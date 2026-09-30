@@ -124,6 +124,9 @@ static func _take_haul(sim) -> String:
 	sim.quest_flags.dock_haul = "active"
 	sim.quest_flags.dock_haul_ring = false
 	sim.quest_flags.haul_cue_bucket = -999
+	var face: Vector2 = beam_aim(sim)
+	if face.length() > 8.0:
+		sim.player.rot = face.angle()
 	sim.say("Ring haul taken. Crate aboard. Hold toward the ice ring — don't clear the band yet. Pay %d." % HAUL_PAY)
 	_cue_outbound(sim)
 	return ""
@@ -155,6 +158,20 @@ static func haul_line(sim) -> String:
 		return ""
 	var gap: float = sim.player.pos.distance_to(ring.pos)
 	return "Ice ring %d m — hold that way." % int(gap)
+
+
+## World vector from the keel to the ice-ring drop. The amber ribbon
+## and the cast-off nose both use this. Thrust along it closes the range.
+## Zero when the crate is not outbound.
+static func beam_aim(sim) -> Vector2:
+	if sim == null or sim.player.is_empty():
+		return Vector2.ZERO
+	if sim.haul_outbound() == false:
+		return Vector2.ZERO
+	var ring = sim.survey_node("aegis_ring")
+	if ring == null:
+		return Vector2.ZERO
+	return ring.pos - sim.player.pos
 
 
 ## Same plane as the amber beam. The camera lives in render meters

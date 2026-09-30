@@ -336,7 +336,7 @@ class ScaleReadout extends Control:
 		var caption := DockBoard.haul_line(sim)
 		if caption == "":
 			return
-		var at := _guide_at(ring.pos, 90.0)
+		var at := _guide_at(ring.pos, 16.0)
 		var sp := cam.unproject_position(at)
 		var behind := cam.is_position_behind(at)
 		var margin := 28.0
