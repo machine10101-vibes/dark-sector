@@ -1,0 +1,8 @@
+{
+  "id": "tribute_quay",
+  "title": "Quay tribute",
+  "summary": "Carry raw mass to Black Quay. Tribute is the dock fee. The keel stays yours.",
+  "system_id": "HC-V1-R8-S1",
+  "need_cargo": "raw_mass",
+  "mutations": ["rumor_job_quay", "black_sail_standing_up"]
+}

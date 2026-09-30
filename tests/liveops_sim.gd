@@ -27,6 +27,7 @@ func _init() -> void:
 	_flags()
 	_grief()
 	_persist()
+	_ops2()
 	_headless()
 	if fails == 0:
 		print("LIVEOPS PASS")
@@ -436,6 +437,55 @@ func _persist() -> void:
 	check(bool(back.quest_flags.get("liveops_mark", false)), "host restart keeps a quest flag")
 	check(bool(back.scans.get("quiet_hollow", {}).get("complete", false)), "host restart keeps a discovery")
 	check(back.visited.has("HC-V1-R8-S1"), "host restart keeps visited systems")
+
+
+func _ops2() -> void:
+	var presence = preload("res://world/presence.gd")
+	var jobs = preload("res://quests/jobs.gd")
+	check(defs.get("presence", {}).has("HC-V1-R1-S1"), "Helion presence is authored")
+	check(defs.get("freelance", {}).has("courier_brass"), "the brass courier is a freelance posting")
+	check(defs.quests.has("authored_quay_tribute_01"), "quay tribute is an authored hook")
+	var sim := make("vesper")
+	check(presence.here(sim) == 1, "one living keel counts on the helm")
+	check(presence.band(sim) >= 14, "Helion band traffic keeps the authored floor")
+	sim.player.pos = sim.pack_pos
+	sim.player.cargo["raw_mass"] = 4
+	sim.player.hp = 1.0
+	sim.damage_unit(sim.player, 80.0, "agent:red_keel:0")
+	check(int(sim.player.cargo.get("raw_mass", 0)) == 2, "a covered break keeps half the hold")
+	check(bool(sim.wrecks[0].get("insured", false)), "a cold break is insured")
+	var hot := make("kestrel")
+	hot.player.pos = hot.pack_pos
+	hot.heat[hot._pdo_id()] = 40.0
+	hot.player.cargo["raw_mass"] = 4
+	hot.player.hp = 1.0
+	hot.damage_unit(hot.player, 80.0, "agent:red_keel:0")
+	check(int(hot.player.cargo.get("raw_mass", 0)) == 1, "a hot break keeps a quarter")
+	check(int(hot.wrecks[0].cargo.get("raw_mass", 0)) == 3, "the slate wreck holds the rest")
+	check(bool(hot.wrecks[0].get("insured", false)) == false, "heat closes the premium")
+	hot.wrecks[0].agent_id = "agent:other"
+	hot.wrecks[0].rights_s = 10.0
+	check(hot.try_salvage(str(hot.wrecks[0].id)) == "slate", "a hot wreck stays with the slate")
+	var job := make("anvil")
+	check(jobs.tap(job) == "", "the board offers a posting")
+	check(str(job.jobs[0].get("state", "")) == "offered", "the posting is offered")
+	check(jobs.tap(job) == "", "the posting can be taken")
+	job._add_cargo("food_mass", 1)
+	job._arrive("HC-V1-R1-S2", "")
+	jobs.step(job)
+	check(str(job.jobs[0].get("state", "")) == "done", "the brass courier completes with food on the lantern")
+	var quay := make("vesper")
+	quay._arrive("HC-V1-R8-S1", "")
+	var rock = quay.planet("quay")
+	check(rock != null, "Quay is a body")
+	if rock != null:
+		quay.player.pos = rock.pos
+	QuestBoard.pulse(quay, 0.2)
+	check(str(quay.quest_flags.get("authored_quay_tribute_01", "")) == "done", "quay tribute completes from data")
+	var saved := job.to_dict()
+	var back := SectorSim.new(defs)
+	back.from_dict(saved)
+	check(back.jobs.size() == 1 and str(back.jobs[0].get("state", "")) == "done", "the log keeps the finished job")
 
 
 func _headless() -> void:

@@ -1595,6 +1595,44 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	core.material_override = white
 	core.visible = false
 	holder.add_child(core)
+	_dress_keel(holder, class_id, height, tail)
+
+
+func _dress_keel(holder: Node3D, class_id: String, height: float, tail: float) -> void:
+	var nose := float(holder.get_meta("nose", 20.0))
+	if class_id == "vesper":
+		var vane := MeshInstance3D.new()
+		vane.name = "Vane"
+		var rod := BoxMesh.new()
+		rod.size = Vector3(maxf(nose * 0.28, 8.0), 0.32, 0.32)
+		vane.mesh = rod
+		vane.position = Vector3(nose * 0.62, height * 1.28, 0.0)
+		vane.material_override = _hull_mat(Color("d7e6c8"))
+		holder.add_child(vane)
+	elif class_id == "anvil":
+		var cheek := BoxMesh.new()
+		cheek.size = Vector3(maxf((nose - tail) * 0.28, 8.0), height * 0.28, 5.2)
+		for side in [-1.0, 1.0]:
+			var box := MeshInstance3D.new()
+			box.name = "Cheek" if side < 0.0 else "CheekB"
+			box.mesh = cheek
+			box.position = Vector3((nose + tail) * 0.15, height * 0.35, side * 6.4)
+			box.material_override = _hull_mat(Color("8a5a32"))
+			holder.add_child(box)
+	elif class_id == "kestrel":
+		var barrel := CylinderMesh.new()
+		barrel.top_radius = 0.35
+		barrel.bottom_radius = 0.55
+		barrel.height = maxf(nose * 0.22, 6.0)
+		barrel.radial_segments = 8
+		for side in [-1.0, 1.0]:
+			var gun := MeshInstance3D.new()
+			gun.name = "Barrel" if side < 0.0 else "BarrelB"
+			gun.mesh = barrel
+			gun.position = Vector3(nose * 0.42, height * 0.34, side * 3.6)
+			gun.rotation.z = PI * 0.5
+			gun.material_override = _hull_mat(Color("2c241c"))
+			holder.add_child(gun)
 
 
 func _ship_holder(key: String) -> Node3D:

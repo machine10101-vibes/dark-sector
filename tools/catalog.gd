@@ -150,6 +150,7 @@ static func _fill(defs: Dictionary) -> void:
 	_overlay_book(defs, "res://life/animals", "animals", _animal_error)
 	_overlay_quests(defs)
 	_overlay_templates(defs)
+	_overlay_freelance(defs)
 	_overlay_systems(defs)
 	_load_indexes(defs)
 	_stamp(defs)
@@ -228,6 +229,19 @@ static func _overlay_templates(defs: Dictionary) -> void:
 	defs.templates = book
 
 
+static func _overlay_freelance(defs: Dictionary) -> void:
+	var book := {}
+	for path in _json_files("res://quests/freelance"):
+		var spec = _read(path)
+		if spec == null:
+			continue
+		if str(spec.get("id", "")) == "" or str(spec.get("title", "")) == "" or str(spec.get("system_id", "")) == "":
+			_skip(path, "freelance job needs id, title, and system_id")
+			continue
+		book[str(spec.id)] = spec
+	defs.freelance = book
+
+
 static func _overlay_systems(defs: Dictionary) -> void:
 	var chart: Dictionary = defs.systems
 	for path in _json_files("res://world/hc_v1/systems"):
@@ -270,6 +284,11 @@ static func _load_indexes(defs: Dictionary) -> void:
 	var slots = _read("res://world/hc_v1/claim_slots.json")
 	if slots != null and str(slots.get("status", "")) != "template":
 		defs.claim_slots = slots
+	var presence = _read("res://world/hc_v1/presence.json")
+	if typeof(presence) == TYPE_DICTIONARY:
+		defs.presence = presence
+	else:
+		defs.presence = {}
 
 
 static func _stamp(defs: Dictionary) -> void:

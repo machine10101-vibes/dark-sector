@@ -4,6 +4,7 @@ extends RefCounted
 const BODY_SCALE := 3.4
 const ROCK_SCALE := 4.2
 const DOCK_GAP := 320.0
+const JobBoard = preload("res://quests/jobs.gd")
 
 var defs: Dictionary = {}
 var seed_value = 0
@@ -36,6 +37,7 @@ var memory: Dictionary = {}
 var heat_log: Array = []
 var quest_flags: Dictionary = {}
 var contracts: Array = []
+var jobs: Array = []
 var nav_mark: Dictionary = {}
 var market: Dictionary = {"glasswheat": 4}
 var claim: Dictionary = {}
@@ -134,6 +136,7 @@ func new_game(class_id: String) -> void:
 		"compact_standing": 0,
 	}
 	contracts = []
+	jobs = []
 	nav_mark = {}
 	market = {}
 	_fill_market()
@@ -322,6 +325,8 @@ func try_salvage(wreck_id: String) -> String:
 	var wreck = wreck_by_id(wreck_id)
 	if wreck == null or bool(wreck.stripped):
 		return "empty"
+	if float(wreck.get("rights_s", 0.0)) > 0.0 and str(wreck.get("agent_id", "")) != str(player.agent_id):
+		return "slate"
 	var stats = Fit.stats(defs, player)
 	if Fit.cargo_used(player) >= int(stats.cargo_cap):
 		return "full"
@@ -551,6 +556,7 @@ func to_dict() -> Dictionary:
 		"contracts": contracts.duplicate(true),
 		"nav_mark": nav_mark.duplicate(true),
 		"market": market.duplicate(true),
+		"jobs": jobs.duplicate(true),
 		"visited": visited.duplicate(),
 		"claim": claim.duplicate(true),
 		"captains": _captain_rows(),
@@ -609,6 +615,7 @@ func from_dict(data: Dictionary) -> void:
 	heat_log = data.get("heat_log", []).duplicate(true)
 	quest_flags = data.quest_flags.duplicate(true)
 	contracts = data.get("contracts", []).duplicate(true)
+	jobs = data.get("jobs", []).duplicate(true)
 	nav_mark = data.get("nav_mark", {}).duplicate(true)
 	market = data.get("market", {}).duplicate(true)
 	_fill_market()
@@ -688,6 +695,8 @@ func _step(dt: float, cmd: Dictionary) -> void:
 	_step_scale(before_pos)
 	Homestead.step(self, dt)
 	QuestBoard.pulse(self, dt)
+	JobBoard.step(self)
+	_step_wreck_rights(dt)
 	_step_compact()
 
 
@@ -1105,6 +1114,7 @@ func _kill(unit: Dictionary, attacker: String) -> void:
 	sfx("destroyed")
 	if str(unit.get("controller", "")) == "human":
 		var dropped := _split_cargo(unit)
+		var covered := bool(unit.get("insured_break", true))
 		wrecks.append({
 			"id": "wreck_%d" % wrecks.size(),
 			"agent_id": unit.agent_id,
@@ -1115,6 +1125,8 @@ func _kill(unit: Dictionary, attacker: String) -> void:
 			"cargo": dropped,
 			"stripped": false,
 			"name": unit.name,
+			"insured": covered,
+			"rights_s": 0.0 if covered else 36.0,
 		})
 		_respawn_captain(unit)
 		return
@@ -1157,7 +1169,17 @@ func _kill(unit: Dictionary, attacker: String) -> void:
 		say("A Compact cutter is gone. The slate does not forget.")
 
 
+func _cover_open(unit: Dictionary) -> bool:
+	if bool(unit.get("warrant", false)):
+		return false
+	if float(heat.get(_pdo_id(), 0.0)) >= 40.0:
+		return false
+	return true
+
+
 func _split_cargo(unit: Dictionary) -> Dictionary:
+	var covered := _cover_open(unit)
+	unit.insured_break = covered
 	var dropped := {}
 	var kept := {}
 	for key in unit.cargo.keys():
@@ -1165,6 +1187,8 @@ func _split_cargo(unit: Dictionary) -> Dictionary:
 		if n <= 0:
 			continue
 		var lose := int(n / 2)
+		if covered == false and n >= 2:
+			lose = n - maxi(1, int(n / 4))
 		if lose < 1:
 			lose = 1
 		if lose > n:
@@ -1177,23 +1201,35 @@ func _split_cargo(unit: Dictionary) -> Dictionary:
 	return dropped
 
 
+func _step_wreck_rights(dt: float) -> void:
+	for wreck in wrecks:
+		var rights := float(wreck.get("rights_s", 0.0))
+		if rights <= 0.0:
+			continue
+		wreck.rights_s = maxf(0.0, rights - dt)
+
+
 func _respawn_captain(unit: Dictionary) -> void:
 	var dock = planet(str(defs.system.pdo.home))
 	unit.alive = true
 	unit.thrusting = false
 	unit.vel = Vector2.ZERO
-	unit.hp = maxf(1.0, float(unit.max_hp) * 0.45)
+	var cover := 0.55 if bool(unit.get("insured_break", true)) else 0.32
+	unit.hp = maxf(1.0, float(unit.max_hp) * cover)
 	var nudge := 0.0
 	if str(unit.agent_id) != str(player.agent_id):
 		nudge = 90.0
 	if dock != null:
 		unit.pos = dock.pos + Vector2(float(dock.radius) + DOCK_GAP, 40.0 + nudge)
 		unit.rot = (unit.pos - dock.pos).angle()
+	var covered := bool(unit.get("insured_break", true))
+	var hold_line := "some of the hold" if covered else "most of the hold"
+	var premium := "Compact insurance kept the layout." if covered else "The slate refused the premium."
 	if str(unit.agent_id) == str(player.agent_id):
-		banner = "You wake at %s. The wreck still has your name, and some of the hold." % str(defs.system.name)
+		banner = "You wake at %s. %s The wreck still has your name, and %s." % [str(defs.system.name), premium, hold_line]
 		say("The keel broke. Layout kept. You are back on the dock.")
 	else:
-		banner = "%s wakes at %s. The wreck still has their name, and some of the hold." % [str(unit.name), str(defs.system.name)]
+		banner = "%s wakes at %s. %s The wreck still has their name, and %s." % [str(unit.name), str(defs.system.name), premium, hold_line]
 		say("%s broke. The layout stays. The ship was not deleted." % str(unit.name))
 	banner_t = 0.0
 
@@ -1626,6 +1662,7 @@ func net_snapshot() -> Dictionary:
 		"projectiles": shots,
 		"craft": craft_rows,
 		"wrecks": wreck_rows,
+		"jobs": jobs.duplicate(true),
 		"law_target": law_target,
 		"heat": heat.duplicate(true),
 		"heat_agent": str(player.agent_id),
@@ -1690,6 +1727,7 @@ func apply_snapshot(data: Dictionary) -> void:
 		var wreck: Dictionary = row.duplicate(true)
 		wreck.pos = Serde.vec_in(wreck.pos)
 		wrecks.append(wreck)
+	jobs = data.get("jobs", []).duplicate(true)
 	var claim_row: Dictionary = data.get("claim", {})
 	for key in claim_row.keys():
 		claim[key] = claim_row[key]

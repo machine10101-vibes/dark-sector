@@ -1,0 +1,9 @@
+{
+  "id": "authored_quay_tribute_01",
+  "title": "Quay tribute nail",
+  "kind": "authored",
+  "summary": "Stand on Quay. Black Sail writes a rumor. The keel is not taken.",
+  "body": "quay",
+  "system_id": "HC-V1-R8-S1",
+  "mutations": ["rumor_quay_tribute", "black_sail_standing_up"]
+}

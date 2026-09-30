@@ -1,17 +1,19 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Scale + Ecosystem
+Slice just completed: Live-Ops 2
 Player-visible what works now:
-- Helion Dock opens on the Aegis Prime band. The planet is a limb that fills the helm. The keel is a speck on that band, not a toy ball beside a marble. Burning toward the city scrapes the crust and stays in the band. Flying out of the band returns to the chart. The chart is icons and wells. Entering a well is approach, in kilometers, and matching the shell drops back into the band. The capital ship does not land.
-- Starters are 40–180 m. Probes are 4–14 m. Aegis Prime is planetary (6400 km). Green Wound is 320 km across. Quiet Hollow is one 520 m valley. Ash Shelf, Reed Basin, and Glass Scar are other land. The site layer walks the valley at meter scale while the keel stays in the sky. Grow-lights read as a pin from orbit. Animals stay in the pen.
-- Aegis traffic is civic, cargo, and PDO shells, plus the yard. Belts and meteor streams are volumes. A probe scan is a flight you can watch, and the time scales with altitude and body size. A lost craft keeps kilometer coordinates.
-- The save and the listen snapshot share system id, body id, layer, a rebasing local origin in kilometers, and a local pos. Law and patrol guns stay on distance inside the band.
-- The older loop still resolves: lanes, claims, scans, harvest, heat, modules, quests, and the host log.
+- The helm names the band. One living keel counts as here. Helion Dock, Brass Lantern, First Soil, the Swallow, and Black Quay carry an authored crowd on top of that. Other systems use a stable hash so an empty chart is not a silent zero.
+- A cold break keeps Compact insurance: half the hold stays aboard, half sits on a wreck with your name, and the layout is not deleted. Heat at 40, or a warrant, closes the premium. The slate keeps most of the hold and will not let another keel strip that wreck until the rights timer ends.
+- The freelance board is separate from the shakedown log. Job offers Brass courier, then takes it. Food mass at Brass Lantern completes it. Quay tribute wants raw mass at Black Quay. Standing and a rumor are the pay.
+- Standing on Quay writes the authored tribute nail. Needle keeps a survey vane, Barn keeps cargo cheeks, Beak keeps cheek barrels. The high camera, the yaw fix, and the floating origin stay.
+- The older loop still resolves: lanes, claims, scans, harvest, heat, modules, quests, scale layers, and the host log.
 What is next (ordered):
-1. Live-Ops 2 — player count per system, insurance/wreck tuning, more HC-V1 authored hooks, art loop Gate 2+ on three starters
+1. Replace authored band counts with the listen host's real guest list per system.
+2. A trade buoy at one green capital, priced in heat.
+3. A crew tag and a claim ACL that does not block the crack timer.
 Blocked by:
-- Nothing in this repo blocks Live-Ops 2. Do not add a pillar, a second veil, or a new region pass.
+- Nothing in this repo blocks the next pass. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):
 - Planets stay on fixed positions until a later pass adds orbits.
 - The Unlet stays unplantable. Helion Dock and green capitals refuse a Claim Core.
@@ -19,17 +21,17 @@ Open design decisions (max 5):
 - The farm cassette carries a hold-kine. It does not grow a crop. Crops grow on a claim plot.
 - A pocket takes a core only when claim_slots.json names it. The red box on First Soil keeps the Perimeter atlas id.
 Files touched:
-- data/craft.json
-- data/first_soil.json
-- data/ships.json
-- data/system.json
-- craft/orders.gd
-- tests/scale_sim.gd
-- ui/hud.gd
-- world/overhead.gd
-- world/scale.gd
-- world/sector_sim.gd
-- world/sector_view.gd
-- world/stage3d.gd
-- PLAYTEST.md
+- COMPETITIVE_ANALYSIS.md
 - LOOP_STATE.md
+- PLAYTEST.md
+- quests/authored/quay_tribute.json
+- quests/freelance/brass_courier.json
+- quests/freelance/quay_tribute.json
+- quests/jobs.gd
+- tests/liveops_sim.gd
+- tools/catalog.gd
+- ui/hud.gd
+- world/hc_v1/presence.json
+- world/presence.gd
+- world/sector_sim.gd
+- world/stage3d.gd

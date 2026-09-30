@@ -1,5 +1,8 @@
 extends CanvasLayer
 
+const Presence = preload("res://world/presence.gd")
+const JobBoard = preload("res://quests/jobs.gd")
+
 var root: Control
 var helm_name: Label
 var helm_flight: Label
@@ -387,6 +390,14 @@ func _build_actions() -> void:
 	_action("Flag", func() -> void: Game.tap("flag", true))
 	_action("Bay", func() -> void: _toggle("bay"))
 	_action("Quests", func() -> void: _toggle("quest"))
+	_action("Board", func() -> void: _toggle("jobs"))
+	_action("Job", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(JobBoard.tap(Game.sim))
+		if panel_kind == "jobs":
+			panel_body.text = JobBoard.text(Game.sim)
+	)
 	_action("Claim", func() -> void: _toggle("claim"))
 	_action("Site", func() -> void:
 		if Game.sim == null:
@@ -515,7 +526,7 @@ func _refresh_helm() -> void:
 	if not gate.is_empty():
 		repair += "    Lane %s" % str(gate.name)
 	helm_cargo.text = _cargo_line(sim, stats) + repair
-	helm_craft.text = _craft_line(sim)
+	helm_craft.text = "%s    %s" % [_craft_line(sim), Presence.line(sim)]
 	var bits: Array = []
 	for line in sim.lines:
 		bits.append(str(line.text))
@@ -565,7 +576,7 @@ func _toggle(kind: String) -> void:
 		return
 	panel_kind = kind
 	panel.show()
-	panel_body.visible = kind in ["heat", "quest", "claim"]
+	panel_body.visible = kind in ["heat", "quest", "claim", "jobs"]
 	bay_box.visible = kind == "bay"
 	hangar_box.visible = kind == "hangar"
 	dossier_box.visible = kind == "dossier"
@@ -585,6 +596,9 @@ func _toggle(kind: String) -> void:
 		"quest":
 			panel_title.text = "Quest log"
 			panel_body.text = _quest_text()
+		"jobs":
+			panel_title.text = "Freelance board"
+			panel_body.text = JobBoard.text(Game.sim)
 		"claim":
 			panel_title.text = "Homestead"
 			panel_body.text = _claim_text()

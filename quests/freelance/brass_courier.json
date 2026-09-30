@@ -1,0 +1,8 @@
+{
+  "id": "courier_brass",
+  "title": "Brass courier",
+  "summary": "Carry food mass to Brass Lantern. The Compact pays in standing, not a new name.",
+  "system_id": "HC-V1-R1-S2",
+  "need_cargo": "food_mass",
+  "mutations": ["rumor_job_brass", "compact_standing_up"]
+}
