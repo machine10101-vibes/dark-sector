@@ -32,6 +32,7 @@ func _init() -> void:
 	_jobs()
 	_salvage()
 	_escort()
+	_escort_closes()
 	_haul_still_owns_the_beam()
 	if fails == 0:
 		print("DOCKBOARD PASS")
@@ -537,6 +538,81 @@ func _escort() -> void:
 		if "Lane show filed" in str(line.text) and "Purse 60" in str(line.text):
 			said = true
 	check(said, "the log names the lane-show pay")
+
+
+func _escort_closes() -> void:
+	var sim := make()
+	sim.tick(0.3, {})
+	check(DockBoard.take(sim, "escort") == "", "the closing lane show is taken")
+	var cutter: Vector2 = DockBoard.cutter_pos(sim)
+	var aim: Vector2 = DockBoard.cue_aim(sim)
+	check(aim.length() > 8.0 and aim.normalized().dot((cutter - sim.player.pos).normalized()) > 0.99, "the lane aim is keel to cutter")
+	check(Vector2.from_angle(sim.player.rot).dot(aim.normalized()) > 0.99, "the keel faces the cutter")
+	var absolute := cutter.angle()
+	check(absf(wrapf(sim.player.rot - absolute, -PI, PI)) > 0.4, "the lane heading is not the cutter's absolute angle")
+	sim.player.moored = false
+	sim.quest_flags.moor_latch = 0.0
+	sim.player.vel = Vector2.ZERO
+	sim.layer = ScaleFrame.BAND
+	sim.body_id = "aegis_prime"
+	var burn := {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false}
+	var ranges: Array[float] = []
+	var guard := 0
+	var gap: float = sim.player.pos.distance_to(DockBoard.cutter_pos(sim))
+	while guard < 80 and bool(sim.quest_flags.get("dock_escort_met", false)) == false:
+		if guard % 4 == 0:
+			ranges.append(gap)
+		sim.tick(0.25, burn)
+		gap = sim.player.pos.distance_to(DockBoard.cutter_pos(sim))
+		guard += 1
+	ranges.append(gap)
+	var text := ""
+	var shown := 0
+	while shown < ranges.size():
+		if shown > 0:
+			text += " → "
+		text += str(int(ranges[shown]))
+		shown += 1
+	print("ESCORT TRACE %s" % text)
+	var fell := true
+	var prev := ranges[0]
+	var step := 1
+	while step < ranges.size():
+		if ranges[step] >= prev - 5.0:
+			fell = false
+		prev = ranges[step]
+		step += 1
+	check(fell, "Compact cutter range falls every second along the cue")
+	check(bool(sim.quest_flags.get("dock_escort_met", false)), "the cue reaches the cutter")
+	check(DockBoard.purse(sim) == 0, "meeting the cutter does not pay")
+	var back: Array[float] = [sim.player.pos.distance_to(sim.beacon_pos)]
+	var home_guard := 0
+	while bool(sim.player.moored) == false and home_guard < 24:
+		sim.tick(0.5, burn)
+		home_guard += 1
+		if bool(sim.player.moored):
+			back.append(0.0)
+		else:
+			back.append(sim.player.pos.distance_to(sim.beacon_pos))
+	var back_text := ""
+	var back_i := 0
+	while back_i < back.size():
+		if back_i > 0:
+			back_text += " → "
+		back_text += str(int(back[back_i]))
+		back_i += 1
+	print("ESCORT RETURN %s" % back_text)
+	var back_fell := true
+	var back_prev := back[0]
+	var back_step := 1
+	while back_step < back.size():
+		if back[back_step] >= back_prev - 5.0:
+			back_fell = false
+		back_prev = back[back_step]
+		back_step += 1
+	check(back_fell, "Helion Dock range falls on the way back from the cutter")
+	check(bool(sim.player.moored), "the lane show returns to a moored pad")
+	check(DockBoard.purse(sim) == DockBoard.ESCORT_PAY, "the lane show pays 60 on the pad")
 
 
 func _haul_still_owns_the_beam() -> void:

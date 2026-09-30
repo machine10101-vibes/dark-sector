@@ -1,11 +1,12 @@
 # Playtest — Helion Dock helm
 
-## Ready — landscape Board
+## Ready — lane show, haul ribbon, landscape Board
 
-Pages build. Phone landscape, about 844×390. One fresh Needle, moored. Desk and portrait Board already passed. Tow tag +40, lane show +60, and scan-then-haul Purse 200 stay as they passed.
+Pages build. One fresh Needle, moored. Tow tag +40 already passed. Desk and portrait Board already passed.
 
-1. Board opens a glass of its own, the same kind as Market. It stays clear of Speed, Purse, Cast off, Board, Quests, Probe, the quiet strip (Market, Lane, Weld), the stick, and the gun.
-2. The four slips are inside that glass. The list scrolls there. Take scan, Take haul, Take salvage, and Take escort can be reached without the bars covering them.
+1. **Lane show.** Take escort. The cue reads Compact cutter and a distance. Hold that heading. The distance falls until the cutter is met. Come back until Moored. The log pays 60.
+2. **Haul ribbon.** Take haul. The amber ribbon runs from the keel toward the ice ring, inward. Ice ring N m falls until the ring takes the crate. Helion Dock N m then falls until Moored. Scan then haul still lands on Purse 200.
+3. **Landscape Board.** Phone landscape, about 844×390. Board opens a glass clear of Speed, Purse, Cast off, Board, Quests, Probe, the quiet strip, the stick, and the gun. The four slips scroll inside that glass.
 
 ## Ready — rocky hold and corona spokes
 

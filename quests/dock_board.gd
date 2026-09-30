@@ -305,7 +305,16 @@ static func escort_line(sim) -> String:
 	return "Compact cutter %d m — show the lane." % int(gap)
 
 
+## World point the glass arrow stands on. Haul still owns it while the crate is out.
+static func cue_point(sim) -> Vector2:
+	var aim := cue_aim(sim)
+	if sim == null or sim.player.is_empty() or aim.length() <= 8.0:
+		return Vector2.ZERO
+	return sim.player.pos + aim
+
+
 ## Arrow aim. Haul still owns it while the crate is out.
+## Always keel → target. An absolute world heading opens the range.
 static func cue_aim(sim) -> Vector2:
 	var haul := beam_aim(sim)
 	if haul.length() > 8.0:
@@ -437,11 +446,29 @@ static func _pulse_salvage(sim) -> void:
 		_pay(sim, SALVAGE_PAY, "Tow tag filed. Helion Dock paid %d." % SALVAGE_PAY)
 
 
+static func _steer(sim, world: Vector2) -> void:
+	if sim.player.is_empty() or world == Vector2.ZERO:
+		return
+	var face: Vector2 = world - sim.player.pos
+	if face.length() <= 8.0:
+		return
+	var dir := face.normalized()
+	sim.player.rot = dir.angle()
+	var spd: float = sim.player.vel.length()
+	if spd > 1.0 and sim.player.vel.normalized().dot(dir) < 0.45:
+		sim.player.vel = dir * spd
+
+
 static func _pulse_escort(sim) -> void:
 	if state(sim, "dock_escort") != "active":
 		return
 	if str(sim.defs.system.id) != "HC-V1-R1-S1":
 		return
+	# The cutter orbits. A heading taken once points outward within a few seconds.
+	if bool(sim.quest_flags.get("dock_escort_met", false)):
+		_steer(sim, sim.beacon_pos)
+	else:
+		_steer(sim, cutter_pos(sim))
 	if bool(sim.quest_flags.get("dock_escort_met", false)) == false and at_pad(sim) == false and _near_cutter(sim):
 		sim.quest_flags.dock_escort_met = true
 		sim.quest_flags.escort_back_bucket = -999

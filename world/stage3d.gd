@@ -869,7 +869,12 @@ func _sync_haul_ring(sim) -> void:
 	var inbound: bool = sim.haul_outbound() == false
 	var flash := 0.35 + 0.65 * absf(sin(float(sim.time) * 7.5))
 	var at: Vector2 = sim.player.pos + aim
-	_lay_haul_beam(sim.player.pos, at, flash)
+	# The drop is inward, toward Aegis. A shaft that runs the whole gap
+	# crosses the berth camera and reads as an outward lane. The visible
+	# ribbon is a short keel→target step. The ring mark stays on the drop.
+	var step := minf(aim.length(), 96.0)
+	var tip: Vector2 = sim.player.pos + aim.normalized() * step
+	_lay_haul_beam(sim.player.pos, tip, flash)
 	var mark := _prop("haul_ring")
 	if str(mark.get_meta("built", "")) != "yes":
 		var torus := TorusMesh.new()

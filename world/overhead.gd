@@ -334,25 +334,46 @@ class ScaleReadout extends Control:
 		var caption := DockBoard.slip_line(sim)
 		if caption == "":
 			return
-		var at := _guide_at(sim.player.pos + beam, 16.0)
-		var sp := cam.unproject_position(at)
-		var behind := cam.is_position_behind(at)
+		# The fly cue leaves the keel along keel→target. A far inward drop
+		# sits behind the berth camera; unprojecting it and flipping the
+		# edge arrow points outward, and the meters climb.
+		var dir := beam.normalized()
+		var keel_at := _guide_at(sim.player.pos, 10.0)
+		var step_at := _guide_at(sim.player.pos + dir * 64.0, 12.0)
+		var far_at := _guide_at(sim.player.pos + beam, 16.0)
+		var keel_sp := cam.unproject_position(keel_at)
+		var step_sp := cam.unproject_position(step_at)
+		var far_sp := cam.unproject_position(far_at)
+		var step_behind := cam.is_position_behind(keel_at) or cam.is_position_behind(step_at)
+		var far_behind := cam.is_position_behind(far_at)
 		var margin := 28.0
 		var edge := Rect2(Vector2(margin, margin), size - Vector2(margin * 2.0, margin * 2.0 + 96.0))
 		var center := size * 0.5
 		var pulse := 0.72 + 0.28 * absf(sin(Time.get_ticks_msec() * 0.008))
 		var ink := Color(1.0, 0.78, 0.28, pulse)
-		var on_screen := behind == false and edge.has_point(sp)
-		if on_screen:
-			draw_rect(Rect2(sp + Vector2(-11, -11), Vector2(22, 22)), ink, false, 3.0)
-			draw_rect(Rect2(sp + Vector2(-4, -4), Vector2(8, 8)), ink, true)
-			draw_string(font, sp + Vector2(16, 6), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, ink)
+		var marked := false
+		if step_behind == false:
+			var fly := step_sp - keel_sp
+			if fly.length() > 6.0:
+				fly = fly.normalized()
+				var tip := keel_sp + fly * 56.0
+				var wing := Vector2(-fly.y, fly.x)
+				draw_line(keel_sp + fly * 18.0, tip, ink, 5.0, true)
+				draw_colored_polygon(PackedVector2Array([tip + fly * 16.0, tip - fly * 8.0 + wing * 11.0, tip - fly * 8.0 - wing * 11.0]), ink)
+				if edge.has_point(tip):
+					draw_string(font, tip + wing * 14.0 - Vector2(0, 8), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, ink)
+					marked = true
+		if far_behind == false and edge.has_point(far_sp):
+			draw_rect(Rect2(far_sp + Vector2(-11, -11), Vector2(22, 22)), ink, false, 3.0)
+			draw_rect(Rect2(far_sp + Vector2(-4, -4), Vector2(8, 8)), ink, true)
+			if marked == false:
+				draw_string(font, far_sp + Vector2(16, 6), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, ink)
 			return
-		var aim := sp - center
-		if behind:
-			aim = -aim
-		if aim.length() < 1.0:
-			aim = Vector2.RIGHT
+		if marked:
+			return
+		var aim := _screen_aim(cam, beam)
+		if aim.length() < 0.2:
+			aim = Vector2.UP
 		aim = aim.normalized()
 		var limit := edge.size * 0.5
 		var scale := 1.0e6
@@ -364,6 +385,18 @@ class ScaleReadout extends Control:
 		var side := Vector2(-aim.y, aim.x)
 		draw_colored_polygon(PackedVector2Array([hit + aim * 18.0, hit - aim * 10.0 + side * 10.0, hit - aim * 10.0 - side * 10.0]), ink)
 		draw_string(font, hit + side * 14.0 - Vector2(0, 10), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, ink)
+
+
+	func _screen_aim(cam: Camera3D, world_delta: Vector2) -> Vector2:
+		var dir := Vector3(world_delta.x, 0.0, -world_delta.y)
+		if dir.length() < 0.001:
+			return Vector2.UP
+		dir = dir.normalized()
+		var axes := cam.global_transform.basis
+		var screen := Vector2(dir.dot(axes.x), -dir.dot(axes.y))
+		if screen.length() < 0.001:
+			return Vector2.UP
+		return screen.normalized()
 
 
 	func _guide_at(world: Vector2, height: float) -> Vector3:
