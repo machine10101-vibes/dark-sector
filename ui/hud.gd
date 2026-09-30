@@ -131,10 +131,10 @@ func _fit() -> void:
 		helm_box.size = Vector2(maxf(160.0, helm_w), 180)
 	if compact:
 		if log_label != null:
-			log_label.position = Vector2(16, 168)
+			log_label.position = Vector2(16, 200)
 			log_label.size = Vector2(maxf(140.0, screen.x - 32.0), 40)
 		if banner != null:
-			banner.position = Vector2(16, 212)
+			banner.position = Vector2(16, 248)
 			banner.size = Vector2(maxf(140.0, screen.x - 32.0), 36)
 	else:
 		if log_label != null:

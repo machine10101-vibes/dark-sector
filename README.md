@@ -18,7 +18,7 @@ Headless rules check:
 godot --headless --path . --script res://tests/slice1_sim.gd
 ```
 
-The log is `user://dark_sector_save.json` (on Linux, under the Godot app-userdata folder for “Dark Sector”, kept stable so older logs still open). In the browser build that same path is the origin’s IndexedDB, so Continue stays on this machine.
+The log is `user://dark_sector_save.json` (on Linux, under the Godot app-userdata folder for “Dark Sector”). The project folder name stays so older logs still open. In the browser build that same path is the origin’s IndexedDB, so Continue stays on this machine.
 
 ## Browser
 
