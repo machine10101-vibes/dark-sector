@@ -297,7 +297,35 @@ func _save() -> void:
 	check(bool(loaded.captains[0].alive), "the second captain's ship is still on the log")
 
 
+func _page_port() -> void:
+	ListenLink.block_port = true
+	var game = load("res://scripts/game.gd").new()
+	game.defs = defs
+	var err: String = game.begin_host("vesper")
+	check(err == "", "host without a port still starts")
+	check(str(game.mode) == "sector", "solo host reaches the helm")
+	check(game.link == null, "solo host has no socket")
+	check(game.sim != null and bool(game.sim.player.moored), "solo host is moored")
+	var heard := false
+	for row in game.sim.lines:
+		if str(row.text) == ListenLink.SOLO_LINE:
+			heard = true
+	check(heard, "the log says flying solo")
+	game.begin_new("kestrel")
+	check(game.link == null, "new keel opens no port")
+	check(str(game.mode) == "sector", "new keel still reaches the helm")
+	check(str(game.sim.player.class_id) == "kestrel", "new keel is the chosen hull")
+	var joined: String = game.begin_join("anvil", "127.0.0.1:24565")
+	check(joined == ListenLink.JOIN_LINE, "join without a port stays on the slate")
+	check(str(game.mode) == "menu", "a failed join is not stuck in sector")
+	check(game.sim == null, "a failed join leaves no sim")
+	check(game.link == null, "a failed join leaves no socket")
+	ListenLink.block_port = false
+	game.free()
+
+
 func _listen() -> void:
+	_page_port()
 	var host_sim := make("vesper")
 	var client_sim := make("anvil")
 	client_sim.player.player_id = "captain-guest"

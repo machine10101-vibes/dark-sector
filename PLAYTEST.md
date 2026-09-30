@@ -33,9 +33,9 @@ Pages build. One fresh Needle. Incognito is fine. The scale bar is zoom. The car
 
 Windowed or the Pages build. One fresh launch.
 
-1. The title is the Helion limb, the ice rings, and a keel in front of that sky. New keel, Host, Join, and Continue log are still on the left.
-2. New keel. One hull is in the yard above the cards. The line names it. Hover a card, or on a phone scroll so that card is the top one. Needle, Barn, and Beak each take the yard in turn.
-3. Take the Needle. The helm is still moored at Helion Dock. Cast off and Board are up. Purse is 0.
+1. The title is the Helion limb, the ice rings, and a keel in front of that sky. New keel, Host, Join, and Continue log are still on the left. Continue reads **No log on the slate** until a log exists. That line is not a lock.
+2. New keel. One hull is in the yard above the cards. The line names it. Hover a card, or on a phone scroll so that card is the top one. Needle, Barn, and Beak each take the yard in turn. Take the Needle. The helm is moored. No listen port is required.
+3. Host the dock, then Take the Needle. On the page the helm still opens. The log reads **No listen port on this board. Flying solo.** Leave the dock. Join a dock and take a keel. The slate returns, New keel still works, and the note reads **No listen port on this page. New keel still flies solo.**
 
 ## Ready — dock board
 

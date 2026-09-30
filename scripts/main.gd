@@ -48,7 +48,7 @@ func _on_start(class_id: String) -> void:
 func _on_host(class_id: String) -> void:
 	var err := Game.begin_host(class_id)
 	if err != "":
-		menu.set_note(err)
+		menu.back_to_slate(err)
 		return
 	_enter_sector()
 
@@ -56,7 +56,7 @@ func _on_host(class_id: String) -> void:
 func _on_join(class_id: String, address: String) -> void:
 	var err := Game.begin_join(class_id, address)
 	if err != "":
-		menu.set_note(err)
+		menu.back_to_slate(err)
 		return
 	_enter_sector()
 
