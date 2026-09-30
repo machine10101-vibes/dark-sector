@@ -56,8 +56,8 @@ static func scan_blurb(sim) -> String:
 		return "Filed. The dock already paid %d." % SCAN_PAY
 	if value == "active":
 		if sim.dossier_complete("aegis_prime"):
-			return "The dossier is sealed. Pay %d is on its way." % SCAN_PAY
-		return "Launch a probe on Aegis Prime. The dock pays %d when the dossier seals." % SCAN_PAY
+			return "Aegis Prime is sealed. Stand the pad. Pay %d lands on contact." % SCAN_PAY
+		return "The probe reads Aegis Prime. The dock pays %d when that dossier seals on the pad." % SCAN_PAY
 	return "Launch a probe on Aegis Prime. Pay %d when the dossier seals." % SCAN_PAY
 
 
@@ -96,7 +96,18 @@ static func _take_scan(sim) -> String:
 	if value == "active":
 		return "Aegis scan is already on the slate."
 	sim.quest_flags.dock_scan = "active"
-	sim.say("Aegis scan taken. Launch a probe, then stand the pad for %d." % SCAN_PAY)
+	# A probe already in flight was aimed at the nearest node, which from
+	# this pad is the ice ring. The slip is Aegis Prime. Send it there.
+	if sim.dossier_complete("aegis_prime") == false:
+		for craft in sim.craft:
+			if str(craft.def_id) != "survey_probe":
+				continue
+			if str(craft.state) == "docked" or str(craft.state) == "lost":
+				continue
+			if str(craft.target) == "aegis_prime":
+				continue
+			CraftOrders.order(sim, str(craft.uid), "scan", "aegis_prime")
+	sim.say("Aegis scan taken. The probe reads Aegis Prime. Stand the pad when the dossier seals for %d." % SCAN_PAY)
 	return ""
 
 
@@ -120,6 +131,10 @@ static func _pulse_scan(sim) -> void:
 	if state(sim, "dock_scan") != "active":
 		return
 	if sim.dossier_complete("aegis_prime") == false:
+		return
+	# Sealing off the pad keeps the slip open. Purse moves on the pad,
+	# which includes a fresh Moored, not only a keel that never left.
+	if at_pad(sim) == false:
 		return
 	sim.quest_flags.dock_scan = "done"
 	_pay(sim, SCAN_PAY, "Aegis scan filed. Helion Dock paid %d." % SCAN_PAY)

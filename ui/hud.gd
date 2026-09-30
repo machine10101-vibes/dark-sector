@@ -38,6 +38,7 @@ var stat_purse: Label
 var hint_label: Label
 var cast_button: Button
 var board_button: Button
+var dock_button: Button
 var quest_button: Button
 var probe_button: Button
 var board_box: VBoxContainer
@@ -83,6 +84,16 @@ func _ready() -> void:
 		Game.request_cast_off()
 	)
 	root.add_child(cast_button)
+	dock_button = ThemeKit.button("Dock", true)
+	dock_button.visible = false
+	dock_button.custom_minimum_size = Vector2(124, 48)
+	dock_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	dock_button.pressed.connect(func() -> void:
+		if Game.sim == null:
+			return
+		Game.request_dock()
+	)
+	root.add_child(dock_button)
 	board_button = ThemeKit.button("Board", true)
 	board_button.visible = false
 	board_button.custom_minimum_size = Vector2(112, 48)
@@ -465,11 +476,11 @@ func _build_dead() -> void:
 func _size_primary(is_compact: bool) -> void:
 	var wide := Control.SIZE_EXPAND_FILL if is_compact else Control.SIZE_SHRINK_CENTER
 	var slot := 0.0 if is_compact else 112.0
-	for node in [cast_button, board_button, quest_button, probe_button]:
+	for node in [cast_button, dock_button, board_button, quest_button, probe_button]:
 		if node == null:
 			continue
 		var button := node as Button
-		var span := 124.0 if button == cast_button and not is_compact else slot
+		var span := 124.0 if (button == cast_button or button == dock_button) and not is_compact else slot
 		button.size_flags_horizontal = wide
 		button.custom_minimum_size = Vector2(span, 44)
 
@@ -484,6 +495,7 @@ func _mount_primary() -> void:
 	primary_row.add_theme_constant_override("separation", 8)
 	primary_bar.add_child(primary_row)
 	_reparent(cast_button)
+	_reparent(dock_button)
 	_reparent(board_button)
 	quest_button = ThemeKit.button("Quests", true)
 	quest_button.custom_minimum_size = Vector2(112, 48)
@@ -597,6 +609,8 @@ func _refresh_helm() -> void:
 	var moored := bool(sim.player.get("moored", false))
 	if cast_button != null:
 		cast_button.visible = moored
+	if dock_button != null:
+		dock_button.visible = sim.can_force_dock()
 	_place_board_button(compact)
 	helm_name.text = str(sim.defs.system.name).to_upper()
 	if compact:

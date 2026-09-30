@@ -735,8 +735,8 @@ func _sync_props(sim) -> void:
 		var dock_ring := _prop("band_dock")
 		if str(dock_ring.get_meta("built", "")) != "yes":
 			var ring := TorusMesh.new()
-			ring.inner_radius = 72.0
-			ring.outer_radius = 118.0
+			ring.inner_radius = 150.0
+			ring.outer_radius = 220.0
 			ring.rings = 40
 			ring.ring_segments = 10
 			dock_ring.mesh = ring

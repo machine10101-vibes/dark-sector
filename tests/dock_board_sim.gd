@@ -20,6 +20,8 @@ func _init() -> void:
 		"quests": Serde.load_json("res://data/quests.json"),
 	}
 	_scan()
+	_scan_pays_on_pad()
+	_probe_reads_prime()
 	_haul()
 	_pad_gate()
 	_save()
@@ -63,6 +65,55 @@ func _scan() -> void:
 			said = true
 	check(said, "the log names the scan pay")
 	check(DockBoard.take(sim, "scan") != "", "a filed scan cannot be taken again")
+
+
+func _seal(sim, node_id: String) -> void:
+	for layer_name in CraftOrders.LAYERS:
+		sim.reveal_layer(node_id, layer_name)
+
+
+func _scan_pays_on_pad() -> void:
+	var sim := make()
+	check(DockBoard.take(sim, "scan") == "", "scan is taken before leaving")
+	sim.player.moored = false
+	sim.player.pos = sim.beacon_pos + Vector2(900.0, 0.0)
+	_seal(sim, "aegis_ring")
+	DockBoard.pulse(sim, 0.2)
+	check(sim.dossier_complete("aegis_ring"), "the ice ring dossier can seal")
+	check(DockBoard.purse(sim) == 0, "sealing the ice ring does not pay the Aegis slip")
+	check(DockBoard.state(sim, "dock_scan") == "active", "the slip stays open after the wrong seal")
+	_seal(sim, "aegis_prime")
+	DockBoard.pulse(sim, 0.2)
+	check(sim.dossier_complete("aegis_prime"), "Aegis Prime seals off the pad")
+	check(DockBoard.purse(sim) == 0, "a seal away from the pad does not pay yet")
+	check(DockBoard.state(sim, "dock_scan") == "active", "the slip waits for the pad")
+	sim.player.pos = sim.beacon_pos
+	sim.player.moored = true
+	DockBoard.pulse(sim, 0.2)
+	check(DockBoard.state(sim, "dock_scan") == "done", "pad contact files the sealed scan")
+	check(DockBoard.purse(sim) == DockBoard.SCAN_PAY, "pad contact pays 80")
+
+
+func _probe_reads_prime() -> void:
+	var sim := make()
+	var ring = sim.survey_node("aegis_ring")
+	var prime = sim.survey_node("aegis_prime")
+	check(ring != null and prime != null, "both scan nodes exist")
+	var ring_gap: float = sim.player.pos.distance_to(ring.pos)
+	var prime_gap: float = sim.player.pos.distance_to(prime.pos)
+	check(ring_gap < prime_gap, "from the pad the ice ring is the nearer node")
+	check(CraftOrders.launch(sim, "survey_probe") == "", "a free probe still launches")
+	var sent := ""
+	for craft in sim.craft:
+		if str(craft.def_id) == "survey_probe" and str(craft.state) != "docked":
+			sent = str(craft.target)
+	check(sent == "aegis_ring", "without the slip the probe takes the nearer ice ring")
+	check(DockBoard.take(sim, "scan") == "", "taking the scan retargets that probe")
+	sent = ""
+	for craft in sim.craft:
+		if str(craft.def_id) == "survey_probe" and str(craft.state) != "docked":
+			sent = str(craft.target)
+	check(sent == "aegis_prime", "the open slip sends the probe to Aegis Prime")
 
 
 func _haul() -> void:
@@ -163,10 +214,28 @@ func _return_and_pay() -> void:
 	sim.layer = ScaleFrame.BAND
 	sim.tick(0.05, {})
 	check(bool(sim.player.moored) == false, "seven hundred meters of dark band is not the pad")
-	sim.player.pos = sim.beacon_pos + Vector2(40.0, 30.0)
-	sim.player.vel = Vector2(40.0, -10.0)
+	sim.player.pos = sim.beacon_pos + Vector2(958.0, 0.0)
+	sim.player.vel = Vector2.ZERO
 	sim.tick(0.05, {})
-	check(bool(sim.player.moored) and DockBoard.at_pad(sim), "fifty meters from the buoy moors from any heading")
+	check(bool(sim.player.moored) == false, "nine hundred fifty eight meters does not moor")
+	sim.player.pos = sim.beacon_pos + Vector2(450.0, 0.0)
+	sim.player.vel = Vector2(0.0, 90.0)
+	sim.player.rot = 1.4
+	sim.tick(0.05, {"dock": true})
+	check(bool(sim.player.moored) and DockBoard.at_pad(sim), "Dock inside five hundred meters snaps from a slide")
+	sim.player.moored = false
+	sim.quest_flags.moor_latch = 0.0
+	sim.quest_flags.pad_departed = false
+	sim.player.pos = sim.beacon_pos + Vector2(40.0, 30.0)
+	sim.player.vel = Vector2.ZERO
+	sim.tick(0.05, {})
+	check(bool(sim.player.moored) == false, "a fresh cast-off inside the bubble is not grabbed")
+	sim.player.pos = sim.beacon_pos + Vector2(-160.0, 110.0)
+	sim.player.vel = Vector2.ZERO
+	sim.player.rot = 2.4
+	sim.quest_flags.pad_departed = true
+	sim.tick(0.05, {})
+	check(bool(sim.player.moored) and DockBoard.at_pad(sim), "under two hundred meters moors from a stop, any heading")
 
 
 func _save() -> void:
