@@ -23,8 +23,18 @@ func _ready() -> void:
 	world.background_mode = Environment.BG_COLOR
 	world.background_color = Color("07080c")
 	world.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	world.ambient_light_color = Color(0.16, 0.2, 0.26)
-	world.ambient_light_energy = 0.45
+	world.ambient_light_color = Color(0.46, 0.52, 0.64)
+	world.ambient_light_energy = 0.34
+	world.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	world.glow_enabled = true
+	world.glow_intensity = 0.5
+	world.glow_strength = 0.82
+	world.glow_bloom = 0.14
+	world.glow_hdr_threshold = 0.82
+	world.fog_enabled = true
+	world.fog_light_color = Color("07080c")
+	world.fog_density = 0.00028
+	world.fog_aerial_perspective = 0.32
 	env.environment = world
 	vp.add_child(env)
 	cam = Camera3D.new()
@@ -71,23 +81,29 @@ func _aim(hero: bool) -> void:
 	var landscape := _screen.x > _screen.y
 	if yard != null:
 		yard.set("menu_bias", -42.0 if hero and narrow and landscape else 0.0)
+	var t := Time.get_ticks_msec() * 0.001
+	var swing := sin(t * 0.28) * 14.0
+	var lift := sin(t * 0.17) * 3.5
+	var drift := sin(t * 0.11) * 8.0
+	cam.fov = 46.0
 	if hero:
+		# A slow 3/4 orbit. The hull stays in the open glass; the cards keep the other side.
 		if narrow and landscape:
-			cam.position = Vector3(-70.0, 34.0, 230.0)
+			cam.position = Vector3(-62.0 + swing * 0.45, 30.0 + lift, 196.0)
 			cam.look_at(Vector3(-36.0, 16.0, 0.0), Vector3.UP)
 		elif narrow:
-			cam.position = Vector3(-8.0, 48.0, 292.0)
-			cam.look_at(Vector3(6.0, 16.0, 0.0), Vector3.UP)
+			cam.position = Vector3(-6.0 + swing * 0.35, 42.0 + lift, 236.0)
+			cam.look_at(Vector3(6.0, 22.0, 0.0), Vector3.UP)
 		else:
-			cam.position = Vector3(-18.0, 36.0, 210.0)
-			cam.look_at(Vector3(8.0, 22.0, 0.0), Vector3.UP)
+			cam.position = Vector3(-14.0 + swing, 32.0 + lift, 188.0)
+			cam.look_at(Vector3(8.0, 20.0, 0.0), Vector3.UP)
 	else:
 		if narrow and landscape:
-			cam.position = Vector3(-240.0, 150.0, 520.0)
-			cam.look_at(Vector3(80.0, 8.0, 20.0), Vector3.UP)
+			cam.position = Vector3(-220.0 + drift, 142.0 + lift, 500.0)
+			cam.look_at(Vector3(120.0, 18.0, 10.0), Vector3.UP)
 		elif narrow:
-			cam.position = Vector3(-180.0, 200.0, 560.0)
-			cam.look_at(Vector3(140.0, 4.0, 16.0), Vector3.UP)
+			cam.position = Vector3(-160.0 + drift * 0.6, 186.0, 520.0)
+			cam.look_at(Vector3(180.0, 24.0, 8.0), Vector3.UP)
 		else:
-			cam.position = Vector3(-210.0, 168.0, 460.0)
-			cam.look_at(Vector3(220.0, 10.0, 40.0), Vector3.UP)
+			cam.position = Vector3(-190.0 + drift, 156.0 + lift, 440.0)
+			cam.look_at(Vector3(240.0, 20.0, 24.0), Vector3.UP)

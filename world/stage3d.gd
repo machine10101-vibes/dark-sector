@@ -3115,8 +3115,8 @@ func _step_yard(delta: float) -> void:
 
 func _build_yard() -> void:
 	var planet := _body_node("yard_aegis")
-	planet.position = Vector3(860.0, -220.0, -30.0)
-	var radius := 640.0
+	planet.position = Vector3(980.0, -120.0, -70.0)
+	var radius := 680.0
 	var ball := planet.get_node("Ball") as MeshInstance3D
 	(ball.mesh as SphereMesh).radius = radius
 	(ball.mesh as SphereMesh).height = radius * 2.0
@@ -3127,7 +3127,7 @@ func _build_yard() -> void:
 	clouds.visible = true
 	(clouds.mesh as SphereMesh).radius = radius * 1.018
 	(clouds.mesh as SphereMesh).height = radius * 2.036
-	var to_star := Vector3(-1.0, 0.42, -0.18).normalized()
+	var to_star := Vector3(-0.86, 0.46, -0.2).normalized()
 	var mat := ball.material_override as ShaderMaterial
 	var albedo := Color("6e8f86")
 	var land := Color("8d9a78")
@@ -3173,14 +3173,35 @@ func _build_yard() -> void:
 		_star_glow.material_override = glow
 		_star_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_star_glow)
-	_star_mesh.position = Vector3(-1680.0, 920.0, -420.0)
+	_star_mesh.position = Vector3(60.0, 460.0, -280.0)
 	_star_glow.position = _star_mesh.position
+	(_star_mesh.mesh as SphereMesh).radius = 110.0
+	(_star_mesh.mesh as SphereMesh).height = 220.0
+	(_star_glow.mesh as SphereMesh).radius = 190.0
+	(_star_glow.mesh as SphereMesh).height = 380.0
 	_star_mesh.visible = true
 	_star_glow.visible = true
 	if _star_far != null:
 		_star_far.visible = false
 	if _star_rays != null:
 		_star_rays.visible = false
+	var spokes := get_node_or_null("YardSpokes") as MeshInstance3D
+	if spokes == null:
+		spokes = MeshInstance3D.new()
+		spokes.name = "YardSpokes"
+		var card := QuadMesh.new()
+		card.orientation = PlaneMesh.FACE_Z
+		card.size = Vector2(110.0 * 5.2, 110.0 * 5.2)
+		spokes.mesh = card
+		var rays := ShaderMaterial.new()
+		rays.shader = _ray_shader
+		rays.render_priority = 2
+		rays.set_shader_parameter("albedo", Color("ffd7a2"))
+		spokes.material_override = rays
+		spokes.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(spokes)
+	spokes.position = _star_mesh.position
+	spokes.visible = true
 	var ring := _prop("yard_dock")
 	if str(ring.get_meta("built", "")) != "yes":
 		var torus := TorusMesh.new()
@@ -3197,7 +3218,7 @@ func _build_yard() -> void:
 		ring.material_override = wash
 		ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		ring.set_meta("built", "yes")
-	ring.position = Vector3(470.0, 48.0, 18.0)
+	ring.position = Vector3(299.0, 40.0, 227.0)
 	ring.rotation = Vector3(1.2, 0.35, 0.15)
 	for i in 5:
 		var pylon := _prop("yard_pylon%d" % i)
@@ -3257,11 +3278,27 @@ func _build_yard() -> void:
 		var key := OmniLight3D.new()
 		key.name = "YardKey"
 		key.light_color = Color("fff3d8")
-		key.light_energy = 2.2
-		key.omni_range = 360.0
+		key.light_energy = 2.4
+		key.omni_range = 420.0
 		key.shadow_enabled = false
 		key.position = Vector3(-36.0, 78.0, 150.0)
 		add_child(key)
+		var rim := OmniLight3D.new()
+		rim.name = "YardRim"
+		rim.light_color = Color("ffb56a")
+		rim.light_energy = 1.6
+		rim.omni_range = 260.0
+		rim.shadow_enabled = false
+		rim.position = Vector3(80.0, 40.0, -40.0)
+		add_child(rim)
+		var fill := OmniLight3D.new()
+		fill.name = "YardFill"
+		fill.light_color = Color(0.62, 0.74, 0.92)
+		fill.light_energy = 0.55
+		fill.omni_range = 200.0
+		fill.shadow_enabled = false
+		fill.position = Vector3(-20.0, 12.0, -30.0)
+		add_child(fill)
 	_sky.visible = true
 	if _sun != null:
 		_sun.look_at(_sun.global_position - to_star, Vector3.UP)
@@ -3279,14 +3316,30 @@ func _dress_yard() -> void:
 	if cloud_mat != null:
 		cloud_mat.set_shader_parameter("spin", _yard_t * 0.03)
 	var ring := _prop("yard_dock")
+	ring.rotation = Vector3(1.2, 0.35 + _yard_t * 0.12, 0.15)
 	var paint := ring.material_override as StandardMaterial3D
 	if paint != null:
 		paint.emission_energy_multiplier = 0.7 + 0.55 * sin(_yard_t * 3.2)
 	for i in 5:
 		var pylon := _prop("yard_pylon%d" % i)
+		var ang := float(i) * TAU / 5.0 + _yard_t * 0.12
+		pylon.position = ring.position + Vector3(cos(ang) * 34.0, 8.0, sin(ang) * 14.0)
 		var lamp := pylon.material_override as StandardMaterial3D
 		if lamp != null:
 			lamp.emission_energy_multiplier = 0.45 + 0.55 * maxf(sin(_yard_t * 2.4 + float(i)), 0.0)
+	var spokes := get_node_or_null("YardSpokes") as MeshInstance3D
+	if spokes != null and spokes.visible:
+		var eye := get_viewport().get_camera_3d()
+		if eye != null:
+			var to_eye := eye.global_position - spokes.global_position
+			if to_eye.length_squared() > 4.0:
+				var z_axis := to_eye.normalized()
+				var x_axis := Vector3.UP.cross(z_axis)
+				if x_axis.length_squared() < 0.0001:
+					x_axis = Vector3.RIGHT.cross(z_axis)
+				x_axis = x_axis.normalized()
+				var y_axis := z_axis.cross(x_axis).normalized()
+				spokes.basis = Basis(x_axis, y_axis, z_axis)
 	if Game.defs.is_empty() or Game.defs.has("ships") == false:
 		return
 	if Game.defs.ships.has(menu_class) == false:
@@ -3322,6 +3375,35 @@ func _dress_yard() -> void:
 		holder.position = Vector3(168.0, 36.0, 24.0)
 		holder.scale = Vector3(1.55, 1.55, 1.55)
 	holder.visible = true
+	var key := get_node_or_null("YardKey") as OmniLight3D
+	var rim := get_node_or_null("YardRim") as OmniLight3D
+	var cool := get_node_or_null("YardFill") as OmniLight3D
+	if menu_hero:
+		if key != null:
+			key.position = holder.position + Vector3(-34.0, 52.0, 78.0)
+			key.light_energy = 3.6
+			key.omni_range = 240.0
+		if rim != null:
+			rim.position = holder.position + Vector3(56.0, 18.0, -42.0)
+			rim.light_energy = 2.8
+			rim.omni_range = 200.0
+		if cool != null:
+			cool.position = holder.position + Vector3(-16.0, 10.0, -24.0)
+			cool.light_energy = 0.7
+			cool.omni_range = 160.0
+	else:
+		if key != null:
+			key.position = Vector3(40.0, 140.0, 210.0)
+			key.light_energy = 2.2
+			key.omni_range = 640.0
+		if rim != null:
+			rim.position = Vector3(220.0, 80.0, -80.0)
+			rim.light_energy = 1.4
+			rim.omni_range = 520.0
+		if cool != null:
+			cool.position = Vector3(-40.0, 30.0, 80.0)
+			cool.light_energy = 0.45
+			cool.omni_range = 360.0
 	_pulse_lamps(holder)
 	var flame := holder.get_node_or_null("Exhaust") as MeshInstance3D
 	if flame != null:

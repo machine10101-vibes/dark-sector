@@ -1,5 +1,13 @@
 # Playtest — Helion Dock helm
 
+## Ready — title yard, ship-select, Helion hand-off
+
+Pages build. One fresh Needle. Contracts, haul ribbon, Market, and the corp tag already passed.
+
+1. **Title.** The slate sits on a Helion limb: ice, a dock ring, and corona spokes. Portrait Continue stays fully on the glass.
+2. **Ship-select.** New keel. Needle, Barn, and Beak read as different hulls on the turntable (spine mast, wide bay, wing guns). Cards stay on the glass at desk, portrait, and landscape about 844×390. Landscape Back stays fully on the glass.
+3. **Hand-off.** Take the Needle. The pad opens a little wide on Aegis, then settles to the working helm. It is the same light as the yard, not a flat cut.
+
 ## Ready — lane show, haul ribbon, landscape Board
 
 Pages build. One fresh Needle, moored. Tow tag +40 already passed. Desk and portrait Board already passed.
