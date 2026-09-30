@@ -3,7 +3,7 @@ LOOP STATE
 Build: Godot 4.7.2 stable, GL Compatibility
 Slice just completed: Ring haul cue
 Player-visible what works now:
-- A fresh keel moors on a berth ring beside Aegis, in clear space. The pad is not a planet-sized disc, and the hull is not inside the city or the ice.
+- A fresh keel moors on a berth ring beside Aegis, in clear space. The pad is not a planet-sized disc, and the hull is not inside the city or the ice. The title-yard Needle stays in its own world, so Take does not leave a second, larger keel sitting on the pad.
 - Phone portrait and landscape keep Speed, Purse, the bars, the stick, the gun, and the scale in separate bands. The scale sits above the bars on a tall phone and beside the stick on a short one.
 - The Helion sky sits closer to the yard. Aegis’s night side carries distinct city lamps, the ice ring glints, and Seized Hold is a pile of lifted rocky clusters beside the planet. Helion’s corona is a spoke card past the soft glow, separate from the star’s grain. Needle, Barn, and Beak in flight keep their mounts and pick up a rounded keel and deck plates.
 - On the Helion pad, Market buys one glasswheat for 12 and sells it for 8 against the purse. Off the pad the stall refuses. The posted crop price does not move. A captain clicks the corp field and types `Red-Keel!!`; a repeated flight key does not append. Set tag stores Red-Keel on the helm as one line on a short phone, and on the dossier and the overhead name. The market glass on that phone still scrolls beside the helm, clear of Speed, Purse, the bars, the stick, and the gun. F5 writes the log without leaving the helm, and F9 brings the tag and the glasswheat back.

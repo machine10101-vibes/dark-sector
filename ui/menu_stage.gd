@@ -13,6 +13,10 @@ func _ready() -> void:
 	stretch = false
 	vp = SubViewport.new()
 	vp.name = "YardView"
+	# The yard used to share the helm World3D. Its turntable Needle (about
+	# 1.85× the flight hull) stayed at the pad after Take, so two keels spawned.
+	vp.own_world_3d = true
+	vp.world_3d = World3D.new()
 	vp.transparent_bg = false
 	vp.handle_input_locally = false
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -71,6 +75,7 @@ func set_live(on: bool) -> void:
 	if vp != null:
 		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS if on else SubViewport.UPDATE_DISABLED
 	if yard != null:
+		yard.visible = on
 		yard.set_process(on)
 
 
