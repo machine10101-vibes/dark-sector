@@ -98,6 +98,7 @@ body {
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>html,body{margin:0;background:#07080c;height:100%;overflow:hidden;touch-action:none}body,canvas{touch-action:none;-webkit-user-select:none;user-select:none}</style>
+<script>window.addEventListener('keydown',function(e){if(e.code==='F5'||e.code==='F9'||e.key==='F5'||e.key==='F9'){e.preventDefault();}},true);</script>
 	</head>
 	<body>
 		<canvas id="canvas">
@@ -116,7 +117,7 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":721608,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":723032,"index.wasm":39514754},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
