@@ -222,6 +222,15 @@ func _layout_chrome(screen: Vector2) -> void:
 	if touch_on and not compact:
 		left = 176.0
 		right = screen.x - 210.0
+	var land_panel := short and screen.x > screen.y and panel != null and panel.visible
+	if land_panel:
+		_size_primary(true)
+		var need := 360.0
+		if primary_row != null:
+			need = primary_row.get_combined_minimum_size().x + 36.0
+		var room := screen.x - left - 220.0
+		need = clampf(need, 280.0, maxf(280.0, room))
+		right = left + need
 	var bar_room := right - left
 	_size_primary(bar_room < 520.0)
 	var primary_h := 72.0
@@ -290,7 +299,7 @@ func _layout_chrome(screen: Vector2) -> void:
 		chat_line.size = Vector2(minf(420.0, helm_w), 32)
 	if hint_label != null:
 		hint_label.visible = false
-	_place_panel(screen, primary_y, short)
+	_place_panel(screen, primary_y, short, pad_top)
 
 
 func _process(_delta: float) -> void:
@@ -522,6 +531,7 @@ func _build_panel() -> void:
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	scroll.clip_contents = true
 	box.add_child(scroll)
 	panel_scroll = scroll
 	var inner := VBoxContainer.new()
@@ -894,7 +904,7 @@ func _close_panel() -> void:
 	_fit()
 
 
-func _place_panel(screen: Vector2, primary_y: float, short: bool) -> void:
+func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float) -> void:
 	if panel == null:
 		return
 	var land := short and screen.x > screen.y and panel.visible
@@ -904,23 +914,32 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool) -> void:
 		var x := 8.0
 		if status_card != null:
 			x = status_card.position.x + status_card.size.x + 8.0
+		if primary_bar != null:
+			x = maxf(x, primary_bar.position.x + primary_bar.size.x + 8.0)
+		if action_scroll != null:
+			x = maxf(x, action_scroll.position.x + action_scroll.size.x + 8.0)
 		var right := screen.x - 8.0
 		if hold_button != null and hold_button.visible:
 			right = minf(right, hold_button.position.x - 8.0)
+		if stick_button != null and stick_button.visible:
+			right = minf(right, stick_button.position.x - 8.0)
 		var y := 8.0
-		var bottom := primary_y - 8.0
+		var bottom := pad_top - 8.0
 		if right - x < 200.0 and status_card != null:
 			x = 8.0
 			y = status_card.position.y + status_card.size.y + 6.0
 			right = screen.x - 8.0
+			bottom = primary_y - 8.0
 		var height := bottom - y
-		if height < 72.0:
+		if height < 96.0:
+			bottom = primary_y - 8.0
 			height = maxf(0.0, bottom - y)
 		panel.position = Vector2(x, y)
 		panel.size = Vector2(maxf(120.0, right - x), maxf(0.0, height))
 		if panel_scroll != null:
 			panel_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
 			panel_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+			panel_scroll.clip_contents = true
 		return
 	if panel_scroll != null:
 		panel_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
@@ -970,12 +989,8 @@ func _fill_board() -> void:
 	for slip in DockBoard.jobs(sim):
 		row = slip
 		var job_id := str(row.id)
-		var title := ThemeKit.label("%s    pay %d    [%s]" % [str(row.title), int(row.pay), str(row.state)], 16)
-		title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		board_box.add_child(title)
-		var blurb := ThemeKit.label(str(row.blurb), 13, Color("8d826c"))
-		blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		board_box.add_child(blurb)
+		board_box.add_child(_board_line("%s    pay %d    [%s]" % [str(row.title), int(row.pay), str(row.state)], 16))
+		board_box.add_child(_board_line(str(row.blurb), 13, Color("8d826c")))
 		if str(row.state) == "open":
 			var verb := "Take %s" % job_id
 			var take := ThemeKit.button(verb)
@@ -1057,6 +1072,15 @@ func _paint_market(sim) -> void:
 		where = "Glasswheat on the Helion pad. Buy %d. Sell %d." % [DockBoard.BUY_PRICE, DockBoard.SELL_PRICE]
 	if market_box.get_child_count() > 0 and market_box.get_child(0) is Label:
 		(market_box.get_child(0) as Label).text = where
+
+
+func _board_line(text: String, size: int, color: Color = Color("e7f3f6")) -> Label:
+	var node := ThemeKit.label(text, size, color)
+	node.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# A zero-width wrap pass turns each slip into a column tall enough to paint through the bars.
+	node.custom_minimum_size = Vector2(168, 0)
+	node.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return node
 
 
 func _flat(text: String, size: int, color: Color = Color("e7f3f6")) -> Label:
