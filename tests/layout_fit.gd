@@ -16,12 +16,18 @@ func _process(_dt: float) -> bool:
 		hud = load("res://ui/hud.gd").new()
 		root.add_child(hud)
 		return false
+	if hud == null:
+		print("LAYOUT FAIL hud")
+		quit(1)
+		return true
 	var screen := root.get_viewport().get_visible_rect().size
 	print("LAYOUT SCREEN ", screen)
 	_check_title(screen)
 	_check_select(screen)
 	_check_helm(screen, false)
 	_check_helm(screen, true)
+	if screen.y < 520.0 and screen.x > screen.y:
+		_check_market(screen)
 	if fails == 0:
 		print("LAYOUT PASS")
 	else:
@@ -78,7 +84,10 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 	purse.text = "PURSE  200"
 	hud.set("show_tag", true)
 	var flight: Label = hud.get("helm_flight")
-	flight.text = "Needle  ·  Red-Keel"
+	if screen.y < 520.0:
+		flight.text = "Red-Keel"
+	else:
+		flight.text = "Needle  ·  Red-Keel"
 	flight.visible = true
 	hud._layout_chrome(screen)
 	_resort(hud)
@@ -98,6 +107,8 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 	_inside_parent(purse, status, tag + " purse")
 	_inside_parent(flight, status, tag + " tag")
 	_apart(flight, primary, tag + " tag/primary")
+	if screen.y < 520.0 and flight.get_global_rect().size.y > 32.0:
+		_bad(tag + " tag tall %s" % flight.get_global_rect())
 	for node in [cast, dock, board, hud.get("quest_button"), hud.get("probe_button")]:
 		var button := node as Control
 		if button.visible:
@@ -113,6 +124,54 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 		_apart(joy, primary, tag + " stick/primary")
 		_apart(gun, primary, tag + " gun/primary")
 		_apart(joy, actions, tag + " stick/actions")
+
+
+func _check_market(screen: Vector2) -> void:
+	hud.set("touch_on", true)
+	hud.set("touch_chosen", true)
+	hud.set("show_tag", true)
+	var flight: Label = hud.get("helm_flight")
+	flight.text = "Red-Keel"
+	flight.autowrap_mode = TextServer.AUTOWRAP_OFF
+	flight.visible = true
+	var panel: Control = hud.get("panel")
+	panel.show()
+	var box: Node = hud.get("market_box")
+	box.visible = true
+	if box.get_child_count() == 0:
+		for word in ["Buy glasswheat", "Sell glasswheat", "Set tag", "Slip", "Slip", "Slip", "Slip"]:
+			var button := Button.new()
+			button.text = word
+			button.custom_minimum_size = Vector2(160, 44)
+			box.add_child(button)
+	hud._fit()
+	_resort(hud)
+	var primary: Control = hud.get("primary_bar")
+	var actions: Control = hud.get("action_scroll")
+	var status: Control = hud.get("status_card")
+	var speed: Label = hud.get("stat_speed")
+	var purse: Label = hud.get("stat_purse")
+	_inside(panel, screen, "market panel")
+	_apart(panel, status, "market/status")
+	_apart(panel, primary, "market/primary")
+	_apart(panel, actions, "market/actions")
+	_inside_parent(speed, status, "market speed")
+	_inside_parent(purse, status, "market purse")
+	_inside_parent(flight, status, "market tag")
+	_apart(flight, panel, "market tag/panel")
+	if flight.text != "Red-Keel":
+		_bad("tag line reads %s" % flight.text)
+	if flight.get_global_rect().size.y > 32.0:
+		_bad("tag line tall %s" % flight.get_global_rect())
+	var scroll: Control = hud.get("panel_scroll")
+	_inside_parent(scroll, panel, "market scroll")
+	var pad: Node = hud.get("pad")
+	var joy: Control = pad.get("joy")
+	var gun: Control = pad.get("fire_button")
+	_apart(panel, joy, "market/stick")
+	_apart(panel, gun, "market/gun")
+	if panel.get_global_rect().end.y > primary.position.y - 4.0:
+		_bad("market covers bar %s vs primary %s" % [panel.get_global_rect(), primary.get_global_rect()])
 
 
 func _find_button(node: Node, text: String) -> Button:

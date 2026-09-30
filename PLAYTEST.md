@@ -11,6 +11,16 @@ Godot 4.7, windowed. One pass is enough if each line is done in the window.
 7. **Board.** On the pad, Board. Take Seal Aegis Prime. Probe. It reads Aegis Prime. When that dossier seals while Moored, or the next time you are on the pad, the log pays 80 and the helm reads Purse 80. Take the ring crate, fly to the ice ring, return until Moored. The log pays 120 and the crate leaves the hold.
 8. **Chart.** Cast off and hold W past the band. Speed stays above 0. The chart shows Aegis Prime, Homestead Road, Green Spine, and Writ Lane. The log does not lock you on a scrape.
 
+## Ready — landscape market
+
+Pages build. Phone landscape, about 844×390. One fresh Needle. This pass is only the open Market and the tag line.
+
+1. Market opens a glass that stays clear of Speed, Purse, Cast off, Board, Quests, Probe, the quiet strip (Market, Lane, Weld), the stick, and the gun. The goods list scrolls inside that glass. The scrollbar stays on the glass.
+2. Set tag `Red-Keel`. The helm shows one short line, **Red-Keel**. The scan dossier reads `Corp tag  Red-Keel`. The overhead name on the keel shows it too.
+3. F5, then F9. The helm still reads **Red-Keel**.
+
+Desk and portrait market glass stay as they passed. Buy still charges 12 and sell still pays 8, and only on the pad. Haul ribbons and Purse 200 stay.
+
 ## Ready — Beta #3 trade and tags
 
 Pages build. One fresh Needle, still moored. This pass is the purse and the tag, not the sky.

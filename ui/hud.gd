@@ -10,6 +10,7 @@ var helm_craft: Label
 var banner: Label
 var log_label: Label
 var panel: PanelContainer
+var panel_scroll: ScrollContainer
 var panel_title: Label
 var panel_body: Label
 var hangar_box: VBoxContainer
@@ -140,18 +141,11 @@ func _fit() -> void:
 	root.size = screen
 	if stats_grid != null:
 		stats_grid.columns = 2 if compact else 4
-	var side := 460.0
-	if panel != null:
-		if compact:
-			panel.custom_minimum_size = Vector2(0, 0)
-			panel.position = Vector2(8, screen.y * 0.22)
-			panel.size = Vector2(screen.x - 16.0, screen.y * 0.5)
-		else:
-			panel.custom_minimum_size = Vector2(420, 400)
-			panel.position = Vector2(screen.x - side - 16.0, 16)
-			panel.size = Vector2(side, screen.y - 150.0)
 	if panel_inner != null:
-		panel_inner.custom_minimum_size = Vector2(minf(420.0, screen.x - 48.0), 0)
+		var inner_w := minf(420.0, screen.x - 48.0)
+		if screen.y < 520.0 and screen.x > screen.y:
+			inner_w = 0.0
+		panel_inner.custom_minimum_size = Vector2(inner_w, 0)
 	var card_w := minf(440.0, screen.x - 24.0)
 	var card_h := minf(360.0, screen.y - 24.0)
 	if pause_box != null:
@@ -221,6 +215,8 @@ func _layout_chrome(screen: Vector2) -> void:
 		if panel != null and panel.visible:
 			helm_w = minf(helm_w, screen.x - 500.0)
 	helm_w = clampf(helm_w, 148.0, screen.x - margin * 2.0)
+	if short and screen.x > screen.y and panel != null and panel.visible:
+		helm_w = minf(helm_w, 300.0)
 	var left := margin
 	var right := screen.x - margin
 	if touch_on and not compact:
@@ -294,6 +290,7 @@ func _layout_chrome(screen: Vector2) -> void:
 		chat_line.size = Vector2(minf(420.0, helm_w), 32)
 	if hint_label != null:
 		hint_label.visible = false
+	_place_panel(screen, primary_y, short)
 
 
 func _process(_delta: float) -> void:
@@ -489,6 +486,7 @@ func _chip(text: String, strong: bool) -> Label:
 func _build_panel() -> void:
 	panel = PanelContainer.new()
 	panel.visible = false
+	panel.clip_contents = true
 	panel.custom_minimum_size = Vector2(420, 400)
 	root.add_child(panel)
 	var margin := MarginContainer.new()
@@ -499,17 +497,27 @@ func _build_panel() -> void:
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(box)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	box.add_child(head)
 	panel_title = ThemeKit.label("", 20, Color("e6d7bf"))
-	box.add_child(panel_title)
+	panel_title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	panel_title.clip_text = true
+	panel_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(panel_title)
 	var close := ThemeKit.button("Close")
+	close.custom_minimum_size = Vector2(88, 44)
+	close.size_flags_horizontal = Control.SIZE_SHRINK_END
 	close.pressed.connect(_close_panel)
-	box.add_child(close)
+	head.add_child(close)
 	var scroll := ScrollContainer.new()
 	scroll.focus_mode = Control.FOCUS_NONE
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	box.add_child(scroll)
+	panel_scroll = scroll
 	var inner := VBoxContainer.new()
 	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	inner.custom_minimum_size = Vector2(280, 0)
@@ -718,14 +726,18 @@ func _refresh_helm() -> void:
 	helm_name.text = str(sim.defs.system.name).to_upper()
 	var tag := DockBoard.tag_of(sim)
 	show_tag = tag != ""
-	if compact:
+	var screen := get_viewport().get_visible_rect().size
+	if tag != "" and screen.y < 520.0:
+		helm_flight.text = tag
+	elif compact:
 		helm_flight.text = str(hull.callsign) if tag == "" else "%s  ·  %s" % [str(hull.callsign), tag]
 	else:
 		helm_flight.text = "%s   ·   %s" % [str(hull.callsign), str(hull.class_name)]
 		if tag != "":
 			helm_flight.text += "   ·   %s" % tag
 	if helm_flight != null:
-		var screen := get_viewport().get_visible_rect().size
+		helm_flight.autowrap_mode = TextServer.AUTOWRAP_OFF
+		helm_flight.clip_text = true
 		helm_flight.visible = screen.y >= 430.0 or show_tag
 	var hp_now := int(sim.player.hp)
 	var hp_max := int(sim.player.max_hp)
@@ -787,7 +799,6 @@ func _refresh_helm() -> void:
 	log_label.max_lines_visible = keep
 	if log_card != null:
 		log_card.visible = log_label.text != ""
-	var screen := get_viewport().get_visible_rect().size
 	if screen.x >= 64.0:
 		_layout_chrome(screen)
 
@@ -865,11 +876,55 @@ func _toggle(kind: String) -> void:
 		"claim":
 			panel_title.text = "Homestead"
 			panel_body.text = _claim_text()
+	_fit()
 
 
 func _close_panel() -> void:
 	panel_kind = ""
 	panel.hide()
+	_fit()
+
+
+func _place_panel(screen: Vector2, primary_y: float, short: bool) -> void:
+	if panel == null:
+		return
+	var land := short and screen.x > screen.y and panel.visible
+	if land:
+		panel.custom_minimum_size = Vector2(0, 0)
+		panel.clip_contents = true
+		var x := 8.0
+		if status_card != null:
+			x = status_card.position.x + status_card.size.x + 8.0
+		var right := screen.x - 8.0
+		if hold_button != null and hold_button.visible:
+			right = minf(right, hold_button.position.x - 8.0)
+		var y := 8.0
+		var bottom := primary_y - 8.0
+		if right - x < 200.0 and status_card != null:
+			x = 8.0
+			y = status_card.position.y + status_card.size.y + 6.0
+			right = screen.x - 8.0
+		var height := bottom - y
+		if height < 72.0:
+			height = maxf(0.0, bottom - y)
+		panel.position = Vector2(x, y)
+		panel.size = Vector2(maxf(120.0, right - x), maxf(0.0, height))
+		if panel_scroll != null:
+			panel_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
+			panel_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		return
+	if panel_scroll != null:
+		panel_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+		panel_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var side := 460.0
+	if compact:
+		panel.custom_minimum_size = Vector2(0, 0)
+		panel.position = Vector2(8, screen.y * 0.22)
+		panel.size = Vector2(screen.x - 16.0, screen.y * 0.5)
+	else:
+		panel.custom_minimum_size = Vector2(420, 400)
+		panel.position = Vector2(screen.x - side - 16.0, 16)
+		panel.size = Vector2(side, screen.y - 150.0)
 
 
 func _place_board_button(_is_compact: bool) -> void:
