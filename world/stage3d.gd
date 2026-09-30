@@ -63,10 +63,12 @@ void fragment() {
 	float fleck = fbm(wpos * 0.016 + n * 3.0);
 	terrain *= 0.74 + 0.38 * mottled;
 	terrain = mix(terrain, terrain * vec3(0.76, 0.92, 0.7), fleck * land_w * 0.45);
-	float grit = fbm(wpos * 0.048 + n * 22.0);
-	float scrub = fbm(wpos * 0.11 + vec3(seed, 0.4, 1.7));
-	terrain *= 0.84 + 0.22 * grit;
-	terrain = mix(terrain, terrain * vec3(0.62, 0.58, 0.5), scrub * land_w * 0.28);
+	float dist = length(CAMERA_POSITION_WORLD - wpos);
+	float near = 1.0 - smoothstep(320.0, 1700.0, dist);
+	float fine = fbm(wpos * 0.06 + n * 6.0);
+	float scrub = fbm(wpos * 0.14 + vec3(seed, 0.4, 1.7));
+	terrain *= mix(1.0, 0.58 + 0.85 * fine, near);
+	terrain = mix(terrain, terrain * vec3(0.55, 0.5, 0.4), scrub * near * land_w * 0.7);
 	vec3 night = terrain * 0.05 + vec3(0.015, 0.03, 0.055);
 	vec3 col = mix(night, terrain * (0.32 + 0.58 * day), day);
 	float twilight = smoothstep(-0.22, -0.02, ndl) * (1.0 - smoothstep(0.0, 0.18, ndl));
@@ -122,6 +124,10 @@ void fragment() {
 	float puff = fbm(wpos * 0.012 + vec3(seed, spin * 2.0, 0.4));
 	float cover = smoothstep(0.46, 0.72, cloud) * (0.55 + 0.45 * wisps);
 	cover *= 0.75 + 0.25 * puff;
+	float dist = length(CAMERA_POSITION_WORLD - wpos);
+	float near = 1.0 - smoothstep(320.0, 1700.0, dist);
+	float mote = fbm(wpos * 0.045 + vec3(seed, spin, 2.0));
+	cover *= mix(1.0, 0.25 + 0.95 * mote, near);
 	float ndl = dot(n, sun);
 	float day = smoothstep(-0.2, 0.45, ndl);
 	vec3 shade = vec3(0.45, 0.5, 0.58);
