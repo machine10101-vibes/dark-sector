@@ -37,7 +37,7 @@ func _process(_delta: float) -> void:
 	if Game.text_entry:
 		Game.clear_flight_keys()
 	if tones != null and tones.has_method("play"):
-		var thrusting: bool = (not Game.text_entry) and (Input.is_key_pressed(KEY_W) or float(Game.flight.get("thrust", 0.0)) > 0.2) and bool(Game.sim.player.alive) and not Game.paused
+		var thrusting: bool = (not Game.text_entry) and (not Game.map_open) and (Input.is_key_pressed(KEY_W) or float(Game.flight.get("thrust", 0.0)) > 0.2) and bool(Game.sim.player.alive) and not Game.paused
 		if thrusting and not bool(get_meta("was_thrust", false)):
 			tones.play("thrust")
 		set_meta("was_thrust", thrusting)
@@ -97,6 +97,27 @@ func _input(event: InputEvent) -> void:
 		return
 	Game.text_entry = false
 	var key_ev := event as InputEventKey
+	if Game.map_open:
+		Game.clear_flight_keys()
+		Game.clear_flight()
+		if key_ev.pressed and not key_ev.echo:
+			var code := key_ev.keycode
+			if code == KEY_NONE:
+				code = key_ev.physical_keycode
+			if code == KEY_ESCAPE or code == KEY_TAB:
+				Game.set_map_open(false)
+		var map_vp := get_viewport()
+		if map_vp != null:
+			map_vp.set_input_as_handled()
+		return
+	if key_ev.pressed and not key_ev.echo:
+		var tab := key_ev.keycode == KEY_TAB or key_ev.physical_keycode == KEY_TAB
+		if tab:
+			Game.set_map_open(true)
+			var tab_vp := get_viewport()
+			if tab_vp != null:
+				tab_vp.set_input_as_handled()
+			return
 	if _is_flight_key(key_ev.keycode) == false and _is_flight_key(key_ev.physical_keycode) == false:
 		return
 	if key_ev.echo:

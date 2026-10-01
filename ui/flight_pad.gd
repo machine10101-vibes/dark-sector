@@ -90,7 +90,7 @@ func release() -> void:
 
 
 func _process(_delta: float) -> void:
-	if not visible:
+	if not visible or Game.map_open:
 		release()
 		return
 	if joy_touch == -2 and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) == false:
