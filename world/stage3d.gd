@@ -40,8 +40,8 @@ uniform float spin = 0.0;
 	float lift = fbm(nrm * 4.2 + vec3(seed, 0.4, seed * 0.3));
 	float lift_x = fbm((nrm + vec3(0.025, 0.0, 0.0)) * 4.2 + vec3(seed, 0.4, seed * 0.3));
 	float lift_y = fbm((nrm + vec3(0.0, 0.025, 0.0)) * 4.2 + vec3(seed, 0.4, seed * 0.3));
-	vec3 bumped = normalize(nrm + vec3(lift_x - lift, lift_y - lift, (lift_x + lift_y) * 0.5 - lift) * 3.2);
-	VERTEX += nrm * (lift - 0.48) * 0.011 * length(VERTEX);
+	vec3 bumped = normalize(nrm + vec3(lift_x - lift, lift_y - lift, (lift_x + lift_y) * 0.5 - lift) * 4.8);
+	VERTEX += nrm * (lift - 0.48) * 0.022 * length(VERTEX);
 	wnorm = normalize((MODEL_MATRIX * vec4(bumped, 0.0)).xyz);
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
@@ -99,10 +99,11 @@ void fragment() {
 	float lamps = 0.0;
 	float night_side = smoothstep(0.18, -0.42, ndl);
 	if (city > 0.5) {
-		vec2 grid = fract(n.xz * 3.4 + vec2(seed, seed * 1.7));
-		float blob = smoothstep(0.42, 0.06, length(grid - vec2(0.5)));
-		float district = smoothstep(0.38, 0.66, fbm(n * 2.4 + vec3(seed, 1.2, 0.4)));
-		lamps = blob * district * night_side * mix(0.75, 1.0, land_w);
+		vec2 block = abs(fract(n.xz * 22.0 + vec2(seed, seed * 1.3)) - 0.5);
+		float street = 1.0 - smoothstep(0.015, 0.07, min(block.x, block.y));
+		float district = smoothstep(0.34, 0.7, fbm(n * 2.4 + vec3(seed, 1.2, 0.4)));
+		float window = step(0.62, fract(sin(dot(floor(n.xz * 90.0), vec2(19.0, 47.0))) * 123.4));
+		lamps = max(street, window * 0.65) * district * night_side * mix(0.7, 1.0, land_w);
 	}
 	float shore = 1.0 - smoothstep(0.0, 0.035, abs(field - 0.5));
 	col += vec3(0.9, 0.93, 0.88) * shore * day * 0.55;
@@ -189,12 +190,14 @@ void fragment() {
 	float facing = clamp(dot(n, eye), 0.0, 1.0);
 	float limb = pow(facing, 0.55);
 	float dark = mix(0.42, 1.0, limb);
-	float grain = fbm(n * 11.0 + vec3(TIME * 0.04));
-	float cells = fbm(n * 26.0 + vec3(TIME * 0.07, 1.2, 0.3));
+	float grain = fbm(n * 14.0 + vec3(TIME * 0.04));
+	float cells = fbm(n * 34.0 + vec3(TIME * 0.07, 1.2, 0.3));
 	float spot = smoothstep(0.58, 0.82, fbm(n * 4.5 + vec3(TIME * 0.015)));
-	vec3 hot = mix(albedo.rgb * 0.62, vec3(1.0, 0.97, 0.9), 0.62);
-	vec3 col = hot * dark * (0.7 + 0.4 * grain) * (0.82 + 0.28 * cells);
-	col = mix(col, col * vec3(0.55, 0.38, 0.22), spot * 0.42);
+	float facula = smoothstep(0.72, 0.9, fbm(n * 9.0 + vec3(TIME * 0.02, 2.0, 0.4)));
+	vec3 hot = mix(albedo.rgb * 0.55, vec3(1.0, 0.97, 0.88), 0.7);
+	vec3 col = hot * dark * (0.62 + 0.5 * grain) * (0.7 + 0.45 * cells);
+	col = mix(col, col * vec3(0.45, 0.3, 0.18), spot * 0.55);
+	col = mix(col, vec3(1.0, 0.96, 0.86), facula * 0.35);
 	ALBEDO = col;
 	EMISSION = col * (0.85 + 0.25 * facing);
 }
@@ -245,11 +248,30 @@ void fragment() {
 "
 
 const HULL_SHADER := "shader_type spatial;
+render_mode diffuse_burley, specular_schlick_ggx;
 varying vec3 local_pos;
 varying vec3 local_nrm;
 varying vec3 wnorm;
 varying vec3 wpos;
 uniform vec4 albedo : source_color = vec4(0.5, 0.55, 0.58, 1.0);
+float seam_of(vec3 p) {
+	float sx = smoothstep(0.455, 0.5, abs(fract(p.x * 0.2) - 0.5));
+	float sz = smoothstep(0.44, 0.5, abs(fract(p.z * 0.36) - 0.5));
+	float fx = smoothstep(0.478, 0.5, abs(fract(p.x * 0.82) - 0.5));
+	float fz = smoothstep(0.478, 0.5, abs(fract(p.z * 1.2) - 0.5));
+	return max(max(sx, sz), max(fx, fz) * 0.55);
+}
+float plate_h(vec3 p) {
+	float seam = seam_of(p);
+	vec2 cell = floor(p.xz * vec2(0.2, 0.36));
+	float id = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+	float h = (0.28 + 0.72 * id) * (1.0 - seam);
+	float riv = seam * smoothstep(0.08, 0.0, abs(fract(p.x * 1.6) - 0.5)) * smoothstep(0.08, 0.0, abs(fract(p.z * 2.2) - 0.5));
+	h += riv * 0.7;
+	float scratch = smoothstep(0.9, 0.99, fract(sin(p.x * 6.4 + p.z * 19.0) * 91.3));
+	h -= scratch * 0.12;
+	return h;
+}
 void vertex() {
 	local_pos = VERTEX;
 	local_nrm = NORMAL;
@@ -258,39 +280,37 @@ void vertex() {
 }
 void fragment() {
 	vec3 n = normalize(local_nrm);
-	vec3 wn = normalize(wnorm);
-	vec2 cell = floor(local_pos.xz * vec2(0.07, 0.15));
-	float panel = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
-	float seam_x = smoothstep(0.455, 0.5, abs(fract(local_pos.x * 0.07) - 0.5));
-	float seam_z = smoothstep(0.43, 0.5, abs(fract(local_pos.z * 0.15) - 0.5));
-	float seam = clamp(max(seam_x, seam_z), 0.0, 1.0);
-	float deck = clamp(n.y, 0.0, 1.0);
-	vec3 col = albedo.rgb * (0.42 + 0.7 * deck);
-	col *= 0.7 + 0.38 * panel;
-	col = mix(col, col * vec3(0.18, 0.2, 0.22), seam);
-	float brush = 0.9 + 0.1 * sin(local_pos.x * 2.2 + local_pos.z * 11.0);
+	float h = plate_h(local_pos);
+	float hx = plate_h(local_pos + vec3(0.22, 0.0, 0.0));
+	float hz = plate_h(local_pos + vec3(0.0, 0.0, 0.22));
+	vec3 tangent = abs(n.y) > 0.92 ? vec3(1.0, 0.0, 0.0) : normalize(cross(n, vec3(0.0, 1.0, 0.0)));
+	vec3 bitangent = normalize(cross(n, tangent));
+	vec3 bumped = normalize(n + tangent * (h - hx) * 4.6 + bitangent * (h - hz) * 4.6);
+	vec3 world_n = normalize((MODEL_MATRIX * vec4(bumped, 0.0)).xyz);
+	NORMAL = normalize((VIEW_MATRIX * vec4(world_n, 0.0)).xyz);
+	float seam = clamp(seam_of(local_pos), 0.0, 1.0);
+	vec2 cell = floor(local_pos.xz * vec2(0.2, 0.36));
+	float id = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+	vec3 col = albedo.rgb * (0.96 + 0.14 * id);
+	col = mix(col, col * vec3(0.55, 0.58, 0.62), seam * 0.78);
+	float edge_wear = smoothstep(0.28, 0.92, 1.0 - abs(n.y));
+	col = mix(col, mix(col, vec3(0.78, 0.76, 0.7), 0.45), edge_wear * 0.55);
+	float aft = smoothstep(-12.0, -28.0, local_pos.x);
+	float temper = smoothstep(-4.0, -16.0, local_pos.x) * (1.0 - aft);
+	col = mix(col, col * vec3(1.15, 0.78, 0.55), aft * 0.35);
+	col = mix(col, col * vec3(0.62, 0.74, 0.95), temper * 0.22);
+	float stripe = smoothstep(1.2, 0.08, abs(local_pos.z));
+	col = mix(col, col * vec3(1.06, 1.1, 1.04), stripe * clamp(n.y, 0.0, 1.0) * 0.35);
+	float brush = 0.94 + 0.06 * sin(local_pos.x * 3.1 + local_pos.z * 13.0);
 	col *= brush;
-	float along_x = fract(local_pos.x * 0.35);
-	float along_z = fract(local_pos.z * 0.55);
-	float rivet = max(seam_z * smoothstep(0.07, 0.0, abs(along_x - 0.5)), seam_x * smoothstep(0.07, 0.0, abs(along_z - 0.5)));
-	col = mix(col, col * vec3(0.42, 0.46, 0.5), clamp(rivet, 0.0, 1.0) * 0.8);
-	float aft = smoothstep(6.0, -22.0, local_pos.x);
-	col = mix(col, col * vec3(1.45, 0.55, 0.22), aft * 0.58);
-	float wear = smoothstep(0.45, 0.92, 1.0 - abs(n.y));
-	col = mix(col, col * vec3(0.7, 0.68, 0.62), wear * 0.4);
-	float stripe = smoothstep(1.35, 0.05, abs(local_pos.z));
-	col = mix(col, col * vec3(1.04, 1.08, 1.02), stripe * deck * 0.4);
-	float scratch = smoothstep(0.72, 0.9, fract(sin(local_pos.x * 3.7 + local_pos.z * 19.0) * 91.3));
-	col = mix(col, col * vec3(0.62, 0.64, 0.66), scratch * 0.35);
-	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	vec3 halfv = normalize(normalize(vec3(0.25, 1.0, 0.12)) + eye);
-	float spec = pow(clamp(dot(wn, halfv), 0.0, 1.0), 64.0);
-	float edge = pow(clamp(1.0 - abs(dot(wn, eye)), 0.0, 1.0), 2.2);
-	col += vec3(0.86, 0.93, 0.98) * spec * (1.0 - seam) * (0.45 + 0.7 * deck);
-	col += albedo.rgb * edge * 0.38;
 	ALBEDO = col;
-	METALLIC = mix(0.84, 0.35, seam);
-	ROUGHNESS = mix(0.24, 0.88, max(seam, 1.0 - deck));
+	float bare = clamp(edge_wear * (1.0 - seam), 0.0, 1.0);
+	METALLIC = mix(0.42, 0.86, bare);
+	ROUGHNESS = mix(mix(0.36, 0.2, bare), 0.8, seam);
+	AO = mix(1.0, 0.52, seam);
+	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
+	float fres = pow(clamp(1.0 - abs(dot(normalize(wnorm), eye)), 0.0, 1.0), 3.2);
+	EMISSION = col * fres * 0.04 + vec3(1.0, 0.42, 0.14) * aft * 0.07;
 }
 "
 
@@ -308,11 +328,13 @@ void fragment() {
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
 	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.85);
 	float room = 0.55 + 0.45 * sin(wpos.x * 0.35 + wpos.z * 0.2);
-	ALBEDO = mix(albedo.rgb * 0.22 * room, vec3(0.9, 0.97, 1.0), fres);
-	EMISSION = vec3(0.42, 0.72, 0.78) * (0.08 + fres * 0.22);
-	ROUGHNESS = mix(0.04, 0.2, 1.0 - fres);
-	METALLIC = 0.08;
-	ALPHA = clamp(0.16 + fres * 0.7, 0.0, 0.82);
+	vec3 room_col = vec3(0.55, 0.72, 0.62) * room;
+	ALBEDO = mix(room_col, vec3(0.82, 0.92, 0.96), fres);
+	EMISSION = room_col * 0.22 + vec3(0.7, 0.9, 0.95) * fres * 0.35;
+	ROUGHNESS = mix(0.02, 0.16, 1.0 - fres);
+	METALLIC = 0.22;
+	SPECULAR = 0.7;
+	ALPHA = clamp(0.1 + fres * 0.78, 0.0, 0.88);
 }
 "
 
@@ -354,7 +376,10 @@ void fragment() {
 	vec3 col = albedo.rgb * bands;
 	col *= 1.0 - max(gap, lane * 0.65) * 0.8;
 	float grit = fract(sin(dot(UV, vec2(91.7, 47.3)) + seed) * 43758.5);
-	col *= 0.84 + 0.16 * grit;
+	float clump = 0.78 + 0.22 * sin(u * 53.0 + UV.y * 21.0 + seed);
+	float streak = smoothstep(0.93, 0.995, fract(sin(UV.y * 210.0 + u * 16.0 + seed) * 43758.5));
+	col *= (0.84 + 0.16 * grit) * clump;
+	col += vec3(0.92, 0.95, 0.98) * streak * 0.22 * glitter;
 	float cell = floor(UV.y * 72.0 + TIME * 0.4);
 	float spark = step(0.8, fract(sin(cell * 12.9 + floor(u * 18.0) * 3.1 + seed * 9.0) * 43758.5));
 	float tw = pow(max(sin(TIME * 4.8 + cell), 0.0), 3.0);
@@ -428,11 +453,13 @@ void fragment() {
 	col *= 1.0 - pits * 0.22;
 	float vein = smoothstep(0.52, 0.74, fbm(n * 11.0 + vec3(seed, 2.2, 0.5)));
 	col = mix(col, mineral * vec3(0.62, 0.48, 0.32), vein * 0.42);
+	float fleck = smoothstep(0.78, 0.92, noise3(n * 28.0 + vec3(seed * 3.0)));
+	col = mix(col, mineral * vec3(1.2, 1.05, 0.82), fleck * 0.55);
 	float rim = pow(1.0 - ndl, 2.2);
 	col += mineral * rim * 0.12;
 	ALBEDO = col;
-	ROUGHNESS = mix(0.78, 0.98, cavity);
-	METALLIC = 0.06;
+	ROUGHNESS = mix(mix(0.72, 0.96, cavity), 0.38, fleck);
+	METALLIC = mix(0.04, 0.35, fleck);
 }
 "
 
@@ -559,13 +586,13 @@ func _ready() -> void:
 	_sun = DirectionalLight3D.new()
 	_sun.name = "Sun"
 	_sun.light_color = Color("fff0d4")
-	_sun.light_energy = 2.8 if portrait_mode else 1.55
+	_sun.light_energy = 2.8 if portrait_mode else 2.05
 	_sun.shadow_enabled = false
 	add_child(_sun)
 	_fill = DirectionalLight3D.new()
 	_fill.name = "Fill"
 	_fill.light_color = Color(0.72, 0.8, 0.95)
-	_fill.light_energy = 1.05 if portrait_mode else 0.58
+	_fill.light_energy = 1.05 if portrait_mode else 0.75
 	_fill.shadow_enabled = false
 	_fill.basis = Basis(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0), Vector3(0.0, 1.0, 0.0))
 	add_child(_fill)
@@ -1819,8 +1846,8 @@ func _sync_moon(node: Node3D, sim, row: Dictionary, radius: float) -> void:
 		moon = MeshInstance3D.new()
 		moon.name = "Moon"
 		var sphere := SphereMesh.new()
-		sphere.radial_segments = 24
-		sphere.rings = 12
+		sphere.radial_segments = 40
+		sphere.rings = 20
 		moon.mesh = sphere
 		var mat := ShaderMaterial.new()
 		mat.shader = _rock_shader
@@ -1934,6 +1961,14 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	pane.set_shader_parameter("albedo", Color(0.45, 0.78, 0.82, 0.4))
 	glass.material_override = pane
 	holder.add_child(glass)
+	var frame := MeshInstance3D.new()
+	frame.name = "Frame"
+	var brow := BoxMesh.new()
+	brow.size = Vector3(canopy.size.x * 1.08, 0.35, canopy.size.z * 1.12)
+	frame.mesh = brow
+	frame.position = glass.position + Vector3(0.0, canopy.size.y * 0.42, 0.0)
+	frame.material_override = _hull_mat(Color("1a2024"))
+	holder.add_child(frame)
 	var mast := MeshInstance3D.new()
 	mast.name = "Mast"
 	var rod := BoxMesh.new()
@@ -1944,7 +1979,7 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	holder.add_child(mast)
 	var bell := MeshInstance3D.new()
 	bell.name = "Bell"
-	bell.mesh = _bell_mesh(7.5, 1.15, 2.7)
+	bell.mesh = _bell_mesh(6.2, 0.9, 2.05)
 	bell.position = Vector3(tail + 0.4, height * 0.42, 0.0)
 	var hot := _metal(Color("2a2420"))
 	hot.emission_enabled = true
@@ -1986,6 +2021,18 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	coke.emission_energy_multiplier = 0.35
 	throat.material_override = coke
 	holder.add_child(throat)
+	var flank := maxf(height * 0.16, 2.4)
+	for side in [1.0, -1.0]:
+		var nozzle := MeshInstance3D.new()
+		nozzle.name = "NozzleP" if side > 0.0 else "NozzleS"
+		nozzle.mesh = _bell_mesh(5.0, 0.62, 1.45)
+		nozzle.position = Vector3(tail + 0.6, height * 0.3, flank * side)
+		var iron := _metal(Color("241c18"))
+		iron.emission_enabled = true
+		iron.emission = Color("c47a3a")
+		iron.emission_energy_multiplier = 0.14
+		nozzle.material_override = iron
+		holder.add_child(nozzle)
 	_nav_lamp(holder, "LampNose", Vector3(nose * 0.86, height * 0.62, 0.0), Color("d8fff6"), 1.05)
 	_nav_lamp(holder, "LampPort", Vector3(tail * 0.55, height * 0.28, 2.1), Color("d4553a"), 0.75)
 	_nav_lamp(holder, "LampStbd", Vector3(tail * 0.55, height * 0.28, -2.1), Color("7dcea0"), 0.75)
@@ -2203,7 +2250,7 @@ func _tube(holder: Node3D, part_name: String, radius: float, length: float, at: 
 	cyl.top_radius = radius
 	cyl.bottom_radius = radius
 	cyl.height = length
-	cyl.radial_segments = 12
+	cyl.radial_segments = 20
 	cyl.rings = 1
 	node.mesh = cyl
 	node.position = at
@@ -2533,6 +2580,8 @@ func _hull_part(part: String) -> bool:
 		return true
 	if part.begins_with("Panel") or part.begins_with("Vane") or part.begins_with("Rib") or part.begins_with("Cheek"):
 		return true
+	if part == "Collar" or part == "Frame" or part.begins_with("Skid") or part.begins_with("Chine"):
+		return true
 	if part.begins_with("Trim") and part.trim_prefix("Trim").is_valid_int():
 		return true
 	return false
@@ -2635,7 +2684,7 @@ func _bell_mesh(length: float, r_hull: float, r_mouth: float) -> ArrayMesh:
 		return _mesh_cache[cached]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var segs := 14
+	var segs := 24
 	for i in segs:
 		var a0 := float(i) * TAU / float(segs)
 		var a1 := float(i + 1) * TAU / float(segs)
@@ -2959,7 +3008,7 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 	ball.rings = 8
 	belly.mesh = ball
 	belly.position = Vector3(tail + span * 0.42, height * 0.16, 0.0)
-	belly.scale = Vector3(span / maxf(ball.radius, 1.0) * 0.22, 0.72, 0.9)
+	belly.scale = Vector3(span / maxf(ball.radius, 1.0) * 0.15, 0.48, 0.58)
 	belly.material_override = _hull_mat(Color("7a8084"))
 	holder.add_child(belly)
 	var x := 0.0
@@ -2986,6 +3035,16 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 	else:
 		_fairing(holder, "VaneP", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 0.78, 1.4))
 		_fairing(holder, "VaneS", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 0.78, -1.4))
+	_tube(holder, "Collar", maxf(height * 0.11, 1.5), 2.1, Vector3(tail + 1.6, height * 0.4, 0.0), "x", Color("5c6468"))
+	var mid := (nose + tail) * 0.42
+	var chine_z := maxf(height * 0.2, 2.8)
+	_hardware(holder, "ChineP", Vector3(span * 0.58, 0.32, 0.5), Vector3(mid, height * 0.2, chine_z), Color("6a7278"))
+	_hardware(holder, "ChineS", Vector3(span * 0.58, 0.32, 0.5), Vector3(mid, height * 0.2, -chine_z), Color("6a7278"))
+	_hardware(holder, "SkidP", Vector3(span * 0.42, 0.55, 0.9), Vector3(mid, -0.35, maxf(height * 0.16, 2.2)), Color("4a5256"))
+	_hardware(holder, "SkidS", Vector3(span * 0.42, 0.55, 0.9), Vector3(mid, -0.35, -maxf(height * 0.16, 2.2)), Color("4a5256"))
+	for i in 3:
+		var fin := _hardware(holder, "Rad%d" % i, Vector3(span * 0.07, 0.22, maxf(height * 0.28, 3.2)), Vector3(tail + span * (0.22 + float(i) * 0.16), height * 0.95, 0.0), Color("3a3330"))
+		fin.rotation.x = 0.15 if i == 1 else -0.08
 
 
 func _fairing(holder: Node3D, part_name: String, size: Vector3, at: Vector3) -> MeshInstance3D:
@@ -3000,61 +3059,101 @@ func _fairing(holder: Node3D, part_name: String, size: Vector3, at: Vector3) -> 
 	return node
 
 
+func _chamfer_poly(poly: PackedVector2Array, cut: float) -> PackedVector2Array:
+	var count := poly.size()
+	if count < 3 or cut <= 0.05:
+		return poly
+	var out := PackedVector2Array()
+	for i in count:
+		var prev: Vector2 = poly[(i + count - 1) % count]
+		var cur: Vector2 = poly[i]
+		var nxt: Vector2 = poly[(i + 1) % count]
+		var to_prev := prev - cur
+		var to_next := nxt - cur
+		var prev_len := to_prev.length()
+		var next_len := to_next.length()
+		if prev_len < 0.05 or next_len < 0.05:
+			out.append(cur)
+			continue
+		var bite := minf(cut, minf(prev_len, next_len) * 0.32)
+		out.append(cur + to_prev * (bite / prev_len))
+		out.append(cur + to_next * (bite / next_len))
+	return out
+
+
 func _prism(poly: PackedVector2Array, height: float, top_scale: float = 0.86) -> ArrayMesh:
 	if poly.size() < 3:
 		return null
+	var edge := 0.0
+	for i in poly.size():
+		edge += poly[i].distance_to(poly[(i + 1) % poly.size()])
+	edge /= float(poly.size())
+	var raw := poly
+	poly = _chamfer_poly(poly, clampf(edge * 0.22, 0.35, 7.0))
 	var indices := Geometry2D.triangulate_polygon(poly)
 	if indices.size() < 3:
+		poly = raw
+		indices = Geometry2D.triangulate_polygon(poly)
+	if indices.size() < 3:
 		return null
-	var top := poly
-	if top_scale < 0.995:
-		top = _inset_poly(poly, top_scale)
+	var keel := _inset_poly(poly, 0.7)
+	var shoulder := _inset_poly(poly, 0.94)
+	var crown := _inset_poly(poly, top_scale)
+	var y_chine := height * 0.26
+	var y_shoulder := height * 0.72
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var count := poly.size()
+	for t in range(0, indices.size(), 3):
+		_tri(st, crown[indices[t]], crown[indices[t + 1]], crown[indices[t + 2]], height, Vector3.UP)
+		_tri(st, keel[indices[t]], keel[indices[t + 2]], keel[indices[t + 1]], 0.0, Vector3.DOWN)
+	_girdle(st, keel, poly, 0.0, y_chine)
+	_girdle(st, poly, shoulder, y_chine, y_shoulder)
+	_girdle(st, shoulder, crown, y_shoulder, height)
+	return st.commit()
+
+
+func _girdle(st: SurfaceTool, lower: PackedVector2Array, upper: PackedVector2Array, y0: float, y1: float) -> void:
+	var count := lower.size()
+	if upper.size() != count or count < 2:
+		return
 	var centroid := Vector2.ZERO
-	for point in poly:
+	for point in lower:
 		centroid += point
 	centroid /= float(count)
-	for t in range(0, indices.size(), 3):
-		_tri(st, top[indices[t]], top[indices[t + 1]], top[indices[t + 2]], height, Vector3.UP)
-		_tri(st, poly[indices[t]], poly[indices[t + 2]], poly[indices[t + 1]], 0.0, Vector3.DOWN)
 	for i in count:
-		var a: Vector2 = poly[i]
-		var b: Vector2 = poly[(i + 1) % count]
+		var a: Vector2 = lower[i]
+		var b: Vector2 = lower[(i + 1) % count]
 		var edge := b - a
 		var outward := Vector2(edge.y, -edge.x)
 		if outward.dot(a - centroid) < 0.0:
 			outward = -outward
 		if outward.length_squared() < 0.0001:
 			continue
-		outward = outward.normalized()
-		_slope(st, a, b, top[i], top[(i + 1) % count], height, outward)
-	return st.commit()
+		_slope(st, a, b, upper[i], upper[(i + 1) % count], y0, y1, outward.normalized())
 
 
-func _slope(st: SurfaceTool, a: Vector2, b: Vector2, ta: Vector2, tb: Vector2, height: float, outward: Vector2) -> void:
+func _slope(st: SurfaceTool, a: Vector2, b: Vector2, ta: Vector2, tb: Vector2, y0: float, y1: float, outward: Vector2) -> void:
 	var edge := Vector3(b.x - a.x, 0.0, b.y - a.y)
-	var rise := Vector3(ta.x - a.x, height, ta.y - a.y)
+	var rise := Vector3(ta.x - a.x, y1 - y0, ta.y - a.y)
 	var normal := edge.cross(rise)
-	var out3 := Vector3(outward.x, 0.15, outward.y)
+	var out3 := Vector3(outward.x, 0.12, outward.y)
 	if normal.dot(out3) < 0.0:
 		normal = -normal
 	if normal.length_squared() < 0.0001:
 		normal = out3
 	normal = normal.normalized()
 	st.set_normal(normal)
-	st.add_vertex(Vector3(a.x, 0.0, a.y))
+	st.add_vertex(Vector3(a.x, y0, a.y))
 	st.set_normal(normal)
-	st.add_vertex(Vector3(b.x, 0.0, b.y))
+	st.add_vertex(Vector3(b.x, y0, b.y))
 	st.set_normal(normal)
-	st.add_vertex(Vector3(tb.x, height, tb.y))
+	st.add_vertex(Vector3(tb.x, y1, tb.y))
 	st.set_normal(normal)
-	st.add_vertex(Vector3(a.x, 0.0, a.y))
+	st.add_vertex(Vector3(a.x, y0, a.y))
 	st.set_normal(normal)
-	st.add_vertex(Vector3(tb.x, height, tb.y))
+	st.add_vertex(Vector3(tb.x, y1, tb.y))
 	st.set_normal(normal)
-	st.add_vertex(Vector3(ta.x, height, ta.y))
+	st.add_vertex(Vector3(ta.x, y1, ta.y))
 
 
 func _tri(st: SurfaceTool, a: Vector2, b: Vector2, c: Vector2, y: float, normal: Vector3) -> void:
