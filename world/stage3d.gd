@@ -3824,6 +3824,10 @@ func _dress_yard() -> void:
 		for i in 5:
 			var pylon := _prop("yard_pylon%d" % i)
 			pylon.visible = false
+		for node_name in ["YardSpokes", "Star", "Corona"]:
+			var rig := get_node_or_null(node_name) as Node3D
+			if rig != null:
+				rig.visible = false
 	var key := get_node_or_null("YardKey") as OmniLight3D
 	var rim := get_node_or_null("YardRim") as OmniLight3D
 	var cool := get_node_or_null("YardFill") as OmniLight3D
