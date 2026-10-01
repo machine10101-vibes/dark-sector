@@ -40,8 +40,8 @@ uniform float spin = 0.0;
 	float lift = fbm(nrm * 4.2 + vec3(seed, 0.4, seed * 0.3));
 	float lift_x = fbm((nrm + vec3(0.025, 0.0, 0.0)) * 4.2 + vec3(seed, 0.4, seed * 0.3));
 	float lift_y = fbm((nrm + vec3(0.0, 0.025, 0.0)) * 4.2 + vec3(seed, 0.4, seed * 0.3));
-	vec3 bumped = normalize(nrm + vec3(lift_x - lift, lift_y - lift, (lift_x + lift_y) * 0.5 - lift) * 4.8);
-	VERTEX += nrm * (lift - 0.48) * 0.022 * length(VERTEX);
+	vec3 bumped = normalize(nrm + vec3(lift_x - lift, lift_y - lift, (lift_x + lift_y) * 0.5 - lift) * 6.2);
+	VERTEX += nrm * (lift - 0.48) * 0.03 * length(VERTEX);
 	wnorm = normalize((MODEL_MATRIX * vec4(bumped, 0.0)).xyz);
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
@@ -254,6 +254,7 @@ varying vec3 local_nrm;
 varying vec3 wnorm;
 varying vec3 wpos;
 uniform vec4 albedo : source_color = vec4(0.5, 0.55, 0.58, 1.0);
+uniform vec4 accent : source_color = vec4(0.0, 0.0, 0.0, 0.0);
 float seam_of(vec3 p) {
 	float sx = smoothstep(0.455, 0.5, abs(fract(p.x * 0.2) - 0.5));
 	float sz = smoothstep(0.44, 0.5, abs(fract(p.z * 0.36) - 0.5));
@@ -285,7 +286,7 @@ void fragment() {
 	float hz = plate_h(local_pos + vec3(0.0, 0.0, 0.22));
 	vec3 tangent = abs(n.y) > 0.92 ? vec3(1.0, 0.0, 0.0) : normalize(cross(n, vec3(0.0, 1.0, 0.0)));
 	vec3 bitangent = normalize(cross(n, tangent));
-	vec3 bumped = normalize(n + tangent * (h - hx) * 4.6 + bitangent * (h - hz) * 4.6);
+	vec3 bumped = normalize(n + tangent * (h - hx) * 6.2 + bitangent * (h - hz) * 6.2);
 	vec3 world_n = normalize((MODEL_MATRIX * vec4(bumped, 0.0)).xyz);
 	NORMAL = normalize((VIEW_MATRIX * vec4(world_n, 0.0)).xyz);
 	float seam = clamp(seam_of(local_pos), 0.0, 1.0);
@@ -301,6 +302,11 @@ void fragment() {
 	col = mix(col, col * vec3(0.62, 0.74, 0.95), temper * 0.22);
 	float stripe = smoothstep(1.2, 0.08, abs(local_pos.z));
 	col = mix(col, col * vec3(1.06, 1.1, 1.04), stripe * clamp(n.y, 0.0, 1.0) * 0.35);
+	float livery = smoothstep(1.7, 0.2, abs(abs(local_pos.z) - 3.4));
+	livery *= smoothstep(-0.05, 0.55, n.y);
+	col = mix(col, accent.rgb, livery * accent.a * 0.9);
+	float belly = smoothstep(7.5, 0.6, local_pos.y);
+	col *= mix(1.0, 0.58, belly);
 	float brush = 0.94 + 0.06 * sin(local_pos.x * 3.1 + local_pos.z * 13.0);
 	col *= brush;
 	ALBEDO = col;
@@ -366,6 +372,16 @@ uniform vec3 to_star = vec3(1.0, 0.0, 0.0);
 uniform float seed = 0.2;
 uniform float glitter = 1.0;
 void vertex() {
+	float ang = atan(VERTEX.z, VERTEX.x);
+	float rad = length(VERTEX.xz);
+	float warp = sin(ang * 11.0 + seed * 4.0) * 0.55 + sin(ang * 23.0 + seed) * 0.28;
+	float lift = sin(ang * 5.0 + seed * 2.0);
+	vec3 radial = vec3(VERTEX.x, 0.0, VERTEX.z);
+	if (rad > 0.001) {
+		radial /= rad;
+	}
+	VERTEX += radial * rad * 0.018 * warp * glitter;
+	VERTEX.y += rad * 0.007 * lift * glitter;
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
@@ -378,7 +394,9 @@ void fragment() {
 	float grit = fract(sin(dot(UV, vec2(91.7, 47.3)) + seed) * 43758.5);
 	float clump = 0.78 + 0.22 * sin(u * 53.0 + UV.y * 21.0 + seed);
 	float streak = smoothstep(0.93, 0.995, fract(sin(UV.y * 210.0 + u * 16.0 + seed) * 43758.5));
-	col *= (0.84 + 0.16 * grit) * clump;
+	float arc = 0.55 + 0.45 * sin(UV.y * 37.6991 + seed * 5.0);
+	arc = mix(1.0, arc, glitter);
+	col *= (0.84 + 0.16 * grit) * clump * arc;
 	col += vec3(0.92, 0.95, 0.98) * streak * 0.22 * glitter;
 	float cell = floor(UV.y * 72.0 + TIME * 0.4);
 	float spark = step(0.8, fract(sin(cell * 12.9 + floor(u * 18.0) * 3.1 + seed * 9.0) * 43758.5));
@@ -393,7 +411,7 @@ void fragment() {
 	}
 	col *= 0.28 + 0.85 * lit;
 	ALBEDO = col;
-	ALPHA = albedo.a * (0.88 - gap * 0.7);
+	ALPHA = albedo.a * (0.88 - gap * 0.7) * mix(1.0, 0.45 + 0.55 * arc, glitter);
 }
 "
 
@@ -794,9 +812,18 @@ func _sync_props(sim) -> void:
 	var pad := _prop("beacon_pad")
 	if str(pad.get_meta("built", "")) != "yes":
 		var slab := BoxMesh.new()
-		slab.size = Vector3(22.0, 2.4, 22.0)
+		slab.size = Vector3(70.0, 1.8, 44.0)
 		pad.mesh = slab
-		pad.material_override = _hull_mat(Color("6a5e50"))
+		pad.material_override = _hull_mat(Color("5c5348"))
+		_pad_strip(pad, "PadSpine", Vector3(52.0, 0.12, 0.7), Vector3(0.0, 1.02, 0.0))
+		_pad_strip(pad, "PadPort", Vector3(58.0, 0.12, 0.4), Vector3(0.0, 1.02, 16.5))
+		_pad_strip(pad, "PadStbd", Vector3(58.0, 0.12, 0.4), Vector3(0.0, 1.02, -16.5))
+		_pad_strip(pad, "PadBarF", Vector3(0.45, 0.12, 30.0), Vector3(18.0, 1.02, 0.0))
+		_pad_strip(pad, "PadBarA", Vector3(0.45, 0.12, 30.0), Vector3(-18.0, 1.02, 0.0))
+		_pad_bollard(pad, "BollardPF", Vector3(28.0, 2.4, 16.0))
+		_pad_bollard(pad, "BollardSF", Vector3(28.0, 2.4, -16.0))
+		_pad_bollard(pad, "BollardPA", Vector3(-28.0, 2.4, 16.0))
+		_pad_bollard(pad, "BollardSA", Vector3(-28.0, 2.4, -16.0))
 		pad.set_meta("built", "yes")
 	pad.visible = not on_chart
 	pad.position = chart(sim.beacon_pos, 1.2)
@@ -1898,7 +1925,7 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 				paint = body.lightened(0.16)
 			elif part.begins_with("Trim"):
 				paint = accent
-			_paint_hull(child, paint)
+			_paint_hull(child, paint, accent)
 	var thrusting := bool(ship.get("thrusting", false))
 	holder.set_meta("thrusting", thrusting)
 	if int(sim.layer) == ScaleFrame.SITE and key == "player":
@@ -1948,14 +1975,15 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	box.size = deck_size
 	bridge.mesh = box
 	bridge.position = deck + Vector3(0.0, deck_size.y * 0.5, 0.0)
-	bridge.material_override = _metal(Color("1c2428"))
+	bridge.material_override = _hull_mat(Color("1c2428"))
 	holder.add_child(bridge)
 	var glass := MeshInstance3D.new()
 	glass.name = "Glass"
-	var canopy := BoxMesh.new()
-	canopy.size = Vector3(deck_size.x * 0.55, 2.4, deck_size.z * 0.45)
-	glass.mesh = canopy
-	glass.position = bridge.position + Vector3(deck_size.x * 0.1, deck_size.y * 0.5 + 0.8, 0.0)
+	var canopy_len := deck_size.x * 0.62
+	var canopy_w := deck_size.z * 0.52
+	var canopy_h := 2.7
+	glass.mesh = _canopy_mesh(canopy_len, canopy_w, canopy_h)
+	glass.position = bridge.position + Vector3(deck_size.x * 0.06, deck_size.y * 0.5, 0.0)
 	var pane := ShaderMaterial.new()
 	pane.shader = _glass_shader
 	pane.set_shader_parameter("albedo", Color(0.45, 0.78, 0.82, 0.4))
@@ -1964,9 +1992,9 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	var frame := MeshInstance3D.new()
 	frame.name = "Frame"
 	var brow := BoxMesh.new()
-	brow.size = Vector3(canopy.size.x * 1.08, 0.35, canopy.size.z * 1.12)
+	brow.size = Vector3(canopy_len * 0.42, 0.28, canopy_w * 1.08)
 	frame.mesh = brow
-	frame.position = glass.position + Vector3(0.0, canopy.size.y * 0.42, 0.0)
+	frame.position = glass.position + Vector3(-canopy_len * 0.22, canopy_h * 0.78, 0.0)
 	frame.material_override = _hull_mat(Color("1a2024"))
 	holder.add_child(frame)
 	var mast := MeshInstance3D.new()
@@ -2587,12 +2615,97 @@ func _hull_part(part: String) -> bool:
 	return false
 
 
-func _paint_hull(node: Node, color: Color) -> void:
+func _paint_hull(node: Node, color: Color, accent: Color = Color(0, 0, 0, 0)) -> void:
 	if node is MeshInstance3D == false:
 		return
 	var mat: Material = (node as MeshInstance3D).material_override
 	if mat is ShaderMaterial:
-		(mat as ShaderMaterial).set_shader_parameter("albedo", color)
+		var shader_mat := mat as ShaderMaterial
+		shader_mat.set_shader_parameter("albedo", color)
+		if accent.a > 0.01:
+			shader_mat.set_shader_parameter("accent", Color(accent.r, accent.g, accent.b, 1.0))
+
+
+func _pad_strip(parent: Node3D, part_name: String, size: Vector3, at: Vector3) -> void:
+	var bar := MeshInstance3D.new()
+	bar.name = part_name
+	var box := BoxMesh.new()
+	box.size = size
+	bar.mesh = box
+	bar.position = at
+	var paint := StandardMaterial3D.new()
+	paint.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	paint.albedo_color = Color("c9d7c4")
+	paint.emission_enabled = true
+	paint.emission = Color("9ee7c8")
+	paint.emission_energy_multiplier = 0.4
+	bar.material_override = paint
+	bar.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(bar)
+
+
+func _pad_bollard(parent: Node3D, part_name: String, at: Vector3) -> void:
+	var post := MeshInstance3D.new()
+	post.name = part_name
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.55
+	cyl.bottom_radius = 0.8
+	cyl.height = 4.2
+	cyl.radial_segments = 10
+	post.mesh = cyl
+	post.position = at
+	post.material_override = _hull_mat(Color("3e4448"))
+	parent.add_child(post)
+
+
+func _canopy_mesh(length: float, width: float, height: float) -> ArrayMesh:
+	var key := "canopy|%0.2f|%0.2f|%0.2f" % [length, width, height]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var x0 := -length * 0.5
+	var x1 := length * 0.5
+	var z0 := -width * 0.5
+	var z1 := width * 0.5
+	var y_back := height
+	var y_front := height * 0.28
+	var back_l := Vector3(x0, 0.0, z1)
+	var back_r := Vector3(x0, 0.0, z0)
+	var back_tl := Vector3(x0, y_back, z1)
+	var back_tr := Vector3(x0, y_back, z0)
+	var nose_l := Vector3(x1, 0.0, z1 * 0.72)
+	var nose_r := Vector3(x1, 0.0, z0 * 0.72)
+	var nose_tl := Vector3(x1, y_front, z1 * 0.72)
+	var nose_tr := Vector3(x1, y_front, z0 * 0.72)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_canopy_quad(st, back_l, back_r, nose_r, nose_l)
+	_canopy_quad(st, back_tl, nose_tl, nose_tr, back_tr)
+	_canopy_quad(st, back_r, back_tr, nose_tr, nose_r)
+	_canopy_quad(st, back_tl, back_l, nose_l, nose_tl)
+	_canopy_quad(st, back_tr, back_r, back_l, back_tl)
+	_canopy_quad(st, nose_l, nose_r, nose_tr, nose_tl)
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _canopy_quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
+	var normal := (b - a).cross(d - a)
+	if normal.length_squared() < 0.0001:
+		normal = Vector3.UP
+	normal = normal.normalized()
+	st.set_normal(normal)
+	st.add_vertex(a)
+	st.set_normal(normal)
+	st.add_vertex(b)
+	st.set_normal(normal)
+	st.add_vertex(c)
+	st.set_normal(normal)
+	st.add_vertex(a)
+	st.set_normal(normal)
+	st.add_vertex(c)
+	st.set_normal(normal)
+	st.add_vertex(d)
 
 
 func _hull_mat(color: Color) -> ShaderMaterial:
@@ -2836,8 +2949,8 @@ func _rubble_mesh(seed: int, radius: float) -> ArrayMesh:
 
 
 func _add_crumple(st: SurfaceTool, rng: RandomNumberGenerator, radius: float, center: Vector3) -> void:
-	var lat := 3
-	var lon := 5
+	var lat := 5
+	var lon := 8
 	var rads := PackedFloat32Array()
 	rads.resize((lat + 1) * lon)
 	var wobble := 0.0
@@ -2875,8 +2988,8 @@ func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
 		return _mesh_cache[key]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var lat := 6
-	var lon := 9
+	var lat := 9
+	var lon := 14
 	var rng := RandomNumberGenerator.new()
 	rng.seed = absi(seed) + 17
 	var rads := PackedFloat32Array()
@@ -3038,8 +3151,8 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 	_tube(holder, "Collar", maxf(height * 0.11, 1.5), 2.1, Vector3(tail + 1.6, height * 0.4, 0.0), "x", Color("5c6468"))
 	var mid := (nose + tail) * 0.42
 	var chine_z := maxf(height * 0.2, 2.8)
-	_hardware(holder, "ChineP", Vector3(span * 0.58, 0.32, 0.5), Vector3(mid, height * 0.2, chine_z), Color("6a7278"))
-	_hardware(holder, "ChineS", Vector3(span * 0.58, 0.32, 0.5), Vector3(mid, height * 0.2, -chine_z), Color("6a7278"))
+	_hardware(holder, "ChineP", Vector3(span * 0.62, 0.7, 1.15), Vector3(mid, height * 0.22, chine_z), Color("6a7278"))
+	_hardware(holder, "ChineS", Vector3(span * 0.62, 0.7, 1.15), Vector3(mid, height * 0.22, -chine_z), Color("6a7278"))
 	_hardware(holder, "SkidP", Vector3(span * 0.42, 0.55, 0.9), Vector3(mid, -0.35, maxf(height * 0.16, 2.2)), Color("4a5256"))
 	_hardware(holder, "SkidS", Vector3(span * 0.42, 0.55, 0.9), Vector3(mid, -0.35, -maxf(height * 0.16, 2.2)), Color("4a5256"))
 	for i in 3:
@@ -3081,9 +3194,23 @@ func _chamfer_poly(poly: PackedVector2Array, cut: float) -> PackedVector2Array:
 	return out
 
 
+func _round_poly(poly: PackedVector2Array) -> PackedVector2Array:
+	var count := poly.size()
+	if count < 4:
+		return poly
+	var out := PackedVector2Array()
+	for i in count:
+		var cur: Vector2 = poly[i]
+		var nxt: Vector2 = poly[(i + 1) % count]
+		out.append(cur * 0.75 + nxt * 0.25)
+		out.append(cur * 0.25 + nxt * 0.75)
+	return out
+
+
 func _prism(poly: PackedVector2Array, height: float, top_scale: float = 0.86) -> ArrayMesh:
 	if poly.size() < 3:
 		return null
+	poly = _round_poly(poly)
 	var edge := 0.0
 	for i in poly.size():
 		edge += poly[i].distance_to(poly[(i + 1) % poly.size()])
@@ -3247,7 +3374,7 @@ func pose_portrait(class_id: String, module_ids: Array) -> Node3D:
 					tone = body.lightened(0.16)
 				elif part.begins_with("Trim"):
 					tone = accent
-				_paint_hull(child, tone)
+				_paint_hull(child, tone, accent)
 	holder.position = Vector3.ZERO
 	holder.rotation = Vector3(0.42, -0.62, 0.08)
 	holder.scale = Vector3.ONE
@@ -3556,7 +3683,7 @@ func _dress_yard() -> void:
 				tone = body.lightened(0.16)
 			elif part.begins_with("Trim"):
 				tone = accent
-			_paint_hull(child, tone)
+			_paint_hull(child, tone, accent)
 	var yaw := -0.95 + sin(_yard_t * 0.22) * 0.08
 	if menu_hero:
 		yaw = _yard_t * 0.42
