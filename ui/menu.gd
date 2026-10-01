@@ -26,6 +26,7 @@ var sky_label: Label
 var tagline: Label
 var slate_actions: GridContainer
 var pinned_keel := ""
+var _fit_warmup := 0
 var slate_glass: Control
 var slate_scroll: ScrollContainer
 var select_glass: Control
@@ -284,11 +285,16 @@ func _fit() -> void:
 	if note != null:
 		note.visible = note.text != ""
 	if slate_glass != null:
-		var slate_h := screen.y - margin * 2.0
+		var slate_h := _title_block_height()
 		if root_box != null:
-			var measured := root_box.get_combined_minimum_size().y
-			if measured > 80.0:
-				slate_h = minf(measured + 40.0, screen.y - margin * 2.0)
+			var measured := root_box.get_combined_minimum_size().y + 52.0
+			if measured > 120.0 and measured < screen.y * 0.72:
+				slate_h = maxf(slate_h, measured)
+		var budget := screen.y * (0.58 if portrait else 0.86)
+		slate_h = minf(slate_h, budget)
+		slate_h = minf(slate_h, screen.y - margin * 2.0)
+		if slate_scroll != null:
+			slate_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 		var slate_y := margin
 		if landscape and slate_h < screen.y - margin * 2.0 - 8.0:
 			slate_y = margin + (screen.y - margin * 2.0 - slate_h) * 0.5
@@ -351,10 +357,52 @@ func _show_select(next: String) -> void:
 	select_box.show()
 
 
+func _title_block_height() -> float:
+	var h := 36.0
+	if root_box == null:
+		return h
+	var gap := float(root_box.get_theme_constant("separation"))
+	var seen := 0
+	for child in root_box.get_children():
+		var control := child as Control
+		if control == null or control.visible == false:
+			continue
+		var line := control.get_combined_minimum_size().y
+		if child == slate_actions:
+			line = _action_block_height()
+		elif line < 12.0:
+			line = 22.0
+		h += line
+		seen += 1
+	if seen > 1:
+		h += gap * float(seen - 1)
+	return h
+
+
+func _action_block_height() -> float:
+	if slate_actions == null:
+		return 44.0
+	var count := 0
+	var row_h := 44.0
+	for child in slate_actions.get_children():
+		var control := child as Control
+		if control == null or control.visible == false:
+			continue
+		count += 1
+		row_h = maxf(row_h, maxf(control.get_combined_minimum_size().y, 44.0))
+	var cols := maxi(slate_actions.columns, 1)
+	var rows := int(ceil(float(count) / float(cols)))
+	var gap := float(slate_actions.get_theme_constant("v_separation"))
+	return float(rows) * row_h + gap * float(maxi(rows - 1, 0))
+
+
 func _process(_delta: float) -> void:
 	if stage == null:
 		return
 	var on := visible and str(Game.mode) != "sector"
+	if on and _fit_warmup < 10:
+		_fit_warmup += 1
+		_fit()
 	if stage.has_method("set_live"):
 		stage.set_live(on)
 	if on == false:

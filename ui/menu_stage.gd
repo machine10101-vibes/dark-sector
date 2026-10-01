@@ -10,7 +10,7 @@ var _hero := false
 func _ready() -> void:
 	name = "Yard"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stretch = false
+	stretch = true
 	vp = SubViewport.new()
 	vp.name = "YardView"
 	# The yard used to share the helm World3D. Its turntable Needle (about
@@ -110,14 +110,12 @@ func _aim(hero: bool) -> void:
 	else:
 		# Title shot. The keel sits in the open glass: right of a wide slate,
 		# under a tall one. Aegis is a limb beside that keel, not a texture wall.
-		if portrait and narrow:
-			cam.fov = 46.0
-			cam.position = Vector3(-173.0 + drift * 0.2, 178.0 + lift, -64.0)
-			cam.look_at(Vector3(183.0, 120.0, 28.0), Vector3.UP)
-		elif portrait:
-			cam.fov = 46.0
-			cam.position = Vector3(-173.0 + drift * 0.2, 178.0 + lift, -64.0)
-			cam.look_at(Vector3(180.0, 66.0, 11.0), Vector3.UP)
+		if portrait:
+			# High and back, so the keel is a whole ship under the card and the
+			# ice reads as a ring instead of a white floor.
+			cam.fov = 40.0
+			cam.position = Vector3(-319.0 + drift * 0.15, 466.0 + lift, -81.0)
+			cam.look_at(Vector3(198.0, 36.0, 24.0), Vector3.UP)
 		elif narrow and landscape:
 			cam.fov = 36.0
 			cam.position = Vector3(-119.0 + drift * 0.25, 178.0 + lift, 229.0)
