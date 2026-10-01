@@ -41,36 +41,66 @@ func _ready() -> void:
 func place(screen: Vector2, dock: float = 8.0, short: bool = false) -> void:
 	position = Vector2.ZERO
 	size = screen
-	var joy_size := 96.0 if short else 148.0
-	radius = 40.0 if short else 60.0
-	var gun := 64.0 if short else 88.0
+	var joy_size := 96.0 if short else 132.0
+	radius = 38.0 if short else 52.0
+	var gun := 64.0 if short else 84.0
+	var zoom_h := 36.0 if short else 40.0
 	var base := screen.y - dock
-	joy.position = Vector2(8, base - joy_size - 4)
+	joy.position = Vector2(10, base - joy_size - 6)
 	joy.size = Vector2(joy_size, joy_size)
-	fire_button.position = Vector2(screen.x - gun - 10.0, base - gun - 4.0)
+	var gun_x := screen.x - gun - 12.0
+	var gun_y := base - gun - 6.0
+	fire_button.position = Vector2(gun_x, gun_y)
 	fire_button.size = Vector2(gun, gun)
-	strafe_left.position = Vector2(screen.x - gun - 96.0, base - 48.0)
-	strafe_left.size = Vector2(78, 44)
-	strafe_right.position = Vector2(screen.x - gun - 96.0, base - 96.0)
-	strafe_right.size = Vector2(78, 44)
-	zoom_in.position = Vector2(screen.x - gun - 10.0, base - gun - 52.0)
-	zoom_in.size = Vector2(36, 44)
-	zoom_out.position = Vector2(screen.x - 46.0, base - gun - 52.0)
-	zoom_out.size = Vector2(36, 44)
+	var side := 70.0 if short else 76.0
+	var half := maxf(40.0, gun * 0.46)
+	strafe_right.position = Vector2(gun_x - side - 8.0, gun_y)
+	strafe_right.size = Vector2(side, half)
+	strafe_left.position = Vector2(gun_x - side - 8.0, gun_y + gun - half)
+	strafe_left.size = Vector2(side, half)
+	var zoom_w := (gun - 6.0) * 0.5
+	zoom_in.position = Vector2(gun_x, gun_y - zoom_h - 6.0)
+	zoom_in.size = Vector2(zoom_w, zoom_h)
+	zoom_out.position = Vector2(gun_x + zoom_w + 6.0, gun_y - zoom_h - 6.0)
+	zoom_out.size = Vector2(zoom_w, zoom_h)
 	joy.queue_redraw()
 
 
 func band_top(screen: Vector2, short: bool) -> float:
-	var joy_size := 96.0 if short else 148.0
-	var gun := 64.0 if short else 88.0
-	var cluster := gun + 56.0
+	var joy_size := 96.0 if short else 132.0
+	var gun := 64.0 if short else 84.0
+	var zoom_h := 36.0 if short else 40.0
+	var cluster := gun + zoom_h + 18.0
 	var pad_h := maxf(joy_size, cluster)
-	return screen.y - 8.0 - pad_h - 10.0
+	return screen.y - 8.0 - pad_h - 12.0
+
+
+func release() -> void:
+	_release_joy()
+	fire_held = false
+	hold_left = false
+	hold_right = false
+	Game.flight = {
+		"thrust": 0.0,
+		"retro": 0.0,
+		"rot": 0.0,
+		"strafe": 0.0,
+		"fire": false,
+	}
 
 
 func _process(_delta: float) -> void:
 	if not visible:
+		release()
 		return
+	if joy_touch == -2 and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) == false:
+		_release_joy()
+	if fire_button != null:
+		fire_held = fire_button.button_pressed
+	if strafe_left != null:
+		hold_left = strafe_left.button_pressed
+	if strafe_right != null:
+		hold_right = strafe_right.button_pressed
 	var thrust := 0.0
 	var retro := 0.0
 	var rot := 0.0
@@ -110,6 +140,19 @@ func _zoom(direction: float) -> void:
 	else:
 		z /= 1.12
 	Game.zoom = clampf(z, 0.05, 1.55)
+
+
+func _input(event: InputEvent) -> void:
+	if joy_touch == -1:
+		return
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed == false and touch.index == joy_touch:
+			_release_joy()
+	elif event is InputEventMouseButton:
+		var click := event as InputEventMouseButton
+		if click.pressed == false and click.button_index == MOUSE_BUTTON_LEFT and joy_touch == -2:
+			_release_joy()
 
 
 func _on_joy(event: InputEvent) -> void:

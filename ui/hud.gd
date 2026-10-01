@@ -286,14 +286,17 @@ func _layout_chrome(screen: Vector2) -> void:
 		var log_y := status_bottom + 6.0
 		if banner != null and banner.visible:
 			log_y = banner.position.y + banner.size.y + 4.0
-		var log_h := 36.0 if short else (52.0 if compact else 72.0)
-		var fits := log_y + log_h <= room_bottom
+		var log_cap := 44.0 if short else (64.0 if compact else 72.0)
+		var log_room := room_bottom - 30.0 - log_y
+		var log_h := minf(log_cap, log_room)
 		log_card.position = Vector2(margin, log_y)
-		log_card.size = Vector2(helm_w if compact or short else minf(620.0, screen.x - margin * 2.0), log_h)
+		log_card.size = Vector2(helm_w if compact or short else minf(620.0, screen.x - margin * 2.0), maxf(log_h, 0.0))
 		if log_label != null and log_label.text == "":
 			log_card.visible = false
-		elif fits == false:
+		elif log_h < 28.0:
 			log_card.visible = false
+		else:
+			log_card.visible = true
 	if chat_line != null:
 		chat_line.position = Vector2(margin, maxf(8.0, primary_y - 36.0))
 		chat_line.size = Vector2(minf(420.0, helm_w), 32)
@@ -814,7 +817,7 @@ func _refresh_helm() -> void:
 	log_label.text = "\n".join(bits)
 	log_label.max_lines_visible = keep
 	if log_card != null:
-		log_card.visible = log_label.text != ""
+		log_card.visible = log_label.text != "" and log_card.size.y >= 28.0
 	if screen.x >= 64.0:
 		_layout_chrome(screen)
 

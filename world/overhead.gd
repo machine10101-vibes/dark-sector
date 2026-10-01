@@ -82,12 +82,20 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if cam3 == null or cam3.current == false:
+	if cam3 == null:
+		return
+	# The title yard eye can stay current on the root viewport. Reclaim the
+	# pad every flight frame so that turntable hull is not the picture.
+	if Game.mode == "sector" and cam3.current == false:
+		cam3.current = true
+	if cam3.current == false:
 		return
 	var sector_on := Game.mode == "sector"
 	if _saw_mode == false:
 		_saw_mode = true
 		_was_sector = sector_on
+		if sector_on:
+			_ease = 0.0
 		_ease = 1.0
 	elif sector_on and _was_sector == false:
 		_ease = 0.0
@@ -180,6 +188,20 @@ func _aim() -> void:
 		back = height * 0.62
 		cam3.fov = lerpf(44.0, 50.0, settle)
 	cam3.far = far
+	var screen_now := get_viewport().get_visible_rect().size
+	if layer == ScaleFrame.BAND and bool(Game.sim.player.get("moored", false)):
+		if screen_now.y < 520.0 and screen_now.x > screen_now.y:
+			# The glass covers the middle of a short phone. Look above the
+			# keel so it sits in the open band, and pull back so Aegis stays
+			# beside the pad instead of swallowing it.
+			height *= 1.22
+			back = height * 0.62
+			var forward := Vector3(0.0, -height, back).normalized()
+			var cam_up := Vector3(0.0, 0.0, 1.0)
+			var right := cam_up.cross(forward).normalized()
+			var screen_up := forward.cross(right).normalized()
+			var half_h := height * tan(deg_to_rad(cam3.fov * 0.5))
+			target += screen_up * (0.42 * half_h * 2.0)
 	cam3.position = target + Vector3(0.0, height, -back)
 	cam3.look_at(target, Vector3(0.0, 0.0, 1.0))
 
@@ -222,6 +244,7 @@ class ScaleReadout extends Control:
 		var cam: Camera3D = helm.get("cam3")
 		var stage = helm.get("stage")
 		var font := ThemeDB.fallback_font
+		var drawn: Array = []
 		if cam != null and stage != null and font != null:
 			var ranked: Array = []
 			for item in stage.tags:
@@ -240,17 +263,20 @@ class ScaleReadout extends Control:
 					continue
 				ranked.append({"item": item, "at": at, "dist": dist})
 			ranked.sort_custom(Callable(self, "_nearer_tag"))
-			var drawn: Array = []
 			for row in ranked:
 				var tag: Dictionary = row.item
 				var sp: Vector2 = cam.unproject_position(row.at)
 				if sp.x < -30.0 or sp.y < -10.0 or sp.x > size.x + 30.0 or sp.y > size.y - 88.0:
+					continue
+				if str(tag.t) == "Helion Dock" and bool(Game.sim.player.get("moored", false)) == false:
 					continue
 				var text := str(tag.t)
 				var font_size := int(tag.s)
 				var box := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 				var w := maxf(box.x, 24.0)
 				var h := maxf(box.y, float(font_size))
+				if _on_chrome(Rect2(sp, Vector2(w, h))):
+					continue
 				var kept := false
 				for _nudge in 5:
 					var hit := false
@@ -284,16 +310,16 @@ class ScaleReadout extends Control:
 			var b := cam.unproject_position(Vector3(chase.x + length, 0.0, -chase.y))
 			if cam.is_position_behind(Vector3(chase.x, 0.0, -chase.y)) == false:
 				px = a.distance_to(b)
-		var origin := Vector2(28.0, size.y - 36.0)
+		var origin := _scale_origin(px)
 		draw_line(origin, origin + Vector2(px, 0), Color("cbb892"), 2.0, true)
 		draw_line(origin, origin + Vector2(0, -7), Color("cbb892"), 2.0, true)
 		draw_line(origin + Vector2(px, 0), origin + Vector2(px, -7), Color("cbb892"), 2.0, true)
 		if font != null:
 			draw_string(font, origin + Vector2(0, -18), "%d m" % int(length), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("cbb892"))
-		_draw_dock_guide(cam, font)
+		_draw_dock_guide(cam, font, drawn)
 		_draw_ring_guide(cam, font)
 
-	func _draw_dock_guide(cam: Camera3D, font: Font) -> void:
+	func _draw_dock_guide(cam: Camera3D, font: Font, drawn: Array) -> void:
 		var sim = Game.sim
 		if cam == null or font == null or sim == null or sim.player.is_empty():
 			return
@@ -324,8 +350,21 @@ class ScaleReadout extends Control:
 		var center := size * 0.5
 		var on_screen := behind == false and edge.has_point(sp)
 		if on_screen:
+			var box := font.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 16)
+			var label_at := sp + Vector2(14, 4)
+			for _nudge in 6:
+				var mine := Rect2(label_at, Vector2(maxf(box.x, 24.0), maxf(box.y, 16.0)))
+				var hit := false
+				for other in drawn:
+					var taken: Rect2 = other
+					if mine.intersects(taken.grow(6.0)):
+						hit = true
+						break
+				if not hit:
+					break
+				label_at.y -= maxf(box.y, 16.0) + 4.0
 			draw_rect(Rect2(sp + Vector2(-8, -8), Vector2(16, 16)), Color(0.45, 0.9, 0.95, 0.9), false, 2.0)
-			draw_string(font, sp + Vector2(14, 4), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("9eecf5"))
+			draw_string(font, label_at, caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("9eecf5"))
 			return
 		var aim := sp - center
 		if behind:
@@ -429,6 +468,53 @@ class ScaleReadout extends Control:
 
 	func _nearer_tag(a: Dictionary, b: Dictionary) -> bool:
 		return float(a.dist) < float(b.dist)
+
+
+	func _scale_origin(bar: float) -> Vector2:
+		var screen := size
+		var short := screen.y < 520.0
+		var wide_phone := short and screen.x > screen.y
+		if wide_phone:
+			# Stick owns the lower left. The channel beside it is clear of the gun.
+			return Vector2(128.0, screen.y - 22.0)
+		var top := _bars_top(screen)
+		var x := 16.0
+		var y := top - 26.0
+		if y < 96.0:
+			y = 96.0
+		if x + bar > screen.x - 120.0:
+			x = maxf(8.0, screen.x - 120.0 - bar)
+		return Vector2(x, y)
+
+
+	func _bars_top(screen: Vector2) -> float:
+		var short := screen.y < 520.0
+		var compact := screen.x < 900.0 or short
+		var pad_top := screen.y - 8.0
+		if compact:
+			var joy_size := 96.0 if short else 132.0
+			var gun := 64.0 if short else 84.0
+			var zoom_h := 36.0 if short else 40.0
+			var pad_h := maxf(joy_size, gun + zoom_h + 18.0)
+			pad_top = screen.y - 8.0 - pad_h - 12.0
+		var secondary_h := 48.0
+		var primary_h := 64.0
+		var gap := 8.0
+		var secondary_y := pad_top - secondary_h - gap
+		var primary_y := secondary_y - primary_h - gap
+		primary_y = maxf(primary_y, 72.0 if short else 96.0)
+		return primary_y
+
+
+	func _on_chrome(box: Rect2) -> bool:
+		var screen := size
+		var corner := Rect2(screen.x - 124.0, 0.0, 132.0, 112.0)
+		if box.intersects(corner):
+			return true
+		if screen.y < 520.0 and box.position.y < 82.0:
+			return true
+		var floor := Rect2(0.0, _bars_top(screen) - 4.0, screen.x, screen.y)
+		return box.intersects(floor)
 
 
 	func sector_chase():

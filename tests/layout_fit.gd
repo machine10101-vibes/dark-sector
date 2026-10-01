@@ -60,6 +60,10 @@ func _check_title(screen: Vector2) -> void:
 	_buttons(menu, screen, "title")
 	var cont: Button = menu.get("continue_button")
 	_inside_parent(cont, glass, "title continue")
+	if glass != null:
+		var limit := 0.58 if screen.y > screen.x else 0.78
+		if glass.get_global_rect().size.y > screen.y * limit:
+			_bad("title glass fills the page %s" % glass.get_global_rect())
 
 
 func _check_select(screen: Vector2) -> void:

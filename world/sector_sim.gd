@@ -585,6 +585,7 @@ func to_dict() -> Dictionary:
 		"pos": Serde.vec_out(player.pos if int(layer) != ScaleFrame.SITE else site_pos),
 		"site_pos": Serde.vec_out(site_pos),
 		"focus_coord": _coord_dict(player.pos if int(layer) != ScaleFrame.SITE else site_pos, int(layer)),
+		"layout": 2,
 	}
 
 
@@ -659,9 +660,17 @@ func from_dict(data: Dictionary) -> void:
 		site_pos = Serde.vec_in(data.pos)
 	if not data.has("layer"):
 		_bind_band()
+	var spread := _helion_spread_delta(int(data.get("layout", 1)))
+	if spread.length_squared() > 1.0:
+		_apply_helion_spread(spread)
 	var gate: Variant = WorldCoord.gate()
 	if data.has("focus_coord") and typeof(data.focus_coord) == TYPE_DICTIONARY and gate != null:
-		gate.load_focus(data.focus_coord)
+		var focus_data: Dictionary = data.focus_coord
+		if spread.length_squared() > 1.0 and int(focus_data.get("layer", layer)) == ScaleFrame.BAND:
+			focus_data = focus_data.duplicate()
+			focus_data.x = float(focus_data.get("x", 0.0)) + spread.x
+			focus_data.y = float(focus_data.get("y", 0.0)) + spread.y
+		gate.load_focus(focus_data)
 
 
 func _step(dt: float, cmd: Dictionary) -> void:
@@ -2048,6 +2057,69 @@ func _held(cmd: Dictionary) -> Dictionary:
 	}
 
 
+func _helion_spread_delta(saved_layout: int) -> Vector2:
+	if saved_layout >= 2:
+		return Vector2.ZERO
+	if str(defs.system.id) != "HC-V1-R1-S1":
+		return Vector2.ZERO
+	var body = planet("aegis_prime")
+	if body == null:
+		return Vector2.ZERO
+	var old_center := Vector2.from_angle(float(body.angle)) * 1680.0
+	return body.pos - old_center
+
+
+func _apply_helion_spread(delta: Vector2) -> void:
+	if int(layer) == ScaleFrame.BAND or int(layer) == ScaleFrame.CRAFT:
+		_nudge_unit(player, delta)
+		for actor in actors:
+			_nudge_unit(actor, delta)
+		for mate in captains:
+			_nudge_unit(mate, delta)
+		for item in craft:
+			_nudge_unit(item, delta)
+		for shot in projectiles:
+			if shot.has("pos"):
+				shot.pos += delta
+		for wreck in wrecks:
+			if wreck.has("pos"):
+				wreck.pos += delta
+		if claim.has("x"):
+			var at := Vector2(float(claim.x), float(claim.y))
+			var old_center := body_pos_or_zero("aegis_prime") - delta
+			var old_pocket := old_center + Vector2.from_angle(-1.15) * 700.0
+			if at.distance_to(old_pocket) < 340.0:
+				var shift: Vector2 = pocket_pos - old_pocket
+				claim.x = float(claim.x) + shift.x
+				claim.y = float(claim.y) + shift.y
+			else:
+				claim.x = float(claim.x) + delta.x
+				claim.y = float(claim.y) + delta.y
+	var body = planet("aegis_prime")
+	if body != null:
+		var old_chart := Vector2.from_angle(float(body.angle)) * 1680.0 * ScaleFrame.CHART_KM_PER_UNIT
+		if local_origin.distance_to(old_chart) < 12000.0:
+			local_origin += delta * ScaleFrame.CHART_KM_PER_UNIT
+
+
+func body_pos_or_zero(bid: String) -> Vector2:
+	var body = planet(bid)
+	if body == null:
+		return Vector2.ZERO
+	return body.pos
+
+
+func _nudge_unit(unit: Dictionary, delta: Vector2) -> void:
+	if unit.is_empty() or unit.has("pos") == false:
+		return
+	unit.pos += delta
+	if unit.get("home") is Vector2:
+		unit.home += delta
+	if unit.has("dock_x"):
+		unit.dock_x = float(unit.dock_x) + delta.x
+		unit.dock_y = float(unit.dock_y) + delta.y
+
+
 func _ship_out(ship: Dictionary) -> Dictionary:
 	var row = ship.duplicate(true)
 	row.pos = Serde.vec_out(ship.pos)
@@ -2320,11 +2392,11 @@ func _step_scale(before: Vector2) -> void:
 		var center: Vector2 = body.pos
 		var was: float = before.distance_to(center)
 		var now: float = player.pos.distance_to(center)
-		if was <= outer and now > outer:
-			if haul_outbound():
-				_hold_for_ring(body, outer)
-			else:
-				_to_chart_from_band(body)
+		if was <= outer and now > outer and haul_outbound():
+			# A live ring haul stays in the ice until the crate is dropped.
+			# Every other flight keeps going. The old handoff threw the keel
+			# onto the kilometer chart, and the Helion well put it back on the pad.
+			_hold_for_ring(body, outer)
 		return
 	if int(layer) == ScaleFrame.APPROACH:
 		_step_approach()

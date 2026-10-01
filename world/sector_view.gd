@@ -121,6 +121,22 @@ func _cmd(delta: float) -> Dictionary:
 	if not Game.sim.player.alive:
 		helm_yaw = 0.0
 		return {}
+	# A corp field or the chat line owns the keys. A stick that is still
+	# deflected must not keep thrusting or firing while those letters land.
+	if Game.text_entry:
+		helm_yaw = move_toward(helm_yaw, 0.0, 24.0 * delta)
+		Game.cast_pulse = 0.0
+		var quiet := {
+			"thrust": 0.0,
+			"retro": 0.0,
+			"rot": 0.0,
+			"strafe": 0.0,
+			"fire": false,
+		}
+		var typed: Dictionary = Game.take_verbs()
+		for key in typed.keys():
+			quiet[key] = typed[key]
+		return quiet
 	var stick: Dictionary = Game.flight
 	var rot := 0.0
 	# Screen-right on the overhead camera is world -X, so positive sim yaw
@@ -135,6 +151,8 @@ func _cmd(delta: float) -> Dictionary:
 	helm_yaw = move_toward(helm_yaw, rot, 24.0 * delta)
 	rot = helm_yaw
 	var strafe := 0.0
+	# orthogonal() is clockwise, so negative strafe is left of the nose.
+	# Q and Port stay on that side. E and Stbd stay on the right.
 	if Game.flight_down(KEY_Q):
 		strafe -= 1.0
 	if Game.flight_down(KEY_E):

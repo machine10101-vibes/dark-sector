@@ -6,6 +6,8 @@ const PARKED = ["fighter"]
 
 
 static func launch(sim, def_id: String) -> String:
+	if def_id == "":
+		return "This keel has no boat in the rack."
 	if def_id == "salvage_tender":
 		return _launch_tender(sim)
 	if def_id == "livestock_lighter":

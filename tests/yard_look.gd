@@ -51,6 +51,48 @@ func _run() -> void:
 			if child is WorldEnvironment:
 				grade = (child as WorldEnvironment).environment
 	check(grade != null and grade.glow_enabled and grade.tonemap_mode == Environment.TONE_MAPPER_FILMIC, "the yard grade matches the helm")
+	var yard_cam: Camera3D = menu.get("cam")
+	var yard_stage: Node3D = menu.get("yard")
+	check(vp.own_world_3d and vp.world_3d != root.get_world_3d(), "the title yard is not the flight world")
+	if yard_stage != null and yard_stage.has_method("show_yard"):
+		yard_stage.show_yard("vesper", true)
+		yard_stage._step_yard(0.2)
+	menu.set_live(false)
+	check(yard_cam != null and yard_cam.current == false, "taking a keel releases the yard eye")
+	var parked: Node3D = yard_stage.find_child("yard", true, false)
+	check(parked == null or parked.visible == false, "taking a keel hides the turntable hull")
+	check(yard_stage.scale == Vector3.ZERO, "taking a keel collapses the turntable")
+	menu.set_live(true)
+	yard_stage.show_yard("vesper", false)
+	yard_stage._step_yard(0.2)
+	var spokes_back := yard_stage.get_node_or_null("YardSpokes") as MeshInstance3D
+	check(spokes_back != null and spokes_back.visible, "the title star returns with the slate")
+	var hull_back: Node3D = yard_stage.find_child("yard", true, false)
+	check(hull_back != null and hull_back.visible and yard_stage.scale == Vector3.ONE, "the turntable hull returns with the slate")
+	var slate: Node = load("res://ui/menu.gd").new()
+	root.add_child(slate)
+	var portraits := 0
+	var own := 0
+	var mast := false
+	var bare := false
+	for node in slate.find_children("*", "", true, false):
+		if node.has_method("_boot") == false or node.get("_stage") != null:
+			continue
+		node._boot()
+		var card_hull: Node3D = node.get("_holder")
+		if card_hull == null or card_hull.get_node_or_null("Plate") == null:
+			continue
+		portraits += 1
+		var host := card_hull.get_viewport()
+		if host is SubViewport and host.own_world_3d and host.get_world_3d() != root.get_world_3d():
+			own += 1
+		var mods: Array = card_hull.get_meta("portrait_modules", [])
+		if mods.has("sensor_mast") and card_hull.get_node_or_null("MountMast") != null:
+			mast = true
+		if mods.is_empty() and card_hull.get_node_or_null("MountMast") == null:
+			bare = true
+	check(portraits >= 6 and own == portraits, "ship select shows each keel as a 3D hull")
+	check(mast and bare, "a bolted Needle keeps the mast the bare keel does not")
 	game.mode = "menu"
 	var eye: Node = load("res://world/overhead.gd").new()
 	root.add_child(eye)

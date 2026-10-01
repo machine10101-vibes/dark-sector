@@ -547,20 +547,38 @@ var menu_show := false
 var menu_class := "vesper"
 var menu_hero := false
 var menu_bias := 0.0
+var portrait_mode := false
 var _yard_t := 0.0
 var _yard_ready := false
 
 
 func _ready() -> void:
+	_hull_shader = _compile(HULL_SHADER)
+	_glass_shader = _compile(GLASS_SHADER)
+	_plume_shader = _compile(PLUME_SHADER)
+	_sun = DirectionalLight3D.new()
+	_sun.name = "Sun"
+	_sun.light_color = Color("fff0d4")
+	_sun.light_energy = 2.8 if portrait_mode else 1.55
+	_sun.shadow_enabled = false
+	add_child(_sun)
+	_fill = DirectionalLight3D.new()
+	_fill.name = "Fill"
+	_fill.light_color = Color(0.72, 0.8, 0.95)
+	_fill.light_energy = 1.05 if portrait_mode else 0.58
+	_fill.shadow_enabled = false
+	_fill.basis = Basis(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0), Vector3(0.0, 1.0, 0.0))
+	add_child(_fill)
+	if portrait_mode:
+		# A card only needs the hull. The chart grid and the planet shaders stay out.
+		_sun.rotation_degrees = Vector3(-42.0, -28.0, 0.0)
+		return
 	_planet_shader = _compile(PLANET_SHADER)
 	_cloud_shader = _compile(CLOUD_SHADER)
 	_air_shader = _compile(AIR_SHADER)
 	_star_shader = _compile(STAR_SHADER)
 	_corona_shader = _compile(CORONA_SHADER)
 	_ray_shader = _compile(RAY_SHADER)
-	_hull_shader = _compile(HULL_SHADER)
-	_glass_shader = _compile(GLASS_SHADER)
-	_plume_shader = _compile(PLUME_SHADER)
 	_ring_shader = _compile(RING_SHADER)
 	_nebula_shader = _compile(NEBULA_SHADER)
 	_gate_shader = _compile(GATE_SHADER)
@@ -569,19 +587,6 @@ func _ready() -> void:
 	_wake_shader = _compile(WAKE_SHADER)
 	_ground_shader = _compile(GROUND_SHADER)
 	_build_grid()
-	_sun = DirectionalLight3D.new()
-	_sun.name = "Sun"
-	_sun.light_color = Color("fff0d4")
-	_sun.light_energy = 1.55
-	_sun.shadow_enabled = false
-	add_child(_sun)
-	_fill = DirectionalLight3D.new()
-	_fill.name = "Fill"
-	_fill.light_color = Color(0.72, 0.8, 0.95)
-	_fill.light_energy = 0.58
-	_fill.shadow_enabled = false
-	_fill.basis = Basis(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0), Vector3(0.0, 1.0, 0.0))
-	add_child(_fill)
 
 
 func _compile(code: String) -> Shader:
@@ -593,8 +598,10 @@ func _compile(code: String) -> Shader:
 func _process(delta: float) -> void:
 	_frame_delta = maxf(delta, 0.001)
 	if menu_show:
-		if str(Game.mode) != "sector":
-			_step_yard(delta)
+		if str(Game.mode) == "sector":
+			dismiss_yard()
+			return
+		_step_yard(delta)
 		return
 	if Game.sim == null or Game.mode != "sector":
 		return
@@ -680,7 +687,7 @@ func _sync_props(sim) -> void:
 		var scrap := _prop("trash%d" % index)
 		index += 1
 		var scale := float(row.get("scale", 1.0))
-		var radius := maxf(64.0, 82.0 * scale)
+		var radius := maxf(18.0, 26.0 * scale)
 		if str(scrap.get_meta("built", "")) != "yes":
 			scrap.mesh = _rubble_mesh(index + 40, radius)
 			var tones: Array = [Color("c49262"), Color("6e5340"), Color("a87448"), Color("d4b48a")]
@@ -809,21 +816,20 @@ func _sync_props(sim) -> void:
 		var flash := 0.55 + 0.45 * sin(float(sim.time) * 5.0)
 		var dock_ring := _prop("band_dock")
 		if str(dock_ring.get_meta("built", "")) != "yes":
-			var ring := TorusMesh.new()
-			ring.inner_radius = 150.0
-			ring.outer_radius = 220.0
-			ring.rings = 40
-			ring.ring_segments = 10
-			dock_ring.mesh = ring
+			# A berth ring around the keel. The old 150–220 torus put the
+			# hull in the hole of a planet-sized disc.
+			dock_ring.mesh = _annulus(30.0, 52.0, 1.3, 56)
 			var glow := StandardMaterial3D.new()
 			glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			glow.albedo_color = Color("d7fbff")
+			glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			glow.albedo_color = Color(0.72, 0.94, 0.98, 0.72)
 			glow.emission_enabled = true
 			glow.emission = Color("7ee7f2")
+			glow.emission_energy_multiplier = 0.85
 			dock_ring.material_override = glow
 			dock_ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			dock_ring.set_meta("built", "yes")
-		dock_ring.position = chart(sim.beacon_pos, 6.0)
+		dock_ring.position = chart(sim.beacon_pos, 1.4)
 		dock_ring.visible = true
 		var paint := dock_ring.material_override as StandardMaterial3D
 		if paint != null:
@@ -849,7 +855,7 @@ func _sync_props(sim) -> void:
 		var beam_paint := beam.material_override as StandardMaterial3D
 		if beam_paint != null:
 			beam_paint.emission_energy_multiplier = 0.6 + flash * 1.8
-		_tag("Helion Dock", chart(sim.beacon_pos + Vector2(-90.0, -30.0), 168.0), Color("9eecf5"), 22)
+		_tag("Helion Dock", chart(sim.beacon_pos + Vector2(36.0, 28.0), 46.0), Color("9eecf5"), 18)
 		_sync_haul_ring(sim)
 	elif not on_chart:
 		_tag("Dock beacon", chart(sim.beacon_pos + Vector2(-70.0, -90.0), 78.0), Color("8aa896"), 13)
@@ -1241,7 +1247,15 @@ func _sync_star(sim) -> void:
 		_star_rays.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_star_rays)
 	var spoke_card := _star_rays.mesh as QuadMesh
-	spoke_card.size = Vector2(radius * 5.2, radius * 5.2)
+	var reach := radius * 1.85
+	if layer == ScaleFrame.BAND:
+		var nearest := 1.0e9
+		for body in sim.planets:
+			var prow: Dictionary = body
+			nearest = minf(nearest, prow.pos.length() - float(prow.radius))
+		if nearest < 1.0e8:
+			reach = minf(reach, maxf(radius * 1.35, nearest - 240.0))
+	spoke_card.size = Vector2(reach * 2.0, reach * 2.0)
 	(_star_rays.material_override as ShaderMaterial).set_shader_parameter("albedo", core.lightened(0.05))
 	# The meshes used to stay at 3D zero. The camera's render origin is the
 	# keel, so that put Helion around the dock and buried the hull.
@@ -1347,7 +1361,7 @@ func _sync_planets(sim) -> void:
 			draw = row.duplicate()
 			draw.ring = false
 			draw.moon = false
-		_sync_ring(node, draw, radius, to_star)
+		_sync_ring(node, draw, radius, to_star, _neighbor_clearance(sim, row, radius))
 		_sync_moon(node, sim, draw, radius)
 		_parallax(node, radius, float(sim.time), limb)
 		var label_at := chart(row.pos, float(row.radius) + 28.0)
@@ -1722,7 +1736,21 @@ func _body_node(bid: String) -> Node3D:
 	return node
 
 
-func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3) -> void:
+func _neighbor_clearance(sim, row: Dictionary, radius: float) -> float:
+	var limit := radius * 1.72
+	var bid := str(row.get("id", ""))
+	var pocket: Dictionary = sim.defs.system.get("pocket", {})
+	if str(pocket.get("anchor", "")) == bid:
+		var near := float(pocket.get("distance", 9000.0)) - float(pocket.get("radius", 0.0))
+		limit = minf(limit, near - 90.0)
+	var field: Dictionary = sim.defs.system.get("trash", {})
+	if str(field.get("anchor", "")) == bid and int(field.get("count", 0)) > 0:
+		var inner := float(field.get("distance", 9000.0)) - float(field.get("spread", 120.0))
+		limit = minf(limit, inner - 36.0)
+	return limit
+
+
+func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3, max_outer: float = -1.0) -> void:
 	var ring := node.get_node_or_null("Ring") as MeshInstance3D
 	if not bool(row.get("ring", false)):
 		if ring != null:
@@ -1740,6 +1768,9 @@ func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3) 
 		ring.material_override = mat
 		node.add_child(ring)
 	var band := maxf(36.0, radius * 0.085)
+	var outer_edge := radius + band * 3.35
+	if max_outer > radius + 24.0 and outer_edge > max_outer:
+		band = maxf(10.0, (max_outer - radius) / 3.35)
 	ring.mesh = _annulus(radius + band * 0.4, radius + band * 2.15, maxf(5.5, radius * 0.02), 112)
 	ring.rotation.x = 0.28
 	ring.visible = true
@@ -3096,11 +3127,67 @@ func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, norm
 	st.add_vertex(d)
 
 
+func pose_portrait(class_id: String, module_ids: Array) -> Node3D:
+	var shapes: Array = Silhouette.shapes_of(Game.defs, module_ids)
+	var layers: Array = Silhouette.layers_of(Game.defs, module_ids)
+	var holder := _ship_holder("portrait")
+	var mesh_key := class_id + "|" + str(shapes) + "|" + str(layers.size())
+	if str(holder.get_meta("mesh_key", "")) != mesh_key:
+		_fill_ship(holder, class_id, shapes, layers)
+		holder.set_meta("mesh_key", mesh_key)
+	holder.set_meta("portrait_modules", module_ids.duplicate())
+	if Game.defs.ships.has(class_id):
+		var hull: Dictionary = Game.defs.ships[class_id]
+		var body := Color(str(hull.color))
+		var accent := Color(str(hull.accent))
+		for child in holder.get_children():
+			var part := str(child.name)
+			if _hull_part(part):
+				var tone := body
+				if part == "Deck":
+					tone = body.lightened(0.16)
+				elif part.begins_with("Trim"):
+					tone = accent
+				_paint_hull(child, tone)
+	holder.position = Vector3.ZERO
+	holder.rotation = Vector3(0.42, -0.62, 0.08)
+	holder.scale = Vector3.ONE
+	holder.visible = true
+	return holder
+
+
 func show_yard(class_id: String, hero: bool) -> void:
 	menu_show = true
+	visible = true
+	scale = Vector3.ONE
+	position = Vector3.ZERO
 	if class_id != "":
 		menu_class = class_id
 	menu_hero = hero
+
+
+func dismiss_yard() -> void:
+	menu_show = false
+	menu_hero = false
+	visible = false
+	# Collapsing the rig hides it even when a shared world ignores the
+	# viewport split and the flight eye is the one drawing the pad.
+	scale = Vector3.ZERO
+	position = Vector3(0.0, -100000.0, 0.0)
+	var holder := _ships.get("yard") as Node3D
+	if holder != null:
+		holder.visible = false
+	var planet := _bodies.get("yard_aegis") as Node3D
+	if planet != null:
+		planet.visible = false
+	for key in ["yard_dock", "yard_pylon0", "yard_pylon1", "yard_pylon2", "yard_pylon3", "yard_pylon4"]:
+		var prop := _props.get(key) as Node3D
+		if prop != null:
+			prop.visible = false
+	for node_name in ["YardSpokes", "Star", "Corona", "YardStars", "YardKey", "YardRim", "YardFill"]:
+		var rig := get_node_or_null(node_name) as Node3D
+		if rig != null:
+			rig.visible = false
 
 
 func _step_yard(delta: float) -> void:
@@ -3305,6 +3392,13 @@ func _build_yard() -> void:
 
 
 func _dress_yard() -> void:
+	visible = true
+	scale = Vector3.ONE
+	position = Vector3.ZERO
+	for node_name in ["YardSpokes", "Star", "Corona", "YardStars", "YardKey", "YardRim", "YardFill"]:
+		var rig := get_node_or_null(node_name) as Node3D
+		if rig != null:
+			rig.visible = true
 	var planet := _body_node("yard_aegis")
 	planet.rotation.y = _yard_t * 0.05
 	var ball := planet.get_node("Ball") as MeshInstance3D
@@ -3375,6 +3469,13 @@ func _dress_yard() -> void:
 		holder.position = Vector3(168.0, 36.0, 24.0)
 		holder.scale = Vector3(1.55, 1.55, 1.55)
 	holder.visible = true
+	if menu_hero:
+		planet.visible = false
+		var yard_ring := _prop("yard_dock")
+		yard_ring.visible = false
+		for i in 5:
+			var pylon := _prop("yard_pylon%d" % i)
+			pylon.visible = false
 	var key := get_node_or_null("YardKey") as OmniLight3D
 	var rim := get_node_or_null("YardRim") as OmniLight3D
 	var cool := get_node_or_null("YardFill") as OmniLight3D
@@ -3393,9 +3494,13 @@ func _dress_yard() -> void:
 			cool.omni_range = 160.0
 	else:
 		if key != null:
-			key.position = Vector3(40.0, 140.0, 210.0)
-			key.light_energy = 2.2
-			key.omni_range = 640.0
+			var eye := get_viewport().get_camera_3d()
+			var key_at := Vector3(40.0, 140.0, 210.0)
+			if eye != null:
+				key_at = holder.position.lerp(eye.global_position, 0.42) + Vector3(0.0, 36.0, 0.0)
+			key.position = key_at
+			key.light_energy = 2.6
+			key.omni_range = 720.0
 		if rim != null:
 			rim.position = Vector3(220.0, 80.0, -80.0)
 			rim.light_energy = 1.4
