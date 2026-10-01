@@ -831,23 +831,49 @@ func _sync_props(sim) -> void:
 		pole.height = 36.0
 		mast.mesh = pole
 		mast.material_override = _metal(Color("8a7a62"))
+		for i in 3:
+			var stay := MeshInstance3D.new()
+			stay.name = "Stay%d" % i
+			var rod := CylinderMesh.new()
+			rod.top_radius = 0.32
+			rod.bottom_radius = 0.42
+			rod.height = 32.0
+			rod.radial_segments = 8
+			stay.mesh = rod
+			var ang := float(i) * TAU / 3.0
+			stay.position = Vector3(cos(ang) * 2.4, 0.0, sin(ang) * 2.4)
+			stay.material_override = _metal(Color("6e6254"))
+			mast.add_child(stay)
+		var head := MeshInstance3D.new()
+		head.name = "BeaconDish"
+		head.mesh = _dish_mesh(4.8)
+		head.position = Vector3(0.0, 16.2, 0.0)
+		head.material_override = _metal(Color("9aa896"))
+		mast.add_child(head)
 		mast.set_meta("built", "yes")
 	mast.visible = not on_chart
 	mast.position = chart(sim.beacon_pos, 18.0)
 	var yard := _prop("beacon_yard")
 	if str(yard.get_meta("built", "")) != "yes":
-		var arm := BoxMesh.new()
-		arm.size = Vector3(18.0, 1.4, 1.6)
-		yard.mesh = arm
+		yard.mesh = _bevel_box(Vector3(18.0, 1.4, 1.6), 0.28)
 		yard.material_override = _metal(Color("6e6254"))
+		var hook := MeshInstance3D.new()
+		hook.name = "YardHook"
+		var drop := CylinderMesh.new()
+		drop.top_radius = 0.28
+		drop.bottom_radius = 0.28
+		drop.height = 6.0
+		drop.radial_segments = 8
+		hook.mesh = drop
+		hook.position = Vector3(7.2, -3.4, 0.0)
+		hook.material_override = _metal(Color("4a433c"))
+		yard.add_child(hook)
 		yard.set_meta("built", "yes")
 	yard.visible = not on_chart
 	yard.position = chart(sim.beacon_pos, 32.0)
 	var pad := _prop("beacon_pad")
 	if str(pad.get_meta("built", "")) != "yes":
-		var slab := BoxMesh.new()
-		slab.size = Vector3(70.0, 1.8, 44.0)
-		pad.mesh = slab
+		pad.mesh = _bevel_box(Vector3(70.0, 1.8, 44.0), 0.45)
 		pad.material_override = _hull_mat(Color("5c5348"))
 		_pad_strip(pad, "PadSpine", Vector3(52.0, 0.12, 0.7), Vector3(0.0, 1.02, 0.0))
 		_pad_strip(pad, "PadPort", Vector3(58.0, 0.12, 0.4), Vector3(0.0, 1.02, 16.5))
@@ -2185,6 +2211,17 @@ func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array) 
 		ball.position = Vector3(float(circle.x), height * 0.55, float(circle.y))
 		ball.material_override = _hull_mat(Color("cccccc"))
 		holder.add_child(ball)
+		var band := MeshInstance3D.new()
+		band.name = "TankBand%d" % circle_i
+		var belt := TorusMesh.new()
+		belt.inner_radius = rad * 0.9
+		belt.outer_radius = rad * 1.08
+		belt.rings = 16
+		belt.ring_segments = 8
+		band.mesh = belt
+		band.position = ball.position
+		band.material_override = _hull_mat(Color("5c564e"))
+		holder.add_child(band)
 		circle_i += 1
 	_add_bridge(holder, class_id, height, float(geom.tail))
 	_mount_roles(holder, class_id, shapes, height)
@@ -2221,16 +2258,20 @@ func _mount_mast(holder: Node3D, class_id: String, nose: float, y: float, height
 	var dish := Color("9fd0c8")
 	if class_id == "anvil":
 		_hardware(holder, "MountMastCollar", Vector3(10.0, 2.4, 10.0), Vector3(2.0, height * 0.86, 0.0), metal)
-		_tube(holder, "MountMast", 1.5, 12.0, Vector3(2.0, height + 5.0, 0.0), "y", metal)
+		var boom := _tube(holder, "MountMast", 1.5, 12.0, Vector3(2.0, height + 5.0, 0.0), "y", metal)
+		_rib_along(boom, 3, 1.5, 12.0)
 		_lens(holder, "MountMastDish", 5.2, Vector3(2.0, height + 12.0, 0.0), dish)
 	elif class_id == "kestrel":
 		_hardware(holder, "MountMastCollar", Vector3(4.0, 1.6, 6.0), Vector3(2.0, y, 12.0), metal)
 		var boom := _tube(holder, "MountMast", 0.55, 16.0, Vector3(10.0, y + 3.0, 18.0), "x", metal)
 		boom.rotation = Vector3(0.4, 0.85, 0.1)
+		_rib_along(boom, 4, 0.55, 16.0)
 		_lens(holder, "MountMastDish", 2.6, Vector3(18.0, y + 6.0, 24.0), dish)
 	else:
 		_hardware(holder, "MountMastCollar", Vector3(7.0, 1.3, 2.2), Vector3(nose - 4.0, y, 0.0), metal)
-		_tube(holder, "MountMast", 0.48, 16.0, Vector3(nose + 6.0, y + 0.4, 0.0), "x", metal)
+		var boom := _tube(holder, "MountMast", 0.48, 16.0, Vector3(nose + 6.0, y + 0.4, 0.0), "x", metal)
+		_rib_along(boom, 4, 0.48, 16.0)
+		_tube(holder, "MastStay", 0.16, 15.0, Vector3(nose + 6.0, y - 0.85, 0.55), "x", metal.darkened(0.18))
 		_lens(holder, "MountMastDish", 2.4, Vector3(nose + 15.0, y + 0.4, 0.0), dish)
 
 
@@ -2240,27 +2281,35 @@ func _mount_guns(holder: Node3D, class_id: String, y: float, _height: float) -> 
 	if class_id == "anvil":
 		_hardware(holder, "MountGunP", Vector3(11.0, 6.0, 8.0), Vector3(-4.0, y, 22.0), metal)
 		_hardware(holder, "MountGunS", Vector3(11.0, 6.0, 8.0), Vector3(-4.0, y, -22.0), metal)
-		_tube(holder, "MountBarrelP", 1.2, 7.0, Vector3(4.0, y, 22.0), "x", bore)
-		_tube(holder, "MountBarrelS", 1.2, 7.0, Vector3(4.0, y, -22.0), "x", bore)
+		_dress_barrel(_tube(holder, "MountBarrelP", 1.2, 7.0, Vector3(4.0, y, 22.0), "x", bore), 7.0, 0.72, 1.2)
+		_dress_barrel(_tube(holder, "MountBarrelS", 1.2, 7.0, Vector3(4.0, y, -22.0), "x", bore), 7.0, 0.72, 1.2)
 	elif class_id == "kestrel":
 		var port := _tube(holder, "MountGunP", 0.62, 14.0, Vector3(4.0, y, 15.0), "x", bore)
 		port.rotation.y = -0.7
+		_dress_barrel(port, 14.0, 0.34, 0.72)
 		var starboard := _tube(holder, "MountGunS", 0.62, 14.0, Vector3(4.0, y, -15.0), "x", bore)
 		starboard.rotation.y = 0.7
+		_dress_barrel(starboard, 14.0, 0.34, 0.72)
 		_hardware(holder, "MountGunBracket", Vector3(3.2, 1.2, 8.0), Vector3(1.0, y, 0.0), metal)
 	else:
 		_hardware(holder, "MountGunP", Vector3(2.6, 1.3, 1.8), Vector3(10.0, y * 0.7, 6.2), metal)
 		_hardware(holder, "MountGunS", Vector3(2.6, 1.3, 1.8), Vector3(10.0, y * 0.7, -6.2), metal)
-		_tube(holder, "MountBarrelP", 0.36, 14.0, Vector3(18.0, y * 0.7, 6.2), "x", bore)
-		_tube(holder, "MountBarrelS", 0.36, 14.0, Vector3(18.0, y * 0.7, -6.2), "x", bore)
+		_dress_barrel(_tube(holder, "MountBarrelP", 0.36, 14.0, Vector3(18.0, y * 0.7, 6.2), "x", bore), 14.0, 0.2, 0.42)
+		_dress_barrel(_tube(holder, "MountBarrelS", 0.36, 14.0, Vector3(18.0, y * 0.7, -6.2), "x", bore), 14.0, 0.2, 0.42)
 
 
 func _mount_bay(holder: Node3D, class_id: String, y: float, height: float) -> void:
 	var metal := Color("a89880")
 	var door := Color("5c5348")
 	if class_id == "anvil":
-		_hardware(holder, "MountBay", Vector3(24.0, 8.0, 30.0), Vector3(-6.0, height * 0.18, 0.0), metal)
+		var bay_at := Vector3(-6.0, height * 0.18, 0.0)
+		var bay := _hardware(holder, "MountBay", Vector3(24.0, 8.0, 30.0), bay_at, metal)
+		bay.mesh = _bevel_box(Vector3(24.0, 8.0, 30.0), 2.2)
+		for i in 4:
+			_hardware(holder, "BayRib%d" % i, Vector3(20.4, 0.36, 0.48), bay_at + Vector3(0.0, 4.12, -9.0 + float(i) * 6.0), door)
 		_hardware(holder, "MountBayDoor", Vector3(1.6, 5.5, 18.0), Vector3(5.0, height * 0.22, 0.0), door)
+		_hardware(holder, "BayHingeP", Vector3(0.45, 0.45, 16.5), Vector3(5.7, height * 0.22 + 2.5, 0.0), metal.darkened(0.2))
+		_hardware(holder, "BayHingeS", Vector3(0.45, 0.45, 16.5), Vector3(5.7, height * 0.22 - 2.5, 0.0), metal.darkened(0.2))
 		_nav_lamp(holder, "MountBayLamp", Vector3(4.2, height * 0.42, 0.0), Color("ffd27a"), 0.7)
 	elif class_id == "kestrel":
 		var port := _hardware(holder, "MountBay", Vector3(14.0, 2.8, 4.5), Vector3(-4.0, y * 0.65, 13.0), metal)
@@ -2321,18 +2370,120 @@ func _tube(holder: Node3D, part_name: String, radius: float, length: float, at: 
 func _lens(holder: Node3D, part_name: String, radius: float, at: Vector3, color: Color) -> void:
 	var node := MeshInstance3D.new()
 	node.name = part_name
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = radius
-	cyl.bottom_radius = radius * 0.72
-	cyl.height = 0.7
-	cyl.radial_segments = 14
-	node.mesh = cyl
+	node.mesh = _dish_mesh(radius)
 	node.position = at
-	var pane := ShaderMaterial.new()
-	pane.shader = _glass_shader
-	pane.set_shader_parameter("albedo", Color(color.r, color.g, color.b, 0.72))
-	node.material_override = pane
+	node.material_override = _hull_mat(Color(color.r, color.g, color.b).darkened(0.35))
 	holder.add_child(node)
+	var feed := MeshInstance3D.new()
+	feed.name = "Feed"
+	var horn := SphereMesh.new()
+	horn.radius = radius * 0.16
+	horn.height = radius * 0.32
+	horn.radial_segments = 12
+	horn.rings = 6
+	feed.mesh = horn
+	feed.position = Vector3(0.0, radius * 0.05, 0.0)
+	feed.material_override = _hull_mat(Color("e7fff8"))
+	node.add_child(feed)
+	var lip := MeshInstance3D.new()
+	lip.name = "Lip"
+	var torus := TorusMesh.new()
+	torus.inner_radius = radius * 0.84
+	torus.outer_radius = radius * 1.04
+	torus.rings = 18
+	torus.ring_segments = 8
+	lip.mesh = torus
+	lip.material_override = _hull_mat(Color("9a8e7c"))
+	node.add_child(lip)
+
+
+func _rib_along(barrel: MeshInstance3D, count: int, radius: float, length: float) -> void:
+	if count < 2:
+		return
+	for i in count:
+		var rib := MeshInstance3D.new()
+		rib.name = "Rib%d" % i
+		var ring := CylinderMesh.new()
+		ring.top_radius = radius * 1.75
+		ring.bottom_radius = radius * 1.75
+		ring.height = maxf(length * 0.04, 0.18)
+		ring.radial_segments = 14
+		rib.mesh = ring
+		var t := -0.36 + float(i) * (0.72 / float(count - 1))
+		rib.position = Vector3(0.0, length * t, 0.0)
+		rib.material_override = _hull_mat(Color("8a7e70"))
+		barrel.add_child(rib)
+
+
+func _dress_barrel(barrel: MeshInstance3D, length: float, bore: float, breech: float) -> void:
+	var cyl := barrel.mesh as CylinderMesh
+	if cyl != null:
+		cyl.bottom_radius = breech
+		cyl.top_radius = bore
+	var muzzle := MeshInstance3D.new()
+	muzzle.name = "Muzzle"
+	var ring := CylinderMesh.new()
+	ring.top_radius = bore * 1.45
+	ring.bottom_radius = bore * 1.45
+	ring.height = maxf(length * 0.07, 0.28)
+	ring.radial_segments = 16
+	muzzle.mesh = ring
+	muzzle.position = Vector3(0.0, length * 0.46, 0.0)
+	muzzle.material_override = _hull_mat(Color("241c18"))
+	barrel.add_child(muzzle)
+	var house := MeshInstance3D.new()
+	house.name = "Breech"
+	var block := CylinderMesh.new()
+	block.top_radius = breech * 1.65
+	block.bottom_radius = breech * 1.45
+	block.height = maxf(length * 0.2, 0.7)
+	block.radial_segments = 12
+	house.mesh = block
+	house.position = Vector3(0.0, -length * 0.36, 0.0)
+	house.material_override = _hull_mat(Color("6a625c"))
+	barrel.add_child(house)
+
+
+func _dish_mesh(radius: float) -> ArrayMesh:
+	var key := "dish|%0.2f" % radius
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var rings := 8
+	var segs := 18
+	var depth := radius * 0.42
+	var shell := 0.1
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var center := Vector3(0.0, -depth, 0.0)
+	var center_back := Vector3(0.0, -depth - shell, 0.0)
+	for s in segs:
+		var a0 := TAU * float(s) / float(segs)
+		var a1 := TAU * float(s + 1) / float(segs)
+		var r1 := radius / float(rings)
+		var y1 := -depth * (1.0 - 1.0 / float(rings * rings))
+		var p0 := Vector3(cos(a0) * r1, y1, sin(a0) * r1)
+		var p1 := Vector3(cos(a1) * r1, y1, sin(a1) * r1)
+		_out_tri(st, center, p0, p1, Vector3.UP)
+		_out_tri(st, center_back, p1 + Vector3(0.0, -shell, 0.0), p0 + Vector3(0.0, -shell, 0.0), Vector3.DOWN)
+	for i in range(1, rings):
+		var u0 := float(i) / float(rings)
+		var u1 := float(i + 1) / float(rings)
+		var r0 := radius * u0
+		var r1 := radius * u1
+		var y0 := -depth * (1.0 - u0 * u0)
+		var y1 := -depth * (1.0 - u1 * u1)
+		for s in segs:
+			var a0 := TAU * float(s) / float(segs)
+			var a1 := TAU * float(s + 1) / float(segs)
+			var p00 := Vector3(cos(a0) * r0, y0, sin(a0) * r0)
+			var p01 := Vector3(cos(a1) * r0, y0, sin(a1) * r0)
+			var p10 := Vector3(cos(a0) * r1, y1, sin(a0) * r1)
+			var p11 := Vector3(cos(a1) * r1, y1, sin(a1) * r1)
+			_out_quad(st, p00, p01, p11, p10, Vector3.UP)
+			_out_quad(st, p10 + Vector3(0.0, -shell, 0.0), p11 + Vector3(0.0, -shell, 0.0), p01 + Vector3(0.0, -shell, 0.0), p00 + Vector3(0.0, -shell, 0.0), Vector3.DOWN)
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
 
 
 func _sync_craft(sim) -> void:
@@ -2682,6 +2833,17 @@ func _pad_bollard(parent: Node3D, part_name: String, at: Vector3) -> void:
 	post.mesh = cyl
 	post.position = at
 	post.material_override = _hull_mat(Color("3e4448"))
+	var cap := MeshInstance3D.new()
+	cap.name = "Cap"
+	var knob := SphereMesh.new()
+	knob.radius = 0.72
+	knob.height = 1.2
+	knob.radial_segments = 12
+	knob.rings = 6
+	cap.mesh = knob
+	cap.position = Vector3(0.0, 2.3, 0.0)
+	cap.material_override = _hull_mat(Color("c9d7c4"))
+	post.add_child(cap)
 	parent.add_child(post)
 
 
