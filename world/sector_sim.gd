@@ -926,7 +926,7 @@ func _step_projectiles(dt: float) -> void:
 	for shot in projectiles:
 		shot.ttl = float(shot.ttl) - dt
 		if float(shot.ttl) <= 0.0:
-			_note_impact(shot.pos, "fade", str(shot.get("team", "")))
+			_note_impact(shot.pos, "fade", str(shot.get("team", "")), Vector2(shot.vel))
 			continue
 		var origin := Vector2(shot.pos)
 		shot.pos += shot.vel * dt
@@ -934,18 +934,22 @@ func _step_projectiles(dt: float) -> void:
 		if hit != null:
 			damage_unit(hit, float(shot.damage), str(shot.agent_id))
 			sfx("hit")
-			_note_impact(shot.pos, "hit", str(shot.get("team", "")))
+			_note_impact(shot.pos, "hit", str(shot.get("team", "")), Vector2(shot.vel))
 			continue
 		kept.append(shot)
 	projectiles = kept
 
 
-func _note_impact(at: Vector2, kind: String, team: String) -> void:
+func _note_impact(at: Vector2, kind: String, team: String, dir: Vector2 = Vector2.ZERO) -> void:
+	var aim := Vector2.ZERO
+	if dir.length_squared() > 1.0:
+		aim = dir.normalized()
 	impacts.append({
 		"pos": at,
 		"kind": kind,
 		"age": 0.0,
 		"team": team,
+		"dir": aim,
 	})
 	while impacts.size() > 24:
 		impacts.pop_front()
