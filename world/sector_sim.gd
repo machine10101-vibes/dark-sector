@@ -2392,11 +2392,11 @@ func _step_scale(before: Vector2) -> void:
 		var center: Vector2 = body.pos
 		var was: float = before.distance_to(center)
 		var now: float = player.pos.distance_to(center)
-		if was <= outer and now > outer:
-			if haul_outbound():
-				_hold_for_ring(body, outer)
-			else:
-				_to_chart_from_band(body)
+		if was <= outer and now > outer and haul_outbound():
+			# A live ring haul stays in the ice until the crate is dropped.
+			# Every other flight keeps going. The old handoff threw the keel
+			# onto the kilometer chart, and the Helion well put it back on the pad.
+			_hold_for_ring(body, outer)
 		return
 	if int(layer) == ScaleFrame.APPROACH:
 		_step_approach()

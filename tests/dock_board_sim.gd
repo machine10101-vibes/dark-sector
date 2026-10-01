@@ -357,8 +357,9 @@ func _return_and_pay() -> void:
 	sim.player.vel = Vector2(240.0, 0.0)
 	sim.player.moored = false
 	sim.tick(0.6, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
-	check(int(sim.layer) == ScaleFrame.CHART, "the trip leaves the band for the chart")
-	check(sim.player.vel.length() > 40.0, "the chart still keeps speed")
+	check(int(sim.layer) == ScaleFrame.BAND, "the trip stays in the sky past the rim")
+	check(sim.player.pos.distance_to(body.pos) > outer, "the trip is not pulled back to Aegis")
+	check(sim.player.vel.length() > 40.0, "the open sky still keeps speed")
 	var parked: Vector2 = body.chart_km + Vector2(90000.0, 40000.0)
 	sim.layer = ScaleFrame.CHART
 	sim.body_id = ""
@@ -390,7 +391,8 @@ func _return_and_pay() -> void:
 	sim.layer = ScaleFrame.BAND
 	sim.body_id = str(body.id)
 	sim.tick(0.5, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false})
-	check(int(sim.layer) == ScaleFrame.CHART, "the haul leaves the band again")
+	check(int(sim.layer) == ScaleFrame.BAND, "the haul stays in the sky once the crate is off")
+	check(sim.player.pos.distance_to(body.pos) > outer - 80.0, "the haul is not moored by the rim")
 	sim.local_origin = body.chart_km
 	sim.player.pos = Vector2(ScaleFrame.soi_km(body) - 50.0, 0.0)
 	sim.player.vel = Vector2(-640.0, 0.0)
