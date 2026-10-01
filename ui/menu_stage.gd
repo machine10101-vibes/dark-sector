@@ -83,6 +83,7 @@ func _aim(hero: bool) -> void:
 	if cam == null:
 		return
 	var narrow := _screen.x < 860.0
+	var portrait := _screen.y > _screen.x
 	var landscape := _screen.x > _screen.y
 	if yard != null:
 		yard.set("menu_bias", -42.0 if hero and narrow and landscape else 0.0)
@@ -99,16 +100,29 @@ func _aim(hero: bool) -> void:
 		elif narrow:
 			cam.position = Vector3(-6.0 + swing * 0.35, 42.0 + lift, 236.0)
 			cam.look_at(Vector3(6.0, 22.0, 0.0), Vector3.UP)
+		elif portrait:
+			cam.fov = 30.0
+			cam.position = Vector3(-536.0 + swing * 0.2, 316.0 + lift, 380.0)
+			cam.look_at(Vector3(6.0, 16.0, 0.0), Vector3.UP)
 		else:
 			cam.position = Vector3(-14.0 + swing, 32.0 + lift, 188.0)
 			cam.look_at(Vector3(8.0, 20.0, 0.0), Vector3.UP)
 	else:
-		if narrow and landscape:
-			cam.position = Vector3(-220.0 + drift, 142.0 + lift, 500.0)
-			cam.look_at(Vector3(120.0, 18.0, 10.0), Vector3.UP)
-		elif narrow:
-			cam.position = Vector3(-160.0 + drift * 0.6, 186.0, 520.0)
-			cam.look_at(Vector3(180.0, 24.0, 8.0), Vector3.UP)
+		# Title shot. The keel sits in the open glass: right of a wide slate,
+		# under a tall one. Aegis is a limb beside that keel, not a texture wall.
+		if portrait and narrow:
+			cam.fov = 46.0
+			cam.position = Vector3(-173.0 + drift * 0.2, 178.0 + lift, -64.0)
+			cam.look_at(Vector3(183.0, 120.0, 28.0), Vector3.UP)
+		elif portrait:
+			cam.fov = 46.0
+			cam.position = Vector3(-173.0 + drift * 0.2, 178.0 + lift, -64.0)
+			cam.look_at(Vector3(180.0, 66.0, 11.0), Vector3.UP)
+		elif narrow and landscape:
+			cam.fov = 36.0
+			cam.position = Vector3(-119.0 + drift * 0.25, 178.0 + lift, 229.0)
+			cam.look_at(Vector3(97.0, 31.0, -48.0), Vector3.UP)
 		else:
-			cam.position = Vector3(-190.0 + drift, 156.0 + lift, 440.0)
-			cam.look_at(Vector3(240.0, 20.0, 24.0), Vector3.UP)
+			cam.fov = 38.0
+			cam.position = Vector3(-119.0 + drift * 0.25, 178.0 + lift, 229.0)
+			cam.look_at(Vector3(125.0, 30.0, -20.0), Vector3.UP)

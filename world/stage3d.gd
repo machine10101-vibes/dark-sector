@@ -3392,9 +3392,13 @@ func _dress_yard() -> void:
 			cool.omni_range = 160.0
 	else:
 		if key != null:
-			key.position = Vector3(40.0, 140.0, 210.0)
-			key.light_energy = 2.2
-			key.omni_range = 640.0
+			var eye := get_viewport().get_camera_3d()
+			var key_at := Vector3(40.0, 140.0, 210.0)
+			if eye != null:
+				key_at = holder.position.lerp(eye.global_position, 0.42) + Vector3(0.0, 36.0, 0.0)
+			key.position = key_at
+			key.light_energy = 2.6
+			key.omni_range = 720.0
 		if rim != null:
 			rim.position = Vector3(220.0, 80.0, -80.0)
 			rim.light_energy = 1.4

@@ -58,6 +58,10 @@ func _ready() -> void:
 	slate_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slate_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	slate_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	slate_scroll.offset_left = 16
+	slate_scroll.offset_top = 14
+	slate_scroll.offset_right = -16
+	slate_scroll.offset_bottom = -16
 	slate_glass.add_child(slate_scroll)
 	root_box = VBoxContainer.new()
 	root_box.custom_minimum_size = Vector2(280, 0)
@@ -168,21 +172,28 @@ func _fit() -> void:
 		stage.fit(screen)
 	root.position = Vector2.ZERO
 	root.size = screen
-	var phone := screen.x < 900.0 or screen.y < 560.0
+	var phone := screen.x < 900.0 or screen.y < 560.0 or screen.y > screen.x
 	var landscape := screen.x > screen.y
+	var portrait := screen.y > screen.x
 	var margin := 8.0 if phone else 12.0
 	var two := phone and landscape
+	var tight := portrait and screen.x < 560.0
 	if title_label != null:
-		title_label.add_theme_font_size_override("font_size", 26 if two else 42)
+		var title_size := 42
+		if two:
+			title_size = 26
+		elif tight:
+			title_size = 30
+		title_label.add_theme_font_size_override("font_size", title_size)
 	if sky_label != null:
-		sky_label.add_theme_font_size_override("font_size", 13 if two else 16)
+		sky_label.add_theme_font_size_override("font_size", 13 if two or tight else 16)
 	if tagline != null:
-		tagline.visible = not two
+		tagline.visible = not two and not tight
 	if root_box != null:
-		root_box.add_theme_constant_override("separation", 4 if two else 8)
+		root_box.add_theme_constant_override("separation", 4 if two or tight else 8)
 	if slate_actions != null:
 		slate_actions.columns = 2 if two else 1
-		slate_actions.add_theme_constant_override("v_separation", 4 if two else 6)
+		slate_actions.add_theme_constant_override("v_separation", 4 if two or tight else 6)
 		for action in slate_actions.get_children():
 			if action is Button:
 				action.add_theme_font_size_override("font_size", 13 if two else 14)
@@ -202,7 +213,6 @@ func _fit() -> void:
 		select_box.offset_right = -inset
 		select_box.offset_bottom = -inset
 	var col_w := minf(440.0, screen.x - margin * 2.0)
-	var col_h := screen.y - margin * 2.0
 	var select_pos := Vector2(margin, screen.y * 0.56)
 	var select_size := Vector2(screen.x - margin * 2.0, screen.y * 0.44 - margin)
 	if two:
@@ -266,14 +276,24 @@ func _fit() -> void:
 		else:
 			keel_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 			keel_scroll.custom_minimum_size = Vector2(0, 0)
-	if slate_glass != null:
-		slate_glass.position = Vector2(margin, margin)
-		slate_glass.size = Vector2(col_w, col_h)
 	if root_box != null:
-		root_box.custom_minimum_size = Vector2(maxf(120.0, col_w - 28.0), 0)
+		root_box.custom_minimum_size = Vector2(maxf(120.0, col_w - 64.0), 0)
 	if address_line != null:
-		var addr_w := 0.0 if two else maxf(160.0, col_w - 36.0)
+		var addr_w := 0.0 if two else maxf(160.0, col_w - 68.0)
 		address_line.custom_minimum_size = Vector2(addr_w, 44)
+	if note != null:
+		note.visible = note.text != ""
+	if slate_glass != null:
+		var slate_h := screen.y - margin * 2.0
+		if root_box != null:
+			var measured := root_box.get_combined_minimum_size().y
+			if measured > 80.0:
+				slate_h = minf(measured + 40.0, screen.y - margin * 2.0)
+		var slate_y := margin
+		if landscape and slate_h < screen.y - margin * 2.0 - 8.0:
+			slate_y = margin + (screen.y - margin * 2.0 - slate_h) * 0.5
+		slate_glass.position = Vector2(margin, slate_y)
+		slate_glass.size = Vector2(col_w, slate_h)
 	if select_glass != null:
 		select_glass.position = select_pos
 		select_glass.size = select_size
@@ -285,8 +305,6 @@ func _fit() -> void:
 			maxf(40.0, select_size.x - box_inset * 2.0),
 			maxf(40.0, select_size.y - box_inset * 2.0)
 		)
-	if note != null:
-		note.visible = note.text != ""
 	backdrop.queue_redraw()
 
 
@@ -341,7 +359,7 @@ func _process(_delta: float) -> void:
 		stage.set_live(on)
 	if on == false:
 		return
-	var hero := select_box != null and select_box.visible
+	var hero := select_glass != null and select_glass.visible
 	var klass := "vesper"
 	if hero:
 		klass = _focused_keel()
@@ -418,6 +436,7 @@ func set_note(text: String) -> void:
 	if note != null:
 		note.text = text
 		note.visible = text != ""
+		_fit()
 
 
 func _card(class_id: String) -> PanelContainer:
@@ -496,10 +515,10 @@ class Backdrop extends Control:
 			stars.append(Vector2(rng.randf(), rng.randf()))
 
 	func _draw() -> void:
-		if size.x >= 860.0:
+		if size.y > size.x:
+			draw_rect(Rect2(0, 0, size.x, minf(360.0, size.y * 0.34)), Color(0.015, 0.02, 0.03, 0.22), true)
+		elif size.x >= 860.0:
 			draw_rect(Rect2(0, 0, minf(520.0, size.x * 0.42), size.y), Color(0.015, 0.02, 0.03, 0.28), true)
-		elif size.y > size.x:
-			draw_rect(Rect2(0, 0, size.x, minf(280.0, size.y * 0.34)), Color(0.015, 0.02, 0.03, 0.22), true)
 		else:
 			draw_rect(Rect2(0, 0, minf(340.0, size.x * 0.48), size.y), Color(0.015, 0.02, 0.03, 0.26), true)
 
