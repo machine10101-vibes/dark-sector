@@ -40,8 +40,10 @@ uniform float spin = 0.0;
 	float lift = fbm(nrm * 4.2 + vec3(seed, 0.4, seed * 0.3));
 	float lift_x = fbm((nrm + vec3(0.025, 0.0, 0.0)) * 4.2 + vec3(seed, 0.4, seed * 0.3));
 	float lift_y = fbm((nrm + vec3(0.0, 0.025, 0.0)) * 4.2 + vec3(seed, 0.4, seed * 0.3));
-	vec3 bumped = normalize(nrm + vec3(lift_x - lift, lift_y - lift, (lift_x + lift_y) * 0.5 - lift) * 6.2);
-	VERTEX += nrm * (lift - 0.48) * 0.03 * length(VERTEX);
+	float bump_amt = city > 0.5 ? 1.4 : 6.2;
+	vec3 bumped = normalize(nrm + vec3(lift_x - lift, lift_y - lift, (lift_x + lift_y) * 0.5 - lift) * bump_amt);
+	float crust = city > 0.5 ? 0.006 : 0.03;
+	VERTEX += nrm * (lift - 0.48) * crust * length(VERTEX);
 	wnorm = normalize((MODEL_MATRIX * vec4(bumped, 0.0)).xyz);
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
@@ -74,6 +76,16 @@ void fragment() {
 	float fleck = fbm(wpos * 0.016 + n * 3.0);
 	terrain *= 0.74 + 0.38 * mottled;
 	terrain = mix(terrain, terrain * vec3(0.76, 0.92, 0.7), fleck * land_w * 0.45);
+	if (city > 0.5) {
+		float districts = fbm(n * 6.5 + vec3(seed, 1.4, 0.2));
+		float roofs = fbm(n * 18.0 + vec3(seed * 1.5, 0.4, 2.0));
+		float parks = smoothstep(0.6, 0.82, fbm(n * 2.6 + vec3(seed, 2.0, 0.6)));
+		vec3 concrete = mix(albedo.rgb * 0.88, land.rgb * 0.92, roofs);
+		concrete *= 0.82 + 0.22 * districts;
+		vec3 urban = mix(concrete, mix(vec3(0.24, 0.42, 0.32), land.rgb, 0.45), parks * 0.5);
+		urban = mix(urban, vec3(0.9, 0.93, 0.95), polar * 0.65);
+		terrain = mix(terrain, urban, 0.58);
+	}
 	float dist = length(CAMERA_POSITION_WORLD - wpos);
 	float near = 1.0 - smoothstep(320.0, 1700.0, dist);
 	float fine = fbm(wpos * 0.06 + n * 6.0);
@@ -95,7 +107,8 @@ void fragment() {
 	float hi = fbm(n * 13.0 + vec3(seed * 2.4, 1.1, 0.6));
 	float lo = fbm(n * 13.0 + vec3(seed * 2.4, 1.1, 0.6) + n * 0.07);
 	float relief = clamp((hi - lo) * 5.5 + 0.55, 0.2, 1.15);
-	col *= mix(1.0, relief, 0.5 * day + 0.06);
+	float carve = city > 0.5 ? 0.16 : 0.5;
+	col *= mix(1.0, relief, carve * day + 0.06);
 	float lamps = 0.0;
 	float night_side = smoothstep(0.18, -0.42, ndl);
 	if (city > 0.5) {
@@ -106,7 +119,11 @@ void fragment() {
 		lamps = max(street, window * 0.65) * district * night_side * mix(0.7, 1.0, land_w);
 	}
 	float shore = 1.0 - smoothstep(0.0, 0.035, abs(field - 0.5));
-	col += vec3(0.9, 0.93, 0.88) * shore * day * 0.55;
+	col += vec3(0.9, 0.93, 0.88) * shore * day * 0.55 * (1.0 - city);
+	if (city > 0.5) {
+		float pane = smoothstep(0.72, 0.9, fbm(n * 40.0 + vec3(seed, 0.2, 1.4)));
+		col = mix(col, vec3(0.75, 0.86, 0.9), pane * day * 0.18);
+	}
 	float cloud_shade = smoothstep(0.46, 0.74, fbm(n * 3.6 + vec3(seed, spin, 0.6)));
 	col *= 1.0 - cloud_shade * day * 0.42;
 	vec3 glow = vec3(1.0, 0.86, 0.38) * lamps * 8.0;
@@ -142,11 +159,13 @@ void fragment() {
 	cover *= mix(1.0, 0.25 + 0.95 * mote, near);
 	float ndl = dot(n, sun);
 	float day = smoothstep(-0.2, 0.45, ndl);
-	vec3 shade = vec3(0.45, 0.5, 0.58);
-	vec3 lit = vec3(0.96, 0.97, 0.98);
+	vec3 shade = vec3(0.28, 0.34, 0.42);
+	vec3 lit = vec3(0.98, 0.99, 1.0);
 	float silver = pow(clamp(ndl, 0.0, 1.0), 3.0) * cover;
-	ALBEDO = mix(shade, lit, day) + vec3(1.0) * silver * 0.18;
-	ALPHA = cover * (0.24 + 0.68 * day);
+	float belly = smoothstep(0.2, -0.45, ndl);
+	ALBEDO = mix(shade, lit, day) + vec3(1.0) * silver * 0.22;
+	ALBEDO = mix(ALBEDO, shade * 0.62, belly * cover);
+	ALPHA = cover * (0.4 + 0.68 * day);
 }
 "
 
@@ -268,9 +287,9 @@ float plate_h(vec3 p) {
 	float id = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
 	float h = (0.28 + 0.72 * id) * (1.0 - seam);
 	float riv = seam * smoothstep(0.08, 0.0, abs(fract(p.x * 1.6) - 0.5)) * smoothstep(0.08, 0.0, abs(fract(p.z * 2.2) - 0.5));
-	h += riv * 0.7;
+	h += riv * 1.15;
 	float scratch = smoothstep(0.9, 0.99, fract(sin(p.x * 6.4 + p.z * 19.0) * 91.3));
-	h -= scratch * 0.12;
+	h -= scratch * 0.18;
 	return h;
 }
 void vertex() {
@@ -286,14 +305,14 @@ void fragment() {
 	float hz = plate_h(local_pos + vec3(0.0, 0.0, 0.22));
 	vec3 tangent = abs(n.y) > 0.92 ? vec3(1.0, 0.0, 0.0) : normalize(cross(n, vec3(0.0, 1.0, 0.0)));
 	vec3 bitangent = normalize(cross(n, tangent));
-	vec3 bumped = normalize(n + tangent * (h - hx) * 6.2 + bitangent * (h - hz) * 6.2);
+	vec3 bumped = normalize(n + tangent * (h - hx) * 9.0 + bitangent * (h - hz) * 9.0);
 	vec3 world_n = normalize((MODEL_MATRIX * vec4(bumped, 0.0)).xyz);
 	NORMAL = normalize((VIEW_MATRIX * vec4(world_n, 0.0)).xyz);
 	float seam = clamp(seam_of(local_pos), 0.0, 1.0);
 	vec2 cell = floor(local_pos.xz * vec2(0.2, 0.36));
 	float id = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
 	vec3 col = albedo.rgb * (0.96 + 0.14 * id);
-	col = mix(col, col * vec3(0.55, 0.58, 0.62), seam * 0.78);
+	col = mix(col, col * vec3(0.42, 0.46, 0.5), seam * 0.9);
 	float edge_wear = smoothstep(0.28, 0.92, 1.0 - abs(n.y));
 	col = mix(col, mix(col, vec3(0.78, 0.76, 0.7), 0.45), edge_wear * 0.55);
 	float aft = smoothstep(-12.0, -28.0, local_pos.x);
@@ -307,8 +326,9 @@ void fragment() {
 	col = mix(col, accent.rgb, livery * accent.a * 0.9);
 	float belly = smoothstep(7.5, 0.6, local_pos.y);
 	col *= mix(1.0, 0.58, belly);
-	float brush = 0.94 + 0.06 * sin(local_pos.x * 3.1 + local_pos.z * 13.0);
-	col *= brush;
+	float brush = 0.92 + 0.08 * sin(local_pos.x * 3.1 + local_pos.z * 13.0);
+	float grain = fract(sin(dot(local_pos.xz, vec2(41.3, 17.1))) * 913.7);
+	col *= brush * (0.93 + 0.09 * grain);
 	float side = smoothstep(0.22, 0.7, 1.0 - abs(n.y));
 	float row = smoothstep(0.7, 0.08, abs(local_pos.y - 4.6));
 	float slot = smoothstep(0.22, 0.02, abs(fract(local_pos.x * 0.38) - 0.5));
@@ -532,7 +552,10 @@ void fragment() {
 	float sky = clamp(n.y * 0.55 + 0.62, 0.4, 1.0);
 	float crease = smoothstep(0.15, 0.72, abs(n.x) + abs(n.z));
 	stone = mix(stone * 0.55, stone, crease);
-	ALBEDO = stone * sky;
+	float sun = clamp(n.y * 0.72 + n.x * 0.28 + 0.32, 0.22, 1.0);
+	float pit = smoothstep(0.72, 0.9, fract(sin(dot(n.xy, vec2(19.0, 47.0)) + seed) * 311.0));
+	stone = mix(stone, stone * 0.45, pit * 0.65);
+	ALBEDO = stone * sky * sun;
 }
 "
 
@@ -836,7 +859,7 @@ func _sync_props(sim) -> void:
 		pole.bottom_radius = 3.4
 		pole.height = 36.0
 		mast.mesh = pole
-		mast.material_override = _metal(Color("8a7a62"))
+		mast.material_override = _hull_mat(Color("8a7a62"))
 		for i in 3:
 			var stay := MeshInstance3D.new()
 			stay.name = "Stay%d" % i
@@ -848,13 +871,13 @@ func _sync_props(sim) -> void:
 			stay.mesh = rod
 			var ang := float(i) * TAU / 3.0
 			stay.position = Vector3(cos(ang) * 2.4, 0.0, sin(ang) * 2.4)
-			stay.material_override = _metal(Color("6e6254"))
+			stay.material_override = _hull_mat(Color("6e6254"))
 			mast.add_child(stay)
 		var head := MeshInstance3D.new()
 		head.name = "BeaconDish"
 		head.mesh = _dish_mesh(4.8)
 		head.position = Vector3(0.0, 16.2, 0.0)
-		head.material_override = _metal(Color("9aa896"))
+		head.material_override = _hull_mat(Color("9aa896"))
 		mast.add_child(head)
 		mast.set_meta("built", "yes")
 	mast.visible = not on_chart
@@ -862,7 +885,7 @@ func _sync_props(sim) -> void:
 	var yard := _prop("beacon_yard")
 	if str(yard.get_meta("built", "")) != "yes":
 		yard.mesh = _bevel_box(Vector3(18.0, 1.4, 1.6), 0.28)
-		yard.material_override = _metal(Color("6e6254"))
+		yard.material_override = _hull_mat(Color("6e6254"))
 		var hook := MeshInstance3D.new()
 		hook.name = "YardHook"
 		var drop := CylinderMesh.new()
@@ -890,6 +913,34 @@ func _sync_props(sim) -> void:
 		_pad_bollard(pad, "BollardSF", Vector3(28.0, 2.4, -16.0))
 		_pad_bollard(pad, "BollardPA", Vector3(-28.0, 2.4, 16.0))
 		_pad_bollard(pad, "BollardSA", Vector3(-28.0, 2.4, -16.0))
+		for i in 5:
+			var seam := MeshInstance3D.new()
+			seam.name = "DeckSeam%d" % i
+			seam.mesh = _bevel_box(Vector3(62.0, 0.28, 0.7), 0.06)
+			seam.position = Vector3(0.0, 1.08, -14.0 + float(i) * 7.0)
+			seam.material_override = _hull_mat(Color("2c2824"))
+			pad.add_child(seam)
+		for i in 4:
+			var tile := MeshInstance3D.new()
+			tile.name = "DeckPlate%d" % i
+			var side := 1.0 if i < 2 else -1.0
+			var along := -16.0 if i % 2 == 0 else 16.0
+			tile.mesh = _bevel_box(Vector3(18.0, 0.22, 10.0), 0.18)
+			tile.position = Vector3(along, 1.02, side * 8.5)
+			tile.material_override = _hull_mat(Color("6a6156"))
+			pad.add_child(tile)
+		_pad_strip(pad, "ChevronP", Vector3(14.0, 0.32, 1.8), Vector3(10.0, 1.12, 4.2))
+		_pad_strip(pad, "ChevronS", Vector3(14.0, 0.32, 1.8), Vector3(10.0, 1.12, -4.2))
+		_pad_strip(pad, "ChevronPA", Vector3(12.0, 0.32, 1.6), Vector3(-12.0, 1.12, 4.6))
+		_pad_strip(pad, "ChevronSA", Vector3(12.0, 0.32, 1.6), Vector3(-12.0, 1.12, -4.6))
+		var chev_p := pad.get_node("ChevronP") as MeshInstance3D
+		chev_p.rotation.y = 0.55
+		var chev_s := pad.get_node("ChevronS") as MeshInstance3D
+		chev_s.rotation.y = -0.55
+		var chev_pa := pad.get_node("ChevronPA") as MeshInstance3D
+		chev_pa.rotation.y = -0.5
+		var chev_sa := pad.get_node("ChevronSA") as MeshInstance3D
+		chev_sa.rotation.y = 0.5
 		pad.set_meta("built", "yes")
 	pad.visible = not on_chart
 	pad.position = chart(sim.beacon_pos, 1.2)
@@ -2736,6 +2787,7 @@ func _mount_mast(holder: Node3D, class_id: String, nose: float, y: float, height
 		_hardware(holder, "MountMastCollar", Vector3(10.0, 2.4, 10.0), Vector3(2.0, height * 0.86, 0.0), metal)
 		var boom := _tube(holder, "MountMast", 1.5, 12.0, Vector3(2.0, height + 5.0, 0.0), "y", metal)
 		_rib_along(boom, 3, 1.5, 12.0)
+		_hardware(holder, "MastBox", Vector3(3.2, 1.1, 3.2), Vector3(2.0, height * 0.95, 0.0), metal.darkened(0.22))
 		_lens(holder, "MountMastDish", 5.2, Vector3(2.0, height + 12.0, 0.0), dish)
 	elif class_id == "kestrel":
 		_hardware(holder, "MountMastCollar", Vector3(4.0, 1.6, 6.0), Vector3(2.0, y, 12.0), metal)
@@ -2747,7 +2799,9 @@ func _mount_mast(holder: Node3D, class_id: String, nose: float, y: float, height
 		_hardware(holder, "MountMastCollar", Vector3(7.0, 1.3, 2.2), Vector3(nose - 4.0, y, 0.0), metal)
 		var boom := _tube(holder, "MountMast", 0.48, 16.0, Vector3(nose + 6.0, y + 0.4, 0.0), "x", metal)
 		_rib_along(boom, 4, 0.48, 16.0)
-		_tube(holder, "MastStay", 0.16, 15.0, Vector3(nose + 6.0, y - 0.85, 0.55), "x", metal.darkened(0.18))
+		_tube(holder, "MastStay", 0.28, 15.0, Vector3(nose + 6.0, y - 0.85, 0.55), "x", metal.darkened(0.18))
+		_hardware(holder, "MastBox", Vector3(2.6, 1.15, 1.8), Vector3(nose - 1.4, y + 0.15, 0.7), metal.darkened(0.28))
+		_tube(holder, "MastLoom", 0.32, 12.0, Vector3(nose + 4.0, y - 0.35, 0.35), "x", Color("1c2024"))
 		_lens(holder, "MountMastDish", 2.4, Vector3(nose + 15.0, y + 0.4, 0.0), dish)
 
 
@@ -2767,11 +2821,15 @@ func _mount_guns(holder: Node3D, class_id: String, y: float, _height: float) -> 
 		starboard.rotation.y = 0.7
 		_dress_barrel(starboard, 14.0, 0.34, 0.72)
 		_hardware(holder, "MountGunBracket", Vector3(3.2, 1.2, 8.0), Vector3(1.0, y, 0.0), metal)
+		_hardware(holder, "GunFeedP", Vector3(3.4, 1.3, 1.6), Vector3(6.0, y + 0.4, 10.0), metal.darkened(0.15))
+		_hardware(holder, "GunFeedS", Vector3(3.4, 1.3, 1.6), Vector3(6.0, y + 0.4, -10.0), metal.darkened(0.15))
 	else:
 		_hardware(holder, "MountGunP", Vector3(2.6, 1.3, 1.8), Vector3(10.0, y * 0.7, 6.2), metal)
 		_hardware(holder, "MountGunS", Vector3(2.6, 1.3, 1.8), Vector3(10.0, y * 0.7, -6.2), metal)
 		_dress_barrel(_tube(holder, "MountBarrelP", 0.36, 14.0, Vector3(18.0, y * 0.7, 6.2), "x", bore), 14.0, 0.2, 0.42)
 		_dress_barrel(_tube(holder, "MountBarrelS", 0.36, 14.0, Vector3(18.0, y * 0.7, -6.2), "x", bore), 14.0, 0.2, 0.42)
+		_hardware(holder, "GunFeedP", Vector3(2.4, 1.15, 1.3), Vector3(12.0, y * 0.7, 6.2), metal)
+		_hardware(holder, "GunFeedS", Vector3(2.4, 1.15, 1.3), Vector3(12.0, y * 0.7, -6.2), metal)
 
 
 func _mount_bay(holder: Node3D, class_id: String, y: float, height: float) -> void:
@@ -2796,6 +2854,8 @@ func _mount_bay(holder: Node3D, class_id: String, y: float, height: float) -> vo
 		_tube(holder, "MountBay", 2.4, 12.0, Vector3(-8.0, y * 0.5, 7.5), "x", metal)
 		_tube(holder, "MountBayS", 2.4, 12.0, Vector3(-8.0, y * 0.5, -7.5), "x", metal)
 		_hardware(holder, "MountBayStrap", Vector3(1.0, 0.8, 16.0), Vector3(-8.0, y * 0.5 + 2.0, 0.0), door)
+		_hardware(holder, "BayLatchP", Vector3(0.9, 0.85, 3.6), Vector3(-2.2, y * 0.5 + 2.15, 7.5), door)
+		_hardware(holder, "BayLatchS", Vector3(0.9, 0.85, 3.6), Vector3(-2.2, y * 0.5 + 2.15, -7.5), door)
 
 
 func _mount_probe(holder: Node3D, class_id: String, nose: float, y: float, height: float) -> void:
@@ -3594,6 +3654,24 @@ func _nav_lamp(holder: Node3D, lamp_name: String, at: Vector3, color: Color, rad
 	holder.add_child(lamp)
 
 
+func _port_slit(holder: Node3D, part_name: String, size: Vector3, at: Vector3) -> void:
+	var node := MeshInstance3D.new()
+	node.name = part_name
+	var box := BoxMesh.new()
+	box.size = size
+	node.mesh = box
+	node.position = at
+	var glow := StandardMaterial3D.new()
+	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	glow.albedo_color = Color(0.16, 0.24, 0.28)
+	glow.emission_enabled = true
+	glow.emission = Color(0.55, 0.82, 0.76)
+	glow.emission_energy_multiplier = 0.7
+	node.material_override = glow
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	holder.add_child(node)
+
+
 func _disc(radius: float, segs: int) -> ArrayMesh:
 	var cached := "disc|%0.1f|%d" % [radius, segs]
 	if _mesh_cache.has(cached):
@@ -4003,6 +4081,22 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 	for i in 3:
 		var fin := _hardware(holder, "Rad%d" % i, Vector3(span * 0.07, 0.22, maxf(height * 0.28, 3.2)), Vector3(tail + span * (0.22 + float(i) * 0.16), height * 0.95, 0.0), Color("3a3330"))
 		fin.rotation.x = 0.15 if i == 1 else -0.08
+	var hatch_z := maxf(height * 0.22, 3.8)
+	for i in 4:
+		var at_x := tail + span * (0.24 + float(i) * 0.15)
+		var side := 1.0 if i % 2 == 0 else -1.0
+		_hardware(holder, "Hatch%d" % i, Vector3(span * 0.1, 0.7, hatch_z), Vector3(at_x, height * 0.96, side * hatch_z * 0.85), Color("24282c"))
+		_hardware(holder, "HatchLip%d" % i, Vector3(span * 0.12, 0.28, hatch_z + 0.8), Vector3(at_x, height * 0.72, side * hatch_z * 0.85), Color("c4bfb4"))
+		_port_slit(holder, "Slit%d" % i, Vector3(span * 0.045, 0.35, 1.5), Vector3(at_x, height * 1.02, side * hatch_z * 0.35))
+	_hardware(holder, "ScoopP", Vector3(span * 0.14, maxf(height * 0.16, 2.4), 2.2), Vector3(mid, height * 0.34, chine_z + 1.8), Color("2a3034"))
+	_hardware(holder, "ScoopS", Vector3(span * 0.14, maxf(height * 0.16, 2.4), 2.2), Vector3(mid, height * 0.34, -chine_z - 1.8), Color("2a3034"))
+	_tube(holder, "Loom", 0.28, span * 0.55, Vector3(tail + span * 0.42, height * 0.55, chine_z * 0.55), "x", Color("17191c"))
+	_tube(holder, "LoomS", 0.28, span * 0.55, Vector3(tail + span * 0.42, height * 0.55, -chine_z * 0.55), "x", Color("17191c"))
+	for i in 3:
+		var ax := tail + span * (0.36 + float(i) * 0.12)
+		_tube(holder, "Antenna%d" % i, 0.16, 3.6 + float(i) * 1.6, Vector3(ax, height * 1.2 + 1.8, 0.0), "y", Color("1a1e22"))
+	_nav_lamp(holder, "RunP", Vector3(mid + span * 0.12, height * 0.42, chine_z + 1.1), Color("d4553a"), 0.72)
+	_nav_lamp(holder, "RunS", Vector3(mid + span * 0.12, height * 0.42, -chine_z - 1.1), Color("7dcea0"), 0.72)
 
 
 func _fairing(holder: Node3D, part_name: String, size: Vector3, at: Vector3) -> MeshInstance3D:
