@@ -75,9 +75,32 @@ func band_top(screen: Vector2, short: bool) -> float:
 	return screen.y - 8.0 - pad_h - 12.0
 
 
+func release() -> void:
+	_release_joy()
+	fire_held = false
+	hold_left = false
+	hold_right = false
+	Game.flight = {
+		"thrust": 0.0,
+		"retro": 0.0,
+		"rot": 0.0,
+		"strafe": 0.0,
+		"fire": false,
+	}
+
+
 func _process(_delta: float) -> void:
 	if not visible:
+		release()
 		return
+	if joy_touch == -2 and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) == false:
+		_release_joy()
+	if fire_button != null:
+		fire_held = fire_button.button_pressed
+	if strafe_left != null:
+		hold_left = strafe_left.button_pressed
+	if strafe_right != null:
+		hold_right = strafe_right.button_pressed
 	var thrust := 0.0
 	var retro := 0.0
 	var rot := 0.0
@@ -117,6 +140,19 @@ func _zoom(direction: float) -> void:
 	else:
 		z /= 1.12
 	Game.zoom = clampf(z, 0.05, 1.55)
+
+
+func _input(event: InputEvent) -> void:
+	if joy_touch == -1:
+		return
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed == false and touch.index == joy_touch:
+			_release_joy()
+	elif event is InputEventMouseButton:
+		var click := event as InputEventMouseButton
+		if click.pressed == false and click.button_index == MOUSE_BUTTON_LEFT and joy_touch == -2:
+			_release_joy()
 
 
 func _on_joy(event: InputEvent) -> void:

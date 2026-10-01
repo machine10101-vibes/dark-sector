@@ -117,6 +117,12 @@ func _input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		Game.clear_flight_keys()
+		Game.clear_flight()
+		Game.cast_pulse = 0.0
+		if hud != null:
+			var pad: Node = hud.get("pad")
+			if pad != null and pad.has_method("release"):
+				pad.release()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
 		_focus_canvas()
 
