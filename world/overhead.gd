@@ -244,6 +244,7 @@ class ScaleReadout extends Control:
 		var cam: Camera3D = helm.get("cam3")
 		var stage = helm.get("stage")
 		var font := ThemeDB.fallback_font
+		var drawn: Array = []
 		if cam != null and stage != null and font != null:
 			var ranked: Array = []
 			for item in stage.tags:
@@ -262,11 +263,12 @@ class ScaleReadout extends Control:
 					continue
 				ranked.append({"item": item, "at": at, "dist": dist})
 			ranked.sort_custom(Callable(self, "_nearer_tag"))
-			var drawn: Array = []
 			for row in ranked:
 				var tag: Dictionary = row.item
 				var sp: Vector2 = cam.unproject_position(row.at)
 				if sp.x < -30.0 or sp.y < -10.0 or sp.x > size.x + 30.0 or sp.y > size.y - 88.0:
+					continue
+				if str(tag.t) == "Helion Dock" and bool(Game.sim.player.get("moored", false)) == false:
 					continue
 				var text := str(tag.t)
 				var font_size := int(tag.s)
@@ -314,10 +316,10 @@ class ScaleReadout extends Control:
 		draw_line(origin + Vector2(px, 0), origin + Vector2(px, -7), Color("cbb892"), 2.0, true)
 		if font != null:
 			draw_string(font, origin + Vector2(0, -18), "%d m" % int(length), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("cbb892"))
-		_draw_dock_guide(cam, font)
+		_draw_dock_guide(cam, font, drawn)
 		_draw_ring_guide(cam, font)
 
-	func _draw_dock_guide(cam: Camera3D, font: Font) -> void:
+	func _draw_dock_guide(cam: Camera3D, font: Font, drawn: Array) -> void:
 		var sim = Game.sim
 		if cam == null or font == null or sim == null or sim.player.is_empty():
 			return
@@ -348,8 +350,21 @@ class ScaleReadout extends Control:
 		var center := size * 0.5
 		var on_screen := behind == false and edge.has_point(sp)
 		if on_screen:
+			var box := font.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 16)
+			var label_at := sp + Vector2(14, 4)
+			for _nudge in 6:
+				var mine := Rect2(label_at, Vector2(maxf(box.x, 24.0), maxf(box.y, 16.0)))
+				var hit := false
+				for other in drawn:
+					var taken: Rect2 = other
+					if mine.intersects(taken.grow(6.0)):
+						hit = true
+						break
+				if not hit:
+					break
+				label_at.y -= maxf(box.y, 16.0) + 4.0
 			draw_rect(Rect2(sp + Vector2(-8, -8), Vector2(16, 16)), Color(0.45, 0.9, 0.95, 0.9), false, 2.0)
-			draw_string(font, sp + Vector2(14, 4), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("9eecf5"))
+			draw_string(font, label_at, caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color("9eecf5"))
 			return
 		var aim := sp - center
 		if behind:

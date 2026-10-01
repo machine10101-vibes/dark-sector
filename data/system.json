@@ -14,8 +14,8 @@
       "id": "aegis_prime",
       "name": "Aegis Prime",
       "angle": 0.4,
-      "distance": 1680,
-      "radius": 150,
+      "distance": 2520,
+      "radius": 115,
       "spin": 0.08,
       "ring": true,
       "ring_kind": "ice",
@@ -124,7 +124,7 @@
       "kind": "trash",
       "anchor": "aegis_prime",
       "angle": 2.2,
-      "distance": 560,
+      "distance": 820,
       "legal_title": "Compact seized property",
       "heat": "pdo",
       "scale": {
@@ -163,7 +163,7 @@
     "origin": "Hulls confiscated at Helion inspection, parked until a tow to Writ.",
     "anchor": "aegis_prime",
     "angle": 2.2,
-    "distance": 560,
+    "distance": 820,
     "count": 11,
     "spread": 150
   },
@@ -172,7 +172,7 @@
     "name": "The Unlet",
     "anchor": "aegis_prime",
     "angle": -1.15,
-    "distance": 700,
+    "distance": 1180,
     "radius": 260,
     "plantable": false,
     "why": "Marked on the chart. Compact law keeps it empty."

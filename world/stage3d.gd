@@ -687,7 +687,7 @@ func _sync_props(sim) -> void:
 		var scrap := _prop("trash%d" % index)
 		index += 1
 		var scale := float(row.get("scale", 1.0))
-		var radius := maxf(64.0, 82.0 * scale)
+		var radius := maxf(18.0, 26.0 * scale)
 		if str(scrap.get_meta("built", "")) != "yes":
 			scrap.mesh = _rubble_mesh(index + 40, radius)
 			var tones: Array = [Color("c49262"), Color("6e5340"), Color("a87448"), Color("d4b48a")]
@@ -1247,7 +1247,15 @@ func _sync_star(sim) -> void:
 		_star_rays.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_star_rays)
 	var spoke_card := _star_rays.mesh as QuadMesh
-	spoke_card.size = Vector2(radius * 5.2, radius * 5.2)
+	var reach := radius * 1.85
+	if layer == ScaleFrame.BAND:
+		var nearest := 1.0e9
+		for body in sim.planets:
+			var prow: Dictionary = body
+			nearest = minf(nearest, prow.pos.length() - float(prow.radius))
+		if nearest < 1.0e8:
+			reach = minf(reach, maxf(radius * 1.35, nearest - 240.0))
+	spoke_card.size = Vector2(reach * 2.0, reach * 2.0)
 	(_star_rays.material_override as ShaderMaterial).set_shader_parameter("albedo", core.lightened(0.05))
 	# The meshes used to stay at 3D zero. The camera's render origin is the
 	# keel, so that put Helion around the dock and buried the hull.
@@ -1353,7 +1361,7 @@ func _sync_planets(sim) -> void:
 			draw = row.duplicate()
 			draw.ring = false
 			draw.moon = false
-		_sync_ring(node, draw, radius, to_star)
+		_sync_ring(node, draw, radius, to_star, _neighbor_clearance(sim, row, radius))
 		_sync_moon(node, sim, draw, radius)
 		_parallax(node, radius, float(sim.time), limb)
 		var label_at := chart(row.pos, float(row.radius) + 28.0)
@@ -1728,7 +1736,21 @@ func _body_node(bid: String) -> Node3D:
 	return node
 
 
-func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3) -> void:
+func _neighbor_clearance(sim, row: Dictionary, radius: float) -> float:
+	var limit := radius * 1.72
+	var bid := str(row.get("id", ""))
+	var pocket: Dictionary = sim.defs.system.get("pocket", {})
+	if str(pocket.get("anchor", "")) == bid:
+		var near := float(pocket.get("distance", 9000.0)) - float(pocket.get("radius", 0.0))
+		limit = minf(limit, near - 90.0)
+	var field: Dictionary = sim.defs.system.get("trash", {})
+	if str(field.get("anchor", "")) == bid and int(field.get("count", 0)) > 0:
+		var inner := float(field.get("distance", 9000.0)) - float(field.get("spread", 120.0))
+		limit = minf(limit, inner - 36.0)
+	return limit
+
+
+func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3, max_outer: float = -1.0) -> void:
 	var ring := node.get_node_or_null("Ring") as MeshInstance3D
 	if not bool(row.get("ring", false)):
 		if ring != null:
@@ -1746,6 +1768,9 @@ func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3) 
 		ring.material_override = mat
 		node.add_child(ring)
 	var band := maxf(36.0, radius * 0.085)
+	var outer_edge := radius + band * 3.35
+	if max_outer > radius + 24.0 and outer_edge > max_outer:
+		band = maxf(10.0, (max_outer - radius) / 3.35)
 	ring.mesh = _annulus(radius + band * 0.4, radius + band * 2.15, maxf(5.5, radius * 0.02), 112)
 	ring.rotation.x = 0.28
 	ring.visible = true
