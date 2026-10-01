@@ -6,6 +6,7 @@ var joy: Control
 var fire_button: Button
 var strafe_left: Button
 var strafe_right: Button
+var boost_button: Button
 var zoom_in: Button
 var zoom_out: Button
 var knob := Vector2.ZERO
@@ -13,6 +14,7 @@ var joy_touch := -1
 var fire_held := false
 var hold_left := false
 var hold_right := false
+var boost_held := false
 var radius := 64.0
 
 
@@ -36,6 +38,9 @@ func _ready() -> void:
 	zoom_in.pressed.connect(func() -> void: _zoom(1.0))
 	zoom_out = _pad_button("–")
 	zoom_out.pressed.connect(func() -> void: _zoom(-1.0))
+	boost_button = _pad_button("Boost")
+	boost_button.button_down.connect(func() -> void: boost_held = true)
+	boost_button.button_up.connect(func() -> void: boost_held = false)
 
 
 func place(screen: Vector2, dock: float = 8.0, short: bool = false) -> void:
@@ -63,6 +68,8 @@ func place(screen: Vector2, dock: float = 8.0, short: bool = false) -> void:
 	zoom_in.size = Vector2(zoom_w, zoom_h)
 	zoom_out.position = Vector2(gun_x + zoom_w + 6.0, gun_y - zoom_h - 6.0)
 	zoom_out.size = Vector2(zoom_w, zoom_h)
+	boost_button.position = Vector2(gun_x - side - 8.0, gun_y - zoom_h - 6.0)
+	boost_button.size = Vector2(side, zoom_h)
 	joy.queue_redraw()
 
 
@@ -80,12 +87,14 @@ func release() -> void:
 	fire_held = false
 	hold_left = false
 	hold_right = false
+	boost_held = false
 	Game.flight = {
 		"thrust": 0.0,
 		"retro": 0.0,
 		"rot": 0.0,
 		"strafe": 0.0,
 		"fire": false,
+		"boost": false,
 	}
 
 
@@ -101,6 +110,8 @@ func _process(_delta: float) -> void:
 		hold_left = strafe_left.button_pressed
 	if strafe_right != null:
 		hold_right = strafe_right.button_pressed
+	if boost_button != null:
+		boost_held = boost_button.button_pressed
 	var thrust := 0.0
 	var retro := 0.0
 	var rot := 0.0
@@ -123,6 +134,7 @@ func _process(_delta: float) -> void:
 		"rot": rot,
 		"strafe": strafe,
 		"fire": fire_held,
+		"boost": boost_held,
 	}
 
 

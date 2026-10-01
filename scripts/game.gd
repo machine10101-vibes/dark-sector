@@ -10,6 +10,7 @@ var flight := {
 	"rot": 0.0,
 	"strafe": 0.0,
 	"fire": false,
+	"boost": false,
 }
 var mode := "menu"
 var paused := false
@@ -122,6 +123,7 @@ func clear_flight() -> void:
 		"rot": 0.0,
 		"strafe": 0.0,
 		"fire": false,
+		"boost": false,
 	}
 
 

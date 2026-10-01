@@ -87,6 +87,35 @@ func _run() -> void:
 	game.clear_flight_keys()
 	game.clear_flight()
 
+	sim.player.moored = true
+	sim.player.vel = Vector2.ZERO
+	sim.tick(0.2, {"thrust": 0.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false, "boost": true})
+	check(bool(sim.player.moored), "boost does not cast off")
+	sim.player.moored = false
+	sim.player.pos = away
+	sim.player.vel = Vector2.ZERO
+	sim.player.rot = 0.0
+	sim.tick(1.0, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false, "boost": false})
+	var cruise: float = sim.player.vel.length()
+	sim.player.pos = away
+	sim.player.vel = Vector2.ZERO
+	sim.player.rot = 0.0
+	sim.tick(1.0, {"thrust": 1.0, "retro": 0.0, "rot": 0.0, "strafe": 0.0, "fire": false, "boost": true})
+	var boosted: float = sim.player.vel.length()
+	check(boosted > cruise * 1.45, "boost runs well ahead of cruise")
+	check(boosted <= Fit.VMAX * 2.0 + 1.0, "boost tops out at twice hull speed")
+	check(boosted > Fit.VMAX * 0.9, "boost reaches the doubled hull speed")
+	var helm_main: Node = load("res://scripts/main.gd").new()
+	check(helm_main._is_flight_key(KEY_SHIFT), "Shift is a flight key")
+	game.note_flight_key(KEY_SHIFT, true)
+	var boost_cmd: Dictionary = view._cmd(0.05)
+	check(bool(boost_cmd.get("boost", false)), "Shift is boost")
+	game.clear_flight_keys()
+	game.text_entry = true
+	var typed: Dictionary = view._cmd(0.05)
+	check(bool(typed.get("boost", false)) == false, "typing does not boost")
+	game.text_entry = false
+
 	var boat := str(CraftOrders.launch(sim, ""))
 	check(boat.contains("no boat"), "Boat on an empty rack says so")
 	var probe := str(CraftOrders.launch(sim, "survey_probe"))
