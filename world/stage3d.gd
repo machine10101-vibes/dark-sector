@@ -146,7 +146,7 @@ void fragment() {
 	vec3 lit = vec3(0.96, 0.97, 0.98);
 	float silver = pow(clamp(ndl, 0.0, 1.0), 3.0) * cover;
 	ALBEDO = mix(shade, lit, day) + vec3(1.0) * silver * 0.18;
-	ALPHA = cover * (0.08 + 0.55 * day);
+	ALPHA = cover * (0.24 + 0.68 * day);
 }
 "
 
@@ -309,14 +309,20 @@ void fragment() {
 	col *= mix(1.0, 0.58, belly);
 	float brush = 0.94 + 0.06 * sin(local_pos.x * 3.1 + local_pos.z * 13.0);
 	col *= brush;
+	float side = smoothstep(0.22, 0.7, 1.0 - abs(n.y));
+	float row = smoothstep(0.7, 0.08, abs(local_pos.y - 4.6));
+	float slot = smoothstep(0.22, 0.02, abs(fract(local_pos.x * 0.38) - 0.5));
+	float port = side * row * slot;
+	float lit_port = step(0.74, fract(sin(floor(local_pos.x * 0.38) * 17.13) * 91.7));
+	col = mix(col, vec3(0.03, 0.045, 0.06), port * 0.85);
 	ALBEDO = col;
 	float bare = clamp(edge_wear * (1.0 - seam), 0.0, 1.0);
-	METALLIC = mix(0.42, 0.86, bare);
-	ROUGHNESS = mix(mix(0.36, 0.2, bare), 0.8, seam);
+	METALLIC = mix(0.42, 0.86, bare * (1.0 - port));
+	ROUGHNESS = mix(mix(0.36, 0.2, bare), 0.8, max(seam, port));
 	AO = mix(1.0, 0.52, seam);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
 	float fres = pow(clamp(1.0 - abs(dot(normalize(wnorm), eye)), 0.0, 1.0), 3.2);
-	EMISSION = col * fres * 0.04 + vec3(1.0, 0.42, 0.14) * aft * 0.07;
+	EMISSION = col * fres * 0.04 + vec3(1.0, 0.42, 0.14) * aft * 0.07 + vec3(1.0, 0.78, 0.42) * port * lit_port * 0.85;
 }
 "
 
@@ -3080,32 +3086,31 @@ func _rock_tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, nrm: Vector3
 
 
 func _ice_sparks(ring: MeshInstance3D, mid: float, band: float) -> void:
-	if ring.get_node_or_null("Sparks") != null:
+	if ring.get_node_or_null("Floe") != null:
 		return
-	var sparks := Node3D.new()
-	sparks.name = "Sparks"
-	ring.add_child(sparks)
-	var ang := 0.0
-	var rad := 0.0
-	var s := 0.0
-	for chip_i in 28:
+	var old := ring.get_node_or_null("Sparks")
+	if old != null:
+		old.queue_free()
+	var floe := Node3D.new()
+	floe.name = "Floe"
+	ring.add_child(floe)
+	for chip_i in 14:
 		var chip := MeshInstance3D.new()
-		var box := BoxMesh.new()
-		s = maxf(1.8, band * 0.16) * (0.7 + float(chip_i % 4) * 0.18)
-		box.size = Vector3(s, s * 0.28, s * 0.55)
-		chip.mesh = box
-		ang = float(chip_i) * TAU / 28.0 + float(chip_i * chip_i) * 0.002
-		rad = mid + sin(float(chip_i) * 1.7) * band * 0.28
-		chip.position = Vector3(cos(ang) * rad, maxf(1.2, band * 0.08), sin(ang) * rad)
-		chip.rotation.y = ang
-		var film := ShaderMaterial.new()
-		var blink := Shader.new()
-		blink.code = "shader_type spatial; render_mode blend_mix, unshaded, cull_disabled, depth_draw_never; uniform float phase = 0.0; void fragment() { float tw = pow(max(sin(TIME * 5.2 + phase), 0.0), 5.0); ALBEDO = vec3(0.93, 0.97, 1.0); EMISSION = ALBEDO * (1.4 + tw * 7.0); ALPHA = 0.2 + tw * 0.8; }"
-		film.shader = blink
-		film.set_shader_parameter("phase", float(chip_i) * 0.73)
-		chip.material_override = film
+		chip.name = "Ice%d" % chip_i
+		var scale := band * (0.28 + float(chip_i % 5) * 0.07)
+		chip.mesh = _rock_mesh(chip_i + 40, scale)
+		var ang := float(chip_i) * TAU / 14.0 + float(chip_i * chip_i) * 0.017
+		var rad := mid + sin(float(chip_i) * 2.3) * band * 0.32
+		var lift := sin(float(chip_i) * 1.9) * band * 0.16
+		chip.position = Vector3(cos(ang) * rad, lift, sin(ang) * rad)
+		chip.rotation = Vector3(float(chip_i) * 0.47, ang, float(chip_i) * 0.23)
+		var mat := ShaderMaterial.new()
+		mat.shader = _rock_shader
+		mat.set_shader_parameter("albedo", Color(0.78, 0.86, 0.91))
+		mat.set_shader_parameter("seed", float(chip_i) * 0.41 + 0.2)
+		chip.material_override = mat
 		chip.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		sparks.add_child(chip)
+		floe.add_child(chip)
 
 
 func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
@@ -3130,7 +3135,7 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 		var plate := MeshInstance3D.new()
 		plate.name = "Panel%d" % i
 		var box := BoxMesh.new()
-		box.size = Vector3(span * 0.1, 0.45, maxf(height * 0.16, 2.4))
+		box.size = Vector3(span * 0.13, 0.85, maxf(height * 0.22, 3.2))
 		plate.mesh = box
 		x = tail + span * (0.16 + float(i) * 0.15)
 		z = height * 0.2 if i % 2 == 0 else -height * 0.2
@@ -3211,6 +3216,8 @@ func _prism(poly: PackedVector2Array, height: float, top_scale: float = 0.86) ->
 	if poly.size() < 3:
 		return null
 	poly = _round_poly(poly)
+	if poly.size() <= 20:
+		poly = _round_poly(poly)
 	var edge := 0.0
 	for i in poly.size():
 		edge += poly[i].distance_to(poly[(i + 1) % poly.size()])
@@ -3223,17 +3230,20 @@ func _prism(poly: PackedVector2Array, height: float, top_scale: float = 0.86) ->
 		indices = Geometry2D.triangulate_polygon(poly)
 	if indices.size() < 3:
 		return null
-	var keel := _inset_poly(poly, 0.7)
-	var shoulder := _inset_poly(poly, 0.94)
+	var bilge := _inset_poly(poly, 0.58)
+	var lower := _inset_poly(poly, 0.86)
+	var shoulder := _inset_poly(poly, 0.93)
 	var crown := _inset_poly(poly, top_scale)
-	var y_chine := height * 0.26
-	var y_shoulder := height * 0.72
+	var y_low := height * 0.16
+	var y_chine := height * 0.4
+	var y_shoulder := height * 0.7
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for t in range(0, indices.size(), 3):
 		_tri(st, crown[indices[t]], crown[indices[t + 1]], crown[indices[t + 2]], height, Vector3.UP)
-		_tri(st, keel[indices[t]], keel[indices[t + 2]], keel[indices[t + 1]], 0.0, Vector3.DOWN)
-	_girdle(st, keel, poly, 0.0, y_chine)
+		_tri(st, bilge[indices[t]], bilge[indices[t + 2]], bilge[indices[t + 1]], 0.0, Vector3.DOWN)
+	_girdle(st, bilge, lower, 0.0, y_low)
+	_girdle(st, lower, poly, y_low, y_chine)
 	_girdle(st, poly, shoulder, y_chine, y_shoulder)
 	_girdle(st, shoulder, crown, y_shoulder, height)
 	return st.commit()
