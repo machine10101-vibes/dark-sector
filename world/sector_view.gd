@@ -94,7 +94,7 @@ func _chase_rot() -> float:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if Game.mode != "sector":
+	if Game.mode != "sector" or Game.map_open:
 		return
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -121,9 +121,9 @@ func _cmd(delta: float) -> Dictionary:
 	if not Game.sim.player.alive:
 		helm_yaw = 0.0
 		return {}
-	# A corp field or the chat line owns the keys. A stick that is still
-	# deflected must not keep thrusting or firing while those letters land.
-	if Game.text_entry:
+	# A corp field, the chat line, or the sector chart owns the keys.
+	# A stick that is still deflected must not keep thrusting while that lasts.
+	if Game.text_entry or Game.map_open:
 		helm_yaw = move_toward(helm_yaw, 0.0, 24.0 * delta)
 		Game.cast_pulse = 0.0
 		var quiet := {

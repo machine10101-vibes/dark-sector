@@ -18,6 +18,8 @@ var zoom := 0.58
 var key_down: Dictionary = {}
 ## True while a helm line edit owns the keys, so flight chords do not type or move.
 var text_entry := false
+## True while the sector chart covers the helm. Flight input is quiet until it closes.
+var map_open := false
 ## Seconds of thrust after the Cast off control, so one click leaves the pad.
 var cast_pulse := 0.0
 
@@ -45,6 +47,7 @@ func begin_new(class_id: String) -> void:
 	Catalog.arm_yards(sim)
 	zoom = 0.58
 	paused = false
+	map_open = false
 	mode = "sector"
 
 
@@ -57,6 +60,7 @@ func begin_host(class_id: String) -> String:
 	Catalog.arm_yards(sim)
 	zoom = 0.58
 	paused = false
+	map_open = false
 	link = ListenLink.new()
 	var err := link.open_host()
 	if err != "":
@@ -95,6 +99,7 @@ func begin_join(class_id: String, address: String) -> String:
 	sim.player.player_id = who
 	zoom = 0.58
 	paused = false
+	map_open = false
 	mode = "sector"
 	sim.say("Joining %s. The host keeps the world." % address)
 	return ""
@@ -135,8 +140,16 @@ func clear_flight_keys() -> void:
 	key_down = {}
 
 
+func set_map_open(open: bool) -> void:
+	map_open = open
+	if open:
+		clear_flight_keys()
+		clear_flight()
+		cast_pulse = 0.0
+
+
 func flight_down(code: Key) -> bool:
-	if text_entry:
+	if text_entry or map_open:
 		return false
 	if key_down.has(int(code)):
 		return true
@@ -229,6 +242,7 @@ func try_load() -> String:
 	sim.from_dict(data)
 	zoom = clampf(float(data.get("camera_zoom", 0.58)), 0.05, 1.55)
 	paused = false
+	map_open = false
 	mode = "sector"
 	return ""
 
@@ -236,4 +250,5 @@ func try_load() -> String:
 func abandon() -> void:
 	_drop_link()
 	paused = false
+	map_open = false
 	mode = "menu"

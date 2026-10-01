@@ -166,6 +166,7 @@ func new_game(class_id: String) -> void:
 	say("%s. %s is the city-orbital. The ice ring is lit. %s holds confiscated hulls. %s is marked and not a homestead." % [defs.system.name, planet(str(defs.system.pdo.home)).name, defs.system.trash.name, pocket.name])
 	say("A Claim Core is in the hold. The Homestead Road buoy is off the green. L takes the lane.")
 	say("Green spine buoys leave for Brass Lantern and Writ. From First Soil the amber road reaches Perimeter, and the hatch reaches Gyre.")
+	say("The corner map is the local sky. Tap it, or press Tab, for the whole chart.")
 	say("Shakedown is on the log. J reads it. Y marks the next place.")
 	say("Moored at the Helion Dock pad. W casts off. The keel is in clear space, not in the city.")
 	_bind_band()

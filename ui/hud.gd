@@ -57,6 +57,8 @@ var primary_bar: PanelContainer
 var primary_row: HBoxContainer
 var log_card: PanelContainer
 var pad: Control
+var minimap: Control
+var space_map: Control
 var stick_button: Button
 var touch_on := false
 var touch_chosen := false
@@ -79,6 +81,10 @@ func _ready() -> void:
 	pad = preload("res://ui/flight_pad.gd").new()
 	pad.visible = touch_on
 	root.add_child(pad)
+	minimap = preload("res://ui/minimap.gd").new()
+	root.add_child(minimap)
+	space_map = preload("res://ui/space_map.gd").new()
+	root.add_child(space_map)
 	hint_label = ThemeKit.label("", 12, Color("8aa8b0"))
 	hint_label.visible = false
 	root.add_child(hint_label)
@@ -302,12 +308,19 @@ func _layout_chrome(screen: Vector2) -> void:
 		chat_line.size = Vector2(minf(420.0, helm_w), 32)
 	if hint_label != null:
 		hint_label.visible = false
+	_place_minimap(screen, primary_y, short)
 	_place_panel(screen, primary_y, short, pad_top)
 
 
 func _process(_delta: float) -> void:
 	if Game.mode != "sector" or Game.sim == null:
+		if Game.map_open:
+			Game.map_open = false
 		return
+	if Game.map_open and pad != null and pad.has_method("release"):
+		pad.release()
+	if not Game.sim.player.alive and Game.map_open:
+		Game.map_open = false
 	if banner != null:
 		var text := ""
 		if Game.sim.banner != "" and Game.sim.banner_t < 9.0:
@@ -358,7 +371,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 	if key == KEY_ESCAPE:
-		if panel_kind != "":
+		if Game.map_open:
+			Game.set_map_open(false)
+		elif panel_kind != "":
 			_close_panel()
 		elif Game.sim != null and Game.sim.player.alive:
 			_toggle_pause()
@@ -907,6 +922,38 @@ func _close_panel() -> void:
 	_fit()
 
 
+func _place_minimap(screen: Vector2, primary_y: float, short: bool) -> void:
+	if minimap == null:
+		return
+	var blocked := panel != null and panel.visible
+	if blocked or stick_button == null:
+		minimap.visible = false
+		return
+	var top := stick_button.position.y + stick_button.size.y + 6.0
+	var room := primary_y - 8.0 - top
+	var want := 156.0
+	if compact:
+		want = 104.0
+	if short:
+		want = 88.0
+	var side := minf(want, room)
+	var right := screen.x - 8.0
+	var left_limit := 8.0
+	if status_card != null and status_card.visible:
+		left_limit = maxf(left_limit, status_card.position.x + status_card.size.x + 8.0)
+	if banner != null and banner.visible:
+		left_limit = maxf(left_limit, banner.position.x + banner.size.x + 8.0)
+	if log_card != null and log_card.visible:
+		left_limit = maxf(left_limit, log_card.position.x + log_card.size.x + 8.0)
+	side = minf(side, right - left_limit)
+	if side < 72.0 or room < 72.0:
+		minimap.visible = false
+		return
+	minimap.visible = true
+	minimap.position = Vector2(right - side, top)
+	minimap.size = Vector2(side, side)
+
+
 func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float) -> void:
 	if panel == null:
 		return
@@ -1166,6 +1213,7 @@ func _toggle_pause() -> void:
 	pause_box.visible = Game.paused
 	if Game.paused:
 		_close_panel()
+		Game.map_open = false
 
 
 func _build_bay() -> void:
@@ -1481,6 +1529,7 @@ func _say_result(message: String) -> void:
 
 
 func reset_overlays() -> void:
+	Game.map_open = false
 	_close_panel()
 	if pause_box != null:
 		pause_box.hide()
