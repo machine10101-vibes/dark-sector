@@ -99,10 +99,10 @@ void fragment() {
 	float lamps = 0.0;
 	float night_side = smoothstep(0.18, -0.42, ndl);
 	if (city > 0.5) {
-		vec2 block = abs(fract(n.xz * 22.0 + vec2(seed, seed * 1.3)) - 0.5);
+		vec2 block = abs(fract(n.xz * 48.0 + vec2(seed, seed * 1.3)) - 0.5);
 		float street = 1.0 - smoothstep(0.015, 0.07, min(block.x, block.y));
 		float district = smoothstep(0.34, 0.7, fbm(n * 2.4 + vec3(seed, 1.2, 0.4)));
-		float window = step(0.62, fract(sin(dot(floor(n.xz * 90.0), vec2(19.0, 47.0))) * 123.4));
+		float window = step(0.62, fract(sin(dot(floor(n.xz * 160.0), vec2(19.0, 47.0))) * 123.4));
 		lamps = max(street, window * 0.65) * district * night_side * mix(0.7, 1.0, land_w);
 	}
 	float shore = 1.0 - smoothstep(0.0, 0.035, abs(field - 0.5));
@@ -1366,7 +1366,9 @@ func _sync_star(sim) -> void:
 		var nearest := 1.0e9
 		for body in sim.planets:
 			var prow: Dictionary = body
-			nearest = minf(nearest, prow.pos.length() - float(prow.radius))
+			var shown := _present_body(sim, prow)
+			var shown_at: Vector2 = shown.center as Vector2
+			nearest = minf(nearest, shown_at.length() - float(shown.radius))
 		if nearest < 1.0e8:
 			reach = minf(reach, maxf(radius * 1.35, nearest - 240.0))
 	spoke_card.size = Vector2(reach * 2.0, reach * 2.0)
@@ -1414,10 +1416,11 @@ func _sync_planets(sim) -> void:
 		var node := _body_node(bid)
 		var body_pos: Vector2 = row.pos
 		var clearance: float = sim.player.pos.distance_to(body_pos) - float(row.radius)
-		# The giant limb is only for a keel scraping the crust. At the dock pad
-		# the real body stays a world in clear space, so the camera is not inside it.
-		var limb: bool = bid == str(sim.body_id) and clearance < 220.0
+		# The giant limb is only for a keel scraping the crust. The dock sits
+		# well clear of Aegis, so the login view keeps the real world.
+		var limb: bool = bid == str(sim.body_id) and clearance < 80.0
 		var radius := float(row.radius)
+		var center2 := body_pos
 		if limb:
 			radius = ScaleFrame.LIMB_RADIUS
 			var ship: Vector2 = sim.player.pos
@@ -1425,10 +1428,13 @@ func _sync_planets(sim) -> void:
 			if away.length() < 1.0:
 				away = Vector2.RIGHT
 			away = away.normalized()
-			var center2 := ship - away * (radius + _limb_gap())
+			center2 = ship - away * (radius + _limb_gap())
 			node.position = chart(center2, -140.0)
 		else:
-			node.position = chart(row.pos, 0.0)
+			var shown := _present_body(sim, row)
+			radius = float(shown.radius)
+			center2 = shown.center as Vector2
+			node.position = chart(center2, 0.0)
 		node.rotation.y = float(row.get("angle", 0.0)) + float(sim.time) * float(row.get("spin", 0.05))
 		var ball := node.get_node("Ball") as MeshInstance3D
 		(ball.mesh as SphereMesh).radius = radius
@@ -1475,10 +1481,10 @@ func _sync_planets(sim) -> void:
 			draw = row.duplicate()
 			draw.ring = false
 			draw.moon = false
-		_sync_ring(node, draw, radius, to_star, _neighbor_clearance(sim, row, radius))
+		_sync_ring(node, draw, radius, to_star, _neighbor_clearance(sim, row, center2, radius))
 		_sync_moon(node, sim, draw, radius)
 		_parallax(node, radius, float(sim.time), limb)
-		var label_at := chart(row.pos, float(row.radius) + 28.0)
+		var label_at := chart(center2, radius + 28.0)
 		if limb:
 			var outward: Vector2 = sim.player.pos - row.pos
 			if outward.length() < 1.0:
@@ -1850,18 +1856,88 @@ func _body_node(bid: String) -> Node3D:
 	return node
 
 
-func _neighbor_clearance(sim, row: Dictionary, radius: float) -> float:
-	var limit := radius * 1.72
+func _neighbor_clearance(sim, row: Dictionary, center: Vector2, radius: float) -> float:
+	var limit := radius * 1.45
 	var bid := str(row.get("id", ""))
 	var pocket: Dictionary = sim.defs.system.get("pocket", {})
-	if str(pocket.get("anchor", "")) == bid:
-		var near := float(pocket.get("distance", 9000.0)) - float(pocket.get("radius", 0.0))
-		limit = minf(limit, near - 90.0)
+	if str(pocket.get("anchor", "")) == bid and sim.pocket_pos != Vector2.ZERO:
+		var pocket_near := center.distance_to(sim.pocket_pos) - float(pocket.get("radius", 0.0))
+		limit = minf(limit, pocket_near - 80.0)
 	var field: Dictionary = sim.defs.system.get("trash", {})
-	if str(field.get("anchor", "")) == bid and int(field.get("count", 0)) > 0:
-		var inner := float(field.get("distance", 9000.0)) - float(field.get("spread", 120.0))
-		limit = minf(limit, inner - 36.0)
+	if str(field.get("anchor", "")) == bid and sim.trash_pos != Vector2.ZERO:
+		var trash_near := center.distance_to(sim.trash_pos) - float(field.get("spread", 120.0))
+		limit = minf(limit, trash_near - 40.0)
+	if sim.player.is_empty() == false:
+		limit = minf(limit, center.distance_to(sim.player.pos) - 160.0)
 	return limit
+
+
+func _present_body(sim, row: Dictionary) -> Dictionary:
+	var true_r := float(row.radius)
+	var center: Vector2 = row.pos
+	if int(sim.layer) != ScaleFrame.BAND:
+		return {"center": center, "radius": true_r}
+	var ship: Vector2 = sim.player.pos
+	var radial: Vector2 = ship - center
+	var gap := radial.length()
+	# A keel on the crust uses the giant limb instead of this loom.
+	if gap < true_r + 48.0:
+		return {"center": center, "radius": true_r}
+	if str(row.get("id", "")) == str(sim.body_id) and gap - true_r < 80.0:
+		return {"center": center, "radius": true_r}
+	var away := radial / gap
+	# Shift the center away from the keel and grow the shell by the same
+	# amount, so the near face stays on the real crust and the limb fills
+	# more of the glass. Neighbors and the eye stay outside the shell.
+	var grow := minf(true_r * 0.28, _loom_room(sim, center, true_r, away))
+	grow = maxf(grow, 0.0)
+	return {"center": center - away * grow, "radius": true_r + grow}
+
+
+func _loom_room(sim, center: Vector2, true_r: float, away: Vector2) -> float:
+	var grow := true_r * 0.28
+	var pocket: Dictionary = sim.defs.system.get("pocket", {})
+	var marks: Array = []
+	marks.append({"at": sim.player.pos, "pad": 80.0})
+	if sim.beacon_pos != Vector2.ZERO:
+		marks.append({"at": sim.beacon_pos, "pad": 90.0})
+	if sim.pocket_pos != Vector2.ZERO:
+		var pocket_r := float(pocket.get("radius", 0.0))
+		var to_pocket: Vector2 = sim.pocket_pos - center
+		if to_pocket.length() > pocket_r + 1.0:
+			marks.append({"at": center + to_pocket.normalized() * (to_pocket.length() - pocket_r), "pad": 40.0})
+	for rock in sim.trash:
+		marks.append({"at": rock.pos, "pad": 36.0})
+	for actor in sim.actors:
+		if bool(actor.get("alive", true)):
+			marks.append({"at": actor.pos, "pad": 48.0})
+	for mark in marks:
+		var spot: Vector2 = mark.at as Vector2
+		var pad := float(mark.pad)
+		var rel: Vector2 = spot - center
+		var rm := true_r + pad
+		var numer := rel.length_squared() - rm * rm
+		var denom := 2.0 * (rm - rel.dot(away))
+		if numer <= 0.0:
+			return 0.0
+		if denom > 1.0:
+			grow = minf(grow, numer / denom)
+	var eye := get_viewport().get_camera_3d()
+	if eye != null:
+		var c3 := chart(center, 0.0)
+		var shifted := chart(center - away, 0.0)
+		var axis := shifted - c3
+		if axis.length_squared() > 0.0001:
+			axis = axis.normalized()
+			var w := eye.global_position - c3
+			var rm := true_r + 200.0
+			var numer := w.length_squared() - rm * rm
+			var denom := 2.0 * (w.dot(axis) + rm)
+			if numer <= 0.0:
+				return 0.0
+			if denom > 1.0:
+				grow = minf(grow, numer / denom)
+	return maxf(grow, 0.0)
 
 
 func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3, max_outer: float = -1.0) -> void:
@@ -1881,10 +1957,10 @@ func _sync_ring(node: Node3D, row: Dictionary, radius: float, to_star: Vector3, 
 		mat.shader = _ring_shader
 		ring.material_override = mat
 		node.add_child(ring)
-	var band := maxf(36.0, radius * 0.085)
+	var band := maxf(28.0, radius * 0.085)
 	var outer_edge := radius + band * 3.35
-	if max_outer > radius + 24.0 and outer_edge > max_outer:
-		band = maxf(10.0, (max_outer - radius) / 3.35)
+	if max_outer > 0.0 and outer_edge > max_outer:
+		band = maxf(8.0, (max_outer - radius) / 3.35)
 	ring.mesh = _annulus(radius + band * 0.4, radius + band * 2.15, maxf(5.5, radius * 0.02), 112)
 	ring.rotation.x = 0.28
 	ring.visible = true

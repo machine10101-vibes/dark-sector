@@ -2,8 +2,14 @@ class_name SectorSim
 extends RefCounted
 
 const BODY_SCALE := 3.4
+## Band worlds draw much larger than the authored chart radii. The star
+## stays on BODY_SCALE so it does not swallow the inner orbit.
+const PLANET_SCALE := 6.0
 const ROCK_SCALE := 4.2
 const DOCK_GAP := 320.0
+## Helion berth, pinned in world meters. It used to be radius+430, which
+## walked the pad out of the green disc whenever Aegis grew.
+const BERTH_OFFSET := Vector2(821.0, -160.0)
 const DOCK_BUOY_ANGLE := -0.7
 const DOCK_BUOY_OUT := 700.0
 const DOCK_HALO_KM := 9000.0
@@ -672,6 +678,7 @@ func from_dict(data: Dictionary) -> void:
 			focus_data.x = float(focus_data.get("x", 0.0)) + spread.x
 			focus_data.y = float(focus_data.get("y", 0.0)) + spread.y
 		gate.load_focus(focus_data)
+	_lift_buried_orbits()
 
 
 func _step(dt: float, cmd: Dictionary) -> void:
@@ -1177,7 +1184,15 @@ func _deep_green(pos: Vector2) -> bool:
 	var body = planet(str(defs.system.zones.green.anchor))
 	if body == null:
 		return false
-	return pos.distance_to(body.pos) < float(defs.system.zones.green.radius) - 260.0
+	var reach := float(defs.system.zones.green.radius)
+	var dist := pos.distance_to(body.pos)
+	if dist >= reach:
+		return false
+	# The inner green used to be a fixed disc. A larger world puts that disc
+	# inside the crust, so the sky just above the city stays the break-off band.
+	var above := float(body.radius) + 120.0
+	var legacy := reach - 260.0
+	return dist < maxf(legacy, above)
 
 
 func _in_trash(pos: Vector2) -> bool:
@@ -1290,6 +1305,8 @@ func _hub_pad(dock, nudge: float) -> Vector2:
 		return Vector2.ZERO
 	if beacon_pos != Vector2.ZERO and absf(nudge) < 0.5:
 		return beacon_pos
+	if _is_helion_pad(dock):
+		return dock.pos + BERTH_OFFSET + Vector2(0.0, nudge)
 	var outward := Vector2(float(dock.radius) + 430.0, -160.0 + nudge)
 	return dock.pos + outward
 
@@ -1320,15 +1337,11 @@ func _scale_sky() -> void:
 		elif absf(dist - inner_dist) <= 8.0:
 			inner_radius = maxf(inner_radius, rad)
 	var star_want := authored_star * BODY_SCALE
-	var star_room := inner_dist - inner_radius * BODY_SCALE - 220.0
+	var star_room := inner_dist - inner_radius * PLANET_SCALE - 220.0
 	if star_room < authored_star:
 		star_radius = authored_star
 	else:
 		star_radius = minf(star_want, star_room)
-	var pdo: Dictionary = defs.system.get("pdo", {})
-	var home := str(pdo.get("home", ""))
-	var pdo_n := int(pdo.get("count", 0))
-	var pdo_r := float(pdo.get("radius", 0.0))
 	var zones: Dictionary = defs.system.get("zones", {})
 	var green: Dictionary = zones.get("green", {})
 	var green_anchor := str(green.get("anchor", ""))
@@ -1352,16 +1365,20 @@ func _scale_sky() -> void:
 	var pocket: Dictionary = defs.system.get("pocket", {})
 	var pocket_anchor := str(pocket.get("anchor", ""))
 	var pocket_gap := float(pocket.get("distance", 9000.0)) - float(pocket.get("radius", 0.0)) - 50.0
+	var berth_len := BERTH_OFFSET.length()
 	for body in planets:
 		var row: Dictionary = body
 		var authored := float(row.radius)
 		var bid := str(row.id)
-		var cap := authored * BODY_SCALE
+		row["_authored"] = authored
+		var cap := authored * PLANET_SCALE
 		var room := float(row.distance) - star_radius - 160.0
 		cap = minf(cap, maxf(authored, room))
-		if bid == home and pdo_n > 0 and pdo_r > 40.0:
-			cap = minf(cap, maxf(authored, pdo_r - 110.0))
-		if bid == green_anchor and green_reach > 80.0:
+		# Patrols and haulers are lifted outside the new crust. The Helion
+		# pad is pinned, so Aegis can grow until the keel still has open sky.
+		if bid == green_anchor and green_reach > 80.0 and str(defs.system.id) == "HC-V1-R1-S1":
+			cap = minf(cap, maxf(authored, berth_len - 140.0))
+		elif bid == green_anchor and green_reach > 80.0:
 			cap = minf(cap, maxf(authored, green_reach - DOCK_GAP - 90.0))
 		if haul_limit.has(bid):
 			cap = minf(cap, maxf(authored, float(haul_limit[bid]) - 90.0))
@@ -1370,6 +1387,33 @@ func _scale_sky() -> void:
 		if bid == pocket_anchor and pocket_gap > authored:
 			cap = minf(cap, pocket_gap)
 		row.radius = maxf(authored, cap)
+	_keep_planets_apart()
+
+
+func _keep_planets_apart() -> void:
+	for _step in 4:
+		var crowded := false
+		for i in planets.size():
+			for j in range(i + 1, planets.size()):
+				var a: Dictionary = planets[i]
+				var b: Dictionary = planets[j]
+				var sep: float = Vector2(a.pos).distance_to(Vector2(b.pos))
+				var gap := 180.0
+				var need := float(a.radius) + float(b.radius) + gap
+				if sep + 1.0 >= need:
+					continue
+				crowded = true
+				var room := maxf(sep - gap, 2.0)
+				var sum: float = maxf(float(a.radius) + float(b.radius), 1.0)
+				var share_a := room * float(a.radius) / sum
+				var share_b := room - share_a
+				a.radius = maxf(float(a.get("_authored", a.radius)), share_a)
+				b.radius = maxf(float(b.get("_authored", b.radius)), share_b)
+		if crowded == false:
+			break
+	for body in planets:
+		var row: Dictionary = body
+		row.erase("_authored")
 
 
 func _build_static() -> void:
@@ -1395,7 +1439,8 @@ func _build_static() -> void:
 		var anchor_body = planet(str(field.get("anchor", "")))
 		var origin := Vector2.ZERO
 		if anchor_body != null:
-			origin = anchor_body.pos + Vector2.from_angle(float(field.angle)) * float(field.distance)
+			var dist := _outside_crust(anchor_body, float(field.distance), float(field.get("spread", 120.0)))
+			origin = anchor_body.pos + Vector2.from_angle(float(field.angle)) * dist
 		trash_pos = origin
 		var spread := float(field.get("spread", 120.0))
 		for i in int(field.count):
@@ -1442,7 +1487,10 @@ func _build_static() -> void:
 	var dock = planet(str(defs.system.pdo.get("home", "")))
 	beacon_pos = Vector2.ZERO
 	if dock != null:
-		beacon_pos = dock.pos + Vector2(float(dock.radius) + 430.0, -160.0)
+		if _is_helion_pad(dock):
+			beacon_pos = dock.pos + BERTH_OFFSET
+		else:
+			beacon_pos = dock.pos + Vector2(float(dock.radius) + 430.0, -160.0)
 	var green_body = planet(str(defs.system.zones.green.anchor))
 	var pirates: Dictionary = defs.system.get("pirates", {})
 	var stand := float(pirates.get("standoff", 620.0))
@@ -1614,17 +1662,69 @@ func _build_nodes() -> void:
 		elif kind == "ring" and anchor_body != null:
 			var ang := float(row.get("angle", 0.15))
 			var band := float(row.get("band", 43.0))
-			row.pos = anchor_body.pos + Vector2.from_angle(ang) * (float(anchor_body.radius) + band)
+			var orbit := float(anchor_body.radius) + band
+			# radius+band now sits beside the pad. Park the drop on open
+			# sky just above the crust, off the berth bearing, so the haul
+			# is still a run and the pad nose still points away from it.
+			if _is_helion_pad(anchor_body) and beacon_pos != Vector2.ZERO:
+				var berth := Vector2(beacon_pos) - Vector2(anchor_body.pos)
+				var berth_ang: float = berth.angle()
+				ang = berth_ang - 0.77
+				orbit = float(anchor_body.radius) + 90.0
+			row.pos = anchor_body.pos + Vector2.from_angle(ang) * orbit
 			row.radius = 28.0
 			row.solid = false
 		else:
 			var ang := float(row.get("angle", 0.0))
 			var dist := float(row.get("distance", 0.0))
+			if anchor_body != null and dist > 1.0:
+				var spread := 0.0
+				if str(row.get("kind", "")) == "trash":
+					spread = float(defs.system.get("trash", {}).get("spread", 0.0))
+				dist = _outside_crust(anchor_body, dist, spread)
 			row.pos = origin + Vector2.from_angle(ang) * dist
 			row.radius = float(row.get("radius", 40.0))
 			row.solid = false
 		nodes.append(row)
 		deposits[str(row.id)] = int(row.resource.amount)
+
+
+func _clear_orbit(body, authored: float, pad: float) -> float:
+	if body == null:
+		return authored
+	return maxf(authored, float(body.radius) + pad)
+
+
+func _outside_crust(body, dist: float, spread: float) -> float:
+	if body == null:
+		return dist
+	var inner := dist - spread
+	var crust := float(body.radius) + 160.0
+	if inner >= crust:
+		return dist
+	return crust + spread
+
+
+func _lift_buried_orbits() -> void:
+	for actor in actors:
+		var ai: Dictionary = actor.get("ai", {})
+		if ai.has("radius") == false:
+			continue
+		var home: Vector2 = actor.home
+		for body in planets:
+			var row: Dictionary = body
+			if home.distance_to(row.pos) > 12.0:
+				continue
+			var floor := float(row.radius) + 80.0
+			if float(ai.radius) >= floor:
+				continue
+			var pad := 120.0 if str(actor.get("team", "")) == _pdo_id() else 210.0
+			var need := float(row.radius) + pad
+			ai.radius = need
+			actor.ai = ai
+			var ang := float(ai.get("phase", 0.0))
+			actor.pos = row.pos + Vector2.from_angle(ang) * need
+			break
 
 
 func _spawn_factions() -> void:
@@ -1633,28 +1733,29 @@ func _spawn_factions() -> void:
 	var home := Vector2.ZERO
 	if home_body != null:
 		home = home_body.pos
+	var patrol := _clear_orbit(home_body, float(defs.system.pdo.get("radius", 620.0)), 120.0)
 	for i in int(defs.system.pdo.count):
 		var actor = _blank_ship("cutter", "%s Cutter %d" % [_pdo_name(), i + 1], "agent:%s:%d" % [faction_id, i], "npc", faction_id)
 		var ang = float(i) * PI
 		actor.home = home
-		actor.pos = actor.home + Vector2.from_angle(ang) * float(defs.system.pdo.radius)
+		actor.pos = actor.home + Vector2.from_angle(ang) * patrol
 		actor.rot = ang + PI * 0.5
-		actor.ai = {"phase": ang, "radius": float(defs.system.pdo.radius), "enraged": false}
+		actor.ai = {"phase": ang, "radius": patrol, "enraged": false}
 		actor.cargo = {"scrap": 1}
 		actors.append(actor)
 	if bool(quest_flags.get("patrol_reinforced", false)) and int(defs.system.pdo.count) > 0:
 		var extra = _blank_ship("cutter", "%s Cutter %d" % [_pdo_name(), int(defs.system.pdo.count) + 1], "agent:%s:extra" % faction_id, "npc", faction_id)
 		extra.home = home
-		extra.pos = home + Vector2(float(defs.system.pdo.radius), 80.0)
+		extra.pos = home + Vector2(patrol, 80.0)
 		extra.rot = PI * 0.5
-		extra.ai = {"phase": 0.4, "radius": float(defs.system.pdo.radius), "enraged": false}
+		extra.ai = {"phase": 0.4, "radius": patrol, "enraged": false}
 		extra.cargo = {"scrap": 1}
 		actors.append(extra)
 	for entry in defs.system.get("haulers", []):
 		var hauler = _blank_ship(str(entry.class_id), str(entry.name), "agent:civilian:%s" % entry.id, "npc", "civilian")
-		var orbit = float(entry.radius)
-		var phase = 0.9
 		var yard = planet(str(entry.home))
+		var orbit := _clear_orbit(yard, float(entry.radius), 200.0)
+		var phase = 0.9
 		hauler.home = Vector2.ZERO
 		if yard != null:
 			hauler.home = yard.pos
