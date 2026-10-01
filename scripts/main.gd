@@ -183,6 +183,9 @@ func _hold_browser_keys() -> void:
 
 
 func _enter_sector() -> void:
+	var yard_stage: Node = menu.get("stage")
+	if yard_stage != null and yard_stage.has_method("set_live"):
+		yard_stage.set_live(false)
 	menu.hide()
 	_focus_canvas()
 	if helm == null:

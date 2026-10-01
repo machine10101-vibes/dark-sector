@@ -593,8 +593,10 @@ func _compile(code: String) -> Shader:
 func _process(delta: float) -> void:
 	_frame_delta = maxf(delta, 0.001)
 	if menu_show:
-		if str(Game.mode) != "sector":
-			_step_yard(delta)
+		if str(Game.mode) == "sector":
+			dismiss_yard()
+			return
+		_step_yard(delta)
 		return
 	if Game.sim == null or Game.mode != "sector":
 		return
@@ -3097,9 +3099,36 @@ func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, norm
 
 func show_yard(class_id: String, hero: bool) -> void:
 	menu_show = true
+	visible = true
+	scale = Vector3.ONE
+	position = Vector3.ZERO
 	if class_id != "":
 		menu_class = class_id
 	menu_hero = hero
+
+
+func dismiss_yard() -> void:
+	menu_show = false
+	menu_hero = false
+	visible = false
+	# Collapsing the rig hides it even when a shared world ignores the
+	# viewport split and the flight eye is the one drawing the pad.
+	scale = Vector3.ZERO
+	position = Vector3(0.0, -100000.0, 0.0)
+	var holder := _ships.get("yard") as Node3D
+	if holder != null:
+		holder.visible = false
+	var planet := _bodies.get("yard_aegis") as Node3D
+	if planet != null:
+		planet.visible = false
+	for key in ["yard_dock", "yard_pylon0", "yard_pylon1", "yard_pylon2", "yard_pylon3", "yard_pylon4"]:
+		var prop := _props.get(key) as Node3D
+		if prop != null:
+			prop.visible = false
+	for node_name in ["YardSpokes", "Star", "Corona", "YardStars", "YardKey", "YardRim", "YardFill"]:
+		var rig := get_node_or_null(node_name) as Node3D
+		if rig != null:
+			rig.visible = false
 
 
 func _step_yard(delta: float) -> void:
@@ -3304,6 +3333,13 @@ func _build_yard() -> void:
 
 
 func _dress_yard() -> void:
+	visible = true
+	scale = Vector3.ONE
+	position = Vector3.ZERO
+	for node_name in ["YardSpokes", "Star", "Corona", "YardStars", "YardKey", "YardRim", "YardFill"]:
+		var rig := get_node_or_null(node_name) as Node3D
+		if rig != null:
+			rig.visible = true
 	var planet := _body_node("yard_aegis")
 	planet.rotation.y = _yard_t * 0.05
 	var ball := planet.get_node("Ball") as MeshInstance3D

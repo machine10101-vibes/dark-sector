@@ -82,7 +82,13 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if cam3 == null or cam3.current == false:
+	if cam3 == null:
+		return
+	# The title yard eye can stay current on the root viewport. Reclaim the
+	# pad every flight frame so that turntable hull is not the picture.
+	if Game.mode == "sector" and cam3.current == false:
+		cam3.current = true
+	if cam3.current == false:
 		return
 	var sector_on := Game.mode == "sector"
 	if _saw_mode == false:

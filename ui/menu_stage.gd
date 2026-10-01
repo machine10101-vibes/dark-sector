@@ -72,11 +72,20 @@ func set_keel(class_id: String, hero: bool) -> void:
 
 func set_live(on: bool) -> void:
 	visible = on
+	if cam != null:
+		# A current yard eye in a shared world steals the flight view, so the
+		# big turntable Needle and the ice ring sit on top of the keel.
+		cam.current = on
 	if vp != null:
 		vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS if on else SubViewport.UPDATE_DISABLED
 	if yard != null:
 		yard.visible = on
 		yard.set_process(on)
+		if on:
+			yard.scale = Vector3.ONE
+			yard.position = Vector3.ZERO
+		elif yard.has_method("dismiss_yard"):
+			yard.dismiss_yard()
 
 
 func _aim(hero: bool) -> void:
