@@ -46,6 +46,8 @@ var player: Dictionary = {}
 var actors: Array = []
 var craft: Array = []
 var projectiles: Array = []
+## Visual-only bursts. Not saved, not snapshotted, not part of the gun rules.
+var impacts: Array = []
 var wrecks: Array = []
 var scans: Dictionary = {}
 var deposits: Dictionary = {}
@@ -91,6 +93,7 @@ func new_game(class_id: String) -> void:
 	scans = {}
 	wrecks = []
 	projectiles = []
+	impacts = []
 	heat_log = []
 	lines = []
 	banner = ""
@@ -617,6 +620,7 @@ func from_dict(data: Dictionary) -> void:
 		shot.pos = Serde.vec_in(shot.pos)
 		shot.vel = Serde.vec_in(shot.vel)
 		projectiles.append(shot)
+	impacts = []
 	wrecks = []
 	for row in data.get("wrecks", []):
 		var wreck = row.duplicate(true)
@@ -702,6 +706,7 @@ func _step(dt: float, cmd: Dictionary) -> void:
 		for actor in actors:
 			_step_npc(actor, dt)
 	_step_projectiles(dt)
+	_age_impacts(dt)
 	if player.alive:
 		_bump_world(player)
 	for mate in captains:
@@ -898,6 +903,7 @@ func _step_projectiles(dt: float) -> void:
 	for shot in projectiles:
 		shot.ttl = float(shot.ttl) - dt
 		if float(shot.ttl) <= 0.0:
+			_note_impact(shot.pos, "fade", str(shot.get("team", "")))
 			continue
 		var origin := Vector2(shot.pos)
 		shot.pos += shot.vel * dt
@@ -905,9 +911,34 @@ func _step_projectiles(dt: float) -> void:
 		if hit != null:
 			damage_unit(hit, float(shot.damage), str(shot.agent_id))
 			sfx("hit")
+			_note_impact(shot.pos, "hit", str(shot.get("team", "")))
 			continue
 		kept.append(shot)
 	projectiles = kept
+
+
+func _note_impact(at: Vector2, kind: String, team: String) -> void:
+	impacts.append({
+		"pos": at,
+		"kind": kind,
+		"age": 0.0,
+		"team": team,
+	})
+	while impacts.size() > 24:
+		impacts.pop_front()
+
+
+func _age_impacts(dt: float) -> void:
+	var kept: Array = []
+	for row in impacts:
+		var impact: Dictionary = row
+		impact.age = float(impact.age) + dt
+		var life := 0.34
+		if str(impact.get("kind", "")) == "kill":
+			life = 0.62
+		if float(impact.age) < life:
+			kept.append(impact)
+	impacts = kept
 
 
 func _projectile_hit(shot: Dictionary, origin: Vector2):
@@ -1202,6 +1233,7 @@ func _in_trash(pos: Vector2) -> bool:
 
 func _kill(unit: Dictionary, attacker: String) -> void:
 	sfx("destroyed")
+	_note_impact(unit.pos, "kill", str(unit.get("team", "")))
 	if str(unit.get("controller", "")) == "human":
 		var dropped := _split_cargo(unit)
 		wrecks.append({
@@ -1584,6 +1616,7 @@ func _arrive(system_id: String, gate_id: String) -> void:
 	defs.system = defs.systems[system_id]
 	seed_value = int(defs.system.seed)
 	projectiles = []
+	impacts = []
 	wrecks = []
 	actors = []
 	_build_static()
@@ -1927,6 +1960,7 @@ func apply_snapshot(data: Dictionary) -> void:
 		shot.pos = Serde.vec_in(shot.pos)
 		shot.vel = Serde.vec_in(shot.vel)
 		projectiles.append(shot)
+	impacts = []
 	craft = []
 	for row in data.get("craft", []):
 		if typeof(row) == TYPE_DICTIONARY:

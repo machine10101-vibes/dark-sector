@@ -977,6 +977,7 @@ func _sync_props(sim) -> void:
 	_sync_pocket(sim)
 	_sync_nebula()
 	_sync_shots(sim)
+	_sync_impacts(sim)
 	_sync_wrecks(sim)
 	_sync_meteors(sim)
 	_sync_claim(sim)
@@ -1145,31 +1146,175 @@ func _sync_shots(sim) -> void:
 	for shot in sim.projectiles:
 		var row: Dictionary = shot
 		var bolt := _prop("shot%d" % index)
-		index += 1
-		if bolt.mesh == null:
-			var ball := SphereMesh.new()
-			ball.radius = 2.4
-			ball.height = 4.8
-			ball.radial_segments = 10
-			ball.rings = 6
-			bolt.mesh = ball
-			var mat := StandardMaterial3D.new()
-			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			mat.albedo_color = Color("fff1d2")
-			mat.emission_enabled = true
-			mat.emission = Color("e7b15a")
-			mat.emission_energy_multiplier = 2.0
-			bolt.material_override = mat
+		if str(bolt.get_meta("tracer", "")) != "yes":
+			var rod := CylinderMesh.new()
+			rod.top_radius = 0.42
+			rod.bottom_radius = 1.05
+			rod.height = 18.0
+			rod.radial_segments = 8
+			bolt.mesh = rod
+			var head := MeshInstance3D.new()
+			head.name = "Head"
+			var tip := SphereMesh.new()
+			tip.radius = 1.15
+			tip.height = 2.3
+			tip.radial_segments = 10
+			tip.rings = 6
+			head.mesh = tip
+			head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			bolt.add_child(head)
+			var tail := MeshInstance3D.new()
+			tail.name = "Tail"
+			var fade := CylinderMesh.new()
+			fade.top_radius = 0.85
+			fade.bottom_radius = 0.15
+			fade.height = 14.0
+			fade.radial_segments = 8
+			tail.mesh = fade
+			tail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			bolt.add_child(tail)
+			bolt.set_meta("tracer", "yes")
 		var shot_vel: Vector2 = row.vel
-		var reach := 2.4
 		var aim := Vector2.RIGHT
+		var speed := 0.0
 		if shot_vel.length() > 1.0:
 			aim = shot_vel.normalized()
-			reach = clampf(shot_vel.length() * 0.045, 6.0, 22.0)
-		var shot_x := Vector3(aim.x, 0.0, -aim.y)
-		var shot_z := Vector3(-aim.y, 0.0, -aim.x)
-		bolt.basis = Basis(shot_x, Vector3.UP, shot_z).scaled(Vector3(reach, 2.2, 2.2))
-		bolt.position = chart(row.pos, 8.0)
+			speed = shot_vel.length()
+		var length := clampf(speed * 0.055, 14.0, 46.0)
+		var along := Vector3(aim.x, 0.0, -aim.y)
+		var side := Vector3(aim.y, 0.0, aim.x)
+		var rod_mesh := bolt.mesh as CylinderMesh
+		rod_mesh.height = length
+		rod_mesh.top_radius = 0.42
+		rod_mesh.bottom_radius = 1.05
+		bolt.basis = Basis(side, along, Vector3.UP)
+		bolt.position = chart(row.pos, 8.0) - along * length * 0.28
+		var tint := _shot_tint(str(row.get("team", "")))
+		var flicker := 0.85 + 0.15 * sin(float(sim.time) * 48.0 + float(index))
+		_paint_bolt(bolt, tint, 1.9 * flicker, 1.0)
+		var head_node := bolt.get_node("Head") as MeshInstance3D
+		head_node.position = Vector3(0.0, length * 0.5, 0.0)
+		_paint_bolt(head_node, tint.lightened(0.42), 2.8 * flicker, 1.0)
+		var tail_node := bolt.get_node("Tail") as MeshInstance3D
+		var tail_mesh := tail_node.mesh as CylinderMesh
+		tail_mesh.height = length * 0.85
+		tail_node.position = Vector3(0.0, -length * 0.55, 0.0)
+		_paint_bolt(tail_node, tint, 0.7 * flicker, 0.35)
+		index += 1
+
+
+func _sync_impacts(sim) -> void:
+	var index := 0
+	for row in sim.impacts:
+		var impact: Dictionary = row
+		var kind := str(impact.get("kind", "hit"))
+		var age := float(impact.get("age", 0.0))
+		var life := 0.34
+		if kind == "kill":
+			life = 0.62
+		var t := clampf(age / life, 0.0, 1.0)
+		var fade := (1.0 - t) * (1.0 - t)
+		var tint := _shot_tint(str(impact.get("team", "")))
+		if kind == "kill":
+			tint = tint.lerp(Color("fff4e0"), 0.5)
+		elif kind == "fade":
+			tint = tint.darkened(0.25)
+		var at: Vector2 = impact.pos
+		var reach := lerpf(1.5, 7.0, t)
+		if kind == "kill":
+			reach = lerpf(1.5, 16.0, t)
+		elif kind == "fade":
+			reach = lerpf(0.6, 3.0, t)
+		var burst := _prop("burst%d" % index)
+		if burst.mesh == null:
+			var ball := SphereMesh.new()
+			ball.radius = 1.0
+			ball.height = 2.0
+			ball.radial_segments = 12
+			ball.rings = 8
+			burst.mesh = ball
+		burst.position = chart(at, 8.0)
+		burst.scale = Vector3.ONE * reach
+		_paint_bolt(burst, tint.lightened(0.2), 2.2 * fade + 0.15, clampf(fade, 0.05, 0.9))
+		if kind != "fade":
+			var wave := _prop("wave%d" % index)
+			if wave.mesh == null or not (wave.mesh is TorusMesh):
+				var torus := TorusMesh.new()
+				torus.rings = 24
+				torus.ring_segments = 8
+				wave.mesh = torus
+			var outer := lerpf(4.0, 14.0, t)
+			if kind == "kill":
+				outer = lerpf(6.0, 28.0, t)
+			var inner := maxf(0.5, outer - 2.0)
+			var torus_mesh := wave.mesh as TorusMesh
+			torus_mesh.inner_radius = inner
+			torus_mesh.outer_radius = outer
+			wave.position = chart(at, 7.2)
+			wave.scale = Vector3.ONE
+			_paint_bolt(wave, tint, 1.4 * fade + 0.1, clampf(fade * 0.75, 0.04, 0.7))
+			var sparks := 5
+			if kind == "kill":
+				sparks = 7
+			var flown := lerpf(3.0, 12.0, t)
+			if kind == "kill":
+				flown = lerpf(4.0, 22.0, t)
+			var spark_len := lerpf(5.5, 1.1, t)
+			for s in sparks:
+				var spark := _prop("spark%d_%d" % [index, s])
+				if spark.mesh == null or not (spark.mesh is CylinderMesh):
+					var sliver := CylinderMesh.new()
+					sliver.radial_segments = 6
+					spark.mesh = sliver
+				var sliver_mesh := spark.mesh as CylinderMesh
+				sliver_mesh.top_radius = 0.12
+				sliver_mesh.bottom_radius = 0.42
+				sliver_mesh.height = spark_len
+				var ang := TAU * float(s) / float(sparks) + float(index) * 0.71
+				var lift := 0.22 + 0.1 * float(s % 2)
+				var dir := Vector3(cos(ang), lift, -sin(ang)).normalized()
+				spark.position = chart(at, 8.0) + dir * flown
+				_aim_rod(spark, dir)
+				_paint_bolt(spark, tint.lightened(0.25), 1.8 * fade + 0.1, clampf(fade, 0.05, 0.95))
+		index += 1
+
+
+func _shot_tint(team: String) -> Color:
+	if team == "captain":
+		return Color("ffd59a")
+	if team == "red_keel":
+		return Color("ff8a72")
+	if team == "helion_compact" or team == "vellum_compact":
+		return Color("9eecf5")
+	return Color("e7b15a")
+
+
+func _paint_bolt(node: MeshInstance3D, color: Color, energy: float, alpha: float) -> void:
+	var mat := node.material_override as StandardMaterial3D
+	if mat == null:
+		mat = StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.emission_enabled = true
+		node.material_override = mat
+	mat.albedo_color = Color(color.r, color.g, color.b, alpha)
+	mat.emission = color
+	mat.emission_energy_multiplier = energy
+	if alpha < 0.98:
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	else:
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+
+
+func _aim_rod(node: MeshInstance3D, dir: Vector3) -> void:
+	var axis := dir.normalized()
+	if axis.length_squared() < 0.001:
+		axis = Vector3.UP
+	var ref := Vector3.UP
+	if absf(axis.dot(ref)) > 0.9:
+		ref = Vector3.RIGHT
+	var side := ref.cross(axis).normalized()
+	var up := axis.cross(side).normalized()
+	node.basis = Basis(side, axis, up)
 
 
 func _sync_wrecks(sim) -> void:
@@ -1177,19 +1322,49 @@ func _sync_wrecks(sim) -> void:
 	for wreck in sim.wrecks:
 		var row: Dictionary = wreck
 		var hulk := _prop("wreck%d" % index)
-		index += 1
+		var wid := str(row.get("id", ""))
+		if str(hulk.get_meta("wid", "")) != wid:
+			hulk.set_meta("wid", wid)
+			hulk.set_meta("lit", float(sim.time))
 		if str(hulk.get_meta("built", "")) != "yes":
 			hulk.mesh = _rock_mesh(index + 11, 11.0)
 			hulk.material_override = _hull_mat(Color("5a4038"))
 			hulk.set_meta("built", "yes")
-		hulk.transform = _flat_xform(row.pos, 0.4, 5.0)
-		var shard := _prop("wreckbit%d" % (index - 1))
+		var spin := float(sim.time) * 0.55 + float(index)
+		var tilt := sin(float(sim.time) * 0.37 + float(index)) * 0.42
+		var xf := _flat_xform(row.pos, spin, 5.0)
+		xf.basis = xf.basis * Basis(Vector3.RIGHT, tilt)
+		hulk.transform = xf
+		var shard := _prop("wreckbit%d" % index)
 		if str(shard.get_meta("built", "")) != "yes":
 			shard.mesh = _rock_mesh(index + 21, 4.6)
 			shard.material_override = _rock_shader_mat(Color("3a2a26"), float(index))
 			shard.set_meta("built", "yes")
 		var pos: Vector2 = row.pos
-		shard.transform = _flat_xform(pos + Vector2(8.0, 6.0), 1.1, 2.4)
+		var orbit_ang := float(sim.time) * 0.9 + float(index) * 1.7
+		var orbit := Vector2(cos(orbit_ang), sin(orbit_ang)) * 10.0
+		var bit := _flat_xform(pos + orbit, orbit_ang * 1.3, 3.2 + sin(orbit_ang) * 1.4)
+		bit.basis = bit.basis * Basis(Vector3.FORWARD, orbit_ang)
+		shard.transform = bit
+		var age := float(sim.time) - float(hulk.get_meta("lit", sim.time))
+		if age < 1.4:
+			var et := clampf(age / 1.4, 0.0, 1.0)
+			for e in 4:
+				var ember := _prop("ember%d_%d" % [index, e])
+				if ember.mesh == null:
+					var coal := SphereMesh.new()
+					coal.radius = 1.15
+					coal.height = 2.3
+					coal.radial_segments = 8
+					coal.rings = 6
+					ember.mesh = coal
+				var ang := float(e) * TAU / 4.0 + float(index)
+				var out := Vector3(cos(ang), 0.55, -sin(ang))
+				ember.position = chart(row.pos, 6.0) + out * lerpf(2.0, 16.0, et) + Vector3(0.0, et * 8.0, 0.0)
+				var shrink := lerpf(1.15, 0.35, et)
+				ember.scale = Vector3.ONE * shrink
+				_paint_bolt(ember, Color("ffb070"), lerpf(2.4, 0.3, et), clampf(1.0 - et, 0.05, 0.95))
+		index += 1
 		_tag(str(row.get("name", "wreck")), chart(row.pos, 16.0), Color("a08070"), 12)
 
 
@@ -2052,6 +2227,8 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 	var hull: Dictionary = sim.defs.ships[class_id]
 	var hp := clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0)
 	var body := Color(str(hull.color)).lerp(Color("3a1818"), (1.0 - hp) * 0.65)
+	var hurt := clampf(float(ship.get("hurt_cd", 0.0)) / 0.4, 0.0, 1.0)
+	body = body.lerp(Color("ffe6c8"), hurt * 0.62)
 	var accent := Color(str(hull.accent))
 	for child in holder.get_children():
 		var part := str(child.name)
@@ -2084,6 +2261,8 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 		core.visible = thrusting
 	_place_wake(holder, ship)
 	_place_jet_light(holder, thrusting)
+	var on_band := int(sim.layer) == ScaleFrame.BAND
+	_combat_fx(holder, sim, ship, on_band and holder.visible)
 	var call := str(ship.get("name", hull.get("callsign", class_id)))
 	if key == "player":
 		call = str(hull.get("callsign", call))
@@ -2091,6 +2270,74 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 	if tag != "":
 		call = "%s  ·  %s" % [call, tag]
 	_tag(call, chart(ship.pos + Vector2(22.0, 18.0), float(holder.get_meta("crown", 16.0))), Color("e6d7bf"), 14)
+
+
+func _combat_fx(holder: Node3D, sim, ship: Dictionary, band: bool) -> void:
+	var flash := holder.get_node_or_null("MuzzleFlash") as MeshInstance3D
+	if flash == null:
+		flash = MeshInstance3D.new()
+		flash.name = "MuzzleFlash"
+		var ball := SphereMesh.new()
+		ball.radius = 2.2
+		ball.height = 4.4
+		ball.radial_segments = 12
+		ball.rings = 6
+		flash.mesh = ball
+		flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		holder.add_child(flash)
+		var flare := MeshInstance3D.new()
+		flare.name = "Flare"
+		var rod := CylinderMesh.new()
+		rod.top_radius = 0.35
+		rod.bottom_radius = 1.35
+		rod.height = 7.5
+		rod.radial_segments = 8
+		flare.mesh = rod
+		flare.position = Vector3(3.6, 0.0, 0.0)
+		flare.rotation = Vector3(0.0, 0.0, -PI * 0.5)
+		flare.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		flash.add_child(flare)
+	var ring := holder.get_node_or_null("HurtRing") as MeshInstance3D
+	if ring == null:
+		ring = MeshInstance3D.new()
+		ring.name = "HurtRing"
+		var torus := TorusMesh.new()
+		torus.inner_radius = 0.72
+		torus.outer_radius = 1.0
+		torus.rings = 22
+		torus.ring_segments = 8
+		ring.mesh = torus
+		ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		holder.add_child(ring)
+	var life := 0.0
+	if band:
+		var stats: Dictionary = Fit.stats(sim.defs, ship)
+		var gun: Dictionary = stats.get("gun", {})
+		var cooldown := float(gun.get("cooldown", 0.3))
+		var fire_cd := float(ship.get("fire_cd", 0.0))
+		var since := cooldown - fire_cd
+		if fire_cd > 0.0 and since >= 0.0 and since < 0.1:
+			life = 1.0 - since / 0.1
+	flash.visible = life > 0.02
+	if life > 0.02:
+		var nose := float(holder.get_meta("nose", 24.0))
+		flash.position = Vector3(nose * 0.96, 2.2, 0.0)
+		var span := 0.65 + life * 1.35
+		flash.scale = Vector3(span, span, span)
+		var tint := _shot_tint(str(ship.get("team", "")))
+		_paint_bolt(flash, tint.lightened(0.35), 2.4 + life * 3.0, 0.92)
+		var flare_node := flash.get_node_or_null("Flare") as MeshInstance3D
+		if flare_node != null:
+			_paint_bolt(flare_node, tint, 1.6 + life * 2.2, 0.55)
+		holder.position += holder.basis * Vector3(-life * 2.4, 0.0, 0.0)
+	var hurt := clampf(float(ship.get("hurt_cd", 0.0)) / 0.4, 0.0, 1.0)
+	ring.visible = band and hurt > 0.05
+	if ring.visible:
+		var nose_r := float(holder.get_meta("nose", 24.0))
+		ring.position = Vector3(0.0, 2.2, 0.0)
+		var span_r := nose_r * lerpf(0.55, 1.08, 1.0 - hurt)
+		ring.scale = Vector3(span_r, span_r * 0.35, span_r)
+		_paint_bolt(ring, Color("ffe6c8"), 1.2 + hurt * 2.4, clampf(hurt * 0.8, 0.08, 0.85))
 
 
 func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -> void:
