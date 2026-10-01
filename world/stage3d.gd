@@ -487,6 +487,32 @@ void fragment() {
 }
 "
 
+const ICE_SHADER := "shader_type spatial;
+render_mode diffuse_burley, specular_schlick_ggx;
+varying vec3 wnorm;
+uniform float seed = 0.0;
+void vertex() {
+	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+void fragment() {
+	vec3 n = normalize(wnorm);
+	vec3 sun = normalize(vec3(0.35, 0.86, 0.22));
+	float ndl = clamp(dot(n, sun), 0.0, 1.0);
+	float crack = smoothstep(0.47, 0.5, abs(fract(n.y * 6.5 + n.x * 4.0 + seed) - 0.5));
+	float grit = fract(sin(dot(n.xy, vec2(41.3, 17.7)) + seed) * 913.1);
+	vec3 deep = vec3(0.55, 0.68, 0.78);
+	vec3 face = vec3(0.9, 0.95, 0.98);
+	vec3 ice = mix(deep, face, 0.35 + 0.65 * ndl);
+	ice = mix(ice, vec3(0.62, 0.78, 0.9), grit * 0.18);
+	ice = mix(ice, deep * 0.72, crack * 0.7);
+	ALBEDO = ice;
+	ROUGHNESS = mix(0.16, 0.48, crack);
+	METALLIC = 0.02;
+	SPECULAR = 0.85;
+	EMISSION = vec3(0.75, 0.9, 1.0) * pow(ndl, 12.0) * 0.35;
+}
+"
+
 const RUBBLE_SHADER := "shader_type spatial;
 render_mode unshaded;
 varying vec3 onorm;
@@ -587,6 +613,7 @@ var _ring_shader: Shader
 var _nebula_shader: Shader
 var _gate_shader: Shader
 var _rock_shader: Shader
+var _ice_shader: Shader
 var _rubble_shader: Shader
 var _wake_shader: Shader
 var _ground_shader: Shader
@@ -634,6 +661,7 @@ func _ready() -> void:
 	_nebula_shader = _compile(NEBULA_SHADER)
 	_gate_shader = _compile(GATE_SHADER)
 	_rock_shader = _compile(ROCK_SHADER)
+	_ice_shader = _compile(ICE_SHADER)
 	_rubble_shader = _compile(RUBBLE_SHADER)
 	_wake_shader = _compile(WAKE_SHADER)
 	_ground_shader = _compile(GROUND_SHADER)
@@ -2928,6 +2956,14 @@ func _rubble_mat(color: Color, seed: float) -> ShaderMaterial:
 	return mat
 
 
+func _smooth_copy(mesh: Mesh) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.create_from(mesh, 0)
+	st.index()
+	st.generate_normals()
+	return st.commit()
+
+
 func _rock_shader_mat(color: Color, seed: float) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = _rock_shader
@@ -3094,19 +3130,18 @@ func _ice_sparks(ring: MeshInstance3D, mid: float, band: float) -> void:
 	var floe := Node3D.new()
 	floe.name = "Floe"
 	ring.add_child(floe)
-	for chip_i in 14:
+	for chip_i in 18:
 		var chip := MeshInstance3D.new()
 		chip.name = "Ice%d" % chip_i
-		var scale := band * (0.28 + float(chip_i % 5) * 0.07)
-		chip.mesh = _rock_mesh(chip_i + 40, scale)
-		var ang := float(chip_i) * TAU / 14.0 + float(chip_i * chip_i) * 0.017
+		var scale := band * (0.22 + float(chip_i % 6) * 0.06)
+		chip.mesh = _smooth_copy(_rock_mesh(chip_i + 40, scale))
+		var ang := float(chip_i) * TAU / 18.0 + float(chip_i * chip_i) * 0.017
 		var rad := mid + sin(float(chip_i) * 2.3) * band * 0.32
 		var lift := sin(float(chip_i) * 1.9) * band * 0.16
 		chip.position = Vector3(cos(ang) * rad, lift, sin(ang) * rad)
 		chip.rotation = Vector3(float(chip_i) * 0.47, ang, float(chip_i) * 0.23)
 		var mat := ShaderMaterial.new()
-		mat.shader = _rock_shader
-		mat.set_shader_parameter("albedo", Color(0.78, 0.86, 0.91))
+		mat.shader = _ice_shader
 		mat.set_shader_parameter("seed", float(chip_i) * 0.41 + 0.2)
 		chip.material_override = mat
 		chip.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -3242,14 +3277,14 @@ func _prism(poly: PackedVector2Array, height: float, top_scale: float = 0.86) ->
 	for t in range(0, indices.size(), 3):
 		_tri(st, crown[indices[t]], crown[indices[t + 1]], crown[indices[t + 2]], height, Vector3.UP)
 		_tri(st, bilge[indices[t]], bilge[indices[t + 2]], bilge[indices[t + 1]], 0.0, Vector3.DOWN)
-	_girdle(st, bilge, lower, 0.0, y_low)
-	_girdle(st, lower, poly, y_low, y_chine)
-	_girdle(st, poly, shoulder, y_chine, y_shoulder)
-	_girdle(st, shoulder, crown, y_shoulder, height)
+	_girdle(st, bilge, lower, 0.0, y_low, height)
+	_girdle(st, lower, poly, y_low, y_chine, height)
+	_girdle(st, poly, shoulder, y_chine, y_shoulder, height)
+	_girdle(st, shoulder, crown, y_shoulder, height, height)
 	return st.commit()
 
 
-func _girdle(st: SurfaceTool, lower: PackedVector2Array, upper: PackedVector2Array, y0: float, y1: float) -> void:
+func _girdle(st: SurfaceTool, lower: PackedVector2Array, upper: PackedVector2Array, y0: float, y1: float, span: float) -> void:
 	var count := lower.size()
 	if upper.size() != count or count < 2:
 		return
@@ -3266,30 +3301,36 @@ func _girdle(st: SurfaceTool, lower: PackedVector2Array, upper: PackedVector2Arr
 			outward = -outward
 		if outward.length_squared() < 0.0001:
 			continue
-		_slope(st, a, b, upper[i], upper[(i + 1) % count], y0, y1, outward.normalized())
+		_slope(st, a, b, upper[i], upper[(i + 1) % count], y0, y1, centroid, span)
 
 
-func _slope(st: SurfaceTool, a: Vector2, b: Vector2, ta: Vector2, tb: Vector2, y0: float, y1: float, outward: Vector2) -> void:
-	var edge := Vector3(b.x - a.x, 0.0, b.y - a.y)
-	var rise := Vector3(ta.x - a.x, y1 - y0, ta.y - a.y)
-	var normal := edge.cross(rise)
-	var out3 := Vector3(outward.x, 0.12, outward.y)
-	if normal.dot(out3) < 0.0:
-		normal = -normal
-	if normal.length_squared() < 0.0001:
-		normal = out3
-	normal = normal.normalized()
-	st.set_normal(normal)
+func _skin_normal(point: Vector2, y: float, span: float, centroid: Vector2) -> Vector3:
+	var flat := point - centroid
+	if flat.length_squared() < 0.04:
+		flat = Vector2(1.0, 0.0)
+	else:
+		flat = flat.normalized()
+	var lift := (y / maxf(span, 0.1) - 0.32) * 1.85
+	var n := Vector3(flat.x, lift, flat.y)
+	var deck := clampf((y - span * 0.72) / maxf(span * 0.28, 0.1), 0.0, 1.0)
+	n = n.lerp(Vector3.UP, deck * 0.65)
+	var belly := clampf((span * 0.18 - y) / maxf(span * 0.18, 0.1), 0.0, 1.0)
+	n = n.lerp(Vector3.DOWN, belly * 0.45)
+	return n.normalized()
+
+
+func _slope(st: SurfaceTool, a: Vector2, b: Vector2, ta: Vector2, tb: Vector2, y0: float, y1: float, centroid: Vector2, span: float) -> void:
+	st.set_normal(_skin_normal(a, y0, span, centroid))
 	st.add_vertex(Vector3(a.x, y0, a.y))
-	st.set_normal(normal)
+	st.set_normal(_skin_normal(b, y0, span, centroid))
 	st.add_vertex(Vector3(b.x, y0, b.y))
-	st.set_normal(normal)
+	st.set_normal(_skin_normal(tb, y1, span, centroid))
 	st.add_vertex(Vector3(tb.x, y1, tb.y))
-	st.set_normal(normal)
+	st.set_normal(_skin_normal(a, y0, span, centroid))
 	st.add_vertex(Vector3(a.x, y0, a.y))
-	st.set_normal(normal)
+	st.set_normal(_skin_normal(tb, y1, span, centroid))
 	st.add_vertex(Vector3(tb.x, y1, tb.y))
-	st.set_normal(normal)
+	st.set_normal(_skin_normal(ta, y1, span, centroid))
 	st.add_vertex(Vector3(ta.x, y1, ta.y))
 
 
