@@ -170,7 +170,7 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.015, 0.028, 0.04, 0.94))
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.012, 0.02, 0.03, 1.0))
 	if atlas.is_empty():
 		return
 	_draw_grid()

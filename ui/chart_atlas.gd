@@ -59,6 +59,7 @@ static func build(defs: Dictionary) -> Dictionary:
 			"color": str(lane.get("rule_color", "amber")),
 			"traffic": str(lane.get("traffic", "")),
 		})
+	_add_gate_lanes(defs, systems, lanes_out)
 	return {
 		"systems": systems,
 		"lanes": lanes_out,
@@ -123,6 +124,48 @@ static func system_named(atlas: Dictionary, system_id: String) -> Dictionary:
 		if str(row.get("id", "")) == system_id:
 			return row
 	return {}
+
+
+static func _add_gate_lanes(defs: Dictionary, systems: Array, lanes_out: Array) -> void:
+	var known: Dictionary = {}
+	for raw in systems:
+		var row: Dictionary = raw
+		known[str(row.get("id", ""))] = true
+	var seen: Dictionary = {}
+	for raw in lanes_out:
+		var lane: Dictionary = raw
+		seen[_pair(str(lane.get("from", "")), str(lane.get("to", "")))] = true
+	var chart: Dictionary = defs.get("systems", {})
+	for key in chart.keys():
+		var origin := str(key)
+		if known.has(origin) == false:
+			continue
+		var spec: Dictionary = chart[origin]
+		var gates: Array = spec.get("gates", [])
+		for gate_raw in gates:
+			if typeof(gate_raw) != TYPE_DICTIONARY:
+				continue
+			var gate: Dictionary = gate_raw
+			var dest := str(gate.get("to", ""))
+			if dest == "" or known.has(dest) == false:
+				continue
+			var pair := _pair(origin, dest)
+			if seen.has(pair):
+				continue
+			seen[pair] = true
+			lanes_out.append({
+				"id": str(gate.get("id", pair)),
+				"from": origin,
+				"to": dest,
+				"color": str(gate.get("color", "amber")),
+				"traffic": str(gate.get("name", "")),
+			})
+
+
+static func _pair(a: String, b: String) -> String:
+	if a < b:
+		return "%s|%s" % [a, b]
+	return "%s|%s" % [b, a]
 
 
 static func lane_color(rule: String) -> Color:

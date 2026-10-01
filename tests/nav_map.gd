@@ -76,6 +76,13 @@ func _atlas() -> void:
 		if ids.has(str(lane.get("from", ""))) == false or ids.has(str(lane.get("to", ""))) == false:
 			missing += 1
 	check(missing == 0, "every lane ends on a named system")
+	var hops: Array = Atlas.links(atlas, "HC-V1-R1-S1")
+	var hop_ids: Dictionary = {}
+	for raw_hop in hops:
+		var hop: Dictionary = raw_hop
+		hop_ids[str(hop.get("id", ""))] = true
+	check(hop_ids.has("HC-V1-R1-S2"), "Helion lane reaches Brass Lantern")
+	check(hop_ids.has("HC-V1-R1-S3"), "Helion lane reaches Writ")
 	var regions: Array = atlas.get("regions", [])
 	check(regions.size() == 8, "eight regions (%d)" % regions.size())
 
