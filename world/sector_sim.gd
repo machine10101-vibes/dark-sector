@@ -741,6 +741,9 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 	unit.fight_cd = maxf(0.0, float(unit.get("fight_cd", 0.0)) - dt)
 	if not bool(unit.alive):
 		unit.thrusting = false
+		unit.boosting = false
+		unit.strafe_hold = 0.0
+		unit.retro_hold = false
 		unit.pos += unit.vel * dt
 		return
 	_release_mooring(unit)
@@ -767,6 +770,9 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 			unit.rot += float(cmd.get("rot", 0.0)) * float(held.turn) * dt
 			unit.vel = Vector2.ZERO
 			unit.thrusting = false
+			unit.boosting = false
+			unit.strafe_hold = 0.0
+			unit.retro_hold = false
 			unit.pos = Vector2(float(unit.get("dock_x", unit.pos.x)), float(unit.get("dock_y", unit.pos.y)))
 			return
 		unit.moored = false
@@ -785,12 +791,34 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 	var thrust = float(cmd.get("thrust", 0.0))
 	var retro = float(cmd.get("retro", 0.0))
 	var strafe = float(cmd.get("strafe", 0.0))
-	unit.thrusting = thrust > 0.0
-	if thrust > 0.0:
-		var kick := float(stats.accel)
+	var boosting := bool(cmd.get("boost", false))
+	var cap := float(stats.vmax)
+	if int(layer) == ScaleFrame.CHART:
+		cap = 1600.0
+	elif int(layer) == ScaleFrame.APPROACH:
+		cap = 1600.0
+	if boosting:
+		cap *= 2.0
+	unit.boosting = boosting
+	unit.strafe_hold = strafe
+	unit.retro_hold = retro > 0.0
+	var drive: float = thrust
+	if boosting:
+		drive = maxf(drive, 1.0)
+	unit.thrusting = drive > 0.0
+	if drive > 0.0:
+		var kick := float(stats.accel) * drive
 		if unit.vel.dot(forward) < 60.0:
 			kick *= 1.28
+		if boosting:
+			# Sized off the doubled hull speed, so the burn arrives in a
+			# couple of seconds instead of creeping up against drag.
+			kick = maxf(kick, float(stats.vmax) * 2.0 / 1.6)
 		unit.vel += forward * kick * dt
+	if boosting and str(unit.get("agent_id", "")) == str(player.get("agent_id", "")):
+		if bool(quest_flags.get("said_boost", false)) == false:
+			quest_flags.said_boost = true
+			say("Boost. Twice the hull speed while you hold it.")
 	if retro > 0.0:
 		unit.vel -= forward * float(stats.accel) * 0.62 * dt
 	if absf(strafe) > 0.0:
@@ -798,18 +826,13 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 	elif unit.vel.length() > 10.0:
 		var speed: float = unit.vel.length()
 		var slip := wrapf(forward.angle() - unit.vel.angle(), -PI, PI)
-		var grip := float(stats.turn) * (2.2 if thrust > 0.0 else 1.2)
+		var grip := float(stats.turn) * (2.2 if drive > 0.0 else 1.2)
 		grip = clampf(grip, 1.05, 4.8)
 		if speed > 180.0:
 			grip *= clampf(180.0 / speed, 0.5, 1.0)
 		var step := clampf(slip, -grip * dt, grip * dt)
 		unit.vel = Vector2.from_angle(unit.vel.angle() + step) * speed
 	unit.vel *= 1.0 - float(stats.damp) * dt
-	var cap := float(stats.vmax)
-	if int(layer) == ScaleFrame.CHART:
-		cap = 1600.0
-	elif int(layer) == ScaleFrame.APPROACH:
-		cap = 1600.0
 	if unit.vel.length() > cap:
 		unit.vel = unit.vel.limit_length(cap)
 	# One accepted cast-off frame has to show on the integer speed line.
@@ -2190,6 +2213,7 @@ func _held(cmd: Dictionary) -> Dictionary:
 		"rot": cmd.get("rot", 0.0),
 		"strafe": cmd.get("strafe", 0.0),
 		"fire": cmd.get("fire", false),
+		"boost": cmd.get("boost", false),
 	}
 
 
@@ -2284,6 +2308,9 @@ func _ship_in(row: Dictionary) -> Dictionary:
 		ship.module_hp = {}
 	ship.alive = bool(ship.alive)
 	ship.thrusting = false
+	ship.boosting = false
+	ship.strafe_hold = 0.0
+	ship.retro_hold = false
 	if not ship.has("muzzle"):
 		ship.muzzle = 34.0
 	for key in ship.cargo.keys():

@@ -778,6 +778,8 @@ func _refresh_helm() -> void:
 	stat_hull.text = "HULL  %d/%d" % [hp_now, hp_max]
 	stat_hull.add_theme_color_override("font_color", Color("f0a0a0") if hp_now < hp_max * 0.45 else Color("e9fbff"))
 	stat_speed.text = "%d m/s" % int(sim.player.vel.length())
+	var boosting := bool(sim.player.get("boosting", false))
+	stat_speed.add_theme_color_override("font_color", Color("ffd59a") if boosting else Color("f4fcff"))
 	var law_name := Law.at(sim, sim.player.pos)
 	var link_word := ""
 	if Game.link != null and str(Game.link.role) == "host":

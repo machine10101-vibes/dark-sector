@@ -132,6 +132,7 @@ func _cmd(delta: float) -> Dictionary:
 			"rot": 0.0,
 			"strafe": 0.0,
 			"fire": false,
+			"boost": false,
 		}
 		var typed: Dictionary = Game.take_verbs()
 		for key in typed.keys():
@@ -170,6 +171,7 @@ func _cmd(delta: float) -> Dictionary:
 		"rot": rot,
 		"strafe": strafe,
 		"fire": Game.flight_down(KEY_SPACE) or bool(stick.get("fire", false)),
+		"boost": Game.flight_down(KEY_SHIFT) or bool(stick.get("boost", false)),
 	}
 	var verbs: Dictionary = Game.take_verbs()
 	for key in verbs.keys():
