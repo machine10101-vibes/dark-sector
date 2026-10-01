@@ -547,20 +547,38 @@ var menu_show := false
 var menu_class := "vesper"
 var menu_hero := false
 var menu_bias := 0.0
+var portrait_mode := false
 var _yard_t := 0.0
 var _yard_ready := false
 
 
 func _ready() -> void:
+	_hull_shader = _compile(HULL_SHADER)
+	_glass_shader = _compile(GLASS_SHADER)
+	_plume_shader = _compile(PLUME_SHADER)
+	_sun = DirectionalLight3D.new()
+	_sun.name = "Sun"
+	_sun.light_color = Color("fff0d4")
+	_sun.light_energy = 2.8 if portrait_mode else 1.55
+	_sun.shadow_enabled = false
+	add_child(_sun)
+	_fill = DirectionalLight3D.new()
+	_fill.name = "Fill"
+	_fill.light_color = Color(0.72, 0.8, 0.95)
+	_fill.light_energy = 1.05 if portrait_mode else 0.58
+	_fill.shadow_enabled = false
+	_fill.basis = Basis(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0), Vector3(0.0, 1.0, 0.0))
+	add_child(_fill)
+	if portrait_mode:
+		# A card only needs the hull. The chart grid and the planet shaders stay out.
+		_sun.rotation_degrees = Vector3(-42.0, -28.0, 0.0)
+		return
 	_planet_shader = _compile(PLANET_SHADER)
 	_cloud_shader = _compile(CLOUD_SHADER)
 	_air_shader = _compile(AIR_SHADER)
 	_star_shader = _compile(STAR_SHADER)
 	_corona_shader = _compile(CORONA_SHADER)
 	_ray_shader = _compile(RAY_SHADER)
-	_hull_shader = _compile(HULL_SHADER)
-	_glass_shader = _compile(GLASS_SHADER)
-	_plume_shader = _compile(PLUME_SHADER)
 	_ring_shader = _compile(RING_SHADER)
 	_nebula_shader = _compile(NEBULA_SHADER)
 	_gate_shader = _compile(GATE_SHADER)
@@ -569,19 +587,6 @@ func _ready() -> void:
 	_wake_shader = _compile(WAKE_SHADER)
 	_ground_shader = _compile(GROUND_SHADER)
 	_build_grid()
-	_sun = DirectionalLight3D.new()
-	_sun.name = "Sun"
-	_sun.light_color = Color("fff0d4")
-	_sun.light_energy = 1.55
-	_sun.shadow_enabled = false
-	add_child(_sun)
-	_fill = DirectionalLight3D.new()
-	_fill.name = "Fill"
-	_fill.light_color = Color(0.72, 0.8, 0.95)
-	_fill.light_energy = 0.58
-	_fill.shadow_enabled = false
-	_fill.basis = Basis(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0), Vector3(0.0, 1.0, 0.0))
-	add_child(_fill)
 
 
 func _compile(code: String) -> Shader:
@@ -3097,6 +3102,35 @@ func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, norm
 	st.add_vertex(d)
 
 
+func pose_portrait(class_id: String, module_ids: Array) -> Node3D:
+	var shapes: Array = Silhouette.shapes_of(Game.defs, module_ids)
+	var layers: Array = Silhouette.layers_of(Game.defs, module_ids)
+	var holder := _ship_holder("portrait")
+	var mesh_key := class_id + "|" + str(shapes) + "|" + str(layers.size())
+	if str(holder.get_meta("mesh_key", "")) != mesh_key:
+		_fill_ship(holder, class_id, shapes, layers)
+		holder.set_meta("mesh_key", mesh_key)
+	holder.set_meta("portrait_modules", module_ids.duplicate())
+	if Game.defs.ships.has(class_id):
+		var hull: Dictionary = Game.defs.ships[class_id]
+		var body := Color(str(hull.color))
+		var accent := Color(str(hull.accent))
+		for child in holder.get_children():
+			var part := str(child.name)
+			if _hull_part(part):
+				var tone := body
+				if part == "Deck":
+					tone = body.lightened(0.16)
+				elif part.begins_with("Trim"):
+					tone = accent
+				_paint_hull(child, tone)
+	holder.position = Vector3.ZERO
+	holder.rotation = Vector3(0.42, -0.62, 0.08)
+	holder.scale = Vector3.ONE
+	holder.visible = true
+	return holder
+
+
 func show_yard(class_id: String, hero: bool) -> void:
 	menu_show = true
 	visible = true
@@ -3410,6 +3444,13 @@ func _dress_yard() -> void:
 		holder.position = Vector3(168.0, 36.0, 24.0)
 		holder.scale = Vector3(1.55, 1.55, 1.55)
 	holder.visible = true
+	if menu_hero:
+		planet.visible = false
+		var yard_ring := _prop("yard_dock")
+		yard_ring.visible = false
+		for i in 5:
+			var pylon := _prop("yard_pylon%d" % i)
+			pylon.visible = false
 	var key := get_node_or_null("YardKey") as OmniLight3D
 	var rim := get_node_or_null("YardRim") as OmniLight3D
 	var cool := get_node_or_null("YardFill") as OmniLight3D

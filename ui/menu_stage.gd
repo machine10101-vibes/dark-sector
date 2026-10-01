@@ -114,8 +114,11 @@ func _aim(hero: bool) -> void:
 			cam.position = Vector3(-536.0 + swing * 0.2, 316.0 + lift, 380.0)
 			cam.look_at(Vector3(6.0, 16.0, 0.0), Vector3.UP)
 		else:
-			cam.position = Vector3(-14.0 + swing, 32.0 + lift, 188.0)
-			cam.look_at(Vector3(8.0, 20.0, 0.0), Vector3.UP)
+			# Three-quarter on the keel. Aimed a little low so the hull sits
+			# in the open glass above the cards.
+			cam.fov = 30.0
+			cam.position = Vector3(-46.0 + swing * 0.12, 58.0 + lift, 128.0)
+			cam.look_at(Vector3(12.0, 6.0, 0.0), Vector3.UP)
 	else:
 		# Title shot. The keel sits in the open glass: right of a wide slate,
 		# under a tall one. Aegis is a limb beside that keel, not a texture wall.

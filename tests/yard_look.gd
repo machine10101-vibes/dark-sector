@@ -69,6 +69,30 @@ func _run() -> void:
 	check(spokes_back != null and spokes_back.visible, "the title star returns with the slate")
 	var hull_back: Node3D = yard_stage.find_child("yard", true, false)
 	check(hull_back != null and hull_back.visible and yard_stage.scale == Vector3.ONE, "the turntable hull returns with the slate")
+	var slate: Node = load("res://ui/menu.gd").new()
+	root.add_child(slate)
+	var portraits := 0
+	var own := 0
+	var mast := false
+	var bare := false
+	for node in slate.find_children("*", "", true, false):
+		if node.has_method("_boot") == false or node.get("_stage") != null:
+			continue
+		node._boot()
+		var card_hull: Node3D = node.get("_holder")
+		if card_hull == null or card_hull.get_node_or_null("Plate") == null:
+			continue
+		portraits += 1
+		var host := card_hull.get_viewport()
+		if host is SubViewport and host.own_world_3d and host.get_world_3d() != root.get_world_3d():
+			own += 1
+		var mods: Array = card_hull.get_meta("portrait_modules", [])
+		if mods.has("sensor_mast") and card_hull.get_node_or_null("MountMast") != null:
+			mast = true
+		if mods.is_empty() and card_hull.get_node_or_null("MountMast") == null:
+			bare = true
+	check(portraits >= 6 and own == portraits, "ship select shows each keel as a 3D hull")
+	check(mast and bare, "a bolted Needle keeps the mast the bare keel does not")
 	game.mode = "menu"
 	var eye: Node = load("res://world/overhead.gd").new()
 	root.add_child(eye)

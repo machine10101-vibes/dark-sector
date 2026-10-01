@@ -541,10 +541,11 @@ func _card(class_id: String) -> PanelContainer:
 
 func _preview(class_id: String, modules: Array, caption: String) -> VBoxContainer:
 	var col := VBoxContainer.new()
-	var preview := KeelPreview.new()
+	var preview := KeelPortrait.new()
 	preview.class_id = class_id
 	preview.modules = modules
 	preview.custom_minimum_size = Vector2(140, 110)
+	preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(preview)
 	var caption_line := ThemeKit.label(caption, 12, Color("8a7344"))
@@ -571,30 +572,99 @@ class Backdrop extends Control:
 			draw_rect(Rect2(0, 0, minf(340.0, size.x * 0.48), size.y), Color(0.015, 0.02, 0.03, 0.26), true)
 
 
-class KeelPreview extends Control:
+class KeelPortrait extends SubViewportContainer:
 	var class_id := "vesper"
 	var modules: Array = []
+	var _vp: SubViewport
+	var _cam: Camera3D
+	var _stage: Node3D
+	var _holder: Node3D
+	var _yaw := 0.0
 
-	func _notification(what: int) -> void:
-		if what == NOTIFICATION_RESIZED:
-			queue_redraw()
+	func _ready() -> void:
+		stretch = true
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	func _draw() -> void:
-		if Game.defs.is_empty() or size.x < 4.0:
+	func _process(delta: float) -> void:
+		if is_visible_in_tree() == false:
+			if _vp != null:
+				_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 			return
-		var hull: Dictionary = Game.defs.ships[class_id]
-		var shapes: Array = Silhouette.shapes_of(Game.defs, modules)
-		var layers: Array = Silhouette.layers_of(Game.defs, modules)
-		Silhouette.draw(
-			self,
-			size * 0.5 + Vector2(0, 8),
-			-PI * 0.5,
-			class_id,
-			shapes,
-			1.05,
-			Color(str(hull.color)),
-			Color(str(hull.accent)),
-			1.0,
-			false,
-			layers
-		)
+		if _stage == null:
+			_boot()
+		if _holder == null and _stage != null and Game.defs.is_empty() == false and _stage.has_method("pose_portrait"):
+			_holder = _stage.pose_portrait(class_id, modules)
+		if _holder == null or Game.defs.is_empty():
+			return
+		_yaw += delta
+		_holder.rotation = Vector3(0.42, -0.62 + sin(_yaw * 0.45) * 0.28, 0.08)
+		_frame_hull()
+		if _vp.render_target_update_mode != SubViewport.UPDATE_ALWAYS:
+			_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+
+	func _boot() -> void:
+		_vp = SubViewport.new()
+		_vp.name = "PortraitView"
+		_vp.own_world_3d = true
+		_vp.world_3d = World3D.new()
+		_vp.transparent_bg = true
+		_vp.handle_input_locally = false
+		_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		_vp.size = Vector2i(140, 110)
+		var env := WorldEnvironment.new()
+		var world := Environment.new()
+		world.background_mode = Environment.BG_COLOR
+		world.background_color = Color(0.02, 0.035, 0.05, 0.0)
+		world.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		world.ambient_light_color = Color(0.62, 0.7, 0.82)
+		world.ambient_light_energy = 0.72
+		world.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		env.environment = world
+		_vp.add_child(env)
+		_cam = Camera3D.new()
+		_cam.name = "PortraitEye"
+		_cam.current = true
+		_cam.fov = 28.0
+		_cam.near = 0.2
+		_cam.far = 4000.0
+		_vp.add_child(_cam)
+		_stage = preload("res://world/stage3d.gd").new()
+		_stage.name = "PortraitStage"
+		_stage.set("portrait_mode", true)
+		_stage.process_mode = Node.PROCESS_MODE_DISABLED
+		_vp.add_child(_stage)
+		add_child(_vp)
+		if Game.defs.is_empty() == false and _stage.has_method("pose_portrait"):
+			_holder = _stage.pose_portrait(class_id, modules)
+
+	func _frame_hull() -> void:
+		if _cam == null or _holder == null:
+			return
+		var bounds := AABB()
+		var started := false
+		for child in _holder.get_children():
+			var mesh := child as VisualInstance3D
+			if mesh == null:
+				continue
+			var box: AABB = mesh.global_transform * mesh.get_aabb()
+			if started:
+				bounds = bounds.merge(box)
+			else:
+				bounds = box
+				started = true
+		if started == false:
+			return
+		var center := bounds.get_center()
+		var extent := bounds.size
+		var aspect := 1.35
+		if _vp != null and _vp.size.y > 0:
+			aspect = float(_vp.size.x) / float(_vp.size.y)
+		var v_half := tan(deg_to_rad(_cam.fov * 0.5))
+		var h_half := v_half * maxf(aspect, 0.4)
+		var dist_v := (extent.y * 0.72) / maxf(v_half, 0.05)
+		var dist_h := (maxf(extent.x, extent.z) * 0.46) / maxf(h_half, 0.05)
+		var dist := maxf(maxf(dist_v, dist_h), 18.0) * 1.05
+		# A three-quarter view, so the card shows the hull instead of a flat plan.
+		var eye := center + Vector3(0.35, 0.48, 1.0).normalized() * dist
+		_cam.position = eye
+		_cam.look_at(center, Vector3.UP)
