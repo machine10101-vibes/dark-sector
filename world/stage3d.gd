@@ -171,7 +171,7 @@ void fragment() {
 	vec3 col = mix(tint.rgb, scatter, 0.72);
 	ALBEDO = col;
 	EMISSION = scatter * (0.15 + sun * 0.45) * grazing;
-	ALPHA = fres * (0.16 + 0.62 * sun) * (0.55 + 0.45 * grazing);
+	ALPHA = fres * (0.28 + 0.78 * sun) * (0.7 + 0.3 * grazing);
 }
 "
 
@@ -1408,8 +1408,8 @@ func _sync_planets(sim) -> void:
 		(ball.mesh as SphereMesh).radius = radius
 		(ball.mesh as SphereMesh).height = radius * 2.0
 		var air := node.get_node("Air") as MeshInstance3D
-		(air.mesh as SphereMesh).radius = radius * 1.012
-		(air.mesh as SphereMesh).height = radius * 2.024
+		(air.mesh as SphereMesh).radius = radius * 1.036
+		(air.mesh as SphereMesh).height = radius * 2.072
 		var colors: Array = row.get("colors", ["#889088"])
 		var mat := ball.material_override as ShaderMaterial
 		var albedo := Color(str(colors[0]))
@@ -1811,8 +1811,8 @@ func _body_node(bid: String) -> Node3D:
 	var air := MeshInstance3D.new()
 	air.name = "Air"
 	var shell := SphereMesh.new()
-	shell.radial_segments = 40
-	shell.rings = 20
+	shell.radial_segments = 80
+	shell.rings = 40
 	air.mesh = shell
 	var haze := ShaderMaterial.new()
 	haze.shader = _air_shader
@@ -2005,9 +2005,7 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 		deck_size = Vector3(8.0, 4.0, 5.0)
 	var bridge := MeshInstance3D.new()
 	bridge.name = "Bridge"
-	var box := BoxMesh.new()
-	box.size = deck_size
-	bridge.mesh = box
+	bridge.mesh = _bevel_box(deck_size, 0.42)
 	bridge.position = deck + Vector3(0.0, deck_size.y * 0.5, 0.0)
 	bridge.material_override = _hull_mat(Color("1c2428"))
 	holder.add_child(bridge)
@@ -2053,14 +2051,11 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	var span := maxf(nose - tail, 12.0)
 	var spine := MeshInstance3D.new()
 	spine.name = "Spine"
-	var rail := BoxMesh.new()
-	rail.size = Vector3(span * 0.72, 1.3, 1.5)
-	spine.mesh = rail
+	spine.mesh = _bevel_box(Vector3(span * 0.72, 1.3, 1.5), 0.16)
 	spine.position = Vector3((nose + tail) * 0.5, height * 1.08, 0.0)
 	spine.material_override = _hull_mat(Color("14181c"))
 	holder.add_child(spine)
-	var fin_mesh := BoxMesh.new()
-	fin_mesh.size = Vector3(span * 0.22, 0.45, 2.6)
+	var fin_mesh := _bevel_box(Vector3(span * 0.22, 0.45, 2.6), 0.08)
 	var fin_port := MeshInstance3D.new()
 	fin_port.name = "FinPort"
 	fin_port.mesh = fin_mesh
@@ -2296,9 +2291,7 @@ func _mount_probe(holder: Node3D, class_id: String, nose: float, y: float, heigh
 func _hardware(holder: Node3D, part_name: String, size: Vector3, at: Vector3, color: Color) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	node.name = part_name
-	var box := BoxMesh.new()
-	box.size = size
-	node.mesh = box
+	node.mesh = _bevel_box(size, 0.22)
 	node.position = at
 	node.material_override = _hull_mat(color)
 	holder.add_child(node)
@@ -3169,9 +3162,7 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 	for i in 5:
 		var plate := MeshInstance3D.new()
 		plate.name = "Panel%d" % i
-		var box := BoxMesh.new()
-		box.size = Vector3(span * 0.13, 0.85, maxf(height * 0.22, 3.2))
-		plate.mesh = box
+		plate.mesh = _bevel_box(Vector3(span * 0.13, 0.85, maxf(height * 0.22, 3.2)), 0.12)
 		x = tail + span * (0.16 + float(i) * 0.15)
 		z = height * 0.2 if i % 2 == 0 else -height * 0.2
 		plate.position = Vector3(x, height * 0.72, z)
@@ -3203,13 +3194,93 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 func _fairing(holder: Node3D, part_name: String, size: Vector3, at: Vector3) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	node.name = part_name
-	var box := BoxMesh.new()
-	box.size = size
-	node.mesh = box
+	node.mesh = _bevel_box(size, 0.16)
 	node.position = at
 	node.material_override = _hull_mat(Color("9aa0a6"))
 	holder.add_child(node)
 	return node
+
+
+func _bevel_box(size: Vector3, cut: float) -> ArrayMesh:
+	var key := "bevel|%0.2f|%0.2f|%0.2f|%0.2f" % [size.x, size.y, size.z, cut]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var hx := size.x * 0.5
+	var hy := size.y * 0.5
+	var hz := size.z * 0.5
+	var c := minf(maxf(cut, 0.02), minf(hx, minf(hy, hz)) * 0.55)
+	var ix := hx - c
+	var iy := hy - c
+	var iz := hz - c
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_out_quad(st, Vector3(-ix, hy, -iz), Vector3(ix, hy, -iz), Vector3(ix, hy, iz), Vector3(-ix, hy, iz), Vector3.UP)
+	_out_quad(st, Vector3(-ix, -hy, iz), Vector3(ix, -hy, iz), Vector3(ix, -hy, -iz), Vector3(-ix, -hy, -iz), Vector3.DOWN)
+	_out_quad(st, Vector3(hx, -iy, -iz), Vector3(hx, iy, -iz), Vector3(hx, iy, iz), Vector3(hx, -iy, iz), Vector3.RIGHT)
+	_out_quad(st, Vector3(-hx, -iy, iz), Vector3(-hx, iy, iz), Vector3(-hx, iy, -iz), Vector3(-hx, -iy, -iz), Vector3.LEFT)
+	_out_quad(st, Vector3(-ix, -iy, hz), Vector3(ix, -iy, hz), Vector3(ix, iy, hz), Vector3(-ix, iy, hz), Vector3(0, 0, 1))
+	_out_quad(st, Vector3(ix, -iy, -hz), Vector3(-ix, -iy, -hz), Vector3(-ix, iy, -hz), Vector3(ix, iy, -hz), Vector3(0, 0, -1))
+	_out_quad(st, Vector3(ix, hy, -iz), Vector3(hx, iy, -iz), Vector3(hx, iy, iz), Vector3(ix, hy, iz), Vector3(1, 1, 0))
+	_out_quad(st, Vector3(-hx, iy, -iz), Vector3(-ix, hy, -iz), Vector3(-ix, hy, iz), Vector3(-hx, iy, iz), Vector3(-1, 1, 0))
+	_out_quad(st, Vector3(-ix, hy, iz), Vector3(ix, hy, iz), Vector3(ix, iy, hz), Vector3(-ix, iy, hz), Vector3(0, 1, 1))
+	_out_quad(st, Vector3(ix, hy, -iz), Vector3(-ix, hy, -iz), Vector3(-ix, iy, -hz), Vector3(ix, iy, -hz), Vector3(0, 1, -1))
+	_out_quad(st, Vector3(hx, -iy, -iz), Vector3(ix, -hy, -iz), Vector3(ix, -hy, iz), Vector3(hx, -iy, iz), Vector3(1, -1, 0))
+	_out_quad(st, Vector3(-ix, -hy, -iz), Vector3(-hx, -iy, -iz), Vector3(-hx, -iy, iz), Vector3(-ix, -hy, iz), Vector3(-1, -1, 0))
+	_out_quad(st, Vector3(-ix, -iy, hz), Vector3(ix, -iy, hz), Vector3(ix, -hy, iz), Vector3(-ix, -hy, iz), Vector3(0, -1, 1))
+	_out_quad(st, Vector3(ix, -iy, -hz), Vector3(-ix, -iy, -hz), Vector3(-ix, -hy, -iz), Vector3(ix, -hy, -iz), Vector3(0, -1, -1))
+	_out_quad(st, Vector3(hx, -iy, iz), Vector3(hx, iy, iz), Vector3(ix, iy, hz), Vector3(ix, -iy, hz), Vector3(1, 0, 1))
+	_out_quad(st, Vector3(ix, -iy, -hz), Vector3(ix, iy, -hz), Vector3(hx, iy, -iz), Vector3(hx, -iy, -iz), Vector3(1, 0, -1))
+	_out_quad(st, Vector3(-hx, -iy, -iz), Vector3(-hx, iy, -iz), Vector3(-ix, iy, -hz), Vector3(-ix, -iy, -hz), Vector3(-1, 0, -1))
+	_out_quad(st, Vector3(-ix, -iy, hz), Vector3(-ix, iy, hz), Vector3(-hx, iy, iz), Vector3(-hx, -iy, iz), Vector3(-1, 0, 1))
+	for sx in [-1.0, 1.0]:
+		for sy in [-1.0, 1.0]:
+			for sz in [-1.0, 1.0]:
+				_out_tri(st, Vector3(sx * ix, sy * hy, sz * iz), Vector3(sx * hx, sy * iy, sz * iz), Vector3(sx * ix, sy * iy, sz * hz), Vector3(sx, sy, sz))
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _out_quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, outward: Vector3) -> void:
+	var n := (b - a).cross(d - a)
+	if n.dot(outward) < 0.0:
+		var swap := b
+		b = d
+		d = swap
+		n = -n
+	if n.length_squared() < 0.000001:
+		return
+	n = n.normalized()
+	st.set_normal(n)
+	st.add_vertex(a)
+	st.set_normal(n)
+	st.add_vertex(b)
+	st.set_normal(n)
+	st.add_vertex(c)
+	st.set_normal(n)
+	st.add_vertex(a)
+	st.set_normal(n)
+	st.add_vertex(c)
+	st.set_normal(n)
+	st.add_vertex(d)
+
+
+func _out_tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, outward: Vector3) -> void:
+	var n := (b - a).cross(c - a)
+	if n.dot(outward) < 0.0:
+		var swap := b
+		b = c
+		c = swap
+		n = -n
+	if n.length_squared() < 0.000001:
+		return
+	n = n.normalized()
+	st.set_normal(n)
+	st.add_vertex(a)
+	st.set_normal(n)
+	st.add_vertex(b)
+	st.set_normal(n)
+	st.add_vertex(c)
 
 
 func _chamfer_poly(poly: PackedVector2Array, cut: float) -> PackedVector2Array:
