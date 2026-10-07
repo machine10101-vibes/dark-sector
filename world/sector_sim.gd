@@ -2992,7 +2992,7 @@ func _spawn_belt(rng: RandomNumberGenerator) -> void:
 			if i == 0 and belt_pos != Vector2.ZERO:
 				center = belt_pos
 			else:
-				center = _random_reach_seat(rng, home_l, pad, taken, 220.0, 180.0)
+				center = _random_reach_seat(rng, home_l, pad, taken, 220.0, 320.0)
 			taken.append(center)
 		else:
 			var ang := rng.randf() * TAU
@@ -3024,7 +3024,7 @@ func _spawn_loners(rng: RandomNumberGenerator, pad: Vector2, composition: String
 	var anchor = planet(str(belt.get("anchor", "")))
 	var taken := _stock_taken()
 	for i in 6:
-		var at := _random_reach_seat(rng, anchor, pad, taken, 280.0, 200.0)
+		var at := _random_reach_seat(rng, anchor, pad, taken, 280.0, 280.0)
 		taken.append(at)
 		var size := 28.0 + float(i) * 6.0
 		_append_ore(rng, at, size, composition, tint, "#f6c36a", "nickel_cinder", 6 + (i % 3))
