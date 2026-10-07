@@ -109,8 +109,8 @@ func _card(class_id: String) -> PanelContainer:
 	previews.add_theme_constant_override("separation", 4)
 	var yard: Array = hull.yard
 	var fit_modules: Array = []
-	if not yard.is_empty():
-		fit_modules = [str(yard[0])]
+	for part in yard:
+		fit_modules.append(str(part))
 	previews.add_child(_preview(class_id, [], "As launched", fit_modules))
 	if not fit_modules.is_empty():
 		previews.add_child(_preview(class_id, fit_modules, "Bolted", fit_modules))

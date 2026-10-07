@@ -19,7 +19,8 @@ var dead_box: PanelContainer
 var panel_kind := ""
 var hangar_rows: Dictionary = {}
 var bay_preview: Control
-var install_button: Button
+var yard_box: VBoxContainer
+var yard_signature := ""
 var bay_detail: Label
 var dossier_timer := 0.0
 var hold_button: Button
@@ -382,9 +383,10 @@ func _build_bay() -> void:
 	for person in sim.player.crew:
 		crew_lines.append("%s — %s" % [person.name, person.skill])
 	bay_box.add_child(ThemeKit.label("Crew\n" + "\n".join(crew_lines), 14, Color("cbb892")))
-	install_button = ThemeKit.button("Bolt")
-	install_button.pressed.connect(_on_install)
-	bay_box.add_child(install_button)
+	yard_box = VBoxContainer.new()
+	yard_box.add_theme_constant_override("separation", 6)
+	yard_signature = ""
+	bay_box.add_child(yard_box)
 	bay_box.add_child(ThemeKit.label("Bolted means bolted. There is no crane aboard to pull a module off.", 13, Color("8d826c")))
 	_refresh_bay_text()
 
@@ -399,45 +401,51 @@ func _refresh_bay_text() -> void:
 		bolted.append(str(sim.defs.modules[module_id].name))
 	var have := "Bolted: %s." % ", ".join(bolted) if not bolted.is_empty() else "Nothing extra bolted. The silhouette is the yard keel."
 	var yard: Array = sim.player.yard
+	var yard_ids: PackedStringArray = []
+	for module_id in yard:
+		yard_ids.append(str(module_id))
+	var signature := ",".join(yard_ids)
+	var rebuild := yard_box != null and is_instance_valid(yard_box) and signature != yard_signature
+	if rebuild:
+		yard_signature = signature
+		for child in yard_box.get_children():
+			yard_box.remove_child(child)
+			child.free()
+	var lines: PackedStringArray = []
+	lines.append(have)
+	lines.append("Mass %.0f. Yaw %.0f°/s. Power spare %.0f. Cargo %d. Sensor %.0f. Signature %s." % [
+		before.mass, before.yaw_deg, before.power_spare, before.cargo_cap, before.sensor, before.signature_word,
+	])
 	if yard.is_empty():
-		bay_detail.text = "%s\nMass %.0f. Yaw %.0f°/s. Power spare %.0f. Cargo %d. Sensor %.0f. Signature %s.\n%s" % [
-			have, before.mass, before.yaw_deg, before.power_spare, before.cargo_cap, before.sensor, before.signature_word,
-			"The keel complains." if before.keel_warn else "The keel is inside tolerance.",
-		]
-		if install_button != null and is_instance_valid(install_button):
-			install_button.visible = false
-		if bay_preview != null and is_instance_valid(bay_preview):
-			bay_preview.queue_redraw()
-		return
-	var module_id := str(yard[0])
-	var mod: Dictionary = sim.defs.modules[module_id]
-	var hypo: Dictionary = sim.player.duplicate(true)
-	hypo.modules = sim.player.modules.duplicate()
-	hypo.modules.append(module_id)
-	var after := Fit.stats(sim.defs, hypo)
-	bay_detail.text = "%s\nYard: %s. %s\nYaw %.0f°/s → %.0f°/s. Signature %s → %s. Cargo %d → %d. Mass %.0f → %.0f. Sensor %.0f → %.0f.\n%s" % [
-		have,
-		mod.name,
-		mod.blurb,
-		before.yaw_deg, after.yaw_deg,
-		before.signature_word, after.signature_word,
-		before.cargo_cap, after.cargo_cap,
-		before.mass, after.mass,
-		before.sensor, after.sensor,
-		"The keel will complain under that mass." if after.keel_warn else "The keel can carry it.",
-	]
-	if install_button != null and is_instance_valid(install_button):
-		install_button.visible = true
-		install_button.text = "Bolt on %s" % mod.name
-		install_button.set_meta("module_id", module_id)
+		lines.append("The keel complains." if before.keel_warn else "The keel is inside tolerance.")
+	else:
+		for module_id in yard:
+			var id := str(module_id)
+			var mod: Dictionary = sim.defs.modules[id]
+			var hypo: Dictionary = sim.player.duplicate(true)
+			hypo.modules = sim.player.modules.duplicate()
+			hypo.modules.append(id)
+			var after := Fit.stats(sim.defs, hypo)
+			lines.append("%s — %s" % [mod.name, mod.blurb])
+			lines.append("Yaw %.0f°/s → %.0f°/s. Signature %s → %s. Cargo %d → %d. Mass %.0f → %.0f. Spare %.0f → %.0f. %s" % [
+				before.yaw_deg, after.yaw_deg,
+				before.signature_word, after.signature_word,
+				before.cargo_cap, after.cargo_cap,
+				before.mass, after.mass,
+				before.power_spare, after.power_spare,
+				"The keel will complain under that mass." if after.keel_warn else "The keel can carry it.",
+			])
+			if rebuild:
+				var button := ThemeKit.button("Bolt on %s" % mod.name)
+				button.pressed.connect(_on_install.bind(id))
+				yard_box.add_child(button)
+	bay_detail.text = "\n".join(lines)
 	if bay_preview != null and is_instance_valid(bay_preview):
 		bay_preview.queue_redraw()
 
 
-func _on_install() -> void:
-	if install_button == null or not install_button.has_meta("module_id"):
-		return
-	Game.sim.install(str(install_button.get_meta("module_id")))
+func _on_install(module_id: String) -> void:
+	Game.sim.install(module_id)
 	_refresh_bay_text()
 
 

@@ -17,7 +17,7 @@ static func parts(class_id: String, shapes: Array) -> Dictionary:
 	var extras: Array = []
 	var circles: Array = []
 	var plan := _plan(hull, shapes)
-	for key in ["mast", "blister", "sponson"]:
+	for key in plan.keys():
 		var item: Dictionary = plan[key]
 		if item.is_empty():
 			continue
@@ -65,8 +65,13 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 	_draw_hull(ci, xf, scale, hull, pal, accent)
 	if not plan.mast.is_empty():
 		_draw_mast(ci, xf, scale, plan.mast, pal, accent)
+	if not plan.battery.is_empty():
+		_draw_battery(ci, xf, scale, plan.battery, pal)
 	if not plan.blister.is_empty():
 		_draw_blister_fit(ci, xf, scale, plan.blister, pal, accent)
+	if not plan.armor.is_empty():
+		_draw_armor_plates(ci, xf, scale, plan.armor, pal)
+		_draw_armor_fit(ci, xf, scale, plan.armor, pal)
 	if not plan.sponson.is_empty():
 		_draw_sponson_fit(ci, xf, scale, plan.sponson, pal, accent)
 	if hp_ratio < 0.72:
@@ -149,6 +154,19 @@ static func _palette(body: Color, accent: Color, hp_ratio: float) -> Dictionary:
 		"gasket": Color("6d5b46").lerp(soot, wear * 0.25),
 		"armor": armor.lerp(soot, wear * 0.3),
 		"armor_edge": armor.lightened(0.22).lerp(soot, wear * 0.25),
+		"case": Color("3a4a2e").lerp(soot, wear * 0.3),
+		"case_edge": Color("8d9a72").lerp(soot, wear * 0.25),
+		"cell_can": Color("8e989f").lerp(soot, wear * 0.2),
+		"cell_cap": Color("e7edf1").lerp(soot, wear * 0.15),
+		"cell_vent": Color("3e464c").lerp(soot, wear * 0.15),
+		"terminal_pos": Color("d23b2a").lerp(soot, wear * 0.2),
+		"terminal_neg": Color("14161a").lerp(soot, wear * 0.1),
+		"cable": Color("121418").lerp(soot, wear * 0.1),
+		"cable_lit": Color("5c5348").lerp(soot, wear * 0.2),
+		"hazard": Color("e2b423").lerp(soot, wear * 0.25),
+		"plate": Color("6a7380").lerp(soot, wear * 0.28),
+		"plate_alt": Color("454d58").lerp(soot, wear * 0.28),
+		"plate_edge": Color("d5dde6").lerp(soot, wear * 0.2),
 		"shadow": Color(0, 0, 0, 0.4),
 	}
 
@@ -158,6 +176,8 @@ static func _plan(hull: PackedVector2Array, shapes: Array) -> Dictionary:
 		"mast": _plan_mast(hull) if shapes.has("mast") else {},
 		"blister": _plan_blister(hull) if shapes.has("blister") else {},
 		"sponson": _plan_sponson(hull) if shapes.has("sponson") else {},
+		"battery": _plan_battery(hull) if shapes.has("battery") else {},
+		"armor": _plan_armor(hull) if shapes.has("armor") else {},
 	}
 
 
@@ -251,6 +271,49 @@ static func _plan_sponson(hull: PackedVector2Array) -> Dictionary:
 			"barrel_y": barrel_y,
 			"muzzle_x": muzzle_x,
 		})
+	return {"sides": sides, "bound": bound, "circles": []}
+
+
+static func _plan_battery(hull: PackedVector2Array) -> Dictionary:
+	var span := _span_x(hull)
+	var cx := lerpf(span.x, span.y, 0.42)
+	var skin := maxf(_side_y(hull, cx, 1.0), 1.6)
+	var half_w := clampf(skin * 0.28 + 6.2, 7.6, 11.0)
+	var length := clampf(skin * 0.55 + 16.0, 18.0, 24.0)
+	var x0 := cx - length * 0.5
+	var x1 := cx + length * 0.5
+	return {
+		"cx": cx,
+		"x0": x0,
+		"x1": x1,
+		"half_w": half_w,
+		"skin": skin,
+		"bound": [
+			Vector2(x0 - 9.0, 1.4),
+			Vector2(x0, -half_w - 1.2),
+			Vector2(x1, -half_w - 1.2),
+			Vector2(x1 + 1.0, half_w + 1.2),
+			Vector2(x0, half_w + 1.2),
+		],
+		"circles": [],
+	}
+
+
+static func _plan_armor(hull: PackedVector2Array) -> Dictionary:
+	var xs: Array = _station_xs(hull, 0.46, 0.28)
+	var sides: Array = []
+	var bound: Array = []
+	for raw_sign in [1.0, -1.0]:
+		var sign := float(raw_sign)
+		var stations: Array = []
+		for x_value in xs:
+			var x := float(x_value)
+			var skin := _side_y(hull, x, sign)
+			var y_out := skin + sign * 7.2
+			stations.append({"x": x, "skin": skin, "y_out": y_out})
+			bound.append(Vector2(x, y_out))
+			bound.append(Vector2(x, skin - sign * 2.4))
+		sides.append({"sign": sign, "stations": stations})
 	return {"sides": sides, "bound": bound, "circles": []}
 
 
@@ -471,58 +534,88 @@ static func _draw_blister_body(ci: CanvasItem, xf: Transform2D, scale: float, pl
 	for side in plan.sides:
 		var sign := float(side.sign)
 		var stations: Array = side.stations
-		var skin_tone: Color = pal.pod.darkened(0.06) if sign > 0.0 else pal.pod.lightened(0.04)
-		_pod_shell(ci, xf, scale, stations, pal.pod_dark, pal.shadow, Vector2(-0.8, sign * 1.5), false)
-		_pod_shell(ci, xf, scale, stations, pal.pod_dark, pal.pod_dark, Vector2.ZERO, true)
-		_pod_shell(ci, xf, scale, _station_inset(stations, 1.8), skin_tone, skin_tone, Vector2.ZERO, false)
-		_pod_shell(ci, xf, scale, _station_inset(stations, 4.6), pal.pod_lit, pal.pod_lit, Vector2.ZERO, false)
-		_pod_grooves(ci, xf, scale, stations, pal)
-		_pod_hatch(ci, xf, scale, stations, sign, pal)
+		var x0 := float(stations[0].x)
+		var x1 := float(stations[stations.size() - 1].x)
+		var mid := (x0 + x1) * 0.5
+		var gap := maxf((x1 - x0) * 0.045, 0.8)
+		_cargo_box(ci, xf, scale, stations, x0, mid - gap, sign, Color("1f4e79"), 0)
+		_cargo_box(ci, xf, scale, stations, mid + gap, x1, sign, Color("8c3a24"), 1)
 
 
-static func _draw_blister_fit(ci: CanvasItem, xf: Transform2D, scale: float, plan: Dictionary, pal: Dictionary, accent: Color) -> void:
+static func _cargo_box(ci: CanvasItem, xf: Transform2D, scale: float, stations: Array, x0: float, x1: float, sign: float, color: Color, _which: int) -> void:
+	if x1 - x0 < 3.0:
+		return
+	var proud := 11.4
+	var tuck := 2.6
+	var y_in0 := _skin_at(stations, x0) - sign * tuck
+	var y_out0 := _skin_at(stations, x0) + sign * proud
+	var y_in1 := _skin_at(stations, x1) - sign * tuck
+	var y_out1 := _skin_at(stations, x1) + sign * proud
+	var body := [
+		Vector2(x0, y_in0),
+		Vector2(x1, y_in1),
+		Vector2(x1, y_out1),
+		Vector2(x0, y_out0),
+	]
+	_poly(ci, xf, scale, [
+		Vector2(x0 - 0.4, y_in0 + sign * 1.2),
+		Vector2(x1 + 0.4, y_in1 + sign * 1.2),
+		Vector2(x1 + 0.4, y_out1 + sign * 1.1),
+		Vector2(x0 - 0.4, y_out0 + sign * 1.1),
+	], Color(0, 0, 0, 0.35))
+	_poly(ci, xf, scale, body, color)
+	_stroke(ci, xf, scale, body, color.lightened(0.28), _px(scale), true)
+	for raw_t in [0.28, 0.46, 0.64, 0.82]:
+		var t := float(raw_t)
+		_line(
+			ci, xf, scale,
+			Vector2(x0 + 0.4, lerpf(y_in0, y_out0, t)),
+			Vector2(x1 - 0.4, lerpf(y_in1, y_out1, t)),
+			color.darkened(0.28),
+			_px(scale)
+		)
+	var door := [
+		Vector2(x0, y_in0),
+		Vector2(x0 + 2.5, lerpf(y_in0, y_in1, 0.22)),
+		Vector2(x0 + 2.5, lerpf(y_out0, y_out1, 0.22)),
+		Vector2(x0, y_out0),
+	]
+	_poly(ci, xf, scale, door, color.darkened(0.35))
+	_line(ci, xf, scale, door[1], door[2], Color("c6b48a"), _px(scale) * 1.4)
+	_line(ci, xf, scale, Vector2(x0 + 1.15, lerpf(y_in0, y_out0, 0.18)), Vector2(x0 + 1.15, lerpf(y_in0, y_out0, 0.82)), Color("1a1612"), _px(scale) * 1.3)
+	var id_c := Vector2(lerpf(x0, x1, 0.62), lerpf((y_in0 + y_out0) * 0.5, (y_in1 + y_out1) * 0.5, 0.62))
+	var id_h := minf(absf(y_out0 - y_in0) * 0.16, 2.2)
+	_poly(ci, xf, scale, _round_rect(id_c, minf((x1 - x0) * 0.18, 3.6), id_h, 0.15), Color("efe8d8"))
+	_line(ci, xf, scale, id_c + Vector2(-1.8, -0.15), id_c + Vector2(-0.4, -0.15), Color("1a1c14"), _px(scale))
+	_line(ci, xf, scale, id_c + Vector2(0.0, -0.15), id_c + Vector2(0.7, -0.15), Color("1a1c14"), _px(scale))
+	_line(ci, xf, scale, id_c + Vector2(1.05, -0.15), id_c + Vector2(1.9, -0.15), Color("1a1c14"), _px(scale))
+	for raw_corner in [Vector2(x0, y_in0), Vector2(x1, y_in1), Vector2(x0, y_out0), Vector2(x1, y_out1)]:
+		var corner := raw_corner as Vector2
+		_poly(ci, xf, scale, _round_rect(corner, 1.45, 1.15, 0.15), Color("1a1916"))
+		_poly(ci, xf, scale, _round_rect(corner, 0.7, 0.55, 0.08), Color("3a3834"))
+
+
+static func _draw_blister_fit(ci: CanvasItem, xf: Transform2D, scale: float, plan: Dictionary, pal: Dictionary, _accent: Color) -> void:
 	for side in plan.sides:
 		var sign := float(side.sign)
 		var stations: Array = side.stations
-		_seam(ci, xf, scale, stations, pal)
-		for raw_index in [1, 2, 3]:
-			var index := int(raw_index)
-			var station: Dictionary = stations[index]
-			var x := float(station.x)
-			var skin := float(station.skin)
-			var doubler := [
-				Vector2(x - 3.6, skin - sign * 7.4),
-				Vector2(x + 3.6, skin - sign * 7.4),
-				Vector2(x + 3.6, skin - sign * 0.2),
-				Vector2(x - 3.6, skin - sign * 0.2),
-			]
-			_poly(ci, xf, scale, doubler, pal.body_light)
-			_stroke(ci, xf, scale, doubler, pal.seam, _px(scale), true)
-			_poly(ci, xf, scale, [
-				Vector2(x - 2.05, skin - sign * 6.4),
-				Vector2(x + 2.05, skin - sign * 6.4),
-				Vector2(x + 2.05, skin + sign * 7.2),
-				Vector2(x - 2.05, skin + sign * 7.2),
-			], pal.graphite)
-			_poly(ci, xf, scale, [
-				Vector2(x - 0.55, skin - sign * 6.0),
-				Vector2(x + 0.55, skin - sign * 6.0),
-				Vector2(x + 0.55, skin + sign * 6.6),
-				Vector2(x - 0.55, skin + sign * 6.6),
-			], pal.graphite_lit)
-			_bolt(ci, xf, scale, Vector2(x - 1.7, skin - sign * 4.6), pal)
-			_bolt(ci, xf, scale, Vector2(x + 1.7, skin - sign * 4.6), pal)
-			_bolt(ci, xf, scale, Vector2(x, skin + sign * 3.2), pal)
-			_poly(ci, xf, scale, _round_rect(Vector2(x, skin + sign * 0.4), 1.15, 0.7, 0.15), accent.darkened(0.05))
-		var nose_station: Dictionary = stations[stations.size() - 1]
-		var pipe_x := float(nose_station.x) - 1.6
-		var skin_f := float(nose_station.skin)
-		_strut(ci, xf, scale, Vector2(pipe_x, skin_f - sign * 1.4), Vector2(pipe_x, skin_f + sign * 4.8), 0.55, pal.graphite_lit)
-		_circ(ci, xf, scale, Vector2(pipe_x, skin_f + sign * 5.6), 1.35, pal.graphite)
-		_line(ci, xf, scale, Vector2(pipe_x - 0.9, skin_f + sign * 5.6), Vector2(pipe_x + 0.9, skin_f + sign * 5.6), pal.brass, _px(scale))
-		_line(ci, xf, scale, Vector2(pipe_x, skin_f + sign * 4.7), Vector2(pipe_x, skin_f + sign * 6.5), pal.brass, _px(scale))
-		for station in stations:
-			_bolt(ci, xf, scale, Vector2(float(station.x), float(station.skin) + sign * 1.3), pal)
+		var x0 := float(stations[0].x)
+		var x1 := float(stations[stations.size() - 1].x)
+		var rail := [
+			Vector2(x0, _skin_at(stations, x0) - sign * 2.2),
+			Vector2(x1, _skin_at(stations, x1) - sign * 2.2),
+			Vector2(x1, _skin_at(stations, x1) + sign * 1.8),
+			Vector2(x0, _skin_at(stations, x0) + sign * 1.8),
+		]
+		_poly(ci, xf, scale, rail, pal.graphite)
+		_stroke(ci, xf, scale, rail, pal.graphite_lit, _px(scale), true)
+		var mid := (x0 + x1) * 0.5
+		for raw_x in [x0 + 1.5, mid, x1 - 1.5]:
+			var x := float(raw_x)
+			var skin := _skin_at(stations, x)
+			_poly(ci, xf, scale, _round_rect(Vector2(x, skin + sign * 0.2), 1.15, 1.05, 0.15), Color("3a3834"))
+			_circ(ci, xf, scale, Vector2(x, skin + sign * 0.2), 0.42, pal.brass)
+			_bolt(ci, xf, scale, Vector2(x, skin - sign * 1.35), pal)
 
 
 static func _pod_shell(ci: CanvasItem, xf: Transform2D, scale: float, stations: Array, fill: Color, shadow: Color, shift: Vector2, rim: bool = true) -> void:
@@ -643,33 +736,14 @@ static func _draw_sponson_body(ci: CanvasItem, xf: Transform2D, scale: float, pl
 	for side in plan.sides:
 		var sign := float(side.sign)
 		var stations: Array = side.stations
-		var fill: Color = pal.armor.darkened(0.06) if sign > 0.0 else pal.armor.lightened(0.08)
-		for i in stations.size() - 1:
-			var a: Dictionary = stations[i]
-			var b: Dictionary = stations[i + 1]
-			_poly(ci, xf, scale, [
-				Vector2(float(a.x) - 0.4, float(a.y_in) + sign * 1.5),
-				Vector2(float(b.x) + 0.4, float(b.y_in) + sign * 1.5),
-				Vector2(float(b.x) + 0.4, float(b.y_out) + sign * 1.4),
-				Vector2(float(a.x) - 0.4, float(a.y_out) + sign * 1.4),
-			], pal.shadow)
-		for i in stations.size() - 1:
-			var a: Dictionary = stations[i]
-			var b: Dictionary = stations[i + 1]
-			_poly(ci, xf, scale, [
-				Vector2(float(a.x), float(a.y_in)),
-				Vector2(float(b.x), float(b.y_in)),
-				Vector2(float(b.x), float(b.y_out)),
-				Vector2(float(a.x), float(a.y_out)),
-			], fill)
-		var outer: Array = []
-		for station in stations:
-			outer.append(Vector2(float(station.x), float(station.y_out)))
-		_stroke(ci, xf, scale, outer, pal.armor_edge, _px(scale), false)
-		var inset_edge: Array = []
-		for station in stations:
-			inset_edge.append(Vector2(float(station.x), float(station.y_out) - sign * 2.2))
-		_stroke(ci, xf, scale, inset_edge, pal.armor.lightened(0.12), _px(scale), false)
+		var seat: Dictionary = stations[2]
+		var skin := float(seat.skin)
+		var proud := absf(float(seat.y_out) - skin)
+		var center := Vector2(float(seat.x) - 0.4, skin + sign * proud * 0.22)
+		var hw := proud * 0.78
+		var hh := proud * 0.84
+		var shadow := _round_rect(center + Vector2(0.5, sign * 0.7), hw, hh, minf(hw, hh) * 0.42)
+		_poly(ci, xf, scale, shadow, pal.shadow)
 
 
 static func _draw_sponson_fit(ci: CanvasItem, xf: Transform2D, scale: float, plan: Dictionary, pal: Dictionary, accent: Color) -> void:
@@ -677,39 +751,211 @@ static func _draw_sponson_fit(ci: CanvasItem, xf: Transform2D, scale: float, pla
 		var sign := float(side.sign)
 		var stations: Array = side.stations
 		var seat: Dictionary = stations[2]
-		var turret := Vector2(float(seat.x) + 1.4, float(side.barrel_y))
-		var muzzle_x := float(side.muzzle_x)
-		var x0 := turret.x - 7.2
-		var x1 := turret.x + 8.4
-		var outer := float(side.barrel_y) + sign * 6.6
-		var cheek := [
-			Vector2(x0, _skin_at(stations, x0) - sign * 3.4),
-			Vector2(x1, _skin_at(stations, x1) - sign * 3.4),
-			Vector2(x1, outer),
-			Vector2(x0, outer),
-		]
-		_poly(ci, xf, scale, cheek, pal.armor)
-		_stroke(ci, xf, scale, cheek, pal.armor_edge, _px(scale), true)
-		for raw_dx in [-4.6, -1.4, 2.2, 5.4]:
+		var skin := float(seat.skin)
+		var proud := absf(float(seat.y_out) - skin)
+		var center := Vector2(float(seat.x) - 0.4, skin + sign * proud * 0.22)
+		var hw := proud * 0.78
+		var hh := proud * 0.84
+		var tub := _round_rect(center, hw, hh, minf(hw, hh) * 0.42)
+		_poly(ci, xf, scale, tub, pal.plate)
+		_stroke(ci, xf, scale, tub, pal.plate_edge, _px(scale), true)
+		var hatch := _round_rect(center + Vector2(-hw * 0.08, sign * hh * 0.05), hw * 0.34, hh * 0.22, 0.35)
+		_poly(ci, xf, scale, hatch, (pal.plate as Color).darkened(0.16))
+		_stroke(ci, xf, scale, hatch, pal.graphite, _px(scale), true)
+		for raw_dx in [-hw * 0.55, 0.0, hw * 0.42]:
 			var dx := float(raw_dx)
-			var bolt_x := turret.x + dx
+			var bolt_x := center.x + dx
 			_bolt(ci, xf, scale, Vector2(bolt_x, _skin_at(stations, bolt_x) - sign * 1.35), pal)
-		var ring := 5.2
-		_circ(ci, xf, scale, turret, ring, pal.armor_edge)
-		_circ(ci, xf, scale, turret, ring * 0.74, pal.armor.darkened(0.08))
-		_circ(ci, xf, scale, turret, ring * 0.42, pal.barrel)
-		_stroke_circle(ci, xf, scale, turret, ring, pal.graphite_lit)
-		for i in 6:
-			var angle := TAU * float(i) / 6.0
-			_bolt(ci, xf, scale, turret + Vector2(cos(angle), sin(angle)) * ring * 0.84, pal)
-		var house := _round_rect(turret + Vector2(3.4, 0), 4.2, 3.3, 0.45)
-		_poly(ci, xf, scale, house, pal.barrel.lightened(0.1))
-		_stroke(ci, xf, scale, house, pal.armor_edge, _px(scale), true)
-		_poly(ci, xf, scale, _round_rect(turret + Vector2(3.2, -sign * 1.5), 2.2, 0.42, 0.1), accent)
-		var spread := 1.85
-		_draw_barrel(ci, xf, scale, turret + Vector2(0.2, sign * spread), Vector2(muzzle_x, turret.y + sign * spread), 1.45, pal)
-		_draw_barrel(ci, xf, scale, turret + Vector2(0.2, -sign * spread), Vector2(muzzle_x, turret.y - sign * spread), 1.45, pal)
-		_poly(ci, xf, scale, _round_rect(turret + Vector2(4.6, sign * 3.15), 1.05, 0.5, 0.12), Color("0c0e12"))
+		var ring := center + Vector2(hw * 0.08, sign * hh * 0.18)
+		var ring_r := minf(hw, hh) * 0.38
+		_circ(ci, xf, scale, ring, ring_r, pal.plate_edge)
+		_circ(ci, xf, scale, ring, ring_r * 0.68, pal.barrel)
+		_circ(ci, xf, scale, ring, ring_r * 0.22, Color("0c0e12"))
+		_stroke_circle(ci, xf, scale, ring, ring_r, pal.graphite_lit)
+		for i in 4:
+			var angle := TAU * float(i) / 4.0 + 0.55
+			_bolt(ci, xf, scale, ring + Vector2(cos(angle), sin(angle)) * ring_r * 0.82, pal)
+		var mantlet := Vector2(center.x + hw * 0.78, center.y + sign * hh * 0.08)
+		var muzzle_x := float(side.muzzle_x)
+		var spread := maxf(hh * 0.2, 1.7)
+		_poly(ci, xf, scale, _round_rect(mantlet, 1.5, spread + 1.15, 0.25), pal.barrel)
+		_stroke(ci, xf, scale, _round_rect(mantlet, 1.5, spread + 1.15, 0.25), pal.plate_edge, _px(scale), true)
+		_draw_barrel(ci, xf, scale, mantlet + Vector2(1.1, sign * spread), Vector2(muzzle_x, mantlet.y + sign * spread), 2.15, pal)
+		_draw_barrel(ci, xf, scale, mantlet + Vector2(1.1, -sign * spread), Vector2(muzzle_x, mantlet.y - sign * spread), 2.15, pal)
+		_poly(ci, xf, scale, _round_rect(mantlet + Vector2(0.2, sign * (spread + 1.6)), 0.85, 0.4, 0.1), accent)
+
+
+static func _draw_battery(ci: CanvasItem, xf: Transform2D, scale: float, plan: Dictionary, pal: Dictionary) -> void:
+	var x0 := float(plan.x0)
+	var x1 := float(plan.x1)
+	var hw := float(plan.half_w)
+	var skin := float(plan.skin)
+	var cx := (x0 + x1) * 0.5
+	var case_hw := (x1 - x0) * 0.5
+	var flange := _round_rect(Vector2(cx, 0.0), case_hw + 1.55, hw + 1.2, 0.85)
+	_poly(ci, xf, scale, flange, pal.graphite)
+	_stroke(ci, xf, scale, flange, pal.graphite_lit, _px(scale), true)
+	var bolt_y := minf(hw + 0.45, maxf(skin * 0.62, 1.6))
+	for raw_point in [
+		Vector2(x0 + 0.15, -bolt_y), Vector2(x1 - 0.15, -bolt_y),
+		Vector2(x0 + 0.15, bolt_y), Vector2(x1 - 0.15, bolt_y),
+		Vector2(cx, -bolt_y), Vector2(cx, bolt_y),
+	]:
+		_bolt(ci, xf, scale, raw_point as Vector2, pal)
+	var case_pts := _round_rect(Vector2(cx, 0.0), case_hw - 0.25, hw - 0.3, 0.5)
+	_poly(ci, xf, scale, case_pts, pal.case)
+	_stroke(ci, xf, scale, case_pts, pal.case_edge, _px(scale), true)
+	var band_x1 := x1 - 6.2
+	for raw_side in [1.0, -1.0]:
+		var side := float(raw_side)
+		var y_outer := side * (hw - 0.85)
+		var y_inner := side * (hw - 2.05)
+		_poly(ci, xf, scale, [
+			Vector2(x0 + 1.1, y_inner),
+			Vector2(band_x1, y_inner),
+			Vector2(band_x1, y_outer),
+			Vector2(x0 + 1.1, y_outer),
+		], pal.hazard)
+		for dash in 6:
+			if dash % 2 == 0:
+				continue
+			var t0 := float(dash) / 6.0
+			var t1 := float(dash + 1) / 6.0
+			_poly(ci, xf, scale, [
+				Vector2(lerpf(x0 + 1.1, band_x1, t0), y_inner),
+				Vector2(lerpf(x0 + 1.1, band_x1, t1), y_inner),
+				Vector2(lerpf(x0 + 1.1, band_x1, t1), y_outer),
+				Vector2(lerpf(x0 + 1.1, band_x1, t0), y_outer),
+			], Color("1a1c14"))
+	var usable_x0 := x0 + 1.7
+	var usable_x1 := x1 - 6.6
+	var cols := 3
+	var gap := 0.48
+	var full_w := (usable_x1 - usable_x0 - gap * float(cols - 1)) / float(cols)
+	full_w = maxf(full_w, 1.8)
+	var cell_hh := clampf((hw - 2.7) * 0.42, 1.55, 3.4)
+	var cell_hw := full_w * 0.5
+	for col in cols:
+		var cell_cx := usable_x0 + cell_hw + float(col) * (full_w + gap)
+		for raw_sy in [1.0, -1.0]:
+			var sy := float(raw_sy)
+			_draw_cell(ci, xf, scale, Vector2(cell_cx, sy * (cell_hh + 0.38)), cell_hw, cell_hh, pal)
+	var term_x := x1 - 2.7
+	var term_y := minf(hw * 0.34, 2.6)
+	_draw_terminal(ci, xf, scale, Vector2(term_x, -term_y), pal.terminal_pos, true)
+	_draw_terminal(ci, xf, scale, Vector2(term_x, term_y), pal.terminal_neg, false)
+	if term_y > 1.6:
+		_poly(ci, xf, scale, _round_rect(Vector2(term_x, 0.0), 0.42, term_y - 1.15, 0.12), pal.brass)
+	var plug := Vector2(x0 + 0.5, 0.0)
+	var junction := Vector2(x0 - 7.4, 0.0)
+	_strut(ci, xf, scale, plug, junction + Vector2(1.8, 0.0), 1.05, pal.cable)
+	_strut(ci, xf, scale, plug + Vector2(0.0, -0.45), junction + Vector2(1.8, -0.45), 0.22, pal.cable_lit)
+	var box := _round_rect(junction, 2.15, 1.75, 0.25)
+	_poly(ci, xf, scale, box, pal.graphite)
+	_stroke(ci, xf, scale, box, pal.graphite_lit, _px(scale), true)
+	_bolt(ci, xf, scale, junction + Vector2(-0.95, -0.85), pal)
+	_bolt(ci, xf, scale, junction + Vector2(-0.95, 0.85), pal)
+	_circ(ci, xf, scale, junction + Vector2(0.75, 0.0), 0.42, pal.hazard)
+
+
+static func _draw_cell(ci: CanvasItem, xf: Transform2D, scale: float, center: Vector2, half_w: float, half_h: float, pal: Dictionary) -> void:
+	var body := _round_rect(center, half_w, half_h, 0.28)
+	_poly(ci, xf, scale, body, pal.cell_can)
+	var cap := _round_rect(center + Vector2(-0.12, -0.08), half_w - 0.28, half_h - 0.28, 0.16)
+	_poly(ci, xf, scale, cap, pal.cell_cap)
+	_stroke(ci, xf, scale, body, pal.graphite, _px(scale), true)
+	var nub := center + Vector2(half_w * 0.55, 0.0)
+	_circ(ci, xf, scale, nub, minf(0.38, half_h * 0.22), pal.cell_vent)
+
+
+static func _draw_terminal(ci: CanvasItem, xf: Transform2D, scale: float, center: Vector2, color: Color, positive: bool) -> void:
+	_circ(ci, xf, scale, center + Vector2(0.2, 0.25), 1.45, Color(0, 0, 0, 0.35))
+	_circ(ci, xf, scale, center, 1.5, color.darkened(0.38))
+	_circ(ci, xf, scale, center, 1.12, color)
+	_circ(ci, xf, scale, center + Vector2(-0.38, -0.38), 0.32, color.lightened(0.32))
+	var mark := Color("f4efe6")
+	_line(ci, xf, scale, center + Vector2(-0.55, 0.0), center + Vector2(0.55, 0.0), mark, _px(scale))
+	if positive:
+		_line(ci, xf, scale, center + Vector2(0.0, -0.55), center + Vector2(0.0, 0.55), mark, _px(scale))
+
+
+static func _draw_armor_plates(ci: CanvasItem, xf: Transform2D, scale: float, plan: Dictionary, pal: Dictionary) -> void:
+	for side in plan.sides:
+		var sign := float(side.sign)
+		var stations: Array = side.stations
+		for i in stations.size() - 1:
+			var a: Dictionary = stations[i]
+			var b: Dictionary = stations[i + 1]
+			var overlap := 0.0
+			if i < stations.size() - 2:
+				var nxt: Dictionary = stations[i + 2]
+				overlap = (float(nxt.x) - float(b.x)) * 0.46
+			var ax := float(a.x) + (0.2 if i == 0 else 0.0)
+			var bx := float(b.x) + overlap
+			if bx - ax < 1.6:
+				continue
+			var a_skin := _skin_at(stations, ax)
+			var b_skin := _skin_at(stations, bx)
+			var proud := 7.2 if i % 2 == 0 else 5.9
+			var tuck := 2.5
+			var plate := [
+				Vector2(ax, a_skin - sign * tuck),
+				Vector2(bx, b_skin - sign * tuck),
+				Vector2(bx - 0.15, b_skin + sign * proud),
+				Vector2(ax + 0.2, a_skin + sign * (proud - 0.35)),
+			]
+			var shade := (pal.plate as Color) if i % 2 == 0 else (pal.plate_alt as Color)
+			if sign < 0.0:
+				shade = shade.lightened(0.06)
+			_poly(ci, xf, scale, [
+				plate[0] + Vector2(0.35, sign * 0.7),
+				plate[1] + Vector2(0.35, sign * 0.7),
+				plate[2] + Vector2(0.35, sign * 0.7),
+				plate[3] + Vector2(0.35, sign * 0.7),
+			], pal.shadow)
+			_poly(ci, xf, scale, plate, shade)
+			var lip := [
+				Vector2(ax + 0.45, a_skin + sign * (proud - 1.65)),
+				Vector2(bx - 0.45, b_skin + sign * (proud - 1.35)),
+				plate[2],
+				plate[3],
+			]
+			_poly(ci, xf, scale, lip, shade.lightened(0.18))
+			_stroke(ci, xf, scale, plate, pal.plate_edge, _px(scale), true)
+			var mid_x := lerpf(ax, bx, 0.42)
+			var mid_skin := _skin_at(stations, mid_x)
+			_circ(ci, xf, scale, Vector2(mid_x, mid_skin + sign * (proud - 0.95)), 0.48, Color("14171c"))
+			_circ(ci, xf, scale, Vector2(lerpf(ax, bx, 0.72), _skin_at(stations, lerpf(ax, bx, 0.72)) + sign * (proud * 0.48)), 0.42, pal.graphite)
+
+
+static func _draw_armor_fit(ci: CanvasItem, xf: Transform2D, scale: float, plan: Dictionary, pal: Dictionary) -> void:
+	for side in plan.sides:
+		var sign := float(side.sign)
+		var stations: Array = side.stations
+		for i in stations.size() - 1:
+			var a: Dictionary = stations[i]
+			var b: Dictionary = stations[i + 1]
+			var rail := [
+				Vector2(float(a.x), float(a.skin) - sign * 2.35),
+				Vector2(float(b.x), float(b.skin) - sign * 2.35),
+				Vector2(float(b.x), float(b.skin) - sign * 0.2),
+				Vector2(float(a.x), float(a.skin) - sign * 0.2),
+			]
+			_poly(ci, xf, scale, rail, pal.graphite)
+			_stroke(ci, xf, scale, rail, pal.graphite_lit, _px(scale), true)
+		for station in stations:
+			var x := float(station.x)
+			var skin := float(station.skin)
+			var strap := [
+				Vector2(x - 0.7, skin - sign * 1.7),
+				Vector2(x + 0.7, skin - sign * 1.7),
+				Vector2(x + 0.85, skin + sign * 3.6),
+				Vector2(x - 0.85, skin + sign * 3.6),
+			]
+			_poly(ci, xf, scale, strap, pal.graphite)
+			_stroke(ci, xf, scale, strap, pal.graphite_lit, _px(scale), true)
+			_bolt(ci, xf, scale, Vector2(x, skin - sign * 1.15), pal)
+			_circ(ci, xf, scale, Vector2(x, skin + sign * 2.7), 0.38, pal.brass)
 
 
 static func _draw_barrel(ci: CanvasItem, xf: Transform2D, scale: float, root: Vector2, muzzle: Vector2, radius: float, pal: Dictionary) -> void:

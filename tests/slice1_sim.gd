@@ -52,6 +52,10 @@ func _geometry() -> void:
 	var beak := Silhouette.extent(Silhouette.parts("kestrel", []))
 	var sponson := Silhouette.extent(Silhouette.parts("kestrel", ["sponson"]))
 	check(sponson.y > beak.y + 6.0, "sponson widens the Beak")
+	var pack := Silhouette.extent(Silhouette.parts("vesper", ["battery"]))
+	check(pack.y > bare.y + 1.0, "battery pack widens the Needle")
+	var belt := Silhouette.extent(Silhouette.parts("kestrel", ["armor"]))
+	check(belt.y > beak.y + 3.0, "armor belt widens the Beak")
 
 
 func _keels() -> void:
@@ -118,7 +122,8 @@ func _vesper_loop() -> void:
 	check(bool(installed.ok), "mast bolts on")
 	check(sim.player.modules.has("sensor_mast"), "layout records the mast")
 	check(Fit.stats(defs, sim.player).yaw_deg < yaw_before, "mast makes yaw heavier")
-	check(sim.player.yard.is_empty(), "yard spent the part")
+	check(not sim.player.yard.has("sensor_mast"), "yard spent the mast")
+	check(sim.player.yard.has("battery_pack"), "battery stays in the yard")
 	var rejected := sim.install("sensor_mast")
 	check(not bool(rejected.ok), "a second mast is refused")
 	sim.defs.modules["too_hot"] = {
