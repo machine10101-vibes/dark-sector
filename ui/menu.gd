@@ -570,15 +570,19 @@ func _card(class_id: String) -> PanelContainer:
 	class_line.set_meta("klass", str(hull.class_name))
 	class_line.autowrap_mode = TextServer.AUTOWRAP_OFF
 	box.add_child(class_line)
-	var previews := HBoxContainer.new()
+	var previews := VBoxContainer.new()
 	previews.name = "Previews"
-	previews.add_theme_constant_override("separation", 8)
-	previews.add_child(_preview(class_id, [], "As launched"))
-	var yard: Array = hull.yard
-	if not yard.is_empty():
-		previews.add_child(_preview(class_id, [str(yard[0])], _bolt_name(class_id)))
+	previews.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# The card shows the hull the yard actually turns: mast, bay, or wing guns.
+	var worn: Array = []
+	if class_id == "vesper":
+		worn = ["sensor_mast"]
+	elif class_id == "anvil":
+		worn = ["cargo_blister"]
+	elif class_id == "kestrel":
+		worn = ["gun_sponson"]
+	previews.add_child(_preview(class_id, worn, _bolt_name(class_id)))
 	box.add_child(previews)
-	_share_plan_frame(previews)
 	var blurb_text := str(hull.select_blurb)
 	var stop := blurb_text.find(". ")
 	if stop > 0:
@@ -622,11 +626,12 @@ func _card(class_id: String) -> PanelContainer:
 func _preview(class_id: String, modules: Array, caption: String) -> VBoxContainer:
 	var col := VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var preview := KeelPlan.new()
+	var preview := ShipPortrait.new()
 	preview.class_id = class_id
 	preview.modules = modules
-	preview.custom_minimum_size = Vector2(120, 56)
-	preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	preview.custom_minimum_size = Vector2(280, 140)
+	preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	preview.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(preview)
 	var caption_line := ThemeKit.label(caption, 12, Color("8a7344"))
@@ -779,32 +784,6 @@ func _stat_bit(value: String) -> Label:
 	return bit
 
 
-func _share_plan_frame(previews: HBoxContainer) -> void:
-	var plans: Array = []
-	var union := Rect2()
-	var started := false
-	for col in previews.get_children():
-		if col.get_child_count() < 1:
-			continue
-		var plan := col.get_child(0) as KeelPlan
-		if plan == null:
-			continue
-		plans.append(plan)
-		var bounds := plan.measured_bounds()
-		if bounds.size == Vector2.ZERO:
-			continue
-		if started:
-			union = union.merge(bounds)
-		else:
-			union = bounds
-			started = true
-	if started == false:
-		return
-	union = union.grow(3.0)
-	for plan in plans:
-		(plan as KeelPlan).frame = union
-
-
 func _style_field(line: LineEdit) -> void:
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color(0.012, 0.025, 0.034, 0.94)
@@ -915,85 +894,136 @@ class TitlePlate extends Control:
 			x += font.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + gap
 
 
-## Plan view of a keel, the same silhouette the yard bolts onto.
-## A 140px spinning mesh read as texture. The plan reads as a ship.
-class KeelPlan extends Control:
+## The same machined hull the yard and the flight view use, turned in a small glass.
+class ShipPortrait extends SubViewportContainer:
 	var class_id := "vesper"
 	var modules: Array = []
-	# Shared with the other plan on the card, so the bolt is the only change.
-	var frame := Rect2()
+	var _built := false
+	var _stage: Node3D
+	var _pivot: Node3D
+	var _holder: Node3D
+	var _extent := Vector3(40, 16, 16)
+	var _phase := 0.0
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		resized.connect(queue_redraw)
+		stretch = false
+		resized.connect(_frame_camera)
+		_phase = float(class_id.hash() % 628) * 0.01
+		var vp := SubViewport.new()
+		vp.name = "PortraitView"
+		vp.own_world_3d = true
+		vp.world_3d = World3D.new()
+		vp.transparent_bg = false
+		vp.handle_input_locally = false
+		vp.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+		vp.size = Vector2i(220, 140)
+		add_child(vp)
+		var env := WorldEnvironment.new()
+		var world := Environment.new()
+		world.background_mode = Environment.BG_COLOR
+		world.background_color = Color(0.012, 0.018, 0.026)
+		world.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		world.ambient_light_color = Color(0.55, 0.62, 0.72)
+		world.ambient_light_energy = 0.42
+		world.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		world.glow_enabled = true
+		world.glow_intensity = 0.42
+		world.glow_strength = 0.7
+		world.glow_bloom = 0.12
+		world.glow_hdr_threshold = 0.86
+		env.environment = world
+		vp.add_child(env)
+		var cam := Camera3D.new()
+		cam.name = "PortraitEye"
+		cam.current = true
+		cam.fov = 28.0
+		cam.near = 0.2
+		cam.far = 4000.0
+		vp.add_child(cam)
+		_stage = preload("res://world/stage3d.gd").new()
+		_stage.name = "PortraitStage"
+		_stage.set("portrait_mode", true)
+		vp.add_child(_stage)
+		_stage.set_process(false)
 
-	func measured_bounds() -> Rect2:
-		if Game.defs.is_empty() or Game.defs.ships.has(class_id) == false:
-			return Rect2()
+	func _process(_delta: float) -> void:
+		if not is_visible_in_tree():
+			return
+		if not _built:
+			_build_hull()
+			return
+		if _pivot != null:
+			# Hold a three-quarter view. A full spin hides a long hull down its own nose.
+			_pivot.rotation.y = 0.15 + sin(Time.get_ticks_msec() * 0.00045 + _phase) * 0.12
+		if _stage != null and _holder != null and _stage.has_method("_pulse_lamps"):
+			_stage.call("_pulse_lamps", _holder)
+
+	func _build_hull() -> void:
+		if _built or _stage == null or Game.defs.is_empty() or Game.defs.ships.has(class_id) == false:
+			return
+		_built = true
+		_pivot = Node3D.new()
+		_pivot.name = "Turn"
+		_stage.add_child(_pivot)
+		_holder = Node3D.new()
+		_holder.name = "Hull"
+		_pivot.add_child(_holder)
 		var shapes: Array = Silhouette.shapes_of(Game.defs, modules)
 		var layers: Array = Silhouette.layers_of(Game.defs, modules)
-		return _bounds(Silhouette.parts(class_id, shapes, layers))
-
-	func _draw() -> void:
-		if size.x < 8.0 or size.y < 8.0 or Game.defs.is_empty():
-			return
-		var hull: Dictionary = Game.defs.ships.get(class_id, {})
-		if hull.is_empty():
-			return
-		var accent := Color(str(hull.get("accent", "#d7e6c8")))
+		_stage.call("_fill_ship", _holder, class_id, shapes, layers)
+		var hull: Dictionary = Game.defs.ships[class_id]
 		var body := Color(str(hull.get("color", "#1f6f73")))
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.012, 0.02, 0.028, 0.85))
-		var tick := 7.0
-		var edge := Color(accent.r, accent.g, accent.b, 0.9)
-		draw_line(Vector2(1, 1), Vector2(tick, 1), edge, 1.2)
-		draw_line(Vector2(1, 1), Vector2(1, tick), edge, 1.2)
-		draw_line(Vector2(size.x - 1, 1), Vector2(size.x - tick, 1), edge, 1.2)
-		draw_line(Vector2(size.x - 1, 1), Vector2(size.x - 1, tick), edge, 1.2)
-		draw_line(Vector2(1, size.y - 1), Vector2(tick, size.y - 1), edge, 1.2)
-		draw_line(Vector2(1, size.y - 1), Vector2(1, size.y - tick), edge, 1.2)
-		draw_line(Vector2(size.x - 1, size.y - 1), Vector2(size.x - tick, size.y - 1), edge, 1.2)
-		draw_line(Vector2(size.x - 1, size.y - 1), Vector2(size.x - 1, size.y - tick), edge, 1.2)
-		var shapes: Array = Silhouette.shapes_of(Game.defs, modules)
-		var layers: Array = Silhouette.layers_of(Game.defs, modules)
-		var geom := Silhouette.parts(class_id, shapes, layers)
-		var bounds := frame if frame.size.x > 1.0 else _bounds(geom)
-		if bounds.size.x < 1.0 or bounds.size.y < 1.0:
-			return
-		# A wide hull (the Barn) stood on end so the beam uses the card width.
-		# A long hull stays nose-right, so the mast reads as extra length.
-		var margin := 6.0
-		var rot := 0.0
-		var span_x := bounds.size.x
-		var span_y := bounds.size.y
-		if bounds.size.y > bounds.size.x:
-			rot = -PI * 0.5
-			span_x = bounds.size.y
-			span_y = bounds.size.x
-		var fit_x := (size.x - margin * 2.0) / span_x
-		var fit_y := (size.y - margin * 2.0) / span_y
-		var plan_scale := minf(fit_x, fit_y)
-		var mid := bounds.position + bounds.size * 0.5
-		var origin := size * 0.5 - mid.rotated(rot) * plan_scale
-		Silhouette.draw(self, origin, rot, class_id, shapes, plan_scale, body, accent, 1.0, false, layers)
+		var accent := Color(str(hull.get("accent", "#d7e6c8")))
+		for child in _holder.get_children():
+			var part := str(child.name)
+			if not bool(_stage.call("_hull_part", part)):
+				continue
+			var tone := body
+			if part == "Deck":
+				tone = body.lightened(0.16)
+			elif part.begins_with("Trim"):
+				tone = accent
+			_stage.call("_paint_hull", child, tone, accent)
+		var bounds := _local_bounds(_holder)
+		_extent = bounds.size
+		_holder.position = -bounds.get_center()
+		_frame_camera()
 
-	func _bounds(geom: Dictionary) -> Rect2:
-		var lo := Vector2(1.0e9, 1.0e9)
-		var hi := Vector2(-1.0e9, -1.0e9)
-		var lists: Array = [geom.hull]
-		lists.append_array(geom.extras)
-		for poly in lists:
-			for point in poly:
-				lo.x = minf(lo.x, point.x)
-				lo.y = minf(lo.y, point.y)
-				hi.x = maxf(hi.x, point.x)
-				hi.y = maxf(hi.y, point.y)
-		for circle in geom.circles:
-			var center := Vector2(float(circle.x), float(circle.y))
-			var rad := float(circle.r)
-			lo.x = minf(lo.x, center.x - rad)
-			lo.y = minf(lo.y, center.y - rad)
-			hi.x = maxf(hi.x, center.x + rad)
-			hi.y = maxf(hi.y, center.y + rad)
-		if hi.x < lo.x:
-			return Rect2()
-		return Rect2(lo, hi - lo)
+	func _frame_camera() -> void:
+		var cam := get_node_or_null("PortraitView/PortraitEye") as Camera3D
+		var vp := get_node_or_null("PortraitView") as SubViewport
+		if cam == null or vp == null or not _built:
+			return
+		if size.x > 8.0 and size.y > 8.0:
+			var next := Vector2i(maxi(int(size.x), 2), maxi(int(size.y), 2))
+			if vp.size != next:
+				vp.size = next
+		var aspect := maxf(float(vp.size.x) / maxf(float(vp.size.y), 1.0), 0.4)
+		var v_fov := deg_to_rad(cam.fov)
+		var h_fov := 2.0 * atan(tan(v_fov * 0.5) * aspect)
+		var half_w := maxf(_extent.x, _extent.z) * 0.55
+		var half_h := maxf(_extent.y, 8.0) * 0.55
+		var dist := maxf(half_w / maxf(tan(h_fov * 0.5), 0.05), half_h / maxf(tan(v_fov * 0.5), 0.05))
+		dist *= 1.06
+		var eye := Vector3(-0.42, 0.36, 0.95).normalized() * dist
+		cam.position = eye
+		cam.look_at(Vector3.ZERO, Vector3.UP)
+
+	func _local_bounds(holder: Node3D) -> AABB:
+		var acc := AABB()
+		var any := false
+		var into := holder.global_transform.affine_inverse()
+		for node in holder.find_children("*", "MeshInstance3D", true, false):
+			var mesh_node := node as MeshInstance3D
+			if mesh_node.mesh == null:
+				continue
+			var box: AABB = into * mesh_node.global_transform * mesh_node.get_aabb()
+			if any:
+				acc = acc.merge(box)
+			else:
+				acc = box
+				any = true
+		if not any:
+			return AABB(Vector3(-20, -8, -8), Vector3(40, 16, 16))
+		return acc
