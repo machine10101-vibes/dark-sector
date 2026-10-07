@@ -172,7 +172,7 @@
     "name": "The Unlet",
     "anchor": "aegis_prime",
     "angle": -1.15,
-    "distance": 1180,
+    "distance": 1860,
     "radius": 260,
     "plantable": false,
     "why": "Marked on the chart. Compact law keeps it empty."
@@ -186,7 +186,7 @@
   "zones": {
     "green": {
       "anchor": "aegis_prime",
-      "radius": 980
+      "radius": 1650
     },
     "amber": {
       "anchor": "nest",
@@ -221,7 +221,7 @@
       "arrive": "soil_lane",
       "anchor": "aegis_prime",
       "angle": 0.4,
-      "distance": 1300,
+      "distance": 1970,
       "radius": 140,
       "color": "green"
     },
@@ -232,7 +232,7 @@
       "arrive": "brass_from_dock",
       "anchor": "aegis_prime",
       "angle": 1.35,
-      "distance": 1550,
+      "distance": 2220,
       "radius": 120,
       "color": "green"
     },
@@ -243,7 +243,7 @@
       "arrive": "writ_from_dock",
       "anchor": "aegis_prime",
       "angle": 2.2,
-      "distance": 1680,
+      "distance": 2350,
       "radius": 120,
       "color": "green"
     }

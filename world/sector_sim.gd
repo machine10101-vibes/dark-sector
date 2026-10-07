@@ -7,9 +7,15 @@ const BODY_SCALE := 3.4
 const PLANET_SCALE := 6.0
 const ROCK_SCALE := 4.2
 const DOCK_GAP := 320.0
-## Helion berth, pinned in world meters. It used to be radius+430, which
-## walked the pad out of the green disc whenever Aegis grew.
-const BERTH_OFFSET := Vector2(821.0, -160.0)
+## Helion berth, pinned in world meters on the old pad heading. A radius-plus
+## offset walked the pad out of the green disc whenever Aegis grew. The pin
+## used to land ~150 m off the crust, inside the ice ring. This length keeps
+## the station in open sky past the ring, still inside the green lane.
+const BERTH_OFFSET := Vector2(1473.0, -287.0)
+## Other docks sit at least this far above the crust. A large world pushes
+## the pad out farther so it does not ride the limb.
+const DOCK_ALT := 640.0
+const DOCK_SKY := 700.0
 const DOCK_BUOY_ANGLE := -0.7
 const DOCK_BUOY_OUT := 700.0
 const DOCK_HALO_KM := 9000.0
@@ -1733,10 +1739,65 @@ func _hub_pad(dock, nudge: float) -> Vector2:
 		return Vector2.ZERO
 	if beacon_pos != Vector2.ZERO and absf(nudge) < 0.5:
 		return beacon_pos
+	var offset := _dock_offset(dock)
+	if absf(nudge) > 0.5 and offset.length_squared() > 1.0:
+		var heading := offset.normalized()
+		var side := Vector2(-heading.y, heading.x)
+		offset += side * nudge
+	return dock.pos + offset
+
+
+func _dock_offset(dock: Dictionary) -> Vector2:
 	if _is_helion_pad(dock):
-		return dock.pos + BERTH_OFFSET + Vector2(0.0, nudge)
-	var outward := Vector2(float(dock.radius) + 430.0, -160.0 + nudge)
-	return dock.pos + outward
+		return BERTH_OFFSET
+	var radius := float(dock.radius)
+	var alt := maxf(DOCK_ALT, radius * 1.15)
+	var reach := _fit_green_lane(dock, radius + alt)
+	var heading := Vector2(BERTH_OFFSET.x, BERTH_OFFSET.y).normalized()
+	return heading * reach
+
+
+## A green-law pad has to stay inside the orbit disc. Grow that disc out
+## to the pad when a lane buoy and an outside pocket still leave room.
+func _fit_green_lane(dock: Dictionary, reach: float) -> float:
+	if str(defs.system.get("law_color", "")) != "green":
+		return reach
+	var zones: Dictionary = defs.system.get("zones", {})
+	var green: Dictionary = zones.get("green", {})
+	var authored := float(green.get("radius", 0.0))
+	if authored < 80.0:
+		return reach
+	if str(green.get("anchor", "")) != str(dock.get("id", "")):
+		return reach
+	var radius := float(dock.radius)
+	var legacy := Vector2(radius + 430.0, -160.0).length()
+	var room := _green_room(dock, authored)
+	var grown := maxf(authored, minf(reach + 90.0, room))
+	if grown > authored + 1.0:
+		green.radius = grown
+	var fitted := reach
+	if fitted > grown - 40.0:
+		fitted = grown - 40.0
+	if fitted < legacy and legacy <= grown - 20.0:
+		fitted = legacy
+	return maxf(fitted, radius + 280.0)
+
+
+func _green_room(dock: Dictionary, authored: float) -> float:
+	var room := 20000.0
+	var home := str(dock.get("id", ""))
+	for source in defs.system.get("gates", []):
+		var gate: Dictionary = source
+		var anchor := str(gate.get("anchor", ""))
+		if anchor != "" and anchor != home:
+			continue
+		room = minf(room, float(gate.get("distance", 9000.0)) - 50.0)
+	var pocket: Dictionary = defs.system.get("pocket", {})
+	if str(pocket.get("anchor", "")) == home:
+		var pocket_d := float(pocket.get("distance", 9000.0))
+		if pocket_d > authored + 10.0:
+			room = minf(room, pocket_d - 30.0)
+	return maxf(room, authored)
 
 
 func _release_mooring(unit: Dictionary) -> void:
@@ -1803,9 +1864,9 @@ func _scale_sky() -> void:
 		var room := float(row.distance) - star_radius - 160.0
 		cap = minf(cap, maxf(authored, room))
 		# Patrols and haulers are lifted outside the new crust. The Helion
-		# pad is pinned, so Aegis can grow until the keel still has open sky.
+		# pad is pinned, so Aegis stops short of it and the station keeps sky.
 		if bid == green_anchor and green_reach > 80.0 and str(defs.system.id) == "HC-V1-R1-S1":
-			cap = minf(cap, maxf(authored, berth_len - 140.0))
+			cap = minf(cap, maxf(authored, berth_len - DOCK_SKY))
 		elif bid == green_anchor and green_reach > 80.0:
 			cap = minf(cap, maxf(authored, green_reach - DOCK_GAP - 90.0))
 		if haul_limit.has(bid):
@@ -1915,10 +1976,7 @@ func _build_static() -> void:
 	var dock = planet(str(defs.system.pdo.get("home", "")))
 	beacon_pos = Vector2.ZERO
 	if dock != null:
-		if _is_helion_pad(dock):
-			beacon_pos = dock.pos + BERTH_OFFSET
-		else:
-			beacon_pos = dock.pos + Vector2(float(dock.radius) + 430.0, -160.0)
+		beacon_pos = dock.pos + _dock_offset(dock)
 	var green_body = planet(str(defs.system.zones.green.anchor))
 	var pirates: Dictionary = defs.system.get("pirates", {})
 	var stand := float(pirates.get("standoff", 620.0))
@@ -2093,9 +2151,8 @@ func _build_nodes() -> void:
 			var ang := float(row.get("angle", 0.15))
 			var band := float(row.get("band", 43.0))
 			var orbit := float(anchor_body.radius) + band
-			# radius+band now sits beside the pad. Park the drop on open
-			# sky just above the crust, off the berth bearing, so the haul
-			# is still a run and the pad nose still points away from it.
+			# Park the drop just above the crust, off the berth bearing, so the
+			# haul is still a run and the pad nose still points away from it.
 			if _is_helion_pad(anchor_body) and beacon_pos != Vector2.ZERO:
 				var berth := Vector2(beacon_pos) - Vector2(anchor_body.pos)
 				var berth_ang: float = berth.angle()
@@ -2148,7 +2205,7 @@ func _lift_buried_orbits() -> void:
 			var floor := float(row.radius) + 80.0
 			if float(ai.radius) >= floor:
 				continue
-			var pad := 120.0 if str(actor.get("team", "")) == _pdo_id() else 210.0
+			var pad := 300.0 if str(actor.get("team", "")) == _pdo_id() else 210.0
 			var need := float(row.radius) + pad
 			ai.radius = need
 			actor.ai = ai
@@ -2163,7 +2220,9 @@ func _spawn_factions() -> void:
 	var home := Vector2.ZERO
 	if home_body != null:
 		home = home_body.pos
-	var patrol := _clear_orbit(home_body, float(defs.system.pdo.get("radius", 620.0)), 120.0)
+	# Clear of the survey shell (crust + 72). A pad of 120 put the cutter
+	# on the probe's orbit once the dock sat farther out.
+	var patrol := _clear_orbit(home_body, float(defs.system.pdo.get("radius", 620.0)), 300.0)
 	for i in int(defs.system.pdo.count):
 		var actor = _blank_ship("cutter", "%s Cutter %d" % [_pdo_name(), i + 1], "agent:%s:%d" % [faction_id, i], "npc", faction_id)
 		var ang = float(i) * PI
