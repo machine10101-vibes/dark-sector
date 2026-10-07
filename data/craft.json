@@ -48,7 +48,7 @@
   "fighter": {
     "id": "fighter",
     "name": "Fighter",
-    "job": "Leaves the throat, escorts the keel, and shoots what is already hunting you.",
+    "job": "A small ship bought at the pad. It holds a station on the wing, follows the keel, and attacks the locked target.",
     "speed": 340,
     "battery": 90,
     "drain": 3.4,

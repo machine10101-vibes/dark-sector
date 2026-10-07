@@ -15,6 +15,7 @@ func _init() -> void:
 	}
 	_racks()
 	_escort_spread()
+	_buy_wing()
 	_scan_harvest_heat()
 	_loss_and_save()
 	_helm()
@@ -67,7 +68,8 @@ func _racks() -> void:
 	var kestrel := make("kestrel")
 	check(_count(kestrel, "survey_probe") == 1, "Kestrel racks one survey probe")
 	check(_count(kestrel, "fighter") == 1, "Kestrel racks one fighter")
-	check("parked" in CraftOrders.launch(kestrel, "fighter").to_lower(), "the fighter stays parked")
+	check(CraftOrders.launch(kestrel, "fighter") == "", "the fighter launches onto the wing")
+	check(str(_craft(kestrel, "fighter_1").state) == "escort", "the fighter takes escort")
 	check(not bool(vesper.defs.system.pocket.plantable), "the pocket stays closed")
 
 
@@ -91,6 +93,48 @@ func _escort_spread() -> void:
 	sim.time = 20.0
 	var later: Dictionary = CraftOrders.escort_pose(sim, sim.craft[0], 0)
 	check(Vector2(later.pos).distance_to(seen[0]) > 40.0, "an escort station moves on its own pattern")
+
+
+func _buy_wing() -> void:
+	var sim := make("vesper")
+	sim.player.pos = sim.beacon_pos
+	sim.player.moored = true
+	sim.quest_flags.purse = DockBoard.FIGHTER_PRICE
+	check(DockBoard.buy_fighter(sim) == "", "the pad sells a fighter")
+	check(DockBoard.purse(sim) == 0, "a fighter spends the purse")
+	check(_count(sim, "fighter") == 1, "Vesper racks the bought fighter")
+	check(DockBoard.buy_fighter(sim) != "", "an empty purse cannot buy a second fighter")
+	sim.quest_flags.purse = DockBoard.FIGHTER_PRICE * 3
+	check(DockBoard.buy_fighter(sim) == "", "the pad sells a second fighter")
+	check(CraftOrders.launch(sim, "fighter") == "", "the first fighter launches")
+	var second = _craft(sim, "fighter_2")
+	check(CraftOrders.order(sim, str(second.uid), "launch", "") == "", "the second fighter launches")
+	for _i in 30:
+		sim.tick(0.05, {})
+	var lead = _craft(sim, "fighter_1")
+	var wing = _craft(sim, "fighter_2")
+	check(str(lead.state) == "escort" and str(wing.state) == "escort", "both fighters stay on escort")
+	check(lead.pos.distance_to(wing.pos) > 80.0, "the wing flies two stations")
+	check(lead.pos.distance_to(sim.player.pos) > 70.0, "a fighter follows off the hull")
+	sim.player.pos += Vector2(0, 2200)
+	sim.player.vel = Vector2.ZERO
+	lead.pos = sim.player.pos + Vector2(-120, 180)
+	wing.pos = sim.player.pos + Vector2(140, 220)
+	var skiff: Dictionary = sim._blank_ship("skiff", "Red Keel", "agent:red_keel:test", "npc", "red_keel")
+	skiff.pos = sim.player.pos + Vector2(0, 460)
+	skiff.alive = true
+	sim.actors.append(skiff)
+	sim.player.lock_id = str(skiff.agent_id)
+	sim.player.lock_ok = true
+	check(CraftOrders.order(sim, str(lead.uid), "attack", "") == "", "the fighter takes the lock")
+	check(str(lead.target) == str(skiff.agent_id), "the attack order marks the skiff")
+	var fired := false
+	for _i in 80:
+		sim.tick(0.05, {})
+		if sim.projectiles.size() > 0 or float(skiff.hp) < float(skiff.max_hp):
+			fired = true
+			break
+	check(fired, "the fighter fires on the target")
 
 
 func _scan_harvest_heat() -> void:

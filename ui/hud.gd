@@ -1137,6 +1137,11 @@ func _fill_market() -> void:
 	var sell := ThemeKit.button("Sell glasswheat")
 	sell.pressed.connect(_sell_good)
 	market_box.add_child(sell)
+	var wing := DockBoard.fighter_count(sim)
+	var buy_fighter := ThemeKit.button("Fighter  %d" % DockBoard.FIGHTER_PRICE)
+	buy_fighter.pressed.connect(_buy_fighter)
+	market_box.add_child(buy_fighter)
+	market_box.add_child(_flat("Wing %d/%d. They form up, follow, and attack." % [wing, DockBoard.FIGHTER_WING], 13, Color("8d826c")))
 	market_box.add_child(_flat("Yard. One mount is a first slip.", 14, Color("cbb892")))
 	for kit_id in ["gun_sponson", "laser_bank", "missile_rack", "iron_belt", "splinter_pack"]:
 		var kit: Dictionary = DockBoard.KIT[kit_id]
@@ -1632,6 +1637,16 @@ func _on_bolt(module_id: String) -> void:
 		bay_preview.queue_redraw()
 
 
+func _buy_fighter() -> void:
+	if Game.sim == null:
+		return
+	var message := DockBoard.buy_fighter(Game.sim)
+	if message != "":
+		Game.sim.say(message)
+	market_sig = ""
+	_fill_market()
+
+
 func _buy_kit(kit_id: String) -> void:
 	if Game.sim == null:
 		return
@@ -1697,13 +1712,17 @@ func _build_hangar() -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		var uid := str(item.uid)
-		var parked := str(item.def_id) in ["fighter", "salvage_tender"]
+		var parked := str(item.def_id) == "salvage_tender"
 		var lost := str(item.state) == "lost"
 		if lost:
 			var rebuild := ThemeKit.button("Rebuild")
 			rebuild.pressed.connect(_order_uid.bind(uid, "rebuild"))
 			row.add_child(rebuild)
 			block.add_child(ThemeKit.label("Loss is permanent until rebuild spends 1 raw mass.", 13, Color("c4512c")))
+		elif str(item.def_id) == "fighter":
+			row.add_child(_order_button("Launch", uid, "launch"))
+			row.add_child(_order_button("Attack", uid, "attack"))
+			row.add_child(_order_button("Return", uid, "return"))
 		elif parked:
 			block.add_child(ThemeKit.label("Parked. It stays in the rack this slice.", 13, Color("8d826c")))
 		elif str(item.def_id) == "survey_probe":
