@@ -783,8 +783,17 @@ func _note_muzzle(at: Vector2, dir: Vector2, family: String, socket: String, loa
 	var aim := dir
 	if aim.length() > 1.0:
 		aim = aim.normalized()
+	var seat := at
+	if socket == "gun_sponson" or socket == "stake_gun":
+		seat += Vector2(-aim.y, aim.x) * 12.0
+	elif socket == "heavy_turret":
+		seat += Vector2(-aim.y, aim.x) * 5.0
+	elif socket == "missile_rack":
+		seat -= aim * 10.0
+	elif socket == "point_defense":
+		seat -= aim * 8.0
 	muzzles.append({
-		"pos": at,
+		"pos": seat,
 		"dir": aim,
 		"family": family,
 		"socket": socket,

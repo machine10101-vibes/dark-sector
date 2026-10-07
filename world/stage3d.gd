@@ -1767,17 +1767,17 @@ func _sync_muzzles(sim) -> void:
 			tint = Color("ff9a4a")
 		elif socket == "stake_gun":
 			tint = Color("e8f2ff")
-		var span := 3.4 * read * (0.45 + fade)
+		var span := 2.2 * read * (0.4 + fade)
 		if socket == "heavy_turret":
 			span *= 1.85
 		elif socket == "stake_gun":
 			span *= 0.72
 		elif family == "missile":
-			span *= 1.35
+			span *= 1.25
 		elif family == "laser":
-			span *= 1.15
+			span *= 0.95
 		elif family == "pd":
-			span *= 0.7
+			span *= 0.65
 		var dir: Vector2 = flash.get("dir", Vector2.RIGHT)
 		var along := Vector3(dir.x, 0.0, -dir.y)
 		if along.length() < 0.2:
