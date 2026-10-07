@@ -1,0 +1,135 @@
+{
+  "range": 430,
+  "pick": 30,
+  "materials": {
+    "iron": {
+      "name": "Iron",
+      "hardness": 1.2,
+      "albedo": "4e453f",
+      "deep": "1c1614",
+      "vein": "d2652e",
+      "spec": "f0e4d4",
+      "patina": "7a4030",
+      "gloss": 0.38
+    },
+    "aluminum": {
+      "name": "Aluminum",
+      "hardness": 0.95,
+      "albedo": "c5ccd2",
+      "deep": "5c656e",
+      "vein": "f4f7f8",
+      "spec": "ffffff",
+      "patina": "8aa0b0",
+      "gloss": 0.92
+    },
+    "copper": {
+      "name": "Copper",
+      "hardness": 1.15,
+      "albedo": "b85a32",
+      "deep": "4a2414",
+      "vein": "f0a060",
+      "spec": "ffd0a8",
+      "patina": "3d6e52",
+      "gloss": 0.72
+    },
+    "gold": {
+      "name": "Gold",
+      "hardness": 1.65,
+      "albedo": "e2b23a",
+      "deep": "6a4810",
+      "vein": "ffe08a",
+      "spec": "fff6d0",
+      "patina": "a87820",
+      "gloss": 1.0
+    },
+    "wreck_plate": {
+      "name": "Wreck plate",
+      "hardness": 1.05,
+      "albedo": "4a463f",
+      "deep": "161412",
+      "vein": "b7b2a6",
+      "spec": "e4e0d6",
+      "patina": "6a2e1c",
+      "gloss": 0.34
+    }
+  },
+  "belts": [
+    {
+      "id": "rust_arc",
+      "name": "Rust Arc",
+      "radius": 2140,
+      "width": 320,
+      "angle": 1.02,
+      "arc": 1.38,
+      "count": 38,
+      "mix": { "iron": 74, "aluminum": 16, "copper": 10 }
+    },
+    {
+      "id": "pale_shelf",
+      "name": "Pale Shelf",
+      "radius": 2920,
+      "width": 300,
+      "angle": 3.2,
+      "arc": 1.22,
+      "count": 34,
+      "mix": { "aluminum": 70, "iron": 18, "copper": 12 }
+    },
+    {
+      "id": "copper_vein",
+      "name": "Copper Vein",
+      "radius": 3980,
+      "width": 340,
+      "angle": 1.92,
+      "arc": 1.18,
+      "count": 32,
+      "mix": { "copper": 68, "iron": 22, "gold": 10 }
+    },
+    {
+      "id": "kings_drift",
+      "name": "King's Drift",
+      "radius": 5520,
+      "width": 360,
+      "angle": 5.45,
+      "arc": 0.98,
+      "count": 18,
+      "mix": { "gold": 62, "copper": 28, "iron": 10 }
+    }
+  ],
+  "fields": [
+    {
+      "id": "keel_grave",
+      "name": "Keel Grave",
+      "angle": 1.42,
+      "distance": 3360,
+      "spread": 280,
+      "count": 14
+    },
+    {
+      "id": "quiet_debris",
+      "name": "Quiet Debris",
+      "angle": 4.85,
+      "distance": 2480,
+      "spread": 220,
+      "count": 10
+    }
+  ],
+  "loose": 12,
+  "derelict_count": 5,
+  "recipes": [
+    {
+      "id": "coil_cannon",
+      "module": "coil_cannon",
+      "cost": { "copper": 2, "iron": 2, "gold": 1 }
+    },
+    {
+      "id": "ion_booster",
+      "module": "ion_booster",
+      "cost": { "aluminum": 3, "copper": 1 }
+    },
+    {
+      "id": "plate_belt",
+      "module": "plate_belt",
+      "cost": { "iron": 3, "wreck_plate": 2 }
+    }
+  ]
+}

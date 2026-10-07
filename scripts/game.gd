@@ -16,6 +16,7 @@ func _ready() -> void:
 		"factions": Serde.load_json("res://data/factions.json"),
 		"quests": Serde.load_json("res://data/quests.json"),
 		"claim": Serde.load_json("res://data/claim.json"),
+		"harvest": Serde.load_json("res://data/harvest.json"),
 	}
 
 

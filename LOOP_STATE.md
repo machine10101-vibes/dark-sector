@@ -1,7 +1,7 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Hollow Latch claim
+Slice just completed: Plasma gatherer, ore belts, wreck plate, fabrication
 Player-visible what works now:
 - New game picks exactly one keel: Vesper Needle, Anvil Barn, or Kestrel Beak. Silhouettes differ before and after the yard module.
 - Ashen Reach is one top-down system: Ash Lamp, Cinder, Mire, Vellum, the Slat, Hollow Latch, a Vellum Compact patrol, and a Red Keel pack. Green, amber, and dark rule layers are in the same view.
@@ -12,6 +12,8 @@ Player-visible what works now:
 - Hold, Esc, F5, and F9 write and read the log: ship layout, craft, crew, claim homestead, heat, quest flags, galaxy seed, zoom.
 - Origin quests are on the slate and dormant.
 - Hollow Latch takes a Claim Core printed from two cinder-ore and planted inside the pocket. An ash dome, one ember-kale sowing (cinder-heat), one ash hen that dies if unfed, and a stake turret bought with keel salvage. A Red Keel on an undefended stake cracks the core and freezes the dome, crop, and hen without deleting the ship. Replanting wakes the same stake.
+- Every keel mounts a plasma gatherer. Right-click a rock, torn plate, or abandoned hull inside beam range and the barrel extends a plasma column until the node is a husk, the hold is full, or the keel slips out of range. Rust Arc (iron), Pale Shelf (aluminum), Copper Vein, and King's Drift (gold) are large belts. Keel Grave and Quiet Debris are torn-plate fields. Five abandoned hulls drift in the dark. A kill throws extra battle plate around the wreck; the tender's one keel-salvage is unchanged.
+- The bay fabricator spends that ore. Coil Cannon, Ion Booster, and Plated Armor bolt onto Weapon, Drive, and Plate hardpoints, change the silhouette, and stay on. Reactor spare can refuse a drawing. Depleted seams and battle debris survive the log.
 What is next (ordered):
 1. A second module, and keel-shear that can disable a module in combat.
 2. One starter origin quest that changes a patrol route or a beacon when it completes.
@@ -22,8 +24,8 @@ Blocked by:
 - Nothing in this repo blocks the next slice. Multiplayer is not required; heat, wrecks, and claim ownership already use agent ids.
 Open design decisions (max 5):
 - Planets stay on fixed positions until a later slice adds orbits.
-- Wreck loot is one keel-salvage plus at most one cargo unit.
-- Kestrel starts without a harvest drone, matching her rack.
+- Wreck loot from the tender is still one keel-salvage plus at most one cargo unit. Plasma plate around a fresh wreck is extra, and it does not spend wreck rights.
+- Fabricated parts do not come off. The gatherer is on every playable keel, including the Beak, which still has no harvest drone.
 - Ember kale is the only crop that matches Hollow Latch cinder-heat. The ash hen eats that kale and dies of hunger; a freeze pauses her and does not kill her.
 - Core crack is a living Red Keel inside the stake radius while the turret is down, or sitting on the stake even if the turret is up. Replant uses a new core and the same dome.
 Files touched:
@@ -42,6 +44,7 @@ Files touched:
 - data/factions.json
 - data/quests.json
 - data/claim.json
+- data/harvest.json
 - export_presets.cfg
 - tools/export_web.sh
 - scripts/game.gd
@@ -63,3 +66,6 @@ Files touched:
 - audio/tones.gd
 - tests/slice1_sim.gd
 - tests/slice5_claim.gd
+- tests/slice_harvest.gd
+- world/plasma_harvest.gd
+- world/body_render.gd

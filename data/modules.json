@@ -43,5 +43,52 @@
       "signature": 0.14,
       "radius": 6
     }
+  },
+  "coil_cannon": {
+    "id": "coil_cannon",
+    "name": "Coil Cannon",
+    "family": "offense",
+    "slot": "Weapon",
+    "shape": "coil",
+    "blurb": "A copper-wound spinal, off the centerline so a mast can share the nose. The shot hits harder.",
+    "effects": {
+      "mass": 9,
+      "power_draw": 7,
+      "gun_damage": 8,
+      "signature": 0.12,
+      "radius": 4
+    }
+  },
+  "ion_booster": {
+    "id": "ion_booster",
+    "name": "Ion Booster",
+    "family": "drive",
+    "slot": "Drive",
+    "shape": "booster",
+    "blurb": "Aluminum bells on a copper bus. She pushes harder and strafes like she means it.",
+    "effects": {
+      "mass": 8,
+      "power_draw": 6,
+      "thrust": 36,
+      "strafe": 14,
+      "signature": 0.1,
+      "radius": 3
+    }
+  },
+  "plate_belt": {
+    "id": "plate_belt",
+    "name": "Plated Armor",
+    "family": "defense",
+    "slot": "Plate",
+    "shape": "plate",
+    "blurb": "Iron plate over wreck-steel. The silhouette thickens. The keel feels every tonne.",
+    "effects": {
+      "mass": 18,
+      "power_draw": 2,
+      "hp": 48,
+      "signature": 0.06,
+      "radius": 5,
+      "turn": -0.12
+    }
   }
 }

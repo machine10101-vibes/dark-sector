@@ -42,13 +42,16 @@ If the URL 404s, the repo still needs Pages pointed at the `gh-pages` branch, fo
 | A / D | Yaw |
 | Q / E | Strafe |
 | Space | Gun |
+| Right click | Plasma gatherer. Locks onto a rock, torn plate, or abandoned hull in range |
 | Wheel, = / - | Zoom, tactical to sector |
 | 1 / 2 / 3 | Launch probe / harvester / boat |
 | B H D F J K | Bay, hangar, dossier, heat, quests, homestead |
-
-Homestead (K), inside Hollow Latch: print a Claim Core from cinder-ore, plant it, raise the ash dome, sow ember kale, stock an ash hen and feed her kale. A stake turret wants keel salvage. If a Red Keel sits on an undefended core, the homestead freezes and the ship stays.
 | Hold, or Esc | Pause. Write or read the log from that card |
 | F5 / F9 | Write / read the log without pausing |
+
+The bay fabricator spends iron, aluminum, copper, gold, and wreck plate on a coil cannon, ion booster, or plated armor. Those parts change the silhouette and do not come off. Rust Arc, Pale Shelf, Copper Vein, and King's Drift are the big belts. A fresh wreck also throws torn plate the beam can cut; the tender's keel-salvage is separate.
+
+Homestead (K), inside Hollow Latch: print a Claim Core from cinder-ore, plant it, raise the ash dome, sow ember kale, stock an ash hen and feed her kale. A stake turret wants keel salvage. If a Red Keel sits on an undefended core, the homestead freezes and the ship stays.
 
 Some window managers bind Esc and F5. The **Hold** button on the helm opens the same card.
 

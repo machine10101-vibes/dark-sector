@@ -3,6 +3,8 @@ extends Node2D
 var cam: Camera2D
 var font: Font
 var snapped := false
+var glow: Node2D
+var gather_click = null
 
 
 func _ready() -> void:
@@ -10,6 +12,9 @@ func _ready() -> void:
 	cam = Camera2D.new()
 	cam.enabled = true
 	add_child(cam)
+	glow = GlowLayer.new()
+	glow.name = "PlasmaGlow"
+	add_child(glow)
 	snap()
 
 
@@ -34,6 +39,8 @@ func _process(delta: float) -> void:
 		cam.position = cam.position.lerp(target, clampf(delta * 5.0, 0.0, 1.0))
 	cam.zoom = Vector2.ONE * Game.zoom
 	queue_redraw()
+	if glow != null:
+		glow.queue_redraw()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -44,6 +51,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			_zoom(1.0)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_zoom(-1.0)
+		elif event.button_index == MOUSE_BUTTON_RIGHT and not Game.paused and Game.sim != null and bool(Game.sim.player.alive):
+			gather_click = get_global_mouse_position()
+			get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_EQUAL or event.keycode == KEY_KP_ADD:
 			_zoom(1.0)
@@ -73,13 +83,18 @@ func _cmd() -> Dictionary:
 		strafe -= 1.0
 	if Input.is_key_pressed(KEY_E):
 		strafe += 1.0
-	return {
+	var cmd := {
 		"thrust": 1.0 if (Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)) else 0.0,
 		"retro": 1.0 if (Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)) else 0.0,
 		"rot": rot,
 		"strafe": strafe,
 		"fire": Input.is_key_pressed(KEY_SPACE),
+		"aim": get_global_mouse_position(),
 	}
+	if gather_click != null:
+		cmd["gather_at"] = gather_click
+		gather_click = null
+	return cmd
 
 
 func _draw() -> void:
@@ -103,6 +118,8 @@ func _draw() -> void:
 		_draw_planet(sim, body)
 	_draw_pocket(sim)
 	_draw_homestead(sim)
+	for node in sim.nodes:
+		BodyRender.draw_node(self, sim, node, view, z)
 	for wreck in sim.wrecks:
 		_draw_wreck(wreck)
 	for shot in sim.projectiles:
@@ -121,8 +138,10 @@ func _draw() -> void:
 	if bool(sim.player.alive):
 		_draw_ship(sim, sim.player)
 		_draw_velocity(sim.player)
+		BodyRender.draw_matter(self, sim)
 	_draw_scale(center, half, z)
 	_draw_names(sim, z)
+	_draw_harvest_labels(sim, z)
 
 
 func _draw_grid(view: Rect2, zoom: float) -> void:
@@ -353,7 +372,39 @@ func _draw_names(sim, zoom: float) -> void:
 			_text(wreck.pos + Vector2(12, 14), "%s  %s" % [wreck.name, tag], 12, Color("a08070"))
 
 
+func _draw_harvest_labels(sim, zoom: float) -> void:
+	if not sim.defs.has("harvest"):
+		return
+	for mark in sim.belt_marks:
+		var mat: Dictionary = sim.defs.harvest.materials.get(mark.material, {})
+		var col := Color(str(mat.get("vein", "cbb892")))
+		_text(mark.pos + Vector2(-46, -18), str(mark.name), 15, col)
+	if zoom < 0.18:
+		return
+	for node in sim.nodes:
+		var aimed := str(node.id) == str(sim.aim_id)
+		var locked := bool(sim.gather.get("active", false)) and str(sim.gather.get("target", "")) == str(node.id)
+		var derelict := str(node.kind) == "derelict"
+		if not aimed and not locked and not (derelict and zoom > 0.28):
+			continue
+		var left := PlasmaHarvest.remaining(node)
+		var tag := "husk" if left <= 0 else "×%d" % left
+		_text(node.pos + Vector2(8, float(node.size) + 16.0), "%s  %s" % [node.name, tag], 13, Color("e6d7bf"))
+
+
 func _text(pos: Vector2, text: String, size: int, color: Color) -> void:
 	if font == null:
 		return
 	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, color)
+
+
+class GlowLayer extends Node2D:
+	func _ready() -> void:
+		var mat := CanvasItemMaterial.new()
+		mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		material = mat
+
+	func _draw() -> void:
+		if Game.sim == null:
+			return
+		BodyRender.draw_beam(self, Game.sim)

@@ -63,11 +63,35 @@ static func parts(class_id: String, shapes: Array) -> Dictionary:
 		extras.append(PackedVector2Array([
 			Vector2(4, -10), Vector2(16, -26), Vector2(-8, -22), Vector2(-6, -12)
 		]))
+	if shapes.has("coil"):
+		extras.append(PackedVector2Array([
+			Vector2(50, 2.2), Vector2(100, 4.6), Vector2(100, 1.1), Vector2(50, 0.4)
+		]))
+		circles.append({"x": 64.0, "y": 3.2, "r": 3.4})
+		circles.append({"x": 80.0, "y": 3.6, "r": 3.8})
+		circles.append({"x": 96.0, "y": 3.4, "r": 3.0})
+	if shapes.has("plate"):
+		extras.append(PackedVector2Array([
+			Vector2(16, 8), Vector2(18, 20), Vector2(-18, 22), Vector2(-22, 9)
+		]))
+		extras.append(PackedVector2Array([
+			Vector2(16, -8), Vector2(18, -20), Vector2(-18, -22), Vector2(-22, -9)
+		]))
 	var tail := 0.0
 	if hull.size() > 0:
 		tail = hull[0].x
 		for point in hull:
 			tail = minf(tail, point.x)
+	if shapes.has("booster"):
+		var aft := tail - 2.0
+		extras.append(PackedVector2Array([
+			Vector2(aft + 8.0, 5.0), Vector2(aft - 16.0, 12.0), Vector2(aft - 18.0, 3.5), Vector2(aft, 2.0)
+		]))
+		extras.append(PackedVector2Array([
+			Vector2(aft + 8.0, -5.0), Vector2(aft - 16.0, -12.0), Vector2(aft - 18.0, -3.5), Vector2(aft, -2.0)
+		]))
+		circles.append({"x": aft - 12.0, "y": 8.0, "r": 3.2})
+		circles.append({"x": aft - 12.0, "y": -8.0, "r": 3.2})
 	return {"hull": hull, "extras": extras, "circles": circles, "tail": tail}
 
 

@@ -26,6 +26,7 @@ var hold_button: Button
 var claim_box: VBoxContainer
 var claim_status: Label
 var claim_buttons: Dictionary = {}
+var fab_buttons: Array = []
 
 
 func _ready() -> void:
@@ -39,7 +40,7 @@ func _ready() -> void:
 	_build_pause()
 	_build_dead()
 	var hint := ThemeKit.label(
-		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   wheel zoom     1 probe   2 harvest   3 boat     B bay   H hangar   D dossier   F heat   J quests   K homestead     Hold / Esc pause   F5 save   F9 load",
+		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   RMB plasma gather   wheel zoom     1 probe   2 harvest   3 boat     B bay fabricator   H hangar   D dossier   F heat   J quests   K homestead     Hold / Esc pause   F5 save   F9 load",
 		12,
 		Color("8d826c")
 	)
@@ -285,7 +286,7 @@ func _refresh_helm() -> void:
 	var heat := float(sim.heat.get("vellum_compact", 0.0))
 	helm_zone.text = "%s    Compact heat %s (%.0f)" % [sim.zone_label(zone), HeatWords.word(heat), heat]
 	helm_cargo.text = _cargo_line(sim, stats)
-	helm_craft.text = _craft_line(sim)
+	helm_craft.text = _craft_line(sim) + _gather_line(sim)
 	var bits: Array = []
 	for line in sim.lines:
 		bits.append(str(line.text))
@@ -309,6 +310,26 @@ func _cargo_line(sim, stats: Dictionary) -> String:
 	for id in sim.player.cargo.keys():
 		parts.append("%s ×%d" % [sim.resource_name(str(id)), int(sim.player.cargo[id])])
 	return "%s    %d/%d" % ["   ".join(parts), Fit.cargo_used(sim.player), int(stats.cargo_cap)]
+
+
+func _gather_line(sim) -> String:
+	if not sim.defs.has("harvest"):
+		return ""
+	if bool(sim.gather.get("active", false)):
+		var node := PlasmaHarvest.by_id(sim, str(sim.gather.get("target", "")))
+		if node.is_empty():
+			return ""
+		return "    Plasma on %s  %d%%  (%d left)" % [
+			node.name,
+			int(float(sim.gather.progress) * 100.0),
+			PlasmaHarvest.remaining(node),
+		]
+	if str(sim.aim_id) == "":
+		return ""
+	var hovered := PlasmaHarvest.by_id(sim, str(sim.aim_id))
+	if hovered.is_empty():
+		return ""
+	return "    Cursor: %s ×%d — right-click to cut" % [hovered.name, PlasmaHarvest.remaining(hovered)]
 
 
 func _craft_line(sim) -> String:
@@ -385,6 +406,16 @@ func _build_bay() -> void:
 	install_button.pressed.connect(_on_install)
 	bay_box.add_child(install_button)
 	bay_box.add_child(ThemeKit.label("Bolted means bolted. There is no crane aboard to pull a module off.", 13, Color("8d826c")))
+	bay_box.add_child(ThemeKit.label("The plasma gatherer is fitted. Right-click a rock, torn plate, or abandoned hull. Fabricated parts stay on the keel.", 13, Color("8d826c")))
+	fab_buttons = []
+	if sim.defs.has("harvest"):
+		bay_box.add_child(ThemeKit.label("Fabricator", 16, Color("e6d7bf")))
+		for recipe in sim.defs.harvest.recipes:
+			var button := ThemeKit.button("Fabricate")
+			button.set_meta("recipe_id", str(recipe.id))
+			button.pressed.connect(_on_fabricate.bind(str(recipe.id)))
+			bay_box.add_child(button)
+			fab_buttons.append(button)
 	_refresh_bay_text()
 
 
@@ -407,6 +438,7 @@ func _refresh_bay_text() -> void:
 			install_button.visible = false
 		if bay_preview != null and is_instance_valid(bay_preview):
 			bay_preview.queue_redraw()
+		_refresh_fab()
 		return
 	var module_id := str(yard[0])
 	var mod: Dictionary = sim.defs.modules[module_id]
@@ -431,6 +463,60 @@ func _refresh_bay_text() -> void:
 		install_button.set_meta("module_id", module_id)
 	if bay_preview != null and is_instance_valid(bay_preview):
 		bay_preview.queue_redraw()
+	_refresh_fab()
+
+
+func _refresh_fab() -> void:
+	if Game.sim == null or not Game.sim.defs.has("harvest"):
+		return
+	for button in fab_buttons:
+		if not is_instance_valid(button):
+			continue
+		var recipe_id := str(button.get_meta("recipe_id"))
+		var recipe := {}
+		for row in Game.sim.defs.harvest.recipes:
+			if str(row.id) == recipe_id:
+				recipe = row
+				break
+		if recipe.is_empty():
+			continue
+		var module_id := str(recipe.module)
+		var mod: Dictionary = Game.sim.defs.modules[module_id]
+		var afford := true
+		var cost_bits: Array = []
+		for id in recipe.cost.keys():
+			var need := int(recipe.cost[id])
+			var have := int(Game.sim.player.cargo.get(str(id), 0))
+			cost_bits.append("%d/%d %s" % [have, need, Game.sim.resource_name(str(id))])
+			if have < need:
+				afford = false
+		var bolted: bool = bool(Game.sim.player.modules.has(module_id))
+		var slot := str(mod.get("slot", "Utility"))
+		var slot_free := Fit.free_slots(Game.sim.defs, Game.sim.player).find(slot) >= 0
+		var hypo: Dictionary = Game.sim.player.duplicate(true)
+		hypo.modules = Game.sim.player.modules.duplicate()
+		if not bolted:
+			hypo.modules.append(module_id)
+		var power_ok := float(Fit.stats(Game.sim.defs, hypo).power_spare) >= -0.01
+		var note := ""
+		if bolted:
+			note = ""
+		elif not slot_free:
+			note = " — no hardpoint"
+		elif not power_ok:
+			note = " — reactor short"
+		if bolted:
+			button.text = "%s bolted" % mod.name
+		else:
+			button.text = "Fabricate %s  (%s)%s" % [mod.name, ", ".join(cost_bits), note]
+		button.disabled = bolted or not afford or not slot_free or not power_ok
+
+
+func _on_fabricate(recipe_id: String) -> void:
+	if Game.sim == null:
+		return
+	PlasmaHarvest.fabricate(Game.sim, recipe_id)
+	_refresh_bay_text()
 
 
 func _on_install() -> void:

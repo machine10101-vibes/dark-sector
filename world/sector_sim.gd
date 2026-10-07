@@ -14,6 +14,11 @@ var actors: Array = []
 var craft: Array = []
 var projectiles: Array = []
 var wrecks: Array = []
+var nodes: Array = []
+var belt_marks: Array = []
+var gather: Dictionary = {}
+var aim := Vector2.ZERO
+var aim_id := ""
 var scans: Dictionary = {}
 var deposits: Dictionary = {}
 var heat: Dictionary = {}
@@ -39,6 +44,9 @@ func new_game(class_id: String) -> void:
 	time = 0.0
 	scans = {}
 	wrecks = []
+	gather = PlasmaHarvest.fresh_gather()
+	aim = Vector2.ZERO
+	aim_id = ""
 	projectiles = []
 	heat_log = []
 	lines = []
@@ -58,6 +66,7 @@ func new_game(class_id: String) -> void:
 	fresh.yard = hull.yard.duplicate()
 	fresh.slots = hull.slots.duplicate()
 	fresh.crew = hull.crew.duplicate(true)
+	_ensure_fab_slots(fresh)
 	player = fresh
 	craft = []
 	var running = {}
@@ -73,6 +82,8 @@ func new_game(class_id: String) -> void:
 	claim = PocketRules.blank()
 	say("You have the %s, callsign %s." % [hull.class_name, hull.callsign])
 	say("Hollow Latch is under the keel. Cinder is the near rust world. Red Keel hunts the Slat. Vellum Compact owns the pale world — the green lane remembers guns.")
+	if defs.has("harvest"):
+		say("Plasma gatherer is live. Right-click ore, torn plate, or an abandoned hull. Rust Arc, Pale Shelf, Copper Vein, and King's Drift are out in the dark.")
 
 
 func tick(dt: float, cmd: Dictionary) -> void:
@@ -209,6 +220,10 @@ func resource_name(id: String) -> String:
 		return "keel salvage"
 	if id == "scrap":
 		return "scrap"
+	if defs.has("harvest"):
+		var mats: Dictionary = defs.harvest.get("materials", {})
+		if mats.has(id):
+			return str(mats[id].name)
 	if defs.has("claim"):
 		var goods: Dictionary = defs.claim.get("goods", {})
 		if goods.has(id):
@@ -329,6 +344,8 @@ func to_dict() -> Dictionary:
 		"banner": banner,
 		"pdo_alert": pdo_alert,
 		"hailed": hailed,
+		"node_stock": PlasmaHarvest.stock_out(self),
+		"runtime_nodes": PlasmaHarvest.runtime_out(self),
 	}
 
 
@@ -372,6 +389,16 @@ func from_dict(data: Dictionary) -> void:
 	hailed = bool(data.get("hailed", false))
 	sfx_queue = []
 	hold_npc = false
+	gather = PlasmaHarvest.fresh_gather()
+	aim = Vector2.ZERO
+	aim_id = ""
+	PlasmaHarvest.apply_stock(self, data.get("node_stock", {}))
+	PlasmaHarvest.restore_runtime(self, data.get("runtime_nodes", []))
+	_ensure_fab_slots(player)
+	var fitted := Fit.stats(defs, player)
+	player.max_hp = int(fitted.hp_max)
+	if float(player.hp) > float(player.max_hp):
+		player.hp = float(player.max_hp)
 
 
 func _step(dt: float, cmd: Dictionary) -> void:
@@ -390,6 +417,11 @@ func _step(dt: float, cmd: Dictionary) -> void:
 		for actor in actors:
 			if bool(actor.alive):
 				_bump_world(actor)
+	if cmd.has("aim"):
+		aim = cmd.aim
+	if cmd.has("gather_at"):
+		PlasmaHarvest.engage(self, cmd.gather_at)
+	PlasmaHarvest.step(self, dt)
 	for line in lines:
 		line.age = float(line.age) + dt
 	banner_t += dt
@@ -569,6 +601,7 @@ func _kill(unit: Dictionary, attacker: String) -> void:
 		"name": unit.name,
 	}
 	wrecks.append(wreck)
+	PlasmaHarvest.spawn_battle_debris(self, unit)
 	sfx("destroyed")
 	if str(unit.team) == "red_keel":
 		Ownership.add_heat(self, "red_keel", 10.0, "killed_a_skiff", attacker)
@@ -590,6 +623,14 @@ func _kill(unit: Dictionary, attacker: String) -> void:
 
 func _add_cargo(id: String, count: int) -> void:
 	player.cargo[id] = int(player.cargo.get(id, 0)) + count
+
+
+func _ensure_fab_slots(ship: Dictionary) -> void:
+	if str(ship.get("controller", "")) != "human":
+		return
+	for slot in ["Weapon", "Drive", "Plate"]:
+		if not ship.slots.has(slot):
+			ship.slots.append(slot)
 
 
 func _build_static() -> void:
@@ -622,6 +663,7 @@ func _build_static() -> void:
 			verts.append(center + Vector2.from_angle(a) * rr)
 		asteroids.append({"pos": center, "verts": verts, "size": size})
 	stars = []
+	PlasmaHarvest.seed(self)
 	for _i in 420:
 		var ang = rng.randf() * TAU
 		var rad = rng.randf_range(200.0, 9200.0)

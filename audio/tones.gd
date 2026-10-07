@@ -23,6 +23,7 @@ func _ready() -> void:
 		"destroyed": _tone(80.0, 0.28, 0.45, 0.5),
 		"thrust": _tone(110.0, 0.14, 0.22, 0.8),
 		"save": _tone(360.0, 0.12, 0.22, 0.9),
+		"plasma": _plasma(),
 	}
 	ready_audio = true
 
@@ -34,6 +35,32 @@ func play(kind: String) -> void:
 		return
 	player.stream = clips[kind]
 	player.play()
+
+
+func _plasma() -> AudioStreamWAV:
+	var rate := 22050
+	var duration := 0.32
+	var count := int(rate * duration)
+	var bytes := PackedByteArray()
+	bytes.resize(count * 2)
+	var p1 := 0.0
+	var p2 := 0.0
+	var p3 := 0.0
+	for i in count:
+		var env := pow(1.0 - float(i) / float(count), 0.65)
+		var sample := (sin(p1) * 0.2 + sin(p2) * 0.1 + sin(p3) * 0.05) * env
+		var iv := int(clampf(sample * 32767.0, -32767.0, 32767.0))
+		bytes[i * 2] = iv & 255
+		bytes[i * 2 + 1] = (iv >> 8) & 255
+		p1 += TAU * 92.0 / float(rate)
+		p2 += TAU * 246.0 / float(rate)
+		p3 += TAU * 680.0 / float(rate)
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = rate
+	wav.stereo = false
+	wav.data = bytes
+	return wav
 
 
 func _tone(freq: float, duration: float, volume: float, decay: float) -> AudioStreamWAV:

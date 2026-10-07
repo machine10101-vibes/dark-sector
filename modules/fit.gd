@@ -8,7 +8,7 @@ const VMAX := 340.0
 
 const EFFECT_KEYS := [
 	"mass", "power_draw", "cargo", "sensor", "signature",
-	"gun_damage", "thrust", "strafe", "turn", "radius",
+	"gun_damage", "thrust", "strafe", "turn", "radius", "hp",
 ]
 
 
@@ -57,7 +57,7 @@ static func stats(defs: Dictionary, ship: Dictionary) -> Dictionary:
 		"signature_word": signature_word(signature),
 		"sensor": sensor,
 		"gun": gun,
-		"hp_max": int(hull.hp),
+		"hp_max": int(hull.hp) + int(round(float(effects.hp))),
 		"keel": keel,
 		"keel_warn": mass > keel,
 		"yaw_deg": rad_to_deg(turn),

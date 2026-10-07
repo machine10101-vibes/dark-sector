@@ -15,6 +15,18 @@ Godot 4.7, windowed, GL Compatibility. One pass is enough if each line is actual
 11. **Hen.** Stock an ash hen (one ore). Feed her the kale before the hunger line runs out. Leave her unfed on a second try and the card should say she died. The keel is still yours.
 12. **Stake.** Salvage a wreck, stake the turret, and pull a Red Keel skiff into the Latch. The turret shoots. With the turret down, a skiff sitting on the stake cracks the core: the dome goes dark, the card says frozen, and the ship is not deleted. Print and plant another core to wake the same dome.
 
+13. **Plasma.** Zoom out until Rust Arc, Pale Shelf, Copper Vein, or King's Drift reads as a belt. Fly in. The rocks should read as their metal: dark rust iron, pale aluminum, orange copper, yellow gold. Right-click one inside beam range. A barrel extends from the keel and a plasma column locks on. The hold gains that metal and the rock's count drops. Right-click empty dark to stow the beam. Outside range, the log says the beam falls short.
+14. **Plate and hulks.** Kill a Red Keel or visit Keel Grave. Right-click a torn plate until wreck plate is aboard. An abandoned hull (Abandoned courier, Cold hauler, and the others) yields plate and metal the same way.
+15. **Fabricate.** Bay (B). With 2 copper, 2 iron, and 1 gold, fabricate the Coil Cannon. The nose gains the coil and the gun hits harder. Ion Booster wants 3 aluminum and 1 copper. Plated Armor wants 3 iron and 2 wreck plate, and the hull number goes up. A second copy of a part is refused. Write the log and read it back: the depleted rock and the bolted part are still there.
+
+Headless harvest check:
+
+```bash
+godot --headless --path . --script res://tests/slice_harvest.gd
+```
+
+Expect `HARVEST PASS`.
+
 Headless claim check:
 
 ```bash
