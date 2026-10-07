@@ -51,8 +51,73 @@
       "spec": "e4e0d6",
       "patina": "6a2e1c",
       "gloss": 0.34
+    },
+    "alloy_billet": {
+      "name": "Alloy billet",
+      "synthetic": true,
+      "hardness": 1.4,
+      "albedo": "8a9298",
+      "deep": "2a3034",
+      "vein": "d7e0e4",
+      "spec": "f4f7f8",
+      "patina": "6a5848",
+      "gloss": 0.7
+    },
+    "circuit_lace": {
+      "name": "Circuit lace",
+      "synthetic": true,
+      "hardness": 1.3,
+      "albedo": "c47a32",
+      "deep": "3a2414",
+      "vein": "f0d080",
+      "spec": "fff6d0",
+      "patina": "2f6a48",
+      "gloss": 0.84
+    },
+    "hull_resin": {
+      "name": "Hull resin",
+      "synthetic": true,
+      "hardness": 1.25,
+      "albedo": "4a4038",
+      "deep": "1a1614",
+      "vein": "c4b49a",
+      "spec": "e6dcc8",
+      "patina": "6a4030",
+      "gloss": 0.4
     }
   },
+  "prices": {
+    "iron": 8,
+    "aluminum": 10,
+    "copper": 14,
+    "gold": 36,
+    "wreck_plate": 12,
+    "cinder_ore": 6,
+    "mire_peat": 7,
+    "vellum_rime": 20,
+    "salvage_parts": 16,
+    "scrap": 3,
+    "alloy_billet": 34,
+    "circuit_lace": 84,
+    "hull_resin": 44
+  },
+  "synthetics": [
+    {
+      "id": "alloy_billet",
+      "seconds": 5.5,
+      "cost": { "iron": 2, "aluminum": 1 }
+    },
+    {
+      "id": "circuit_lace",
+      "seconds": 7.0,
+      "cost": { "copper": 2, "gold": 1 }
+    },
+    {
+      "id": "hull_resin",
+      "seconds": 6.0,
+      "cost": { "wreck_plate": 2, "aluminum": 1 }
+    }
+  ],
   "belts": [
     {
       "id": "rust_arc",
@@ -130,6 +195,32 @@
       "id": "plate_belt",
       "module": "plate_belt",
       "cost": { "iron": 3, "wreck_plate": 2 }
+    },
+    {
+      "id": "shard_lance",
+      "module": "shard_lance",
+      "seconds": 8.0,
+      "cost": { "circuit_lace": 1, "alloy_billet": 1 }
+    },
+    {
+      "id": "composite_belt",
+      "module": "composite_belt",
+      "seconds": 8.0,
+      "cost": { "hull_resin": 1, "alloy_billet": 1 }
+    }
+  ],
+  "craft_recipes": [
+    {
+      "id": "pathfinder",
+      "craft": "pathfinder",
+      "seconds": 12.0,
+      "cost": { "alloy_billet": 2, "circuit_lace": 1, "hull_resin": 1 }
+    },
+    {
+      "id": "prospector",
+      "craft": "prospector",
+      "seconds": 9.0,
+      "cost": { "alloy_billet": 1, "copper": 2, "iron": 1 }
     }
   ]
 }

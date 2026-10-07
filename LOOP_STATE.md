@@ -1,7 +1,7 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Plasma gatherer, ore belts, wreck plate, fabrication
+Slice just completed: Chandlery, refinery, synthetics, and built boats
 Player-visible what works now:
 - New game picks exactly one keel: Vesper Needle, Anvil Barn, or Kestrel Beak. Silhouettes differ before and after the yard module.
 - Ashen Reach is one top-down system: Ash Lamp, Cinder, Mire, Vellum, the Slat, Hollow Latch, a Vellum Compact patrol, and a Red Keel pack. Green, amber, and dark rule layers are in the same view.
@@ -14,10 +14,14 @@ Player-visible what works now:
 - Hollow Latch takes a Claim Core printed from two cinder-ore and planted inside the pocket. An ash dome, one ember-kale sowing (cinder-heat), one ash hen that dies if unfed, and a stake turret bought with keel salvage. A Red Keel on an undefended stake cracks the core and freezes the dome, crop, and hen without deleting the ship. Replanting wakes the same stake.
 - Every keel mounts a plasma gatherer. Right-click a rock, torn plate, or abandoned hull inside beam range and the barrel extends a plasma column until the node is a husk, the hold is full, or the keel slips out of range. Rust Arc (iron), Pale Shelf (aluminum), Copper Vein, and King's Drift (gold) are large belts. Each belt also holds two large asteroids. Meteors are dark regolith; iron, aluminum, copper, and gold sit on the stone as nodules, seams, and exposed faces, and some rocks carry much more ore than others, sometimes two metals. Keel Grave and Quiet Debris are torn-plate fields. Five abandoned hulls drift in the dark. A kill throws extra battle plate around the wreck; the tender's one keel-salvage is unchanged.
 - The bay fabricator spends that ore. Coil Cannon, Ion Booster, and Plated Armor bolt onto Weapon, Drive, and Plate hardpoints, change the silhouette, and stay on. Reactor spare can refuse a drawing. Depleted seams and battle debris survive the log.
+- Hollow Latch buys raw ore and synthetics for scrip. The purse is not cargo. Outside the pocket the chandlery will not deal.
+- The refinery pours alloy billet (iron and aluminum), circuit lace (copper and gold), and hull resin (wreck plate and aluminum). A pour takes time, one job runs at a time, and a half-finished pour survives the log.
+- Shard Lance and Composite Belt are the synthetic weapon and armor. They take the same hardpoints as the raw parts and do not come off.
+- The boat yard lays a Pathfinder (exploration ship) and a Prospector (belt drone). The pathfinder seals an open dossier or marks the richest rock. The prospector cuts one unit off a meteor in range and brings it home. A full rack refuses another hull. A lost boat can be rebuilt onto the same rack.
 What is next (ordered):
 1. A second module, and keel-shear that can disable a module in combat.
 2. One starter origin quest that changes a patrol route or a beacon when it completes.
-3. Fabricator rebuild of a lost craft from salvage.
+3. Scrip prices that move after a haul is sold at the Latch.
 4. PDO hail choices: submit, pay the fine, or refuse.
 5. A second climate and a second species, still on this stake, before any new system.
 Blocked by:
@@ -25,7 +29,7 @@ Blocked by:
 Open design decisions (max 5):
 - Planets stay on fixed positions until a later slice adds orbits.
 - Wreck loot from the tender is still one keel-salvage plus at most one cargo unit. Plasma plate around a fresh wreck is extra, and it does not spend wreck rights.
-- Fabricated parts do not come off. The gatherer is on every playable keel, including the Beak, which still has no harvest drone.
+- Fabricated parts do not come off. The gatherer is on every playable keel, including the Beak, which still has no harvest drone. The chandlery buys only inside Hollow Latch. The bay runs one pour, weapon, or boat at a time.
 - Ember kale is the only crop that matches Hollow Latch cinder-heat. The ash hen eats that kale and dies of hunger; a freeze pauses her and does not kill her.
 - Core crack is a living Red Keel inside the stake radius while the turret is down, or sitting on the stake even if the turret is up. Replant uses a new core and the same dome.
 Files touched:

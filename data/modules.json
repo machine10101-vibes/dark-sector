@@ -90,5 +90,36 @@
       "radius": 5,
       "turn": -0.12
     }
+  },
+  "shard_lance": {
+    "id": "shard_lance",
+    "name": "Shard Lance",
+    "family": "offense",
+    "slot": "Weapon",
+    "shape": "lance",
+    "blurb": "A laced spinal longer than the coil. The shot is heavier, and the nose shows it.",
+    "effects": {
+      "mass": 12,
+      "power_draw": 10,
+      "gun_damage": 14,
+      "signature": 0.16,
+      "radius": 5
+    }
+  },
+  "composite_belt": {
+    "id": "composite_belt",
+    "name": "Composite Belt",
+    "family": "defense",
+    "slot": "Plate",
+    "shape": "composite",
+    "blurb": "Resin over alloy. Thicker than iron plate, and the yaw loss is milder.",
+    "effects": {
+      "mass": 14,
+      "power_draw": 3,
+      "hp": 72,
+      "signature": 0.05,
+      "radius": 6,
+      "turn": -0.05
+    }
   }
 }

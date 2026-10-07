@@ -53,6 +53,28 @@ static func launch(sim, def_id: String) -> String:
 			sim.say("Shuttle away to walk Hollow Latch.")
 			sim.sfx("launch")
 			return ""
+		"pathfinder":
+			var open = _open_dossier(sim)
+			if open != null:
+				_depart(sim, craft, str(open.id))
+				sim.say("Pathfinder away for %s." % open.name)
+				sim.sfx("launch")
+				return ""
+			var rich := _richest_meteor(sim)
+			if rich.is_empty():
+				return "The belts are husks. Nothing for a pathfinder to mark."
+			_depart(sim, craft, str(rich.id))
+			sim.say("Pathfinder away to mark %s." % rich.name)
+			sim.sfx("launch")
+			return ""
+		"prospector":
+			var rock := _nearest_meteor(sim, craft)
+			if rock.is_empty():
+				return "No meteor in the prospector's range."
+			_depart(sim, craft, str(rock.id))
+			sim.say("Prospector out for %s." % rock.name)
+			sim.sfx("launch")
+			return ""
 	return "That craft has no order on the board."
 
 
@@ -83,6 +105,10 @@ static func step(sim, craft, dt: float) -> void:
 			_step_shuttle(sim, craft, dt)
 		"fighter":
 			_step_fighter(sim, craft, dt)
+		"pathfinder":
+			_step_pathfinder(sim, craft, dt)
+		"prospector":
+			_step_prospector(sim, craft, dt)
 	if float(craft.hp) <= 0.0 and str(craft.state) != "lost":
 		craft.state = "lost"
 		craft.hp = 0.0
@@ -195,6 +221,55 @@ static func _step_shuttle(sim, craft, dt: float) -> void:
 		if float(craft.work) >= float(craft.work_step) and not bool(craft.did_job):
 			craft.did_job = true
 			PocketRules.confirm_walk(sim)
+			craft.state = "returning"
+	else:
+		_return_home(sim, craft, dt)
+
+
+static func _step_pathfinder(sim, craft, dt: float) -> void:
+	if sim.planet(str(craft.target)) != null:
+		_step_probe(sim, craft, dt)
+		return
+	var node := PlasmaHarvest.by_id(sim, str(craft.target))
+	if node.is_empty():
+		craft.state = "returning"
+		_return_home(sim, craft, dt)
+		return
+	if str(craft.state) == "outbound":
+		var dist := _fly_toward(craft, node.pos, dt, float(craft.speed))
+		if dist < 34.0:
+			sim.beacon = {
+				"pos": node.pos,
+				"name": str(node.name),
+				"line": PlasmaHarvest.load_line(sim, node),
+			}
+			sim.say("Pathfinder marks %s. %s." % [node.name, sim.beacon.line])
+			sim.sfx("scan_done")
+			craft.state = "returning"
+	else:
+		_return_home(sim, craft, dt)
+
+
+static func _step_prospector(sim, craft, dt: float) -> void:
+	var node := PlasmaHarvest.by_id(sim, str(craft.target))
+	if node.is_empty():
+		craft.state = "returning"
+		_return_home(sim, craft, dt)
+		return
+	if str(craft.state) == "outbound":
+		var dist := _fly_toward(craft, node.pos, dt, float(craft.speed))
+		if dist < 28.0:
+			craft.state = "working"
+			craft.work = 0.0
+	elif str(craft.state) == "working":
+		_fly_toward(craft, node.pos, dt, float(craft.speed) * 0.25)
+		craft.work = float(craft.work) + dt
+		if float(craft.work) >= float(craft.work_step) and not bool(craft.did_job):
+			craft.did_job = true
+			var result := PlasmaHarvest.siphon(sim, str(node.id))
+			if result == "full":
+				sim.say("Hold is full. The prospector is coming home empty.")
+				craft.did_job = false
 			craft.state = "returning"
 	else:
 		_return_home(sim, craft, dt)
@@ -350,11 +425,66 @@ static func _nearest_wreck(sim):
 
 static func _targeted(sim, planet_id: String) -> bool:
 	for craft in sim.craft:
-		if str(craft.def_id) != "survey_probe":
+		var kind := str(craft.def_id)
+		if kind != "survey_probe" and kind != "pathfinder":
 			continue
 		if str(craft.state) == "docked" or str(craft.state) == "lost":
 			continue
 		if str(craft.target) == planet_id:
+			return true
+	return false
+
+
+static func _open_dossier(sim):
+	var best = null
+	var best_dist := 1.0e12
+	for planet in sim.planets:
+		if sim.dossier_complete(str(planet.id)):
+			continue
+		if _targeted(sim, str(planet.id)):
+			continue
+		var dist: float = sim.player.pos.distance_to(planet.pos)
+		if dist < best_dist:
+			best_dist = dist
+			best = planet
+	return best
+
+
+static func _richest_meteor(sim) -> Dictionary:
+	var best: Dictionary = {}
+	var best_n := 0
+	for node in sim.nodes:
+		if str(node.kind) != "meteor":
+			continue
+		var n := PlasmaHarvest.remaining(node)
+		if n > best_n:
+			best_n = n
+			best = node
+	return best
+
+
+static func _nearest_meteor(sim, craft) -> Dictionary:
+	var best: Dictionary = {}
+	var best_d := one_way_range(craft)
+	for node in sim.nodes:
+		if str(node.kind) != "meteor":
+			continue
+		if PlasmaHarvest.remaining(node) <= 0:
+			continue
+		if _boat_targeted(sim, str(node.id)):
+			continue
+		var dist: float = sim.player.pos.distance_to(node.pos)
+		if dist < best_d:
+			best_d = dist
+			best = node
+	return best
+
+
+static func _boat_targeted(sim, node_id: String) -> bool:
+	for craft in sim.craft:
+		if str(craft.state) == "docked" or str(craft.state) == "lost":
+			continue
+		if str(craft.target) == node_id:
 			return true
 	return false
 

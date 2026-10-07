@@ -60,5 +60,27 @@
       "range": 300,
       "ttl": 1.05
     }
+  },
+  "pathfinder": {
+    "id": "pathfinder",
+    "name": "Pathfinder",
+    "job": "A small exploration ship. She seals an open dossier, or marks the richest rock still in the belts.",
+    "speed": 480,
+    "battery": 220,
+    "drain": 2.4,
+    "hp": 24,
+    "work": 0.42,
+    "radius": 9
+  },
+  "prospector": {
+    "id": "prospector",
+    "name": "Prospector",
+    "job": "A belt drone. She cuts one unit off the nearest meteor in range and brings it home.",
+    "speed": 250,
+    "battery": 130,
+    "drain": 3.6,
+    "hp": 20,
+    "work": 1.6,
+    "radius": 8
   }
 }

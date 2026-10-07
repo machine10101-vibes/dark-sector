@@ -27,6 +27,10 @@ var claim_box: VBoxContainer
 var claim_status: Label
 var claim_buttons: Dictionary = {}
 var fab_buttons: Array = []
+var refine_buttons: Array = []
+var craft_buttons: Array = []
+var sell_buttons: Array = []
+var chandlery_note: Label
 
 
 func _ready() -> void:
@@ -304,12 +308,13 @@ func _mass_line(stats: Dictionary) -> String:
 
 
 func _cargo_line(sim, stats: Dictionary) -> String:
+	var purse := int(sim.player.get("scrip", 0))
 	if sim.player.cargo.is_empty():
-		return "Hold empty.  0/%d" % int(stats.cargo_cap)
+		return "Hold empty.  0/%d    scrip %d" % [int(stats.cargo_cap), purse]
 	var parts: Array = []
 	for id in sim.player.cargo.keys():
 		parts.append("%s ×%d" % [sim.resource_name(str(id)), int(sim.player.cargo[id])])
-	return "%s    %d/%d" % ["   ".join(parts), Fit.cargo_used(sim.player), int(stats.cargo_cap)]
+	return "%s    %d/%d    scrip %d" % ["   ".join(parts), Fit.cargo_used(sim.player), int(stats.cargo_cap), purse]
 
 
 func _gather_line(sim) -> String:
@@ -408,7 +413,28 @@ func _build_bay() -> void:
 	bay_box.add_child(ThemeKit.label("Bolted means bolted. There is no crane aboard to pull a module off.", 13, Color("8d826c")))
 	bay_box.add_child(ThemeKit.label("The plasma gatherer is fitted. Right-click a rock, torn plate, or abandoned hull. Fabricated parts stay on the keel.", 13, Color("8d826c")))
 	fab_buttons = []
+	refine_buttons = []
+	craft_buttons = []
+	sell_buttons = []
+	chandlery_note = null
 	if sim.defs.has("harvest"):
+		bay_box.add_child(ThemeKit.label("Chandlery", 16, Color("e6d7bf")))
+		chandlery_note = ThemeKit.label("", 13, Color("8d826c"))
+		bay_box.add_child(chandlery_note)
+		for mat_id in sim.defs.harvest.get("prices", {}).keys():
+			var sell := ThemeKit.button("Sell")
+			sell.set_meta("mat_id", str(mat_id))
+			sell.pressed.connect(_on_sell.bind(str(mat_id)))
+			bay_box.add_child(sell)
+			sell_buttons.append(sell)
+		bay_box.add_child(ThemeKit.label("Refinery", 16, Color("e6d7bf")))
+		bay_box.add_child(ThemeKit.label("Raw stock goes in. A synthetic comes out. One pour at a time.", 13, Color("8d826c")))
+		for recipe in sim.defs.harvest.get("synthetics", []):
+			var pour := ThemeKit.button("Pour")
+			pour.set_meta("recipe_id", str(recipe.id))
+			pour.pressed.connect(_on_refine.bind(str(recipe.id)))
+			bay_box.add_child(pour)
+			refine_buttons.append(pour)
 		bay_box.add_child(ThemeKit.label("Fabricator", 16, Color("e6d7bf")))
 		for recipe in sim.defs.harvest.recipes:
 			var button := ThemeKit.button("Fabricate")
@@ -416,6 +442,14 @@ func _build_bay() -> void:
 			button.pressed.connect(_on_fabricate.bind(str(recipe.id)))
 			bay_box.add_child(button)
 			fab_buttons.append(button)
+		bay_box.add_child(ThemeKit.label("Boat yard", 16, Color("e6d7bf")))
+		bay_box.add_child(ThemeKit.label("A pathfinder ranges ahead. A prospector cuts belt ore and comes home.", 13, Color("8d826c")))
+		for recipe in sim.defs.harvest.get("craft_recipes", []):
+			var lay := ThemeKit.button("Lay")
+			lay.set_meta("recipe_id", str(recipe.craft))
+			lay.pressed.connect(_on_lay.bind(str(recipe.craft)))
+			bay_box.add_child(lay)
+			craft_buttons.append(lay)
 	_refresh_bay_text()
 
 
@@ -509,7 +543,120 @@ func _refresh_fab() -> void:
 			button.text = "%s bolted" % mod.name
 		else:
 			button.text = "Fabricate %s  (%s)%s" % [mod.name, ", ".join(cost_bits), note]
-		button.disabled = bolted or not afford or not slot_free or not power_ok
+		var busy := _bay_busy() and not _job_is("module", recipe_id)
+		var making := _job_is("module", recipe_id)
+		if making:
+			button.text = "Making %s  %d%%" % [mod.name, _job_percent()]
+		button.disabled = bolted or not afford or not slot_free or not power_ok or busy or making
+	_refresh_market()
+
+
+func _refresh_market() -> void:
+	var sim = Game.sim
+	if sim == null or not sim.defs.has("harvest"):
+		return
+	var in_pocket := PocketRules.in_pocket(sim)
+	if chandlery_note != null and is_instance_valid(chandlery_note):
+		var where := "Keel is inside Hollow Latch." if in_pocket else "Bring the keel inside Hollow Latch. The chandlery will not buy in the dark."
+		chandlery_note.text = "%s  Purse %d scrip. Rack %d free." % [where, int(sim.player.get("scrip", 0)), PlasmaHarvest.hangar_free(sim)]
+	for button in sell_buttons:
+		if not is_instance_valid(button):
+			continue
+		var mat_id := str(button.get_meta("mat_id"))
+		var have := int(sim.player.cargo.get(mat_id, 0))
+		var price := PlasmaHarvest.price_of(sim, mat_id)
+		button.visible = have > 0
+		button.text = "Sell %s ×%d  (+%d scrip)" % [sim.resource_name(mat_id), have, price * have]
+		button.disabled = not in_pocket or have <= 0
+	for button in refine_buttons:
+		if not is_instance_valid(button):
+			continue
+		var recipe_id := str(button.get_meta("recipe_id"))
+		var recipe := {}
+		for row in sim.defs.harvest.get("synthetics", []):
+			if str(row.id) == recipe_id:
+				recipe = row
+				break
+		if recipe.is_empty():
+			continue
+		var making := _job_is("refine", recipe_id)
+		var bits := _cost_bits(sim, recipe.cost)
+		if making:
+			button.text = "Pouring %s  %d%%" % [sim.resource_name(recipe_id), _job_percent()]
+		else:
+			button.text = "Pour %s  (%s)" % [sim.resource_name(recipe_id), ", ".join(bits)]
+		button.disabled = making or _bay_busy() or not _can_pay(sim, recipe.cost)
+	for button in craft_buttons:
+		if not is_instance_valid(button):
+			continue
+		var craft_id := str(button.get_meta("recipe_id"))
+		var recipe := {}
+		for row in sim.defs.harvest.get("craft_recipes", []):
+			if str(row.craft) == craft_id:
+				recipe = row
+				break
+		if recipe.is_empty():
+			continue
+		var spec: Dictionary = sim.defs.craft.get(craft_id, {})
+		var making := _job_is("craft", craft_id)
+		var lost := not PlasmaHarvest.lost_craft(sim, craft_id).is_empty()
+		var verb := "Rebuild" if lost else "Lay"
+		if making:
+			button.text = "Laying %s  %d%%" % [str(spec.get("name", craft_id)), _job_percent()]
+		else:
+			button.text = "%s %s  (%s)" % [verb, str(spec.get("name", craft_id)), ", ".join(_cost_bits(sim, recipe.cost))]
+		var room := lost or PlasmaHarvest.hangar_free(sim) > 0
+		button.disabled = making or _bay_busy() or not _can_pay(sim, recipe.cost) or not room
+
+
+func _cost_bits(sim, cost: Dictionary) -> Array:
+	var bits: Array = []
+	for id in cost.keys():
+		bits.append("%d/%d %s" % [int(sim.player.cargo.get(str(id), 0)), int(cost[id]), sim.resource_name(str(id))])
+	return bits
+
+
+func _can_pay(sim, cost: Dictionary) -> bool:
+	for id in cost.keys():
+		if int(sim.player.cargo.get(str(id), 0)) < int(cost[id]):
+			return false
+	return true
+
+
+func _bay_busy() -> bool:
+	return Game.sim != null and bool(Game.sim.works.get("active", false))
+
+
+func _job_is(kind: String, id: String) -> bool:
+	if Game.sim == null or not bool(Game.sim.works.get("active", false)):
+		return false
+	return str(Game.sim.works.get("kind", "")) == kind and str(Game.sim.works.get("id", "")) == id
+
+
+func _job_percent() -> int:
+	var seconds := maxf(float(Game.sim.works.get("seconds", 1.0)), 0.1)
+	return int(clampf(float(Game.sim.works.get("progress", 0.0)) / seconds, 0.0, 1.0) * 100.0)
+
+
+func _on_sell(mat_id: String) -> void:
+	if Game.sim == null:
+		return
+	PlasmaHarvest.sell(Game.sim, mat_id)
+	_refresh_bay_text()
+
+
+func _on_refine(recipe_id: String) -> void:
+	if Game.sim == null:
+		return
+	PlasmaHarvest.start_refine(Game.sim, recipe_id)
+	_refresh_bay_text()
+
+
+func _on_lay(craft_id: String) -> void:
+	if Game.sim == null:
+		return
+	PlasmaHarvest.start_craft(Game.sim, craft_id)
+	_refresh_bay_text()
 
 
 func _on_fabricate(recipe_id: String) -> void:

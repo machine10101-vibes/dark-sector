@@ -17,6 +17,8 @@ var wrecks: Array = []
 var nodes: Array = []
 var belt_marks: Array = []
 var gather: Dictionary = {}
+var works: Dictionary = {}
+var beacon: Dictionary = {}
 var aim := Vector2.ZERO
 var aim_id := ""
 var scans: Dictionary = {}
@@ -45,6 +47,8 @@ func new_game(class_id: String) -> void:
 	scans = {}
 	wrecks = []
 	gather = PlasmaHarvest.fresh_gather()
+	works = PlasmaHarvest.fresh_works()
+	beacon = {}
 	aim = Vector2.ZERO
 	aim_id = ""
 	projectiles = []
@@ -84,6 +88,7 @@ func new_game(class_id: String) -> void:
 	say("Hollow Latch is under the keel. Cinder is the near rust world. Red Keel hunts the Slat. Vellum Compact owns the pale world — the green lane remembers guns.")
 	if defs.has("harvest"):
 		say("Plasma gatherer is live. Right-click ore, torn plate, or an abandoned hull. Rust Arc, Pale Shelf, Copper Vein, and King's Drift are out in the dark.")
+		say("Hollow Latch buys ore and synthetics. The bay can pour alloy, circuit lace, and hull resin, then lay a weapon, a belt, or a boat.")
 
 
 func tick(dt: float, cmd: Dictionary) -> void:
@@ -346,6 +351,8 @@ func to_dict() -> Dictionary:
 		"hailed": hailed,
 		"node_stock": PlasmaHarvest.stock_out(self),
 		"runtime_nodes": PlasmaHarvest.runtime_out(self),
+		"works": PlasmaHarvest.works_out(self),
+		"beacon": _beacon_out(),
 	}
 
 
@@ -390,6 +397,8 @@ func from_dict(data: Dictionary) -> void:
 	sfx_queue = []
 	hold_npc = false
 	gather = PlasmaHarvest.fresh_gather()
+	works = PlasmaHarvest.works_in(data.get("works", {}))
+	beacon = _beacon_in(data.get("beacon", {}))
 	aim = Vector2.ZERO
 	aim_id = ""
 	PlasmaHarvest.apply_stock(self, data.get("node_stock", {}))
@@ -711,6 +720,7 @@ func _blank_ship(class_id: String, ship_name: String, agent_id: String, controll
 		"max_hp": int(stats.hp_max),
 		"modules": [],
 		"cargo": {},
+		"scrip": 0,
 		"yard": [],
 		"slots": [],
 		"crew": [],
@@ -812,6 +822,7 @@ func _ship_in(row: Dictionary) -> Dictionary:
 		ship.muzzle = 34.0
 	for key in ship.cargo.keys():
 		ship.cargo[key] = int(ship.cargo[key])
+	ship.scrip = int(ship.get("scrip", 0))
 	return ship
 
 
@@ -830,6 +841,24 @@ func _craft_in(row: Dictionary) -> Dictionary:
 	item.battery = float(item.battery)
 	item.rot = float(item.rot)
 	return item
+
+
+func _beacon_out() -> Dictionary:
+	if beacon.is_empty():
+		return {}
+	var row: Dictionary = beacon.duplicate(true)
+	if row.has("pos"):
+		row.pos = Serde.vec_out(row.pos)
+	return row
+
+
+func _beacon_in(raw) -> Dictionary:
+	if typeof(raw) != TYPE_DICTIONARY or raw.is_empty():
+		return {}
+	var row: Dictionary = raw.duplicate(true)
+	if row.has("pos"):
+		row.pos = Serde.vec_in(row.pos)
+	return row
 
 
 func _roman(index: int) -> String:

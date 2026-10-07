@@ -142,6 +142,7 @@ func _draw() -> void:
 	_draw_scale(center, half, z)
 	_draw_names(sim, z)
 	_draw_harvest_labels(sim, z)
+	_draw_beacon(sim)
 
 
 func _draw_grid(view: Rect2, zoom: float) -> void:
@@ -304,15 +305,20 @@ func _draw_craft(sim, item: Dictionary) -> void:
 			col = Color("d7d2c4")
 		"fighter":
 			col = Color("c4512c")
+		"pathfinder":
+			col = Color("e6d7bf")
+		"prospector":
+			col = Color("e07a3d")
 	var dir := Vector2.from_angle(float(item.rot))
 	var side := dir.orthogonal()
-	var nose := pos + dir * 10.0
+	var reach := 16.0 if str(item.def_id) == "pathfinder" else 10.0
+	var nose := pos + dir * reach
 	var left := pos - dir * 6.0 + side * 4.0
 	var right := pos - dir * 6.0 - side * 4.0
 	draw_colored_polygon(PackedVector2Array([nose, left, right]), col)
 	if str(item.state) == "lost":
 		draw_line(pos + Vector2(-6, -6), pos + Vector2(6, 6), Color("c4512c"), 1.4, true)
-	if str(item.def_id) == "survey_probe" and str(item.state) == "working":
+	if str(item.def_id) in ["survey_probe", "pathfinder"] and str(item.state) == "working":
 		var frac := clampf(float(item.layers_done) / 7.0, 0.0, 1.0)
 		draw_arc(pos, 16.0, -PI * 0.5, -PI * 0.5 + TAU * frac, 16, Color("d7e6c8"), 1.5, true)
 
@@ -389,6 +395,23 @@ func _draw_harvest_labels(sim, zoom: float) -> void:
 			continue
 		var line := PlasmaHarvest.load_line(sim, node)
 		_text(node.pos + Vector2(8, float(node.size) + 16.0), "%s  %s" % [node.name, line], 13, Color("e6d7bf"))
+
+
+func _draw_beacon(sim) -> void:
+	var mark: Dictionary = sim.beacon
+	if mark.is_empty() or not mark.has("pos"):
+		return
+	var pos: Vector2 = mark.pos
+	var diamond := PackedVector2Array([
+		pos + Vector2(0, -16),
+		pos + Vector2(12, 0),
+		pos + Vector2(0, 16),
+		pos + Vector2(-12, 0),
+	])
+	draw_polyline(PackedVector2Array([diamond[0], diamond[1], diamond[2], diamond[3], diamond[0]]), Color("f0c27a"), 1.6, true)
+	_text(pos + Vector2(16, -8), str(mark.get("name", "Mark")), 14, Color("f0c27a"))
+	if str(mark.get("line", "")) != "":
+		_text(pos + Vector2(16, 10), str(mark.line), 12, Color("e0b080"))
 
 
 func _text(pos: Vector2, text: String, size: int, color: Color) -> void:

@@ -69,7 +69,20 @@ static func engage(sim, pos: Vector2) -> String:
 	return "ok"
 
 
+static func fresh_works() -> Dictionary:
+	return {
+		"active": false,
+		"kind": "",
+		"id": "",
+		"progress": 0.0,
+		"seconds": 1.0,
+		"waiting": false,
+		"cost": {},
+	}
+
+
 static func step(sim, dt: float) -> void:
+	_step_works(sim, dt)
 	if typeof(sim.gather) != TYPE_DICTIONARY or sim.gather.is_empty() or not sim.gather.has("extend"):
 		sim.gather = fresh_gather()
 	var g: Dictionary = sim.gather
@@ -129,52 +142,141 @@ static func step(sim, dt: float) -> void:
 
 
 static func fabricate(sim, recipe_id: String) -> String:
-	if not _ready(sim):
-		return "The fabricator has no drawings."
+	var held := _refuse_busy(sim)
+	if held != "":
+		return held
 	var recipe := _recipe(sim, recipe_id)
-	if recipe.is_empty():
-		sim.say("No drawing by that name.")
-		return "missing"
-	var module_id := str(recipe.module)
-	var mod: Dictionary = sim.defs.modules.get(module_id, {})
-	if mod.is_empty():
-		sim.say("That drawing has no part.")
-		return "missing"
-	if sim.player.modules.has(module_id):
-		sim.say("%s is already on the keel." % mod.name)
-		return "have"
-	var slot := str(mod.get("slot", "Utility"))
-	if Fit.free_slots(sim.defs, sim.player).find(slot) < 0:
-		sim.say("No free %s hardpoint." % slot)
-		return "slot"
-	var cost: Dictionary = recipe.cost
-	for id in cost.keys():
-		if int(sim.player.cargo.get(id, 0)) < int(cost[id]):
-			sim.say("Short %s. The drawing wants %d." % [sim.resource_name(str(id)), int(cost[id])])
-			return "cost"
-	var before := Fit.stats(sim.defs, sim.player)
-	var hypo: Dictionary = sim.player.duplicate(true)
-	hypo.modules = sim.player.modules.duplicate()
-	hypo.modules.append(module_id)
-	var after := Fit.stats(sim.defs, hypo)
-	if float(after.power_spare) < -0.01:
-		sim.say("Reactor spare is %.0f. %s wants more than the bus can feed." % [before.power_spare, mod.name])
-		return "power"
-	for id in cost.keys():
-		_take(sim, str(id), int(cost[id]))
-	var hp_before := int(before.hp_max)
-	sim.player.modules.append(module_id)
-	after = Fit.stats(sim.defs, sim.player)
-	var gain := int(after.hp_max) - hp_before
-	sim.player.max_hp = int(after.hp_max)
-	sim.player.hp = minf(float(sim.player.hp) + float(gain), float(sim.player.max_hp))
-	var spent := _cost_line(sim, cost)
-	var keel := ""
-	if bool(after.keel_warn):
-		keel = " The keel complains under the new mass."
-	sim.say("%s fabricated from %s. Yaw %.0f°/s → %.0f°/s.%s" % [mod.name, spent, before.yaw_deg, after.yaw_deg, keel])
-	sim.sfx("install")
+	var blocked := _module_gate(sim, recipe, true)
+	if blocked != "":
+		return blocked
+	if float(recipe.get("seconds", 0.0)) > 0.05:
+		return start_works(sim, "module", recipe_id, float(recipe.seconds), recipe.cost)
+	_pay(sim, recipe.cost)
+	_apply_module(sim, recipe)
 	return ""
+
+
+static func start_refine(sim, mat_id: String) -> String:
+	var held := _refuse_busy(sim)
+	if held != "":
+		return held
+	var recipe := _synthetic(sim, mat_id)
+	if recipe.is_empty():
+		sim.say("The refinery has no pour by that name.")
+		return "missing"
+	var blocked := _stock_gate(sim, recipe.cost, 1)
+	if blocked != "":
+		return blocked
+	return start_works(sim, "refine", mat_id, float(recipe.get("seconds", 5.0)), recipe.cost)
+
+
+static func start_craft(sim, craft_id: String) -> String:
+	var held := _refuse_busy(sim)
+	if held != "":
+		return held
+	var recipe := _craft_recipe(sim, craft_id)
+	if recipe.is_empty():
+		sim.say("No boat by that drawing.")
+		return "missing"
+	var blocked := _craft_gate(sim, str(recipe.craft))
+	if blocked != "":
+		return blocked
+	blocked = _stock_gate(sim, recipe.cost, 0)
+	if blocked != "":
+		return blocked
+	return start_works(sim, "craft", str(recipe.craft), float(recipe.get("seconds", 8.0)), recipe.cost)
+
+
+static func sell(sim, mat_id: String) -> String:
+	if not _ready(sim) or not bool(sim.player.get("alive", false)):
+		return "dead"
+	if not PocketRules.in_pocket(sim):
+		sim.say("The chandlery is at Hollow Latch. Bring the keel inside the pocket.")
+		return "far"
+	var price := price_of(sim, mat_id)
+	if price <= 0:
+		sim.say("The Latch will not buy %s." % sim.resource_name(mat_id))
+		return "unsold"
+	var have := int(sim.player.cargo.get(mat_id, 0))
+	if have <= 0:
+		return "empty"
+	_take(sim, mat_id, have)
+	sim.player.scrip = int(sim.player.get("scrip", 0)) + price * have
+	sim.say("Latch paid %d scrip for %d %s. Purse is %d." % [price * have, have, sim.resource_name(mat_id), int(sim.player.scrip)])
+	sim.sfx("dock")
+	return ""
+
+
+static func price_of(sim, mat_id: String) -> int:
+	if not _ready(sim):
+		return 0
+	return int(sim.defs.harvest.get("prices", {}).get(mat_id, 0))
+
+
+static func siphon(sim, node_id: String) -> String:
+	var node := by_id(sim, node_id)
+	if node.is_empty() or remaining(node) <= 0:
+		return "empty"
+	var stats := Fit.stats(sim.defs, sim.player)
+	if Fit.cargo_used(sim.player) >= int(stats.cargo_cap):
+		return "full"
+	var mat_id := next_yield(node)
+	if mat_id == "":
+		return "empty"
+	node.loads[mat_id] = int(node.loads[mat_id]) - 1
+	sim._add_cargo(mat_id, 1)
+	sim.say("%s aboard from %s." % [sim.resource_name(mat_id), node.name])
+	sim.sfx("extract")
+	return ""
+
+
+static func hangar_free(sim) -> int:
+	var cap := int(sim.defs.ships[sim.player.class_id].get("hangar", 4))
+	var used := 0
+	for item in sim.craft:
+		if str(item.state) != "lost":
+			used += 1
+	return cap - used
+
+
+static func lost_craft(sim, def_id: String) -> Dictionary:
+	for item in sim.craft:
+		if str(item.def_id) == def_id and str(item.state) == "lost":
+			return item
+	return {}
+
+
+static func works_out(sim) -> Dictionary:
+	var w: Dictionary = sim.works if typeof(sim.works) == TYPE_DICTIONARY else fresh_works()
+	var cost: Dictionary = {}
+	for key in w.get("cost", {}).keys():
+		cost[str(key)] = int(w.cost[key])
+	return {
+		"active": bool(w.get("active", false)),
+		"kind": str(w.get("kind", "")),
+		"id": str(w.get("id", "")),
+		"progress": float(w.get("progress", 0.0)),
+		"seconds": float(w.get("seconds", 1.0)),
+		"waiting": bool(w.get("waiting", false)),
+		"cost": cost,
+	}
+
+
+static func works_in(raw) -> Dictionary:
+	var w := fresh_works()
+	if typeof(raw) != TYPE_DICTIONARY:
+		return w
+	w.active = bool(raw.get("active", false))
+	w.kind = str(raw.get("kind", ""))
+	w.id = str(raw.get("id", ""))
+	w.progress = float(raw.get("progress", 0.0))
+	w.seconds = maxf(float(raw.get("seconds", 1.0)), 0.2)
+	w.waiting = bool(raw.get("waiting", false))
+	var cost: Dictionary = {}
+	for key in raw.get("cost", {}).keys():
+		cost[str(key)] = int(raw.cost[key])
+	w.cost = cost
+	return w
 
 
 static func spawn_battle_debris(sim, unit: Dictionary) -> void:
@@ -686,6 +788,225 @@ static func _secondary_mix(mix: Dictionary, primary: String) -> String:
 			best_n = int(mix[key])
 			best = str(key)
 	return best
+
+
+static func _refuse_busy(sim) -> String:
+	_ensure_works(sim)
+	if bool(sim.works.get("active", false)):
+		sim.say("The bay is already on a job.")
+		return "busy"
+	return ""
+
+
+static func start_works(sim, kind: String, id: String, seconds: float, cost: Dictionary) -> String:
+	var held := _refuse_busy(sim)
+	if held != "":
+		return held
+	_pay(sim, cost)
+	sim.works = {
+		"active": true,
+		"kind": kind,
+		"id": id,
+		"progress": 0.0,
+		"seconds": maxf(seconds, 0.2),
+		"waiting": false,
+		"cost": cost.duplicate(),
+	}
+	match kind:
+		"refine":
+			sim.say("Refinery started. %s is in the crucible." % sim.resource_name(id))
+		"craft":
+			var boat := str(sim.defs.craft[id].name)
+			sim.say("The bay is laying a %s." % boat)
+		_:
+			var recipe := _recipe(sim, id)
+			var mod: Dictionary = sim.defs.modules.get(str(recipe.get("module", "")), {})
+			sim.say("Fabricator started on %s." % str(mod.get("name", id)))
+	sim.sfx("install")
+	return ""
+
+
+static func _step_works(sim, dt: float) -> void:
+	_ensure_works(sim)
+	var w: Dictionary = sim.works
+	if not bool(w.active):
+		return
+	if str(w.kind) == "refine":
+		var stats := Fit.stats(sim.defs, sim.player)
+		if Fit.cargo_used(sim.player) >= int(stats.cargo_cap):
+			w.progress = minf(float(w.progress), float(w.seconds) - 0.05)
+			if not bool(w.waiting):
+				w.waiting = true
+				sim.say("Hold is full. The refinery holds the pour.")
+			return
+	w.waiting = false
+	w.progress = float(w.progress) + dt
+	if float(w.progress) < float(w.seconds):
+		return
+	var kind := str(w.kind)
+	var id := str(w.id)
+	var cost: Dictionary = (w.cost as Dictionary).duplicate()
+	w.active = false
+	w.progress = float(w.seconds)
+	var err := _finish_works(sim, kind, id)
+	if err != "":
+		_refund(sim, cost)
+		sim.say("The bay put the stock back.")
+
+
+static func _finish_works(sim, kind: String, id: String) -> String:
+	if kind == "refine":
+		sim._add_cargo(id, 1)
+		sim.say("%s is cool enough to rack." % sim.resource_name(id))
+		sim.sfx("extract")
+		return ""
+	if kind == "craft":
+		return _berth(sim, id)
+	var recipe := _recipe(sim, id)
+	var blocked := _module_gate(sim, recipe, false)
+	if blocked != "":
+		return blocked
+	_apply_module(sim, recipe)
+	return ""
+
+
+static func _module_gate(sim, recipe: Dictionary, check_cost: bool) -> String:
+	if not _ready(sim):
+		return "The fabricator has no drawings."
+	if recipe.is_empty():
+		sim.say("No drawing by that name.")
+		return "missing"
+	var module_id := str(recipe.get("module", ""))
+	var mod: Dictionary = sim.defs.modules.get(module_id, {})
+	if mod.is_empty():
+		sim.say("That drawing has no part.")
+		return "missing"
+	if sim.player.modules.has(module_id):
+		sim.say("%s is already on the keel." % mod.name)
+		return "have"
+	var slot := str(mod.get("slot", "Utility"))
+	if Fit.free_slots(sim.defs, sim.player).find(slot) < 0:
+		sim.say("No free %s hardpoint." % slot)
+		return "slot"
+	if check_cost:
+		var cost: Dictionary = recipe.get("cost", {})
+		for mat_id in cost.keys():
+			if int(sim.player.cargo.get(mat_id, 0)) < int(cost[mat_id]):
+				sim.say("Short %s. The drawing wants %d." % [sim.resource_name(str(mat_id)), int(cost[mat_id])])
+				return "cost"
+	var before := Fit.stats(sim.defs, sim.player)
+	var hypo: Dictionary = sim.player.duplicate(true)
+	hypo.modules = sim.player.modules.duplicate()
+	hypo.modules.append(module_id)
+	var after := Fit.stats(sim.defs, hypo)
+	if float(after.power_spare) < -0.01:
+		sim.say("Reactor spare is %.0f. %s wants more than the bus can feed." % [before.power_spare, mod.name])
+		return "power"
+	return ""
+
+
+static func _apply_module(sim, recipe: Dictionary) -> void:
+	var module_id := str(recipe.module)
+	var mod: Dictionary = sim.defs.modules[module_id]
+	var before := Fit.stats(sim.defs, sim.player)
+	var hp_before := int(before.hp_max)
+	sim.player.modules.append(module_id)
+	var after := Fit.stats(sim.defs, sim.player)
+	var gain := int(after.hp_max) - hp_before
+	sim.player.max_hp = int(after.hp_max)
+	sim.player.hp = minf(float(sim.player.hp) + float(gain), float(sim.player.max_hp))
+	var spent := _cost_line(sim, recipe.get("cost", {}))
+	var keel := ""
+	if bool(after.keel_warn):
+		keel = " The keel complains under the new mass."
+	sim.say("%s is on the keel, from %s. Yaw %.0f°/s → %.0f°/s.%s" % [mod.name, spent, before.yaw_deg, after.yaw_deg, keel])
+	sim.sfx("install")
+
+
+static func _stock_gate(sim, cost: Dictionary, extra_out: int) -> String:
+	for mat_id in cost.keys():
+		if int(sim.player.cargo.get(mat_id, 0)) < int(cost[mat_id]):
+			sim.say("Short %s. The drawing wants %d." % [sim.resource_name(str(mat_id)), int(cost[mat_id])])
+			return "cost"
+	var take_n := 0
+	for mat_id in cost.keys():
+		take_n += int(cost[mat_id])
+	var cap := int(Fit.stats(sim.defs, sim.player).cargo_cap)
+	if Fit.cargo_used(sim.player) - take_n + extra_out > cap:
+		sim.say("Hold is full. Make room before the pour.")
+		return "full"
+	return ""
+
+
+static func _craft_gate(sim, def_id: String) -> String:
+	if not sim.defs.craft.has(def_id):
+		sim.say("No boat by that drawing.")
+		return "missing"
+	if lost_craft(sim, def_id).is_empty() and hangar_free(sim) <= 0:
+		sim.say("Hangar is full. A lost boat can still be rebuilt.")
+		return "full"
+	return ""
+
+
+static func _berth(sim, def_id: String) -> String:
+	var blocked := _craft_gate(sim, def_id)
+	if blocked != "":
+		return blocked
+	var lost := lost_craft(sim, def_id)
+	if not lost.is_empty():
+		lost.state = "docked"
+		lost.hp = float(lost.max_hp)
+		lost.battery = float(lost.max_battery)
+		lost.pos = sim.player.pos
+		lost.vel = Vector2.ZERO
+		lost.target = ""
+		lost.did_job = false
+		sim.say("%s is rebuilt and back on the rack." % lost.name)
+		sim.sfx("install")
+		return ""
+	var index := 1
+	for item in sim.craft:
+		if str(item.def_id) == def_id:
+			index += 1
+	var craft: Dictionary = sim._make_craft(def_id, index)
+	craft.pos = sim.player.pos
+	sim.craft.append(craft)
+	sim.say("%s is on the rack." % craft.name)
+	sim.sfx("launch")
+	return ""
+
+
+static func _pay(sim, cost: Dictionary) -> void:
+	for mat_id in cost.keys():
+		_take(sim, str(mat_id), int(cost[mat_id]))
+
+
+static func _refund(sim, cost: Dictionary) -> void:
+	for mat_id in cost.keys():
+		sim._add_cargo(str(mat_id), int(cost[mat_id]))
+
+
+static func _ensure_works(sim) -> void:
+	if typeof(sim.works) != TYPE_DICTIONARY or (sim.works as Dictionary).is_empty() or not (sim.works as Dictionary).has("active"):
+		sim.works = fresh_works()
+
+
+static func _synthetic(sim, mat_id: String) -> Dictionary:
+	if not _ready(sim):
+		return {}
+	for recipe in sim.defs.harvest.get("synthetics", []):
+		if str(recipe.id) == mat_id:
+			return recipe
+	return {}
+
+
+static func _craft_recipe(sim, craft_id: String) -> Dictionary:
+	if not _ready(sim):
+		return {}
+	for recipe in sim.defs.harvest.get("craft_recipes", []):
+		if str(recipe.id) == craft_id or str(recipe.craft) == craft_id:
+			return recipe
+	return {}
 
 
 static func _recipe(sim, recipe_id: String) -> Dictionary:

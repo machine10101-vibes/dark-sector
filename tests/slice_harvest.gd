@@ -20,6 +20,7 @@ func _init() -> void:
 	_wreckage()
 	_fabricate()
 	_roundtrip()
+	_industry()
 	if fails == 0:
 		print("HARVEST PASS")
 	else:
@@ -252,6 +253,152 @@ func _roundtrip() -> void:
 			runtime += 1
 	check(runtime >= 3, "battle debris survives the log")
 	check(str(copy.nodes[0].id) == str(sim.nodes[0].id), "seeded field is the same Reach")
+
+
+func _industry() -> void:
+	var sim := make()
+	var coil := Silhouette.extent(Silhouette.parts("vesper", ["coil"]))
+	var lance := Silhouette.extent(Silhouette.parts("vesper", ["lance"]))
+	var bare := Silhouette.extent(Silhouette.parts("vesper", []))
+	var composite := Silhouette.extent(Silhouette.parts("vesper", ["composite"]))
+	check(lance.x > coil.x + 10.0, "shard lance outruns the coil nose")
+	check(composite.y > bare.y + 8.0, "composite belt widens the keel")
+	sim.player.cargo = {"iron": 3}
+	sim.player.pos = Vector2(9000, 0)
+	check(PlasmaHarvest.sell(sim, "iron") == "far", "chandlery will not buy outside Hollow Latch")
+	check(int(sim.player.cargo.iron) == 3, "a refused sale leaves the iron")
+	sim.player.pos = sim.pocket_pos
+	check(PlasmaHarvest.sell(sim, "iron") == "", "Latch buys the iron stack")
+	check(int(sim.player.scrip) == 24, "iron pays 8 scrip a unit")
+	check(int(sim.player.cargo.get("iron", 0)) == 0, "sold iron leaves the hold")
+	sim.player.cargo = {"iron": 2, "aluminum": 1}
+	check(PlasmaHarvest.start_refine(sim, "alloy_billet") == "", "refinery accepts iron and aluminum")
+	check(int(sim.player.cargo.get("alloy_billet", 0)) == 0, "the billet is not instant")
+	check(PlasmaHarvest.start_refine(sim, "alloy_billet") == "busy", "the bay runs one job")
+	sim.tick(1.0, {})
+	var progressed := float(sim.works.progress)
+	check(progressed > 0.5, "the pour advances on the clock")
+	var raw = JSON.parse_string(JSON.stringify(sim.to_dict()))
+	var copy := SectorSim.new(defs)
+	copy.from_dict(raw)
+	check(bool(copy.works.active) and str(copy.works.id) == "alloy_billet", "a pour survives the log")
+	check(absf(float(copy.works.progress) - progressed) < 0.05, "pour progress reloads")
+	check(int(copy.player.scrip) == 24, "scrip survives the log")
+	var guard := 0
+	while int(copy.player.cargo.get("alloy_billet", 0)) < 1 and guard < 40:
+		copy.tick(0.5, {})
+		guard += 1
+	check(int(copy.player.cargo.get("alloy_billet", 0)) == 1, "alloy billet comes out of the refinery")
+	check(copy.resource_name("alloy_billet") == "Alloy billet", "alloy has a hold name")
+	copy.player.pos = copy.pocket_pos
+	check(PlasmaHarvest.sell(copy, "alloy_billet") == "", "Latch buys a synthetic")
+	check(int(copy.player.scrip) == 24 + 34, "alloy pays more than the raw stack")
+	var yard := make()
+	yard.player.cargo = {"circuit_lace": 1, "alloy_billet": 1}
+	var bite := float(Fit.stats(defs, yard.player).gun.damage)
+	check(PlasmaHarvest.fabricate(yard, "shard_lance") == "", "lance drawing starts")
+	check(not yard.player.modules.has("shard_lance"), "lance is not instant")
+	guard = 0
+	while not yard.player.modules.has("shard_lance") and guard < 40:
+		yard.tick(0.5, {})
+		guard += 1
+	check(yard.player.modules.has("shard_lance"), "shard lance bolts on")
+	check(float(Fit.stats(defs, yard.player).gun.damage) >= bite + 14.0, "lance hits harder than the stock gun")
+	var hull := int(yard.player.max_hp)
+	yard.player.cargo = {"hull_resin": 1, "alloy_billet": 1}
+	check(PlasmaHarvest.fabricate(yard, "composite_belt") == "", "composite drawing starts")
+	guard = 0
+	while not yard.player.modules.has("composite_belt") and guard < 40:
+		yard.tick(0.5, {})
+		guard += 1
+	check(int(yard.player.max_hp) >= hull + 72, "composite belt raises hull")
+	check(int(yard.player.hp) == int(yard.player.max_hp), "new composite comes on whole")
+	var boats := yard.craft.size()
+	yard.player.cargo = {"alloy_billet": 1, "copper": 2, "iron": 1}
+	check(PlasmaHarvest.start_craft(yard, "prospector") == "", "prospector laying starts")
+	guard = 0
+	while _craft_count(yard, "prospector") < 1 and guard < 40:
+		yard.tick(0.5, {})
+		guard += 1
+	check(yard.craft.size() == boats + 1, "prospector takes a rack")
+	var rock := _first(yard, "iron", "meteor")
+	var iron_before := int(rock.loads.iron)
+	yard.player.pos = rock.pos
+	yard.player.vel = Vector2.ZERO
+	yard.player.cargo.clear()
+	check(CraftOrders.launch(yard, "prospector") == "", "prospector launches")
+	guard = 0
+	while Fit.cargo_used(yard.player) < 1 and guard < 80:
+		yard.tick(0.2, {})
+		guard += 1
+	check(Fit.cargo_used(yard.player) >= 1, "prospector brings ore home")
+	check(int(rock.loads.get("iron", 0)) == iron_before - 1, "prospector cuts the meteor")
+	for planet in yard.planets:
+		yard.scans[str(planet.id)] = {"complete": true}
+	var rich := _richest(yard)
+	yard.player.pos = rich.pos
+	yard.player.vel = Vector2.ZERO
+	yard.player.cargo = {"alloy_billet": 2, "circuit_lace": 1, "hull_resin": 1}
+	check(PlasmaHarvest.start_craft(yard, "pathfinder") == "", "pathfinder laying starts")
+	guard = 0
+	while _craft_count(yard, "pathfinder") < 1 and guard < 50:
+		yard.tick(0.5, {})
+		guard += 1
+	check(_craft_count(yard, "pathfinder") == 1, "pathfinder is on the rack")
+	check(CraftOrders.launch(yard, "pathfinder") == "", "pathfinder launches")
+	guard = 0
+	while yard.beacon.is_empty() and guard < 40:
+		yard.tick(0.2, {})
+		guard += 1
+	check(str(yard.beacon.get("name", "")) == str(rich.name), "pathfinder marks the richest rock")
+	check(PlasmaHarvest.hangar_free(yard) == 0, "the rack is full")
+	yard.player.cargo = {"alloy_billet": 1, "copper": 2, "iron": 1}
+	check(PlasmaHarvest.start_craft(yard, "prospector") == "full", "a full hangar refuses another boat")
+	check(int(yard.player.cargo.get("alloy_billet", 0)) == 1, "a refused lay spends nothing")
+	var uid := ""
+	for item in yard.craft:
+		if str(item.def_id) == "prospector":
+			item.state = "lost"
+			uid = str(item.uid)
+	var held := yard.craft.size()
+	check(PlasmaHarvest.start_craft(yard, "prospector") == "", "a lost prospector can be rebuilt")
+	guard = 0
+	while true and guard < 40:
+		var back := false
+		for item in yard.craft:
+			if str(item.uid) == uid and str(item.state) == "docked":
+				back = true
+		if back:
+			break
+		yard.tick(0.5, {})
+		guard += 1
+	var restored := false
+	for item in yard.craft:
+		if str(item.uid) == uid and str(item.state) == "docked":
+			restored = true
+	check(restored, "rebuilt prospector is the same boat")
+	check(yard.craft.size() == held, "a rebuild does not add a second hull")
+
+
+func _craft_count(sim: SectorSim, def_id: String) -> int:
+	var n := 0
+	for item in sim.craft:
+		if str(item.def_id) == def_id and str(item.state) != "lost":
+			n += 1
+	return n
+
+
+func _richest(sim: SectorSim) -> Dictionary:
+	var best: Dictionary = {}
+	var best_n := 0
+	for node in sim.nodes:
+		if str(node.kind) != "meteor":
+			continue
+		var n := PlasmaHarvest.remaining(node)
+		if n > best_n:
+			best_n = n
+			best = node
+	return best
 
 
 func _count_belt(sim: SectorSim, belt_id: String) -> int:

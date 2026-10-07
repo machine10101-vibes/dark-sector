@@ -70,12 +70,32 @@ static func parts(class_id: String, shapes: Array) -> Dictionary:
 		circles.append({"x": 64.0, "y": 3.2, "r": 3.4})
 		circles.append({"x": 80.0, "y": 3.6, "r": 3.8})
 		circles.append({"x": 96.0, "y": 3.4, "r": 3.0})
+	if shapes.has("lance"):
+		extras.append(PackedVector2Array([
+			Vector2(48, 1.4), Vector2(124, 2.2), Vector2(124, 0.4), Vector2(48, -0.2)
+		]))
+		circles.append({"x": 78.0, "y": 1.6, "r": 2.4})
+		circles.append({"x": 100.0, "y": 1.5, "r": 2.2})
+		circles.append({"x": 118.0, "y": 1.2, "r": 2.6})
 	if shapes.has("plate"):
 		extras.append(PackedVector2Array([
 			Vector2(16, 8), Vector2(18, 20), Vector2(-18, 22), Vector2(-22, 9)
 		]))
 		extras.append(PackedVector2Array([
 			Vector2(16, -8), Vector2(18, -20), Vector2(-18, -22), Vector2(-22, -9)
+		]))
+	if shapes.has("composite"):
+		extras.append(PackedVector2Array([
+			Vector2(20, 7), Vector2(22, 26), Vector2(-22, 28), Vector2(-26, 8)
+		]))
+		extras.append(PackedVector2Array([
+			Vector2(20, -7), Vector2(22, -26), Vector2(-22, -28), Vector2(-26, -8)
+		]))
+		extras.append(PackedVector2Array([
+			Vector2(8, 12), Vector2(6, 18), Vector2(-8, 18), Vector2(-6, 12)
+		]))
+		extras.append(PackedVector2Array([
+			Vector2(8, -12), Vector2(6, -18), Vector2(-8, -18), Vector2(-6, -12)
 		]))
 	var tail := 0.0
 	if hull.size() > 0:
