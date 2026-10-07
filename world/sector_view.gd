@@ -96,6 +96,13 @@ func _chase_rot() -> float:
 func _unhandled_input(event: InputEvent) -> void:
 	if Game.mode != "sector" or Game.map_open:
 		return
+	if event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_MIDDLE) != 0:
+		if Game.cam_mode == "tactical":
+			Game.cam_mode = "orbit"
+		Game.cam_mode = "orbit" if Game.cam_mode == "chase" else Game.cam_mode
+		Game.cam_yaw = wrapf(Game.cam_yaw - event.relative.x * 0.006, -PI, PI)
+		Game.cam_pitch = clampf(Game.cam_pitch + event.relative.y * 0.005, 0.2, 1.48)
+		return
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_zoom(1.0)

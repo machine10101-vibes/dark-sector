@@ -104,7 +104,7 @@ func _input(event: InputEvent) -> void:
 			var code := key_ev.keycode
 			if code == KEY_NONE:
 				code = key_ev.physical_keycode
-			if code == KEY_ESCAPE or code == KEY_TAB or code == KEY_F10 or code == KEY_QUOTELEFT:
+			if code == KEY_ESCAPE or code == KEY_TAB or code == KEY_F10:
 				Game.set_map_open(false)
 		var map_vp := get_viewport()
 		if map_vp != null:
@@ -112,7 +112,14 @@ func _input(event: InputEvent) -> void:
 		return
 	if key_ev.pressed and not key_ev.echo:
 		var tab := key_ev.keycode == KEY_TAB or key_ev.physical_keycode == KEY_TAB
-		var chart_key := key_ev.keycode == KEY_F10 or key_ev.keycode == KEY_QUOTELEFT or key_ev.physical_keycode == KEY_QUOTELEFT
+		var chart_key := key_ev.keycode == KEY_F10 or key_ev.physical_keycode == KEY_F10
+		if key_ev.keycode == KEY_QUOTELEFT or key_ev.physical_keycode == KEY_QUOTELEFT:
+			if Game.sim != null:
+				Game.sim.say("Camera: %s." % Game.cycle_camera())
+			var eye_vp := get_viewport()
+			if eye_vp != null:
+				eye_vp.set_input_as_handled()
+			return
 		if tab or chart_key:
 			# Tab walks the contacts in local space. Out on the chart there is
 			# nothing to lock, so it still opens the whole map there.

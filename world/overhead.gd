@@ -11,6 +11,7 @@ var env: Environment
 var _ease := 1.0
 var _saw_mode := false
 var _was_sector := false
+var _chase_yaw := PI
 
 
 func _ready() -> void:
@@ -202,8 +203,44 @@ func _aim() -> void:
 			var screen_up := forward.cross(right).normalized()
 			var half_h := height * tan(deg_to_rad(cam3.fov * 0.5))
 			target += screen_up * (0.42 * half_h * 2.0)
-	cam3.position = target + Vector3(0.0, height, -back)
-	cam3.look_at(target, Vector3(0.0, 0.0, 1.0))
+	var eye := Vector3(0.0, height, -back)
+	var span := eye.length()
+	var outside := 0.0
+	if layer == ScaleFrame.BAND and str(Game.cam_mode) != "tactical":
+		var player: Dictionary = Game.sim.player
+		var pad := Vector2(float(player.get("dock_x", player.pos.x)), float(player.get("dock_y", player.pos.y)))
+		if not bool(player.get("moored", false)):
+			outside = clampf(Vector2(player.pos).distance_to(pad) / 200.0, 0.0, 1.0)
+	if outside > 0.0:
+		# External eyes sit on the keel itself rather than the cruise lead,
+		# so the hull is the subject and the turn reads around it.
+		var keel: Vector2 = Game.sim.view_focus()
+		var gate_now: Variant = WorldCoord.gate()
+		if gate_now != null:
+			keel = gate_now.render_of_world(keel)
+		var keel3 := Vector3(keel.x, 0.0, -keel.y)
+		var yaw := float(Game.cam_yaw)
+		var pitch := float(Game.cam_pitch)
+		var reach := span * 0.26
+		if str(Game.cam_mode) == "chase":
+			var fwd := Vector2.from_angle(float(Game.sim.player.rot))
+			var want := atan2(-fwd.x, fwd.y)
+			_chase_yaw = lerp_angle(_chase_yaw, want, 1.0 - exp(-3.0 * get_process_delta_time()))
+			yaw = _chase_yaw
+			pitch = 0.36
+			reach = span * 0.18
+			keel3 += Vector3(fwd.x, 0.0, -fwd.y) * reach * 0.35
+		else:
+			_chase_yaw = yaw
+		var orbit := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch)) * reach
+		var ease_out := outside * outside * (3.0 - 2.0 * outside)
+		target = target.lerp(keel3, ease_out)
+		eye = eye.lerp(orbit, ease_out)
+	cam3.position = target + eye
+	var up := Vector3(0.0, 0.0, 1.0)
+	if outside > 0.0 and absf(eye.normalized().y) < 0.995:
+		up = Vector3.UP.lerp(up, 1.0 - outside).normalized()
+	cam3.look_at(target, up)
 
 
 func _chart_well(sim) -> Vector2:
