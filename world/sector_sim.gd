@@ -136,6 +136,8 @@ func new_game(class_id: String) -> void:
 	player.dock_x = player.pos.x
 	player.dock_y = player.pos.y
 	HelmCombat.ensure_rounds(player)
+	if hull.has("magazine"):
+		player.rounds = (hull.magazine as Dictionary).duplicate(true)
 	captains = []
 	commands = {}
 	law_target = ""
