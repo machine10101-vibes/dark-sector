@@ -42,6 +42,28 @@ static func parts(class_id: String, shapes: Array, layers: Array = []) -> Dictio
 				Vector2(48, 0), Vector2(12, 7), Vector2(-6, 16), Vector2(-28, 10),
 				Vector2(-22, 0), Vector2(-28, -10), Vector2(-6, -16), Vector2(12, -7)
 			])
+		"lumen":
+			# Long spar with forward barbs. The lamp sits on the nose; the forks carry guns.
+			hull = PackedVector2Array([
+				Vector2(60, 0), Vector2(34, 4), Vector2(16, 7), Vector2(30, 18),
+				Vector2(22, 21), Vector2(4, 9), Vector2(-14, 6), Vector2(-38, 3.2),
+				Vector2(-46, 1.2), Vector2(-46, -1.2), Vector2(-38, -3.2), Vector2(-14, -6),
+				Vector2(4, -9), Vector2(22, -21), Vector2(30, -18), Vector2(16, -7), Vector2(34, -4)
+			])
+		"casque":
+			# Short hammerhead. The flat nose is the ram.
+			hull = PackedVector2Array([
+				Vector2(18, 0), Vector2(16, 8), Vector2(6, 20), Vector2(-6, 24),
+				Vector2(-24, 16), Vector2(-32, 6), Vector2(-28, 0), Vector2(-32, -6),
+				Vector2(-24, -16), Vector2(-6, -24), Vector2(6, -20), Vector2(16, -8)
+			])
+		"alidade":
+			# Swept wing with a swallowtail. The eye sits on the center, the guns on the tips.
+			hull = PackedVector2Array([
+				Vector2(42, 0), Vector2(18, 5), Vector2(-6, 12), Vector2(-34, 28),
+				Vector2(-40, 22), Vector2(-14, 3.2), Vector2(-14, -3.2), Vector2(-40, -22),
+				Vector2(-34, -28), Vector2(-6, -12), Vector2(18, -5)
+			])
 		"skiff":
 			hull = PackedVector2Array([
 				Vector2(22, 0), Vector2(4, 8), Vector2(-16, 5), Vector2(-16, -5), Vector2(4, -8)
@@ -53,7 +75,9 @@ static func parts(class_id: String, shapes: Array, layers: Array = []) -> Dictio
 			])
 		_:
 			hull = PackedVector2Array([Vector2(16, 0), Vector2(-12, 8), Vector2(-12, -8)])
-	if layers.is_empty() and shapes.has("mast"):
+	if layers.is_empty() and shapes.has("mast") and class_id == "lumen":
+		circles.append({"x": 42.0, "y": 0.0, "r": 6.2})
+	elif layers.is_empty() and shapes.has("mast"):
 		extras.append(PackedVector2Array([
 			Vector2(46, 1.6), Vector2(86, 0), Vector2(46, -1.6)
 		]))
@@ -136,6 +160,12 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 		_paint_barn(ci, xf, scale, worn, accent)
 	elif class_id == "kestrel":
 		_paint_beak(ci, xf, scale, worn, accent)
+	elif class_id == "lumen":
+		_paint_wick(ci, xf, scale, worn, accent)
+	elif class_id == "casque":
+		_paint_ram(ci, xf, scale, worn, accent)
+	elif class_id == "alidade":
+		_paint_kite(ci, xf, scale, worn, accent)
 	elif class_id == "cutter" or class_id == "skiff":
 		_paint_small(ci, xf, scale, worn, accent)
 	_paint_lights(ci, xf, scale, class_id)
@@ -392,6 +422,62 @@ static func _paint_beak(ci: CanvasItem, xf: Transform2D, scale: float, plate: Co
 	ci.draw_circle(xf * (Vector2(34, 0) * scale), 1.2 * scale, accent)
 
 
+static func _paint_wick(ci: CanvasItem, xf: Transform2D, scale: float, plate: Color, accent: Color) -> void:
+	var seam := plate.darkened(0.4)
+	ci.draw_line(xf * (Vector2(40, 0) * scale), xf * (Vector2(-36, 0) * scale), seam, maxf(1.0, 0.5 * scale), true)
+	ci.draw_line(xf * (Vector2(18, 6) * scale), xf * (Vector2(26, 16) * scale), accent, maxf(1.0, 0.8 * scale), true)
+	ci.draw_line(xf * (Vector2(18, -6) * scale), xf * (Vector2(26, -16) * scale), accent, maxf(1.0, 0.8 * scale), true)
+	var lamp := xf * (Vector2(42, 0) * scale)
+	ci.draw_circle(lamp, 3.4 * scale, accent.darkened(0.25))
+	ci.draw_circle(lamp, 1.7 * scale, accent.lightened(0.35))
+	var glass := PackedVector2Array([
+		xf * (Vector2(28, 0) * scale),
+		xf * (Vector2(18, 2.4) * scale),
+		xf * (Vector2(12, 0) * scale),
+		xf * (Vector2(18, -2.4) * scale),
+	])
+	ci.draw_colored_polygon(glass, Color("1a1428"))
+	ci.draw_line(xf * (Vector2(24, -1.0) * scale), xf * (Vector2(15, 0.6) * scale), Color(0.95, 0.86, 0.55, 0.7), 1.0, true)
+
+
+static func _paint_ram(ci: CanvasItem, xf: Transform2D, scale: float, plate: Color, accent: Color) -> void:
+	var plow := PackedVector2Array([
+		xf * (Vector2(18, 5.5) * scale),
+		xf * (Vector2(12, 5.5) * scale),
+		xf * (Vector2(12, -5.5) * scale),
+		xf * (Vector2(18, -5.5) * scale),
+	])
+	ci.draw_colored_polygon(plow, accent.darkened(0.15))
+	for y in [14.0, -14.0]:
+		var cheek := PackedVector2Array([
+			xf * (Vector2(6, y - 3.2) * scale),
+			xf * (Vector2(-8, y - 3.2) * scale),
+			xf * (Vector2(-10, y + 3.2) * scale),
+			xf * (Vector2(4, y + 3.2) * scale),
+		])
+		ci.draw_colored_polygon(cheek, plate.darkened(0.35))
+		ci.draw_circle(xf * (Vector2(2, y) * scale), 1.1 * scale, accent)
+	var bridge := PackedVector2Array([
+		xf * (Vector2(2, 4) * scale),
+		xf * (Vector2(-8, 4) * scale),
+		xf * (Vector2(-8, -4) * scale),
+		xf * (Vector2(2, -4) * scale),
+	])
+	ci.draw_colored_polygon(bridge, Color("1c1814"))
+	ci.draw_line(xf * (Vector2(-2, -2) * scale), xf * (Vector2(-6, 1.4) * scale), Color(0.9, 0.82, 0.6, 0.45), 1.0, true)
+
+
+static func _paint_kite(ci: CanvasItem, xf: Transform2D, scale: float, plate: Color, accent: Color) -> void:
+	var seam := plate.darkened(0.35)
+	ci.draw_line(xf * (Vector2(20, 2) * scale), xf * (Vector2(-30, 20) * scale), seam, maxf(1.0, 0.7 * scale), true)
+	ci.draw_line(xf * (Vector2(20, -2) * scale), xf * (Vector2(-30, -20) * scale), seam, maxf(1.0, 0.7 * scale), true)
+	ci.draw_circle(xf * (Vector2(4, 0) * scale), 3.2 * scale, Color("14383a"))
+	ci.draw_circle(xf * (Vector2(3.2, -0.6) * scale), 1.1 * scale, Color(0.75, 0.95, 0.92, 0.55))
+	ci.draw_circle(xf * (Vector2(-30, 22) * scale), 1.3 * scale, accent)
+	ci.draw_circle(xf * (Vector2(-30, -22) * scale), 1.3 * scale, accent)
+	ci.draw_line(xf * (Vector2(-14, 2.2) * scale), xf * (Vector2(-14, -2.2) * scale), plate.darkened(0.5), 1.2, true)
+
+
 static func _paint_small(ci: CanvasItem, xf: Transform2D, scale: float, plate: Color, accent: Color) -> void:
 	ci.draw_line(xf * (Vector2(10, 0) * scale), xf * (Vector2(-8, 0) * scale), plate.darkened(0.45), 1.0, true)
 	ci.draw_line(xf * (Vector2(8, 1.7) * scale), xf * (Vector2(-5, 1.7) * scale), plate.darkened(0.28), 1.0, true)
@@ -420,6 +506,18 @@ static func _paint_lights(ci: CanvasItem, xf: Transform2D, scale: float, class_i
 			nose_x = 14.0
 			nose_y = 4.2
 			tail_x = -12.0
+		"lumen":
+			nose_x = 28.0
+			nose_y = 3.2
+			tail_x = -30.0
+		"casque":
+			nose_x = 8.0
+			nose_y = 10.0
+			tail_x = -18.0
+		"alidade":
+			nose_x = 12.0
+			nose_y = 6.0
+			tail_x = -22.0
 		"skiff":
 			nose_x = 6.0
 			nose_y = 2.4

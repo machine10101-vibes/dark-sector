@@ -334,6 +334,343 @@
       }
     ]
   },
+  "lumen": {
+    "id": "lumen",
+    "class_name": "Lumen-class Pathfinder",
+    "callsign": "Wick",
+    "role": "pathfinder",
+    "select_blurb": "A lamp on a spar, with guns on the forks. She lights a dark reach and shoots what the light finds.",
+    "color": "#2a2148",
+    "accent": "#f0c14a",
+    "length_m": 148,
+    "mass": 48,
+    "thrust": 112,
+    "turn": 2.15,
+    "strafe": 36,
+    "hp": 70,
+    "shield": 72,
+    "shield_regen": 6.0,
+    "armor_hp": 18,
+    "capacitor": 110,
+    "cap_regen": 9.0,
+    "scan_res": 560,
+    "cooling": 11.0,
+    "cargo": 8,
+    "power": 48,
+    "power_draw": 22,
+    "signature": 0.38,
+    "sensor": 1280,
+    "radius": 18,
+    "slots": [
+      "Utility",
+      "S",
+      "M",
+      "Hangar"
+    ],
+    "gun": {
+      "damage": 8,
+      "cooldown": 0.48,
+      "speed": 0,
+      "range": 740,
+      "ttl": 0.2,
+      "cap": 6.0,
+      "therm": 3.2,
+      "tracking": 0.85,
+      "optimal": 520,
+      "falloff": 220,
+      "kind": "turret",
+      "arc": 2.4,
+      "family": "laser"
+    },
+    "starting_craft": [
+      {
+        "id": "survey_probe",
+        "count": 2
+      },
+      {
+        "id": "fighter",
+        "count": 1
+      }
+    ],
+    "crew": [
+      {
+        "name": "Sera Quill",
+        "skill": "helm"
+      },
+      {
+        "name": "Otter Lang",
+        "skill": "survey"
+      },
+      {
+        "name": "M. Ash",
+        "skill": "guns"
+      }
+    ],
+    "yard": [
+      "sensor_mast",
+      "cargo_blister",
+      "gun_sponson",
+      "farm_cassette",
+      "armor_belt",
+      "keel_stretch",
+      "extra_hold",
+      "radiator_fans",
+      "battery_pack",
+      "heavy_turret",
+      "missile_rack",
+      "point_defense",
+      "probe_rack",
+      "fighter_rack",
+      "lighter_dock",
+      "hydro_stack",
+      "seed_vault",
+      "greenhouse_ring",
+      "claim_beacon",
+      "perimeter_stakes",
+      "tow_collar",
+      "scale_house",
+      "warrant_locker",
+      "ice_shear",
+      "grain_hopper",
+      "ash_coop",
+      "crab_cage",
+      "swallow_hook",
+      "quiet_baffle",
+      "choir_bell",
+      "lamp_spine",
+      "laser_bank",
+      "stake_gun"
+    ],
+    "playable": true
+  },
+  "casque": {
+    "id": "casque",
+    "class_name": "Casque-class Boarder",
+    "callsign": "Ram",
+    "role": "boarder",
+    "select_blurb": "Short, plated, and built to push a wreck. The ram takes the door and the racks take what is behind it.",
+    "color": "#4a3028",
+    "accent": "#e6b15a",
+    "length_m": 74,
+    "mass": 110,
+    "thrust": 90,
+    "turn": 0.95,
+    "strafe": 10,
+    "hp": 148,
+    "shield": 24,
+    "shield_regen": 2.0,
+    "armor_hp": 96,
+    "capacitor": 80,
+    "cap_regen": 5.0,
+    "scan_res": 220,
+    "cooling": 6.0,
+    "cargo": 10,
+    "power": 58,
+    "power_draw": 28,
+    "signature": 0.88,
+    "sensor": 480,
+    "radius": 26,
+    "slots": [
+      "S",
+      "M",
+      "M",
+      "Hangar"
+    ],
+    "gun": {
+      "damage": 14,
+      "cooldown": 1.35,
+      "speed": 210,
+      "range": 520,
+      "ttl": 3.2,
+      "cap": 4.0,
+      "therm": 2.2,
+      "tracking": 0.4,
+      "optimal": 280,
+      "falloff": 160,
+      "blast": 64,
+      "steer": 1.15,
+      "kind": "rack",
+      "arc": 0.8,
+      "family": "missile"
+    },
+    "magazine": {
+      "iron": 0,
+      "tungsten": 0,
+      "incendiary": 0,
+      "splinter": 18,
+      "breacher": 8,
+      "siege": 4
+    },
+    "starting_craft": [
+      {
+        "id": "fighter",
+        "count": 1
+      },
+      {
+        "id": "salvage_tender",
+        "count": 1
+      }
+    ],
+    "crew": [
+      {
+        "name": "Holt Venn",
+        "skill": "helm"
+      },
+      {
+        "name": "C. Brigg",
+        "skill": "guns"
+      },
+      {
+        "name": "D. Moth",
+        "skill": "boat"
+      }
+    ],
+    "yard": [
+      "sensor_mast",
+      "cargo_blister",
+      "gun_sponson",
+      "farm_cassette",
+      "armor_belt",
+      "keel_stretch",
+      "extra_hold",
+      "radiator_fans",
+      "battery_pack",
+      "heavy_turret",
+      "missile_rack",
+      "point_defense",
+      "probe_rack",
+      "fighter_rack",
+      "lighter_dock",
+      "hydro_stack",
+      "seed_vault",
+      "greenhouse_ring",
+      "claim_beacon",
+      "perimeter_stakes",
+      "tow_collar",
+      "scale_house",
+      "warrant_locker",
+      "ice_shear",
+      "grain_hopper",
+      "ash_coop",
+      "crab_cage",
+      "swallow_hook",
+      "quiet_baffle",
+      "choir_bell",
+      "lamp_spine",
+      "laser_bank",
+      "stake_gun"
+    ],
+    "playable": true
+  },
+  "alidade": {
+    "id": "alidade",
+    "class_name": "Alidade-class Ranger",
+    "callsign": "Kite",
+    "role": "ranger",
+    "select_blurb": "A wide wing and a long eye. She hangs off a lane, reads it, and reaches across it.",
+    "color": "#d5e2e4",
+    "accent": "#1f6a62",
+    "length_m": 118,
+    "mass": 62,
+    "thrust": 102,
+    "turn": 1.75,
+    "strafe": 28,
+    "hp": 92,
+    "shield": 46,
+    "shield_regen": 3.5,
+    "armor_hp": 36,
+    "capacitor": 84,
+    "cap_regen": 6.5,
+    "scan_res": 380,
+    "cooling": 8.5,
+    "cargo": 9,
+    "power": 50,
+    "power_draw": 24,
+    "signature": 0.52,
+    "sensor": 860,
+    "radius": 24,
+    "slots": [
+      "S",
+      "S",
+      "M",
+      "Hangar"
+    ],
+    "gun": {
+      "damage": 7,
+      "cooldown": 0.28,
+      "speed": 980,
+      "range": 860,
+      "ttl": 1.3,
+      "cap": 2.2,
+      "therm": 2.4,
+      "tracking": 0.62,
+      "optimal": 620,
+      "falloff": 340,
+      "kind": "turret",
+      "arc": 1.8,
+      "family": "bullet"
+    },
+    "starting_craft": [
+      {
+        "id": "survey_probe",
+        "count": 1
+      },
+      {
+        "id": "fighter",
+        "count": 1
+      }
+    ],
+    "crew": [
+      {
+        "name": "A. Wren",
+        "skill": "helm"
+      },
+      {
+        "name": "K. Moss",
+        "skill": "survey"
+      },
+      {
+        "name": "Hale Ort",
+        "skill": "guns"
+      }
+    ],
+    "yard": [
+      "sensor_mast",
+      "cargo_blister",
+      "gun_sponson",
+      "farm_cassette",
+      "armor_belt",
+      "keel_stretch",
+      "extra_hold",
+      "radiator_fans",
+      "battery_pack",
+      "heavy_turret",
+      "missile_rack",
+      "point_defense",
+      "probe_rack",
+      "fighter_rack",
+      "lighter_dock",
+      "hydro_stack",
+      "seed_vault",
+      "greenhouse_ring",
+      "claim_beacon",
+      "perimeter_stakes",
+      "tow_collar",
+      "scale_house",
+      "warrant_locker",
+      "ice_shear",
+      "grain_hopper",
+      "ash_coop",
+      "crab_cage",
+      "swallow_hook",
+      "quiet_baffle",
+      "choir_bell",
+      "lamp_spine",
+      "laser_bank",
+      "stake_gun"
+    ],
+    "playable": true
+  },
   "skiff": {
     "id": "skiff",
     "playable": false,

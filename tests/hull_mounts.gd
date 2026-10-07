@@ -71,6 +71,40 @@ func _run() -> void:
 	check(float(masted.sensor) > float(needle_bare.sensor), "survey mast still lengthens the sensor")
 	check(int(bayed.cargo_cap) > int(barn_bare.cargo_cap), "cargo bay still adds hold")
 	check(float(gunned.gun.damage) > float(beak_bare.gun.damage), "cheek gun still adds damage")
+	var wick: Dictionary = Silhouette.parts("lumen", [])
+	var ram: Dictionary = Silhouette.parts("casque", [])
+	var kite: Dictionary = Silhouette.parts("alidade", [])
+	check(float(wick.hull[0].x) > 56.0, "Wick nose is a long spar")
+	check(float(ram.hull[0].x) < 20.0, "Ram nose is a short plow")
+	var kite_beam := 0.0
+	for point in kite.hull:
+		kite_beam = maxf(kite_beam, absf(point.y))
+	check(kite_beam > 26.0, "Kite wing is wider than the spar")
+	check(holder_part(stage, "lumen", "LampHeart"), "Wick wears a lamp")
+	check(holder_part(stage, "casque", "RamPlow"), "Ram wears a plow")
+	check(holder_part(stage, "alidade", "SkyDome"), "Kite wears an eye")
+	check(holder_part(stage, "lumen", "Plate"), "Wick plate triangulates")
+	check(holder_part(stage, "casque", "Plate"), "Ram plate triangulates")
+	check(holder_part(stage, "alidade", "Plate"), "Kite plate triangulates")
+	var wick_gun: Dictionary = Fit.stats(defs, {"class_id": "lumen", "modules": []}).gun
+	var ram_gun: Dictionary = Fit.stats(defs, {"class_id": "casque", "modules": []}).gun
+	var kite_gun: Dictionary = Fit.stats(defs, {"class_id": "alidade", "modules": []}).gun
+	check(str(wick_gun.family) == "laser", "Wick fires a beam")
+	check(str(ram_gun.family) == "missile", "Ram fires a missile")
+	check(str(kite_gun.family) == "bullet", "Kite fires a long gun")
+	check(float(kite_gun.range) > float(beak_bare.gun.range), "Kite reaches past Beak")
+	var sim = load("res://world/sector_sim.gd").new()
+	sim.defs = defs
+	sim.new_game("casque")
+	check(int(sim.player.rounds.splinter) >= 18, "Ram carries a missile magazine")
+	sim.new_game("lumen")
+	check(str(sim.player.class_id) == "lumen", "Wick can cast off")
+
+
+func holder_part(stage: Node, class_id: String, part_name: String) -> bool:
+	var holder := Node3D.new()
+	stage.call("_fill_ship", holder, class_id, [], [])
+	return holder.get_node_or_null(part_name) != null
 
 
 func check(cond: bool, message: String) -> void:
