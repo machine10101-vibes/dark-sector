@@ -56,7 +56,7 @@ Some window managers bind Esc and F5. The **Hold** button on the helm opens the 
 
 ### Cast off
 
-The title is the Helion limb and the ice rings, with one keel in that sky. New keel puts that hull in the yard. Take the Needle and the pad is still the start.
+The title is the Helion limb and the ice rings, with one ship in that sky. New ship puts that hull in the yard. Take the Needle and the pad is still the start.
 
 A new Needle starts moored at the Helion Dock pad. The flight line reads “Moored at Helion Dock. Hold W or Cast off.”
 

@@ -5,7 +5,7 @@ extends RefCounted
 
 const PORT := 24565
 const SOLO_LINE := "No listen port on this board. Flying solo."
-const JOIN_LINE := "No listen port on this page. New keel still flies solo."
+const JOIN_LINE := "No listen port on this page. New ship still flies solo."
 
 ## Headless tests close the port without touching ENet. The web build is already closed.
 static var block_port := false

@@ -251,7 +251,7 @@ func try_load() -> String:
 	if typeof(data) != TYPE_DICTIONARY:
 		return "The log did not parse."
 	if int(data.get("version", 0)) != 1:
-		return "That log is from another keel."
+		return "That log is from another ship."
 	sim = SectorSim.new(defs)
 	sim.from_dict(data)
 	zoom = clampf(float(data.get("camera_zoom", 0.58)), 0.05, 1.55)

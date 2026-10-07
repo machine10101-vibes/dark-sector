@@ -296,7 +296,7 @@ func _walk(node: Node, screen: Vector2, tag: String) -> void:
 		var rect := button.get_global_rect()
 		var bounds := Rect2(Vector2.ZERO, screen).grow(4.0)
 		var text := button.text
-		var must := text == "New keel" or text == "Back" or text.begins_with("Take the") or text.contains("Continue") or text.contains("No log") or text == "Cast" or text == "Cast off" or text == "Board" or text == "Quests" or text == "Probe"
+		var must := text == "New ship" or text == "Back" or text.begins_with("Take the") or text.contains("Continue") or text.contains("No log") or text == "Cast" or text == "Cast off" or text == "Board" or text == "Quests" or text == "Probe"
 		if must:
 			if bounds.encloses(rect) == false:
 				_bad("%s off %s %s" % [tag, text, rect])

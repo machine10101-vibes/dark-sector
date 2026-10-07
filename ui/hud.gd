@@ -608,7 +608,7 @@ func _build_pause() -> void:
 
 
 func _build_dead() -> void:
-	dead_box = _center_card("The keel is a wreck")
+	dead_box = _center_card("The ship is a wreck")
 	dead_box.visible = false
 	var note := ThemeKit.label("The wreck keeps your name and some of the hold. The layout stays. You wake at the dock.", 14)
 	note.custom_minimum_size = Vector2(360, 0)
@@ -1537,9 +1537,9 @@ func _refresh_bay_text() -> void:
 		return
 	var sim = Game.sim
 	var stats := Fit.stats(sim.defs, sim.player)
-	var keel := "Keel within tolerance."
+	var keel := "Ship within tolerance."
 	if stats.keel_warn:
-		keel = "Keel complaining."
+		keel = "Ship complaining."
 	var power_line := "Power %.0f/%.0f." % [stats.power_draw, stats.power]
 	if stats.power_spare < -0.01:
 		power_line = "Power %.0f/%.0f. Overloaded." % [stats.power_draw, stats.power]
@@ -1839,7 +1839,7 @@ func _quest_text() -> String:
 				giver_name = "homestead notice"
 			giver = "\nGiver: %s." % giver_name
 		blocks.append("%s  [%s / %s]%s%s\n%s" % [entry.title, entry.kind, entry.state, giver, where, entry.summary])
-	blocks.append("Mark sets the next place. Take accepts an offered contract. The keel does not move.")
+	blocks.append("Mark sets the next place. Take accepts an offered contract. The ship does not move.")
 	if blocks.is_empty():
 		return "The log is blank."
 	return "\n\n".join(blocks)
@@ -1999,7 +1999,7 @@ class ShipGlass extends Control:
 		var words: PackedStringArray = PackedStringArray()
 		for mount in mounts:
 			words.append(str(mount.get("name", "")))
-		var fit_line := "Clean keel" if words.is_empty() else " · ".join(words)
+		var fit_line := "Clean ship" if words.is_empty() else " · ".join(words)
 		var fit_size := 12
 		var fit_w := font.get_string_size(fit_line, HORIZONTAL_ALIGNMENT_LEFT, -1, fit_size).x
 		if fit_w > size.x - 16.0 and words.size() > 1:

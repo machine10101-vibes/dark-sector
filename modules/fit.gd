@@ -198,7 +198,7 @@ static func try_install(defs: Dictionary, ship: Dictionary, module_id: String) -
 	if module_id == "" or not ship.yard.has(module_id):
 		return {"ok": false, "reason": "The yard has no such part."}
 	if ship.modules.has(module_id):
-		return {"ok": false, "reason": "Already bolted to the keel."}
+		return {"ok": false, "reason": "Already bolted to the ship."}
 	var mod: Variant = defs.modules.get(module_id)
 	if mod == null:
 		return {"ok": false, "reason": "No drawing for that part."}
@@ -211,7 +211,7 @@ static func try_install(defs: Dictionary, ship: Dictionary, module_id: String) -
 	ship.modules.append(module_id)
 	var extra := ""
 	if after.keel_warn:
-		extra += " The keel complains under the new mass."
+		extra += " The ship complains under the new mass."
 	if after.power_spare < -0.01:
 		extra += " Reactor overloaded."
 	if after.crew_over:
@@ -227,7 +227,7 @@ static func try_install(defs: Dictionary, ship: Dictionary, module_id: String) -
 
 static func try_remove(defs: Dictionary, ship: Dictionary, module_id: String) -> Dictionary:
 	if not ship.modules.has(module_id):
-		return {"ok": false, "reason": "That part is not on the keel."}
+		return {"ok": false, "reason": "That part is not on the ship."}
 	var mod: Variant = defs.modules.get(module_id)
 	if mod == null:
 		return {"ok": false, "reason": "No drawing for that part."}
