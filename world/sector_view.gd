@@ -387,9 +387,8 @@ func _draw_harvest_labels(sim, zoom: float) -> void:
 		var derelict := str(node.kind) == "derelict"
 		if not aimed and not locked and not (derelict and zoom > 0.28):
 			continue
-		var left := PlasmaHarvest.remaining(node)
-		var tag := "husk" if left <= 0 else "×%d" % left
-		_text(node.pos + Vector2(8, float(node.size) + 16.0), "%s  %s" % [node.name, tag], 13, Color("e6d7bf"))
+		var line := PlasmaHarvest.load_line(sim, node)
+		_text(node.pos + Vector2(8, float(node.size) + 16.0), "%s  %s" % [node.name, line], 13, Color("e6d7bf"))
 
 
 func _text(pos: Vector2, text: String, size: int, color: Color) -> void:

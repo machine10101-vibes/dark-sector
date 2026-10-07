@@ -3,6 +3,16 @@ extends RefCounted
 
 ## Top-down volumetric draw for ore, torn hull, derelicts, and the plasma gatherer.
 ## Facets are lit from Ash Lamp so a rock reads as a body, not a sticker.
+## Meteors are dark regolith. Metal sits on them as nodules, seams, and cut faces.
+
+const STONE := {
+	"albedo": "3c3834",
+	"deep": "161412",
+	"vein": "2a2622",
+	"spec": "8a8278",
+	"patina": "2e2a26",
+	"gloss": 0.08,
+}
 
 
 static func bake(node: Dictionary) -> void:
@@ -15,7 +25,7 @@ static func bake(node: Dictionary) -> void:
 	elif kind == "wreckage":
 		node.visual = _bake_wreck(rng, size, int(node.get("variant", 0)))
 	else:
-		node.visual = _bake_meteor(rng, size)
+		node.visual = _bake_meteor(rng, size, node.get("loads", {}))
 
 
 static func draw_node(ci: CanvasItem, sim, node: Dictionary, view: Rect2, zoom: float) -> void:
@@ -150,7 +160,7 @@ static func _draw_meteor(ci: CanvasItem, sim, node: Dictionary, origin: Vector2,
 	var to_star := _to_star(origin)
 	ci.draw_circle(origin - to_star * size * 0.16, size * 0.96, Color(0, 0, 0, 0.30 if not spent else 0.18))
 	var xf := Transform2D(rot, origin)
-	var gloss := float(mat.get("gloss", 0.4))
+	var stone: Dictionary = STONE
 	for face in visual.faces:
 		var pts: Array = face.pts
 		var world := PackedVector2Array()
@@ -159,18 +169,17 @@ static func _draw_meteor(ci: CanvasItem, sim, node: Dictionary, origin: Vector2,
 		var outward := _outward(origin, world)
 		var ndot := outward.dot(to_star)
 		var height := float(face.height)
-		var lambert := clampf(0.22 + height * 0.18 + ndot * 0.34 + float(face.get("bias", 0.0)), 0.08, 0.92)
-		var metal := 0.0 if spent else pow(maxf(ndot, 0.0), 10.0) * gloss * height * 0.55
-		var col := _shade(mat, lambert, metal, spent)
+		var lambert := clampf(0.18 + height * 0.22 + ndot * 0.38 + float(face.get("bias", 0.0)), 0.06, 0.88)
+		var col := _shade(stone, lambert, 0.0, spent)
 		ci.draw_colored_polygon(world, col)
-		if height > 0.72 and not spent:
+		if height > 0.78 and not spent:
 			var raised := PackedVector2Array([
-				world[0].lerp(world[1], 0.42),
+				world[0].lerp(world[1], 0.48),
 				world[1],
 				world[2],
-				world[0].lerp(world[2], 0.42),
+				world[0].lerp(world[2], 0.48),
 			])
-			ci.draw_colored_polygon(raised, _shade(mat, lambert + 0.18, metal + gloss * 0.25, false))
+			ci.draw_colored_polygon(raised, _shade(stone, lambert + 0.16, 0.0, false))
 	var rim: PackedVector2Array = visual.rim
 	var outline := PackedVector2Array()
 	for point in rim:
@@ -178,31 +187,27 @@ static func _draw_meteor(ci: CanvasItem, sim, node: Dictionary, origin: Vector2,
 	if outline.size() > 2:
 		var closed := outline.duplicate()
 		closed.append(outline[0])
-		ci.draw_polyline(closed, _shade(mat, 0.2, 0.0, spent).darkened(0.2), 1.35, true)
+		ci.draw_polyline(closed, _shade(stone, 0.14, 0.0, spent).darkened(0.25), 1.45, true)
+	for crater in visual.craters:
+		var c: Vector2 = xf * crater.p
+		var radius := float(crater.r)
+		ci.draw_circle(c, radius, _shade(stone, 0.08, 0.0, spent))
+		ci.draw_arc(c - to_star * radius * 0.15, radius * 0.92, 0.0, TAU, 14, _shade(stone, 0.55, 0.0, spent), 1.2, true)
+	for line in visual.veins:
+		var poly := PackedVector2Array()
+		for point in line:
+			poly.append(xf * point)
+		if poly.size() >= 2:
+			ci.draw_polyline(poly, Color("0e0c0b"), 2.4, true)
+			ci.draw_polyline(poly, Color("2c2824"), 1.1, true)
 	if not spent:
-		for crater in visual.craters:
-			var c: Vector2 = xf * crater.p
-			var radius := float(crater.r)
-			ci.draw_circle(c, radius, _shade(mat, 0.12, 0.0, false))
-			ci.draw_arc(c - to_star * radius * 0.15, radius * 0.92, 0.0, TAU, 14, _shade(mat, 0.72, gloss * 0.3, false), 1.3, true)
-		var vein := Color(str(mat.vein))
-		for line in visual.veins:
-			var poly := PackedVector2Array()
-			for point in line:
-				poly.append(xf * point)
-			if poly.size() >= 2:
-				ci.draw_polyline(poly, vein.darkened(0.25), 3.4, true)
-				ci.draw_polyline(poly, vein, 1.6, true)
-		var patina := Color(str(mat.patina))
 		for spot in visual.spots:
-			ci.draw_circle(xf * spot.p, float(spot.r), Color(patina.r, patina.g, patina.b, 0.85))
-		if gloss > 0.55:
-			var spec := Color(str(mat.spec))
-			ci.draw_circle(origin + to_star * size * 0.32, size * (0.05 + gloss * 0.05), Color(spec.r, spec.g, spec.b, 0.35 + gloss * 0.4))
+			ci.draw_circle(xf * spot.p, float(spot.r), Color(0.16, 0.14, 0.12, 0.7))
+		_draw_ore(ci, sim, node, xf, to_star, visual)
 	for pebble in visual.pebbles:
 		var orbit: float = float(pebble.p.angle()) + float(sim.time) * 0.25
 		var pebble_pos: Vector2 = origin + Vector2.from_angle(orbit) * float(pebble.p.length())
-		_draw_simple(ci, pebble_pos, float(pebble.r), mat, spent, sim, node)
+		_draw_simple(ci, pebble_pos, float(pebble.r), {}, spent, sim, {}, false)
 	if gathering:
 		_draw_kerf(ci, sim, origin, size, mat)
 
@@ -294,21 +299,29 @@ static func _draw_derelict(ci: CanvasItem, sim, node: Dictionary, origin: Vector
 		_draw_kerf(ci, sim, origin, size * 0.72, PlasmaHarvest.material_of(sim, "wreck_plate"))
 
 
-static func _draw_simple(ci: CanvasItem, origin: Vector2, size: float, mat: Dictionary, spent: bool, _sim, _node: Dictionary) -> void:
-	if mat.is_empty():
-		ci.draw_circle(origin, maxf(size * 0.45, 1.6), Color("5a5048"))
-		return
+static func _draw_simple(ci: CanvasItem, origin: Vector2, size: float, mat: Dictionary, spent: bool, sim, node: Dictionary, show_ore: bool = true) -> void:
 	var to_star := _to_star(origin)
-	var albedo := _shade(mat, 0.62, 0.0, spent)
-	var vein := Color(str(mat.get("vein", "8a8070")))
-	var body := albedo.lerp(vein, 0.34)
-	var deep := _shade(mat, 0.16, 0.0, spent)
+	var stone: Dictionary = STONE
 	ci.draw_circle(origin - to_star * size * 0.12, size * 0.5, Color(0, 0, 0, 0.28))
-	ci.draw_circle(origin, size * 0.46, deep.lerp(body, 0.72))
-	ci.draw_circle(origin + to_star * size * 0.16, size * 0.2, body)
-	if not spent and float(mat.get("gloss", 0.0)) > 0.5:
-		var spec := Color(str(mat.spec))
-		ci.draw_circle(origin + to_star * size * 0.2, size * 0.08, Color(spec.r, spec.g, spec.b, 0.8))
+	ci.draw_circle(origin, size * 0.46, _shade(stone, 0.26, 0.0, spent))
+	ci.draw_circle(origin + to_star * size * 0.14, size * 0.2, _shade(stone, 0.62, 0.0, spent))
+	if not show_ore or spent or mat.is_empty() or node.is_empty():
+		return
+	var left := PlasmaHarvest.remaining(node)
+	if left <= 0:
+		return
+	var cap := clampf(0.22 + float(left) * 0.04, 0.22, 0.62) * size
+	ci.draw_circle(origin + to_star * size * 0.08, cap * 0.62, _ore_color(mat, 0.82, 0.35))
+	var primary := str(node.get("material", ""))
+	for key in node.get("loads", {}).keys():
+		if str(key) == primary or int(node.loads[key]) <= 0:
+			continue
+		var extra := PlasmaHarvest.material_of(sim, str(key))
+		if extra.is_empty():
+			continue
+		var dot := clampf(0.08 + float(node.loads[key]) * 0.03, 0.08, 0.28) * size
+		ci.draw_circle(origin - to_star * size * 0.12, dot, _ore_color(extra, 0.75, 0.3))
+		break
 
 
 static func _draw_mark(ci: CanvasItem, sim, node: Dictionary, pos: Vector2, size: float, mat: Dictionary, gathering: bool) -> void:
@@ -415,8 +428,10 @@ static func _draw_tool_glow(ci: CanvasItem, pose: Dictionary) -> void:
 	ci.draw_circle(pose.housing + pose.aim * 6.0, 5.0 * extend, Color(0.4, 0.7, 1.0, 0.18))
 
 
-static func _bake_meteor(rng: RandomNumberGenerator, size: float) -> Dictionary:
+static func _bake_meteor(rng: RandomNumberGenerator, size: float, loads: Dictionary) -> Dictionary:
 	var count := rng.randi_range(12, 16)
+	if size > 70.0:
+		count = rng.randi_range(16, 20)
 	var rim := PackedVector2Array()
 	var heights: Array = []
 	for i in count:
@@ -433,32 +448,250 @@ static func _bake_meteor(rng: RandomNumberGenerator, size: float) -> Dictionary:
 			"height": h,
 			"bias": rng.randf_range(-0.06, 0.06),
 		})
+	var crater_n := rng.randi_range(2, 4)
+	if size > 70.0:
+		crater_n = rng.randi_range(5, 8)
 	var craters: Array = []
-	for _i in rng.randi_range(1, 3):
-		var p := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.0, size * 0.48)
-		craters.append({"p": p, "r": rng.randf_range(size * 0.08, size * 0.16)})
+	for _i in crater_n:
+		var p := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.0, size * 0.55)
+		craters.append({"p": p, "r": rng.randf_range(size * 0.06, size * 0.14)})
+	var crack_n := 3 if size > 70.0 else 2
 	var veins: Array = []
-	for _i in 2:
-		var start := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(size * 0.1, size * 0.35)
+	for _i in crack_n:
+		var start := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(size * 0.05, size * 0.4)
 		var line := PackedVector2Array()
 		var cursor := start
+		var dir := rng.randf() * TAU
 		for _s in 4:
 			line.append(cursor)
-			cursor += Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(size * 0.08, size * 0.18)
+			dir += rng.randf_range(-0.7, 0.7)
+			cursor += Vector2.from_angle(dir) * rng.randf_range(size * 0.08, size * 0.18)
 		veins.append(line)
 	var spots: Array = []
-	for _i in rng.randi_range(2, 4):
+	for _i in rng.randi_range(3, 6):
 		spots.append({
-			"p": Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.0, size * 0.7),
-			"r": rng.randf_range(1.4, 3.2),
+			"p": Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(0.0, size * 0.72),
+			"r": rng.randf_range(size * 0.03, size * 0.07),
 		})
 	var pebbles: Array = []
-	for _i in 2:
+	var pebble_n := 3 if size > 70.0 else 2
+	for _i in pebble_n:
 		pebbles.append({
-			"p": Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(size * 1.25, size * 1.7),
-			"r": rng.randf_range(size * 0.12, size * 0.22),
+			"p": Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(size * 1.2, size * 1.65),
+			"r": rng.randf_range(size * 0.08, size * 0.16),
 		})
-	return {"faces": faces, "rim": rim, "craters": craters, "veins": veins, "spots": spots, "pebbles": pebbles}
+	var ore := _bake_ore(rng, size, loads)
+	return {"faces": faces, "rim": rim, "craters": craters, "veins": veins, "spots": spots, "pebbles": pebbles, "ore": ore}
+
+
+static func _bake_ore(rng: RandomNumberGenerator, size: float, loads: Dictionary) -> Array:
+	var ore: Array = []
+	var slot := 0
+	for mat_id in loads.keys():
+		var count := int(loads[mat_id])
+		if count <= 0:
+			continue
+		var ang0 := rng.randf() * TAU + float(slot) * (PI * 0.92)
+		slot += 1
+		var anchor := Vector2.from_angle(ang0) * size * (0.34 if size >= 80.0 else 0.28)
+		var big := count >= 6 or size >= 80.0
+		if big:
+			var face_r := size * (0.30 if size >= 80.0 else 0.24)
+			var pts := PackedVector2Array()
+			var sides := 7
+			for s in sides:
+				var a := ang0 + (float(s) / float(sides) - 0.5) * 2.15
+				pts.append(anchor + Vector2.from_angle(a) * face_r * rng.randf_range(0.7, 1.15))
+			ore.append({
+				"kind": "face",
+				"mat": str(mat_id),
+				"index": 0,
+				"stock": count,
+				"pts": pts,
+			})
+		for i in count:
+			var near_face := rng.randf() < 0.55
+			var ang := ang0 + rng.randf_range(-0.9, 0.9) if near_face else rng.randf() * TAU
+			var dist := rng.randf_range(size * 0.12, size * 0.62) if near_face else rng.randf_range(size * 0.08, size * 0.78)
+			var as_seam := rng.randf() < 0.3 and count >= 2
+			if as_seam:
+				var start := Vector2.from_angle(ang) * dist
+				var line := PackedVector2Array()
+				var cursor := start
+				var dir := ang + rng.randf_range(-0.6, 0.6)
+				var steps := 5 if size >= 80.0 else 3
+				for _s in steps:
+					line.append(cursor)
+					dir += rng.randf_range(-0.45, 0.45)
+					cursor += Vector2.from_angle(dir) * rng.randf_range(size * 0.05, size * 0.12)
+				var width := rng.randf_range(1.8, 3.4)
+				if count >= 6 or size >= 80.0:
+					width *= 1.3
+				ore.append({
+					"kind": "seam",
+					"mat": str(mat_id),
+					"index": i,
+					"stock": count,
+					"line": line,
+					"w": width,
+				})
+			else:
+				var radius := rng.randf_range(size * 0.07, size * 0.13)
+				if str(mat_id) == "gold":
+					radius = rng.randf_range(size * 0.2, size * 0.32)
+				elif count <= 2:
+					radius = rng.randf_range(size * 0.16, size * 0.24)
+				elif count >= 6:
+					radius *= 1.12
+				if size >= 80.0:
+					radius *= 1.05
+				ore.append({
+					"kind": "nodule",
+					"mat": str(mat_id),
+					"index": i,
+					"stock": count,
+					"p": Vector2.from_angle(ang) * dist,
+					"r": radius,
+					"spin": rng.randf() * TAU,
+				})
+	return ore
+
+
+static func _draw_ore(ci: CanvasItem, sim, node: Dictionary, xf: Transform2D, to_star: Vector2, visual: Dictionary) -> void:
+	var features: Array = visual.get("ore", [])
+	for kind in ["face", "seam", "nodule"]:
+		for feature in features:
+			if typeof(feature) != TYPE_DICTIONARY:
+				continue
+			var feat: Dictionary = feature
+			if str(feat.get("kind", "")) != kind:
+				continue
+			var mat_id := str(feat.get("mat", ""))
+			var left := int(node.get("loads", {}).get(mat_id, 0))
+			if left <= 0:
+				continue
+			if kind != "face" and int(feat.get("index", 0)) >= left:
+				continue
+			var ore_mat := PlasmaHarvest.material_of(sim, mat_id)
+			if ore_mat.is_empty():
+				continue
+			if kind == "face":
+				var stock := maxi(int(feat.get("stock", left)), 1)
+				var frac := clampf(float(left) / float(stock), 0.28, 1.0)
+				_draw_face(ci, xf, to_star, feat, ore_mat, frac)
+			elif kind == "seam":
+				_draw_seam(ci, xf, to_star, feat, ore_mat)
+			else:
+				_draw_nodule(ci, xf, to_star, feat, ore_mat)
+
+
+static func _draw_face(ci: CanvasItem, xf: Transform2D, to_star: Vector2, feat: Dictionary, mat: Dictionary, frac: float) -> void:
+	var raw := _points(feat.get("pts", []))
+	if raw.size() < 3:
+		return
+	var centroid := Vector2.ZERO
+	for point in raw:
+		centroid += point
+	centroid /= float(raw.size())
+	var scaled := PackedVector2Array()
+	for point in raw:
+		scaled.append(centroid + (point - centroid) * frac)
+	var lip := PackedVector2Array()
+	var world := PackedVector2Array()
+	var inner := PackedVector2Array()
+	for point in scaled:
+		var arm: Vector2 = point - centroid
+		lip.append(xf * (centroid + arm * 1.14))
+		world.append(xf * point)
+		inner.append(xf * (centroid + arm * 0.58))
+	var center: Vector2 = xf * centroid
+	_fan(ci, center, lip, Color(0.04, 0.035, 0.03, 0.96))
+	var gloss := float(mat.get("gloss", 0.4))
+	_fan(ci, center, world, _ore_color(mat, 0.46, 0.08))
+	_fan(ci, center, inner, _ore_color(mat, 0.86, gloss * 0.45))
+	if world.size() > 2:
+		var edge := world.duplicate()
+		edge.append(world[0])
+		ci.draw_polyline(edge, Color(str(mat.vein)), 2.2, true)
+		ci.draw_polyline(edge, Color(str(mat.spec)).lerp(Color(str(mat.vein)), 0.35), 1.0, true)
+	var span := maxf(raw[0].distance_to(centroid) * 0.08 * frac, 2.0)
+	if gloss > 0.5:
+		var spec := Color(str(mat.spec))
+		ci.draw_circle(center + to_star * span * 2.4, span, Color(spec.r, spec.g, spec.b, 0.35 + gloss * 0.45))
+	var patina := Color(str(mat.patina))
+	var patina_r := span * (2.6 if gloss > 0.5 and gloss < 0.9 else 1.5)
+	ci.draw_circle(center - to_star * span * 2.2, patina_r, Color(patina.r, patina.g, patina.b, 0.72 if gloss < 0.9 else 0.4))
+
+
+static func _draw_seam(ci: CanvasItem, xf: Transform2D, to_star: Vector2, feat: Dictionary, mat: Dictionary) -> void:
+	var local := _points(feat.get("line", []))
+	if local.size() < 2:
+		return
+	var poly := PackedVector2Array()
+	for point in local:
+		poly.append(xf * point)
+	var width := float(feat.get("w", 2.0))
+	var vein := Color(str(mat.vein))
+	var deep := Color(str(mat.deep))
+	ci.draw_polyline(poly, deep, width * 2.3, true)
+	ci.draw_polyline(poly, vein, width * 1.15, true)
+	var lit := _ore_color(mat, 0.9, float(mat.get("gloss", 0.4)) * 0.5)
+	for point in poly:
+		ci.draw_circle(point, width * 0.95, lit)
+		ci.draw_circle(point + to_star * width * 0.28, width * 0.36, Color(str(mat.spec)))
+
+
+static func _draw_nodule(ci: CanvasItem, xf: Transform2D, to_star: Vector2, feat: Dictionary, mat: Dictionary) -> void:
+	var local: Vector2 = feat.p
+	var center: Vector2 = xf * local
+	var radius := float(feat.r)
+	var spin := float(feat.get("spin", 0.0))
+	ci.draw_circle(center - to_star * radius * 0.2, radius * 1.08, Color(0, 0, 0, 0.5))
+	var nugget := PackedVector2Array()
+	var sides := 6
+	for s in sides:
+		var a := spin + float(s) / float(sides) * TAU
+		var rr := radius * (0.72 + 0.28 * absf(sin(float(s) * 1.7 + spin)))
+		nugget.append(center + Vector2.from_angle(a) * rr)
+	var gloss := float(mat.get("gloss", 0.4))
+	_fan(ci, center, nugget, _ore_color(mat, 0.5, 0.1))
+	var crown := PackedVector2Array()
+	for s in sides:
+		var a := spin + float(s) / float(sides) * TAU
+		var rr := radius * 0.46
+		crown.append(center + to_star * radius * 0.16 + Vector2.from_angle(a) * rr)
+	_fan(ci, center + to_star * radius * 0.16, crown, _ore_color(mat, 0.92, gloss * 0.55))
+	if gloss < 0.5:
+		var rust := Color(str(mat.vein))
+		ci.draw_line(center - to_star.orthogonal() * radius * 0.7, center + to_star.orthogonal() * radius * 0.55, rust, maxf(radius * 0.28, 1.4), true)
+	if gloss > 0.45:
+		var spec := Color(str(mat.spec))
+		ci.draw_circle(center + to_star * radius * 0.36, radius * (0.1 + gloss * 0.14), Color(spec.r, spec.g, spec.b, 0.45 + gloss * 0.4))
+	var patina := Color(str(mat.patina))
+	var patina_scale := 0.55 if gloss > 0.55 and gloss < 0.9 else 0.34
+	ci.draw_circle(center - to_star * radius * 0.3, radius * patina_scale, Color(patina.r, patina.g, patina.b, 0.8))
+
+
+static func _fan(ci: CanvasItem, center: Vector2, ring: PackedVector2Array, color: Color) -> void:
+	if ring.size() < 3:
+		return
+	for i in ring.size():
+		var a: Vector2 = ring[i]
+		var b: Vector2 = ring[(i + 1) % ring.size()]
+		var area := (a - center).cross(b - center)
+		if absf(area) < 6.0:
+			continue
+		ci.draw_colored_polygon(PackedVector2Array([center, a, b]), color)
+
+
+static func _points(raw) -> PackedVector2Array:
+	if raw is PackedVector2Array:
+		return raw
+	var out := PackedVector2Array()
+	if raw is Array:
+		for point in raw:
+			out.append(point)
+	return out
 
 
 static func _bake_wreck(rng: RandomNumberGenerator, size: float, variant: int) -> Dictionary:
@@ -511,6 +744,14 @@ static func _bake_derelict(rng: RandomNumberGenerator, size: float) -> Dictionar
 			plate.append(center + Vector2.from_angle(float(s) / 4.0 * TAU + float(i)) * rng.randf_range(4.0, 9.0))
 		plates.append(plate)
 	return {"scars": scars, "plates": plates}
+
+
+static func _ore_color(mat: Dictionary, lambert: float, metal: float) -> Color:
+	var col := _shade(mat, lambert, metal, false)
+	var gloss := float(mat.get("gloss", 0.4))
+	if gloss < 0.55:
+		col = col.lerp(Color(str(mat.vein)), 0.62)
+	return col
 
 
 static func _shade(mat: Dictionary, lambert: float, metal: float, spent: bool) -> Color:

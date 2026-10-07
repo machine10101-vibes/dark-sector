@@ -320,6 +320,22 @@ static func next_yield(node: Dictionary) -> String:
 	return ""
 
 
+static func load_line(sim, node: Dictionary) -> String:
+	var bits: PackedStringArray = PackedStringArray()
+	var primary := str(node.get("material", ""))
+	var loads: Dictionary = node.get("loads", {})
+	if int(loads.get(primary, 0)) > 0:
+		bits.append("%s ×%d" % [sim.resource_name(primary), int(loads[primary])])
+	for key in ["gold", "copper", "aluminum", "iron", "wreck_plate"]:
+		if key == primary:
+			continue
+		if int(loads.get(key, 0)) > 0:
+			bits.append("%s ×%d" % [sim.resource_name(key), int(loads[key])])
+	if bits.is_empty():
+		return "husk"
+	return ", ".join(bits)
+
+
 static func material_of(sim, id: String) -> Dictionary:
 	if not _ready(sim):
 		return {}
@@ -353,21 +369,36 @@ static func _slew_aim(sim, g: Dictionary, dt: float) -> void:
 static func _belt(sim, rng: RandomNumberGenerator, belt: Dictionary) -> void:
 	var placed: Array = []
 	var primary := _primary_mix(belt.mix)
-	for i in int(belt.count):
-		var pos := _scatter_arc(sim, rng, belt, placed, 62.0, 90.0)
+	for i in 2:
+		var loads := _giant_loads(rng, belt.mix, primary)
+		var size := _size_for(rng, primary, _sum_loads(loads), "giant")
+		var pos := _scatter_arc(sim, rng, belt, placed, size, maxf(90.0, size * 0.85))
 		if pos == Vector2.INF:
 			continue
-		placed.append(pos)
-		var mat_id := _roll_mix(rng, belt.mix)
-		var loads := {mat_id: _units(rng, mat_id)}
-		var node := _make(sim, "%s_%d" % [belt.id, i], "meteor", "%s rock" % sim.resource_name(mat_id), mat_id, loads, pos, rng)
+		placed.append({"pos": pos, "reach": size})
+		var node := _make(sim, "%s_giant_%d" % [belt.id, i], "meteor", _rock_name(sim, primary, "giant"), primary, loads, pos, rng, size)
 		node.belt = str(belt.id)
+		node.tier = "giant"
+		sim.nodes.append(node)
+	for i in int(belt.count):
+		var tier := _tier(rng)
+		var mat_id := _roll_mix(rng, belt.mix)
+		var loads := _loads_for(rng, belt.mix, mat_id, tier)
+		var size := _size_for(rng, mat_id, _sum_loads(loads), tier)
+		var pos := _scatter_arc(sim, rng, belt, placed, size, 90.0)
+		if pos == Vector2.INF:
+			continue
+		placed.append({"pos": pos, "reach": size})
+		var node := _make(sim, "%s_%d" % [belt.id, i], "meteor", _rock_name(sim, mat_id, tier), mat_id, loads, pos, rng, size)
+		node.belt = str(belt.id)
+		node.tier = tier
 		sim.nodes.append(node)
 	if placed.is_empty():
 		return
 	var centroid := Vector2.ZERO
-	for pos in placed:
-		centroid += pos
+	for item in placed:
+		var item_pos: Vector2 = item.pos
+		centroid += item_pos
 	centroid /= float(placed.size())
 	sim.belt_marks.append({
 		"name": str(belt.name),
@@ -429,9 +460,13 @@ static func _loose(sim, rng: RandomNumberGenerator, count: int) -> void:
 		if _near_nodes(sim, pos, 180.0):
 			continue
 		var mat_id: String = mats[made % mats.size()]
-		var loads := {mat_id: _units(rng, mat_id)}
-		var node := _make(sim, "loose_%d" % made, "meteor", "%s rock" % sim.resource_name(mat_id), mat_id, loads, pos, rng)
+		var tier := _tier(rng)
+		var mix := {"iron": 1, "aluminum": 1, "copper": 1, "gold": 1}
+		var loads := _loads_for(rng, mix, mat_id, tier)
+		var size := _size_for(rng, mat_id, _sum_loads(loads), tier)
+		var node := _make(sim, "loose_%d" % made, "meteor", _rock_name(sim, mat_id, tier), mat_id, loads, pos, rng, size)
 		node.belt = "loose"
+		node.tier = tier
 		sim.nodes.append(node)
 		made += 1
 
@@ -464,12 +499,14 @@ static func _derelicts(sim, rng: RandomNumberGenerator, count: int) -> void:
 		made += 1
 
 
-static func _make(sim, id: String, kind: String, node_name: String, material: String, loads: Dictionary, pos: Vector2, rng: RandomNumberGenerator) -> Dictionary:
-	var size := rng.randf_range(22.0, 44.0)
-	if material == "gold":
-		size = rng.randf_range(18.0, 32.0)
-	if kind == "wreckage":
-		size = rng.randf_range(16.0, 30.0)
+static func _make(sim, id: String, kind: String, node_name: String, material: String, loads: Dictionary, pos: Vector2, rng: RandomNumberGenerator, size_override: float = -1.0) -> Dictionary:
+	var size := size_override
+	if size <= 0.0:
+		size = rng.randf_range(22.0, 44.0)
+		if material == "gold":
+			size = rng.randf_range(18.0, 32.0)
+		if kind == "wreckage":
+			size = rng.randf_range(16.0, 30.0)
 	var node := {
 		"id": id,
 		"kind": kind,
@@ -490,12 +527,12 @@ static func _make(sim, id: String, kind: String, node_name: String, material: St
 	return node
 
 
-static func _scatter_arc(sim, rng: RandomNumberGenerator, belt: Dictionary, placed: Array, gap: float, pad: float) -> Vector2:
+static func _scatter_arc(sim, rng: RandomNumberGenerator, belt: Dictionary, placed: Array, reach: float, pad: float) -> Vector2:
 	var center := float(belt.angle)
 	var arc := float(belt.arc)
 	var radius := float(belt.radius)
 	var width := float(belt.width)
-	for _attempt in 10:
+	for _attempt in 18:
 		var ang := center + rng.randf_range(-arc * 0.5, arc * 0.5)
 		var rad := radius + rng.randf_range(-width, width)
 		var pos := Vector2.from_angle(ang) * rad
@@ -503,7 +540,9 @@ static func _scatter_arc(sim, rng: RandomNumberGenerator, belt: Dictionary, plac
 			continue
 		var crowded := false
 		for other in placed:
-			if pos.distance_to(other) < gap:
+			var other_pos: Vector2 = other.pos
+			var other_reach: float = float(other.reach)
+			if pos.distance_to(other_pos) < 1.05 * (reach + other_reach) + 8.0:
 				crowded = true
 				break
 		if crowded:
@@ -564,12 +603,89 @@ static func _primary_mix(mix: Dictionary) -> String:
 	return best
 
 
-static func _units(rng: RandomNumberGenerator, material: String) -> int:
+static func _tier(rng: RandomNumberGenerator) -> String:
+	var roll := rng.randf()
+	if roll < 0.30:
+		return "lean"
+	if roll < 0.78:
+		return "normal"
+	return "rich"
+
+
+static func _loads_for(rng: RandomNumberGenerator, mix: Dictionary, primary: String, tier: String) -> Dictionary:
+	var n := 1
+	if tier == "lean":
+		n = 1 if primary == "gold" else rng.randi_range(1, 2)
+	elif tier == "rich":
+		n = rng.randi_range(2, 4) if primary == "gold" else rng.randi_range(6, 9)
+	elif primary == "gold":
+		n = rng.randi_range(1, 2)
+	elif primary == "copper":
+		n = rng.randi_range(2, 4)
+	else:
+		n = rng.randi_range(3, 5)
+	var loads := {primary: n}
+	var chance := 0.22
+	if tier == "rich":
+		chance = 0.62
+	elif tier == "normal":
+		chance = 0.38
+	if rng.randf() < chance:
+		var sec := _secondary_mix(mix, primary)
+		if sec != "":
+			var sn := 1
+			if tier == "rich" and sec != "gold":
+				sn = rng.randi_range(2, 4)
+			elif tier == "normal" and sec != "gold":
+				sn = rng.randi_range(1, 2)
+			loads[sec] = sn
+	return loads
+
+
+static func _giant_loads(rng: RandomNumberGenerator, mix: Dictionary, primary: String) -> Dictionary:
+	var n := rng.randi_range(6, 10) if primary == "gold" else rng.randi_range(10, 16)
+	var loads := {primary: n}
+	var sec := _secondary_mix(mix, primary)
+	if sec != "":
+		loads[sec] = rng.randi_range(2, 4) if sec == "gold" else rng.randi_range(3, 7)
+	return loads
+
+
+static func _sum_loads(loads: Dictionary) -> int:
+	var total := 0
+	for key in loads.keys():
+		total += int(loads[key])
+	return total
+
+
+static func _size_for(rng: RandomNumberGenerator, material: String, total: int, tier: String) -> float:
+	if tier == "giant":
+		return rng.randf_range(86.0, 124.0)
+	var base := 18.0 + float(total) * 3.6
 	if material == "gold":
-		return rng.randi_range(1, 2)
-	if material == "copper":
-		return rng.randi_range(2, 3)
-	return rng.randi_range(2, 4)
+		base = maxf(base * 0.9, 26.0)
+	return clampf(base + rng.randf_range(-2.5, 2.5), 16.0, 68.0)
+
+
+static func _rock_name(sim, material: String, tier: String) -> String:
+	var metal := str(sim.resource_name(material))
+	if tier == "giant":
+		return "Large %s asteroid" % metal
+	if tier == "rich":
+		return "Rich %s asteroid" % metal
+	return "%s rock" % metal
+
+
+static func _secondary_mix(mix: Dictionary, primary: String) -> String:
+	var best := ""
+	var best_n := -1
+	for key in mix.keys():
+		if str(key) == primary:
+			continue
+		if int(mix[key]) > best_n:
+			best_n = int(mix[key])
+			best = str(key)
+	return best
 
 
 static func _recipe(sim, recipe_id: String) -> Dictionary:

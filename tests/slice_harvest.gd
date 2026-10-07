@@ -82,6 +82,35 @@ func _field() -> void:
 		if buried != "":
 			break
 	check(buried == "", "harvest nodes sit off the crust (%s)" % buried)
+	var min_stock := 999
+	var max_stock := 0
+	var mixed := 0
+	var giants := 0
+	var saw_iron := false
+	var saw_copper := false
+	for node in sim.nodes:
+		if str(node.kind) != "meteor":
+			continue
+		var stock := PlasmaHarvest.remaining(node)
+		min_stock = mini(min_stock, stock)
+		max_stock = maxi(max_stock, stock)
+		var metals := 0
+		for key in ["iron", "aluminum", "copper", "gold"]:
+			if int(node.loads.get(key, 0)) > 0:
+				metals += 1
+		if metals >= 2:
+			mixed += 1
+		if float(node.size) > 70.0:
+			giants += 1
+		for feature in node.visual.get("ore", []):
+			if str(feature.mat) == "iron":
+				saw_iron = true
+			if str(feature.mat) == "copper":
+				saw_copper = true
+	check(max_stock >= min_stock + 4, "some meteors carry more ore than others (%d..%d)" % [min_stock, max_stock])
+	check(mixed >= 8, "meteors can hold more than one metal (%d)" % mixed)
+	check(giants >= 6, "large asteroids float in the belts (%d)" % giants)
+	check(saw_iron and saw_copper, "iron and copper are baked onto the stone")
 	var bare := Silhouette.extent(Silhouette.parts("vesper", []))
 	var coil := Silhouette.extent(Silhouette.parts("vesper", ["coil"]))
 	var plate := Silhouette.extent(Silhouette.parts("vesper", ["plate"]))
