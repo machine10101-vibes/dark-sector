@@ -55,7 +55,7 @@ void fragment() {
 	float field = fbm(n * 3.1 + vec3(seed, 1.7, seed * 0.4));
 	float detail = fbm(n * 8.5 + vec3(seed * 2.0, 0.4, 3.0));
 	float ridges = fbm(n * 14.0 + vec3(seed * 1.3, 0.2, 2.2));
-	float land_w = smoothstep(0.42, 0.58, field);
+	float land_w = smoothstep(0.38, 0.56, field);
 	vec3 deep = vec3(0.05, 0.16, 0.28);
 	vec3 shoal = vec3(0.16, 0.42, 0.46);
 	float depth = smoothstep(0.18, 0.48, field);
@@ -117,7 +117,7 @@ void fragment() {
 		float district = smoothstep(0.34, 0.7, fbm(n * 2.4 + vec3(seed, 1.2, 0.4)));
 		float window = step(0.62, fract(sin(dot(floor(n.xz * 160.0), vec2(19.0, 47.0))) * 123.4));
 		float blob = smoothstep(0.62, 0.9, noise3(n * 26.0 + vec3(seed, 2.4, 0.6)));
-		lamps = max(max(street, window * 0.65), blob * 0.8) * district * night_side * mix(0.7, 1.0, land_w);
+		lamps = max(max(street, window * 0.72), blob * 0.88) * district * night_side * mix(0.75, 1.0, land_w);
 	}
 	float shore = 1.0 - smoothstep(0.0, 0.035, abs(field - 0.5));
 	col += vec3(0.9, 0.93, 0.88) * shore * day * 0.55 * (1.0 - city);
@@ -533,7 +533,13 @@ varying vec3 wnorm;
 varying vec3 wpos;
 uniform float seed = 0.0;
 void vertex() {
-	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	vec3 nrm = normalize(NORMAL);
+	vec3 p = normalize(VERTEX);
+	float cube = max(max(abs(p.x), abs(p.y)), abs(p.z));
+	float hex = max(abs(p.x + p.z * 0.6), abs(p.y));
+	float face = mix(cube, hex, 0.4);
+	VERTEX += nrm * (0.1 - face * 0.08) * length(VERTEX);
+	wnorm = normalize((MODEL_MATRIX * vec4(nrm, 0.0)).xyz);
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
@@ -840,14 +846,23 @@ func _sync_props(sim) -> void:
 		if local_belt:
 			radius = maxf(9.0, span * 0.62)
 		if str(chunk.get_meta("built", "")) != "yes":
-			chunk.mesh = _rock_mesh(index + 3, radius)
 			var material_id := str(row.get("material", ""))
 			if material_id == "ice_spall":
+				chunk.mesh = _crystal_mesh(index + 3, radius)
 				var ice := ShaderMaterial.new()
 				ice.shader = _ice_shader
 				ice.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
 				chunk.material_override = ice
+			elif material_id == "copper_slag":
+				chunk.mesh = _crystal_mesh(index + 7, radius)
+				var slag := ShaderMaterial.new()
+				slag.shader = _rock_shader
+				slag.set_shader_parameter("albedo", Color(str(row.get("tint", "#6e8f58"))))
+				slag.set_shader_parameter("vein_color", Color(str(row.get("vein", "#d6ee8a"))))
+				slag.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
+				chunk.material_override = slag
 			else:
+				chunk.mesh = _rock_mesh(index + 3, radius)
 				var stone := ShaderMaterial.new()
 				stone.shader = _rock_shader
 				stone.set_shader_parameter("albedo", Color(str(row.get("tint", "#8a6238"))))
@@ -1724,7 +1739,7 @@ func _sync_meteors(sim) -> void:
 		var node := _prop("meteor%d" % index)
 		var radius := maxf(12.0, float(row.get("size", 8.0)) * 1.7)
 		if str(node.get_meta("built", "")) != "yes":
-			node.mesh = _rock_mesh(index + 17, radius)
+			node.mesh = _crystal_mesh(index + 17, radius)
 			var ice_body := ShaderMaterial.new()
 			ice_body.shader = _ice_shader
 			ice_body.set_shader_parameter("seed", float(index) * 0.37)
@@ -3098,23 +3113,22 @@ func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array, 
 	for point in geom.hull:
 		nose = maxf(nose, point.x)
 	holder.set_meta("nose", nose)
-	var lower := height * 0.62
-	var hull_mesh := _hull_loft(geom.hull, height)
+	var hull_mesh := _prism(geom.hull, height, 0.86)
 	if hull_mesh == null:
-		hull_mesh = _prism(geom.hull, lower)
+		hull_mesh = _hull_loft(geom.hull, height)
 	if hull_mesh != null:
 		var plate := MeshInstance3D.new()
 		plate.name = "Plate"
 		plate.mesh = hull_mesh
 		plate.material_override = _hull_mat(Color("888888"))
 		holder.add_child(plate)
-	var deck_poly := _inset_poly(geom.hull, 0.55)
-	var deck_mesh := _prism(deck_poly, height * 0.07, 0.94)
+	var deck_poly := _inset_poly(geom.hull, 0.74)
+	var deck_mesh := _prism(deck_poly, height * 0.055, 0.94)
 	if deck_mesh != null:
 		var deck := MeshInstance3D.new()
 		deck.name = "Deck"
 		deck.mesh = deck_mesh
-		deck.position.y = height * 0.98
+		deck.position.y = height * 0.96
 		deck.material_override = _hull_mat(Color("9a9a9a"))
 		holder.add_child(deck)
 	_add_bridge(holder, class_id, height, float(geom.tail))
@@ -4867,9 +4881,9 @@ func _craft_holder(key: String, kind: String) -> Node3D:
 	node.name = key
 	node.set_meta("kind", kind)
 	var poly := _craft_poly(kind)
-	var mesh := _hull_loft(poly, 4.4)
+	var mesh := _prism(poly, 4.4, 0.8)
 	if mesh == null:
-		mesh = _prism(poly, 4.6, 0.82)
+		mesh = _hull_loft(poly, 4.4)
 	if mesh != null:
 		var body := MeshInstance3D.new()
 		body.name = "Plate"
@@ -4936,6 +4950,8 @@ func _dress_craft(node: Node3D, kind: String) -> void:
 			_kit(node, "WingS", Vector3(5.2, 0.08, 2.5), Vector3(0.6, 2.55, -3.5), Color("163848"))
 			_kit(node, "CellP", Vector3(3.4, 0.05, 1.7), Vector3(0.6, 2.62, 3.5), Color("1a4a68"))
 			_kit(node, "CellS", Vector3(3.4, 0.05, 1.7), Vector3(0.6, 2.62, -3.5), Color("1a4a68"))
+			_cyl(node, "Boom", 0.18, 4.8, Vector3(7.2, 2.4, 0.0), "x", Color("6a7678"))
+			_kit(node, "Bus", Vector3(2.4, 0.55, 1.1), Vector3(-1.2, 3.4, 0.0), Color("2a3438"))
 		"harvest_drone":
 			_cyl(node, "Cutter", 1.15, 1.7, Vector3(5.6, 2.1, 0.0), "z", Color("8d9296"))
 			_kit(node, "ArmP", Vector3(3.2, 0.26, 0.26), Vector3(3.8, 2.7, 2.3), Color("6a5438"))
@@ -4943,19 +4959,26 @@ func _dress_craft(node: Node3D, kind: String) -> void:
 			_kit(node, "JawP", Vector3(0.7, 1.05, 0.2), Vector3(6.1, 2.15, 1.55), Color("d2c6b2"))
 			_kit(node, "JawS", Vector3(0.7, 1.05, 0.2), Vector3(6.1, 2.15, -1.55), Color("d2c6b2"))
 			_kit(node, "Bucket", Vector3(1.8, 0.7, 2.6), Vector3(-1.4, 1.15, 0.0), Color("5c4834"))
+			_kit(node, "Hopper", Vector3(2.4, 1.15, 2.1), Vector3(-2.6, 2.4, 0.0), Color("8a6a3c"))
+			_cyl(node, "Bit", 0.35, 1.4, Vector3(6.6, 2.1, 0.0), "x", Color("d8d0c4"))
 		"salvage_tender":
 			_kit(node, "Boom", Vector3(6.8, 0.26, 0.26), Vector3(1.6, 6.2, 0.0), Color("8a5a32"))
 			_kit(node, "ClawP", Vector3(1.05, 0.72, 0.16), Vector3(5.2, 5.5, 0.55), Color("e4d8c4"))
 			_kit(node, "ClawS", Vector3(1.05, 0.72, 0.16), Vector3(5.2, 5.5, -0.55), Color("e4d8c4"))
 			_cyl(node, "Winch", 0.62, 0.7, Vector3(-1.6, 5.15, 0.0), "z", Color("24282c"))
+			_kit(node, "AFrameP", Vector3(0.22, 4.4, 0.22), Vector3(-0.8, 4.4, 1.1), Color("6a4a2c"))
+			_kit(node, "AFrameS", Vector3(0.22, 4.4, 0.22), Vector3(-0.8, 4.4, -1.1), Color("6a4a2c"))
+			_kit(node, "Hook", Vector3(0.28, 1.1, 0.16), Vector3(5.6, 4.7, 0.0), Color("c4b8a4"))
 		"away_shuttle":
 			_kit(node, "WingP", Vector3(3.8, 0.16, 3.4), Vector3(-0.8, 2.5, 4.8), Color("d4cfc2"))
 			_kit(node, "WingS", Vector3(3.8, 0.16, 3.4), Vector3(-0.8, 2.5, -4.8), Color("d4cfc2"))
+			_kit(node, "Door", Vector3(1.4, 1.6, 0.12), Vector3(1.8, 2.4, 1.6), Color("2a3034"))
 		_:
 			_cyl(node, "GunP", 0.16, 3.6, Vector3(2.2, 3.15, 5.1), "x", Color("16181a"))
 			_cyl(node, "GunS", 0.16, 3.6, Vector3(2.2, 3.15, -5.1), "x", Color("16181a"))
 			_cyl(node, "BellP", 0.62, 1.35, Vector3(-4.8, 1.7, 1.55), "x", Color("2c2622"))
 			_cyl(node, "BellS", 0.62, 1.35, Vector3(-4.8, 1.7, -1.55), "x", Color("2c2622"))
+			_kit(node, "Canopy", Vector3(2.2, 0.55, 1.15), Vector3(3.1, 5.0, 0.0), Color("3a5058"))
 
 
 func _craft_poly(kind: String) -> PackedVector2Array:
@@ -5789,6 +5812,12 @@ func _wreck_mesh(seed: int, radius: float) -> ArrayMesh:
 	var spar := BoxMesh.new()
 	spar.size = Vector3(radius * 1.4, radius * 0.08, radius * 0.08)
 	st.append_from(spar, 0, Transform3D(Basis(Vector3.FORWARD, 0.2), Vector3(-radius * 0.2, -radius * 0.12, radius * 0.22)))
+	var tear := BoxMesh.new()
+	tear.size = Vector3(radius * 0.62, radius * 0.05, radius * 0.95)
+	st.append_from(tear, 0, Transform3D(Basis(Vector3(0.4, 0.9, 0.1).normalized(), 1.1), Vector3(radius * 0.35, radius * 0.18, -radius * 0.5)))
+	var pane := BoxMesh.new()
+	pane.size = Vector3(radius * 0.28, radius * 0.16, radius * 0.04)
+	st.append_from(pane, 0, Transform3D(Basis(Vector3.UP, 0.7), Vector3(-radius * 0.4, radius * 0.14, radius * 0.08)))
 	var mesh := st.commit()
 	_mesh_cache[key] = mesh
 	return mesh
@@ -5852,14 +5881,16 @@ func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
 		return _mesh_cache[key]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var lat := 12
-	var lon := 18
+	var lat := 16
+	var lon := 24
 	var rng := RandomNumberGenerator.new()
 	rng.seed = absi(seed) + 17
 	var rads := PackedFloat32Array()
 	rads.resize((lat + 1) * lon)
-	var crater_y := 3 + posmod(seed, 5)
-	var crater_x := 2 + posmod(seed * 3, lon)
+	var crater_y := 4 + posmod(seed, 7)
+	var crater_x := 3 + posmod(seed * 3, lon)
+	var crater_y2 := 8 + posmod(seed * 5, 6)
+	var crater_x2 := 11 + posmod(seed * 7, lon)
 	var wobble := 0.0
 	for yi in lat + 1:
 		for xi in lon:
@@ -5874,9 +5905,18 @@ func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
 				dx = lon - dx
 			var ring := dy + dx
 			if ring <= 1:
-				wobble *= 0.42
+				wobble *= 0.38
 			elif ring == 2:
-				wobble *= 1.16
+				wobble *= 1.18
+			var dy2 := absi(yi - crater_y2)
+			var dx2 := absi(xi - crater_x2)
+			if dx2 > lon / 2:
+				dx2 = lon - dx2
+			var ring2 := dy2 + dx2
+			if ring2 <= 1:
+				wobble *= 0.5
+			elif ring2 == 2:
+				wobble *= 1.1
 			rads[yi * lon + xi] = wobble
 	var a := Vector3.ZERO
 	var b := Vector3.ZERO
@@ -5902,6 +5942,51 @@ func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
 	_add_rock_lobe(st, rng, radius * 0.34, Vector3(radius * 0.08, -radius * 0.46, -radius * 0.4))
 	st.index()
 	st.generate_normals()
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _crystal_mesh(seed: int, radius: float) -> ArrayMesh:
+	var bucket := int(round(radius))
+	var key := "crystal|%d|%d" % [posmod(seed, 11), bucket]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = absi(seed) + 53
+	var lat := 7
+	var lon := 10
+	var rads := PackedFloat32Array()
+	rads.resize((lat + 1) * lon)
+	for yi in lat + 1:
+		for xi in lon:
+			var step := 0.48 + float(rng.randi_range(0, 4)) * 0.16
+			if yi == 0 or yi == lat:
+				step = 0.62
+			rads[yi * lon + xi] = step
+	for y0 in lat:
+		for x0 in lon:
+			var a := _rock_vert(y0, x0, lat, lon, rads, radius)
+			var b := _rock_vert(y0, x0 + 1, lat, lon, rads, radius)
+			var c := _rock_vert(y0 + 1, x0 + 1, lat, lon, rads, radius)
+			var d := _rock_vert(y0 + 1, x0, lat, lon, rads, radius)
+			var nrm := (b - a).cross(d - a)
+			if nrm.length_squared() < 0.0001:
+				nrm = a.normalized()
+			_rock_tri(st, a, b, d, nrm.normalized())
+			nrm = (c - b).cross(d - b)
+			if nrm.length_squared() < 0.0001:
+				nrm = d.normalized()
+			_rock_tri(st, b, c, d, nrm.normalized())
+	for i in 3:
+		var spike := BoxMesh.new()
+		var long := radius * rng.randf_range(0.7, 1.15)
+		var thick := radius * rng.randf_range(0.16, 0.28)
+		spike.size = Vector3(thick, long, thick)
+		var basis := Basis(Vector3(rng.randf() - 0.5, 1.0, rng.randf() - 0.5).normalized(), rng.randf_range(0.2, 1.1))
+		st.append_from(spike, 0, Transform3D(basis, Vector3(rng.randf_range(-0.2, 0.2), rng.randf_range(-0.1, 0.25), rng.randf_range(-0.2, 0.2)) * radius))
 	var mesh := st.commit()
 	_mesh_cache[key] = mesh
 	return mesh
@@ -6457,6 +6542,8 @@ func _prism(poly: PackedVector2Array, height: float, top_scale: float = 0.86) ->
 		return null
 	poly = _round_poly(poly)
 	if poly.size() <= 20:
+		poly = _round_poly(poly)
+	if poly.size() <= 40:
 		poly = _round_poly(poly)
 	var edge := 0.0
 	for i in poly.size():
