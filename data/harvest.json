@@ -180,6 +180,15 @@
   ],
   "loose": 12,
   "derelict_count": 5,
+  "clutter": {
+    "latch_count": 72,
+    "latch_giants": 3,
+    "latch_plates": 16,
+    "drift_count": 760,
+    "drift_giants": 12,
+    "drift_plates": 120,
+    "outer": 7200
+  },
   "recipes": [
     {
       "id": "coil_cannon",

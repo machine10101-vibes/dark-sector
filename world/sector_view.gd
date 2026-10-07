@@ -4,7 +4,7 @@ var cam: Camera2D
 var font: Font
 var snapped := false
 var glow: Node2D
-var gather_click = null
+var pending_click: Array = []
 
 
 func _ready() -> void:
@@ -51,8 +51,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_zoom(1.0)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_zoom(-1.0)
+		elif event.button_index == MOUSE_BUTTON_LEFT and not Game.paused and Game.sim != null and bool(Game.sim.player.alive):
+			pending_click = [get_global_mouse_position(), "inspect"]
+			get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_RIGHT and not Game.paused and Game.sim != null and bool(Game.sim.player.alive):
-			gather_click = get_global_mouse_position()
+			pending_click = [get_global_mouse_position(), "use"]
 			get_viewport().set_input_as_handled()
 	elif event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_EQUAL or event.keycode == KEY_KP_ADD:
@@ -91,9 +94,9 @@ func _cmd() -> Dictionary:
 		"fire": Input.is_key_pressed(KEY_SPACE),
 		"aim": get_global_mouse_position(),
 	}
-	if gather_click != null:
-		cmd["gather_at"] = gather_click
-		gather_click = null
+	if pending_click.size() >= 2:
+		cmd["world_click"] = pending_click
+		pending_click = []
 	return cmd
 
 
@@ -112,7 +115,6 @@ func _draw() -> void:
 		if view.grow(20).has_point(pos):
 			draw_circle(pos, float(star.r), Color(0.90, 0.86, 0.75, float(star.a)))
 	_draw_zones(sim)
-	_draw_belt(sim)
 	_draw_star(sim)
 	for body in sim.planets:
 		_draw_planet(sim, body)
@@ -143,6 +145,8 @@ func _draw() -> void:
 	_draw_names(sim, z)
 	_draw_harvest_labels(sim, z)
 	_draw_beacon(sim)
+	_draw_pointer(sim.hover, Color("cbb892"), 1.1, sim.focus)
+	_draw_pointer(sim.focus, Color("f0c27a"), 1.8, {})
 
 
 func _draw_grid(view: Rect2, zoom: float) -> void:
@@ -174,14 +178,14 @@ func _draw_zones(sim) -> void:
 	draw_arc(sim.nest_pos, amber_r, 0.0, TAU, 80, Color("c4923a"), 1.6, true)
 
 
-func _draw_belt(sim) -> void:
-	for rock in sim.asteroids:
-		var verts: PackedVector2Array = rock.verts
-		draw_colored_polygon(verts, Color("3a342c"))
-		if verts.size() > 1:
-			var outline := verts.duplicate()
-			outline.append(verts[0])
-			draw_polyline(outline, Color("6a5c4a"), 1.0, true)
+func _draw_pointer(mark: Dictionary, color: Color, width: float, other: Dictionary) -> void:
+	if mark.is_empty() or not mark.has("pos"):
+		return
+	if not other.is_empty() and str(other.get("kind", "")) == str(mark.get("kind", "")) and str(other.get("id", "")) == str(mark.get("id", "")):
+		return
+	var pos: Vector2 = mark.pos
+	var radius := float(mark.get("radius", 18.0)) + 12.0
+	draw_arc(pos, radius, 0.0, TAU, 32, color, width, true)
 
 
 func _draw_star(sim) -> void:

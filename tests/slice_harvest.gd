@@ -21,6 +21,7 @@ func _init() -> void:
 	_fabricate()
 	_roundtrip()
 	_industry()
+	_clutter()
 	if fails == 0:
 		print("HARVEST PASS")
 	else:
@@ -399,6 +400,111 @@ func _richest(sim: SectorSim) -> Dictionary:
 			best_n = n
 			best = node
 	return best
+
+
+func _clutter() -> void:
+	var sim := make()
+	var pocket: Vector2 = sim.pocket_pos
+	var spawn: Vector2 = pocket + Vector2(40, 170)
+	var near := 0
+	var inner := 0
+	var drift := 0
+	var giant_near := false
+	var plate_near := false
+	var near_spawn := false
+	var metals := {}
+	for node in sim.nodes:
+		var kind := str(node.kind)
+		var belt := str(node.belt)
+		if belt == "drift":
+			drift += 1
+		if kind == "meteor" and node.pos.length() < 1900.0:
+			inner += 1
+		if node.pos.distance_to(pocket) >= 1000.0:
+			continue
+		if kind == "meteor":
+			near += 1
+			metals[str(node.material)] = true
+			if float(node.size) > 80.0:
+				giant_near = true
+			if node.pos.distance_to(spawn) < 700.0:
+				near_spawn = true
+		if kind == "wreckage":
+			plate_near = true
+	check(near >= 12, "meteors clutter the pocket (%d within 1000)" % near)
+	check(near_spawn, "a meteor sits within 700 of the keel")
+	check(inner >= 8, "meteors sit inside the old belt radius (%d)" % inner)
+	check(giant_near, "a large asteroid hangs near Hollow Latch")
+	check(plate_near, "torn plate drifts around the Latch")
+	check(drift >= 400, "ore drift crosses the Reach (%d)" % drift)
+	for mat_id in ["iron", "aluminum", "copper", "gold"]:
+		check(bool(metals.get(mat_id, false)), "%s is visible around the Latch" % mat_id)
+	var rock := {}
+	var best_d := 700.0
+	for node in sim.nodes:
+		if str(node.kind) != "meteor":
+			continue
+		var dist: float = node.pos.distance_to(spawn)
+		if dist < best_d:
+			best_d = dist
+			rock = node
+	check(not rock.is_empty(), "the keel can see a rock")
+	if rock.is_empty():
+		return
+	sim.interact(rock.pos, "inspect")
+	check(str(sim.focus.get("kind", "")) == "node", "left-click a rock inspects it")
+	sim.player.pos = rock.pos + Vector2(160, 0)
+	sim.player.vel = Vector2.ZERO
+	sim.interact(rock.pos, "use")
+	check(bool(sim.gather.active), "right-click a nearby rock locks the gatherer")
+	sim.interact(Vector2(24000, 24000), "use")
+	check(not bool(sim.gather.active), "right-click empty dark stows the beam")
+	var cinder = sim.planet("cinder")
+	sim.interact(cinder.pos, "inspect")
+	check(str(sim.focus.get("kind", "")) == "planet", "left-click Cinder inspects the world")
+	sim.interact(cinder.pos, "use")
+	var sent := false
+	for item in sim.craft:
+		if str(item.def_id) == "survey_probe" and str(item.target) == "cinder" and str(item.state) != "docked":
+			sent = true
+	check(sent, "right-click Cinder launches a probe")
+	check(str(sim.ui_open) == "dossier", "right-click Cinder opens the dossier")
+	var actor := {}
+	for body in sim.actors:
+		if bool(body.alive):
+			actor = body
+			break
+	check(not actor.is_empty(), "a ship is in the Reach")
+	if not actor.is_empty():
+		sim.interact(actor.pos, "inspect")
+		check(str(sim.focus.get("kind", "")) == "actor", "left-click a ship inspects it")
+		check(str(sim.focus.get("id", "")) == str(actor.id), "the look is that ship")
+	sim.interact(sim.pocket_pos, "inspect")
+	check(str(sim.focus.get("kind", "")) == "latch", "left-click the Latch mark")
+	sim.interact(sim.pocket_pos, "use")
+	check(str(sim.ui_open) == "claim", "right-click the Latch opens the homestead")
+	sim.interact(Vector2.ZERO, "inspect")
+	check(str(sim.focus.get("kind", "")) == "star", "left-click Ash Lamp")
+	sim.interact(sim.player.pos, "use")
+	check(str(sim.focus.get("kind", "")) == "keel", "right-click the keel")
+	check(str(sim.ui_open) == "bay", "right-click the keel opens the bay")
+	var hulk_pos: Vector2 = sim.player.pos + Vector2(140, -40)
+	sim.wrecks.append({
+		"id": "wreck_click",
+		"name": "Test hulk",
+		"pos": hulk_pos,
+		"stripped": false,
+		"agent_id": "agent:test",
+		"team": "red_keel",
+		"class_id": "skiff",
+		"controller": "ai",
+		"cargo": {},
+	})
+	sim.interact(hulk_pos, "inspect")
+	check(str(sim.focus.get("kind", "")) == "wreck", "left-click a wreck")
+	sim.gather.active = false
+	sim.interact(hulk_pos, "use")
+	check(not bool(sim.gather.active), "a battle wreck does not take the beam without a tender")
 
 
 func _count_belt(sim: SectorSim, belt_id: String) -> int:

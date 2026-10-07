@@ -1,7 +1,7 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Chandlery, refinery, synthetics, and built boats
+Slice just completed: Cluttered ore around the keel, and click-anything
 Player-visible what works now:
 - New game picks exactly one keel: Vesper Needle, Anvil Barn, or Kestrel Beak. Silhouettes differ before and after the yard module.
 - Ashen Reach is one top-down system: Ash Lamp, Cinder, Mire, Vellum, the Slat, Hollow Latch, a Vellum Compact patrol, and a Red Keel pack. Green, amber, and dark rule layers are in the same view.
@@ -12,7 +12,8 @@ Player-visible what works now:
 - Hold, Esc, F5, and F9 write and read the log: ship layout, craft, crew, claim homestead, heat, quest flags, galaxy seed, zoom.
 - Origin quests are on the slate and dormant.
 - Hollow Latch takes a Claim Core printed from two cinder-ore and planted inside the pocket. An ash dome, one ember-kale sowing (cinder-heat), one ash hen that dies if unfed, and a stake turret bought with keel salvage. A Red Keel on an undefended stake cracks the core and freezes the dome, crop, and hen without deleting the ship. Replanting wakes the same stake.
-- Every keel mounts a plasma gatherer. Right-click a rock, torn plate, or abandoned hull inside beam range and the barrel extends a plasma column until the node is a husk, the hold is full, or the keel slips out of range. Rust Arc (iron), Pale Shelf (aluminum), Copper Vein, and King's Drift (gold) are large belts. Each belt also holds two large asteroids. Meteors are dark regolith; iron, aluminum, copper, and gold sit on the stone as nodules, seams, and exposed faces, and some rocks carry much more ore than others, sometimes two metals. Keel Grave and Quiet Debris are torn-plate fields. Five abandoned hulls drift in the dark. A kill throws extra battle plate around the wreck; the tender's one keel-salvage is unchanged.
+- Every keel mounts a plasma gatherer. Left-click looks at almost anything: a rock, torn plate, a world, a ship, your keel, Ash Lamp, or the Latch mark. A gold ring sits on it. Right-click uses it. Ore, torn plate, and abandoned hulls inside beam range take the plasma column until the node is a husk, the hold is full, or the keel slips out of range. Right-click empty dark stows the beam. A world sends a probe, or a harvest drone once the dossier is sealed. A battle wreck sends a tender when the keel has one. Your keel opens the bay. The Latch mark opens the homestead. Guns stay on Space.
+- Ore is cluttered through the Reach, including around Hollow Latch, not only in the named belts. Rust Arc (iron), Pale Shelf (aluminum), Copper Vein, and King's Drift (gold) are still the dense arcs, and each holds large asteroids. Meteors are dark regolith; iron, aluminum, copper, and gold sit on the stone as nodules, seams, and exposed faces, and some rocks carry much more ore than others, sometimes two metals. The old barren Slat polygons are gone. Keel Grave and Quiet Debris are torn-plate fields, and more plate drifts with the rocks. Five abandoned hulls drift in the dark. A kill throws extra battle plate around the wreck; the tender's one keel-salvage is unchanged.
 - The bay fabricator spends that ore. Coil Cannon, Ion Booster, and Plated Armor bolt onto Weapon, Drive, and Plate hardpoints, change the silhouette, and stay on. Reactor spare can refuse a drawing. Depleted seams and battle debris survive the log.
 - Hollow Latch buys raw ore and synthetics for scrip. The purse is not cargo. Outside the pocket the chandlery will not deal.
 - The refinery pours alloy billet (iron and aluminum), circuit lace (copper and gold), and hull resin (wreck plate and aluminum). A pour takes time, one job runs at a time, and a half-finished pour survives the log.

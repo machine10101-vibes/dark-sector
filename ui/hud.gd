@@ -44,7 +44,7 @@ func _ready() -> void:
 	_build_pause()
 	_build_dead()
 	var hint := ThemeKit.label(
-		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   RMB plasma gather   wheel zoom     1 probe   2 harvest   3 boat     B bay fabricator   H hangar   D dossier   F heat   J quests   K homestead     Hold / Esc pause   F5 save   F9 load",
+		"W thrust   S retro   A/D yaw   Q/E strafe   SPACE gun   LMB look   RMB use   wheel zoom     1 probe   2 harvest   3 boat     B bay   H hangar   D dossier   F heat   J quests   K homestead     Hold / Esc pause   F5 save   F9 load",
 		12,
 		Color("8d826c")
 	)
@@ -87,6 +87,10 @@ func _process(_delta: float) -> void:
 	if Game.mode != "sector" or Game.sim == null:
 		return
 	_refresh_helm()
+	var want := str(Game.sim.ui_open)
+	if want != "":
+		Game.sim.ui_open = ""
+		_open(want)
 	if banner != null:
 		var text := ""
 		if Game.sim.banner != "" and Game.sim.banner_t < 9.0:
@@ -329,12 +333,39 @@ func _gather_line(sim) -> String:
 			int(float(sim.gather.progress) * 100.0),
 			PlasmaHarvest.remaining(node),
 		]
+	var hover: Dictionary = sim.hover
+	if not hover.is_empty():
+		return "    " + _cursor_line(sim, hover)
 	if str(sim.aim_id) == "":
 		return ""
 	var hovered := PlasmaHarvest.by_id(sim, str(sim.aim_id))
 	if hovered.is_empty():
 		return ""
 	return "    Cursor: %s ×%d — right-click to cut" % [hovered.name, PlasmaHarvest.remaining(hovered)]
+
+
+func _cursor_line(sim, hit: Dictionary) -> String:
+	match str(hit.kind):
+		"node":
+			var node := PlasmaHarvest.by_id(sim, str(hit.id))
+			if node.is_empty():
+				return "Cursor: %s" % hit.name
+			return "Cursor: %s ×%d — right-click to cut" % [node.name, PlasmaHarvest.remaining(node)]
+		"planet":
+			return "Cursor: %s — right-click to send a craft" % hit.name
+		"wreck":
+			return "Cursor: %s — right-click to strip" % hit.name
+		"actor":
+			return "Cursor: %s — left-click to read, guns stay on Space" % hit.name
+		"craft":
+			return "Cursor: %s — right-click to recall" % hit.name
+		"keel":
+			return "Cursor: your keel — right-click to open the bay"
+		"star":
+			return "Cursor: Ash Lamp"
+		"latch":
+			return "Cursor: Hollow Latch — right-click for the homestead"
+	return "Cursor: %s" % str(hit.get("name", ""))
 
 
 func _craft_line(sim) -> String:
@@ -346,6 +377,12 @@ func _craft_line(sim) -> String:
 	if bits.is_empty():
 		return "Hangar sealed. Craft are aboard."
 	return "Out: " + "   ".join(bits)
+
+
+func _open(kind: String) -> void:
+	if panel_kind == kind and panel != null and panel.visible:
+		return
+	_toggle(kind)
 
 
 func _toggle(kind: String) -> void:
@@ -411,7 +448,7 @@ func _build_bay() -> void:
 	install_button.pressed.connect(_on_install)
 	bay_box.add_child(install_button)
 	bay_box.add_child(ThemeKit.label("Bolted means bolted. There is no crane aboard to pull a module off.", 13, Color("8d826c")))
-	bay_box.add_child(ThemeKit.label("The plasma gatherer is fitted. Right-click a rock, torn plate, or abandoned hull. Fabricated parts stay on the keel.", 13, Color("8d826c")))
+	bay_box.add_child(ThemeKit.label("The plasma gatherer is fitted. Left-click to look. Right-click a rock, torn plate, or abandoned hull. Fabricated parts stay on the keel.", 13, Color("8d826c")))
 	fab_buttons = []
 	refine_buttons = []
 	craft_buttons = []

@@ -40,6 +40,7 @@ static func seed(sim) -> void:
 		_field(sim, rng, field)
 	_loose(sim, rng, int(data.get("loose", 0)))
 	_derelicts(sim, rng, int(data.get("derelict_count", 0)))
+	_clutter(sim, rng, data.get("clutter", {}))
 
 
 static func engage(sim, pos: Vector2) -> String:
@@ -599,6 +600,172 @@ static func _derelicts(sim, rng: RandomNumberGenerator, count: int) -> void:
 		BodyRender.bake(node)
 		sim.nodes.append(node)
 		made += 1
+
+
+static func _clutter(sim, rng: RandomNumberGenerator, clutter: Dictionary) -> void:
+	if clutter.is_empty():
+		return
+	var mix := {"iron": 34, "aluminum": 28, "copper": 26, "gold": 12}
+	var bins := _bins_from(sim)
+	var pocket: Vector2 = sim.pocket_pos
+	var spawn: Vector2 = pocket + Vector2(40, 170)
+	var avoid: Array = [pocket, spawn]
+	_latch_cloud(sim, rng, clutter, mix, bins, pocket, avoid)
+	_drift_field(sim, rng, clutter, mix, bins)
+
+
+static func _latch_cloud(sim, rng: RandomNumberGenerator, clutter: Dictionary, mix: Dictionary, bins: Dictionary, pocket: Vector2, avoid: Array) -> void:
+	var forced := ["iron", "aluminum", "copper", "gold"]
+	for i in int(clutter.get("latch_giants", 0)):
+		var mat_id: String = forced[i % forced.size()]
+		var loads := _giant_loads(rng, mix, mat_id)
+		var size := rng.randf_range(90.0, 112.0)
+		var pos := _seek(sim, rng, bins, pocket, 460.0, 820.0, size, true, avoid, false)
+		if pos == Vector2.INF:
+			continue
+		var node := _make(sim, "latch_giant_%d" % i, "meteor", _rock_name(sim, mat_id, "giant"), mat_id, loads, pos, rng, size)
+		node.belt = "latch"
+		node.tier = "giant"
+		sim.nodes.append(node)
+		_bin_add(bins, pos, size)
+	var count := int(clutter.get("latch_count", 0))
+	for i in count:
+		var mat_id: String = forced[i] if i < forced.size() else _roll_mix(rng, mix)
+		var tier: String = "rich" if i < forced.size() else _tier(rng)
+		var loads := _loads_for(rng, mix, mat_id, tier)
+		var size := _size_for(rng, mat_id, _sum_loads(loads), tier)
+		var pos := _seek(sim, rng, bins, pocket, 130.0, 1040.0, size, true, avoid, false)
+		if pos == Vector2.INF:
+			continue
+		var node := _make(sim, "latch_%d" % i, "meteor", _rock_name(sim, mat_id, tier), mat_id, loads, pos, rng, size)
+		node.belt = "latch"
+		node.tier = tier
+		sim.nodes.append(node)
+		_bin_add(bins, pos, size)
+	for i in int(clutter.get("latch_plates", 0)):
+		var size := rng.randf_range(16.0, 30.0)
+		var pos := _seek(sim, rng, bins, pocket, 180.0, 980.0, size, true, avoid, false)
+		if pos == Vector2.INF:
+			continue
+		_drop_plate(sim, rng, "latch_plate_%d" % i, "latch", pos, i, size)
+		_bin_add(bins, pos, size)
+
+
+static func _drift_field(sim, rng: RandomNumberGenerator, clutter: Dictionary, mix: Dictionary, bins: Dictionary) -> void:
+	var outer := float(clutter.get("outer", 7200.0))
+	for i in int(clutter.get("drift_giants", 0)):
+		var mat_id := _roll_mix(rng, mix)
+		var loads := _giant_loads(rng, mix, mat_id)
+		var size := _size_for(rng, mat_id, _sum_loads(loads), "giant")
+		var pos := _seek(sim, rng, bins, Vector2.ZERO, 900.0, outer - 200.0, size, false, [], true)
+		if pos == Vector2.INF:
+			continue
+		var node := _make(sim, "drift_giant_%d" % i, "meteor", _rock_name(sim, mat_id, "giant"), mat_id, loads, pos, rng, size)
+		node.belt = "drift"
+		node.tier = "giant"
+		sim.nodes.append(node)
+		_bin_add(bins, pos, size)
+	for i in int(clutter.get("drift_count", 0)):
+		var mat_id := _roll_mix(rng, mix)
+		var tier := _tier(rng)
+		var loads := _loads_for(rng, mix, mat_id, tier)
+		var size := _size_for(rng, mat_id, _sum_loads(loads), tier)
+		var pos := _seek(sim, rng, bins, Vector2.ZERO, 480.0, outer, size, false, [], true)
+		if pos == Vector2.INF:
+			continue
+		var node := _make(sim, "drift_%d" % i, "meteor", _rock_name(sim, mat_id, tier), mat_id, loads, pos, rng, size)
+		node.belt = "drift"
+		node.tier = tier
+		sim.nodes.append(node)
+		_bin_add(bins, pos, size)
+	for i in int(clutter.get("drift_plates", 0)):
+		var size := rng.randf_range(16.0, 32.0)
+		var pos := _seek(sim, rng, bins, Vector2.ZERO, 640.0, outer, size, false, [], true)
+		if pos == Vector2.INF:
+			continue
+		_drop_plate(sim, rng, "drift_plate_%d" % i, "drift", pos, i, size)
+		_bin_add(bins, pos, size)
+
+
+static func _drop_plate(sim, rng: RandomNumberGenerator, id: String, belt: String, pos: Vector2, index: int, size: float) -> void:
+	var loads := {"wreck_plate": rng.randi_range(1, 3)}
+	if rng.randf() < 0.4:
+		loads["iron"] = 1
+	if rng.randf() < 0.18:
+		loads["copper"] = 1
+	var names := ["Torn plate", "Bent rib", "Hull shard"]
+	var node := _make(sim, id, "wreckage", names[index % 3], "wreck_plate", loads, pos, rng, size)
+	node.belt = belt
+	node.variant = index % 3
+	BodyRender.bake(node)
+	sim.nodes.append(node)
+
+
+static func _seek(sim, rng: RandomNumberGenerator, bins: Dictionary, origin: Vector2, inner: float, outer: float, reach: float, tight: bool, avoid: Array, area_weighted: bool) -> Vector2:
+	var span := maxf(outer, inner + 1.0)
+	for _attempt in 22:
+		var rad: float = sqrt(rng.randf() * (span * span - inner * inner) + inner * inner) if area_weighted else rng.randf_range(inner, span)
+		var pos := origin + Vector2.from_angle(rng.randf() * TAU) * rad
+		if not _clear_sky(sim, pos, reach):
+			continue
+		var blocked := false
+		for spot in avoid:
+			var spot_pos: Vector2 = spot
+			if pos.distance_to(spot_pos) < 120.0:
+				blocked = true
+				break
+		if blocked or not _bin_free(bins, pos, reach, tight):
+			continue
+		return pos
+	return Vector2.INF
+
+
+static func _clear_sky(sim, pos: Vector2, reach: float) -> bool:
+	if pos.length() < float(sim.defs.system.star.radius) + reach * 0.72 + 24.0:
+		return false
+	for body in sim.planets:
+		if pos.distance_to(body.pos) < float(body.radius) + reach * 0.55 + 28.0:
+			return false
+	if pos.distance_to(sim.nest_pos) < 200.0 + reach * 0.3:
+		return false
+	return true
+
+
+static func _bins_from(sim) -> Dictionary:
+	var bins := {}
+	for node in sim.nodes:
+		_bin_add(bins, node.pos, float(node.size))
+	return bins
+
+
+static func _bin_key(pos: Vector2) -> String:
+	return "%d:%d" % [int(floor(pos.x / 140.0)), int(floor(pos.y / 140.0))]
+
+
+static func _bin_add(bins: Dictionary, pos: Vector2, reach: float) -> void:
+	var key := _bin_key(pos)
+	if not bins.has(key):
+		bins[key] = []
+	var bucket: Array = bins[key]
+	bucket.append({"pos": pos, "reach": reach})
+
+
+static func _bin_free(bins: Dictionary, pos: Vector2, reach: float, tight: bool) -> bool:
+	var cx := int(floor(pos.x / 140.0))
+	var cy := int(floor(pos.y / 140.0))
+	var gap_scale := 0.52 if tight else 0.7
+	var gap_pad := 10.0 if tight else 16.0
+	for oy in range(-3, 4):
+		for ox in range(-3, 4):
+			var key := "%d:%d" % [cx + ox, cy + oy]
+			if not bins.has(key):
+				continue
+			for other in bins[key]:
+				var other_pos: Vector2 = other.pos
+				var gap := gap_scale * (reach + float(other.reach)) + gap_pad
+				if pos.distance_to(other_pos) < gap:
+					return false
+	return true
 
 
 static func _make(sim, id: String, kind: String, node_name: String, material: String, loads: Dictionary, pos: Vector2, rng: RandomNumberGenerator, size_override: float = -1.0) -> Dictionary:

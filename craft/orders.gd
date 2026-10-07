@@ -78,6 +78,39 @@ static func launch(sim, def_id: String) -> String:
 	return "That craft has no order on the board."
 
 
+static func send(sim, def_id: String, target_id: String) -> String:
+	var craft = _first_docked(sim, def_id)
+	if craft == null:
+		var any = _any_of(sim, def_id)
+		if any == null:
+			return "This keel has no %s." % _pretty(def_id)
+		if str(any.state) == "lost":
+			return "%s is a write-off." % any.name
+		return "%s is already out." % any.name
+	if def_id == "harvest_drone":
+		var seam = sim.planet(target_id)
+		if seam == null:
+			return "No world by that name."
+		if not sim.dossier_complete(target_id):
+			return "No surveyed seam. Read a dossier before you drop the drone."
+		if int(sim.deposits.get(target_id, 0)) <= 0:
+			return "That seam is spent."
+		if sim.player.pos.distance_to(seam.pos) > one_way_range(craft):
+			return "Harvester stays in the neighborhood. Bring the keel closer to %s." % seam.name
+	elif def_id == "salvage_tender":
+		var wreck = sim.wreck_by_id(target_id)
+		if wreck == null or bool(wreck.stripped):
+			return "No wreck rights left on that hulk."
+		if sim.player.pos.distance_to(wreck.pos) > one_way_range(craft) * 1.4:
+			return "Tender wants the wreck closer. The keel has to do the crossing."
+	elif def_id == "survey_probe":
+		if sim.planet(target_id) == null:
+			return "No world by that name."
+	_depart(sim, craft, target_id)
+	sim.sfx("launch")
+	return ""
+
+
 static func recall(sim, uid: String) -> void:
 	for craft in sim.craft:
 		if str(craft.uid) == uid and str(craft.state) != "docked" and str(craft.state) != "lost":

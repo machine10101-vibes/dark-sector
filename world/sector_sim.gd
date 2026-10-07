@@ -21,6 +21,9 @@ var works: Dictionary = {}
 var beacon: Dictionary = {}
 var aim := Vector2.ZERO
 var aim_id := ""
+var focus: Dictionary = {}
+var hover: Dictionary = {}
+var ui_open := ""
 var scans: Dictionary = {}
 var deposits: Dictionary = {}
 var heat: Dictionary = {}
@@ -51,6 +54,9 @@ func new_game(class_id: String) -> void:
 	beacon = {}
 	aim = Vector2.ZERO
 	aim_id = ""
+	focus = {}
+	hover = {}
+	ui_open = ""
 	projectiles = []
 	heat_log = []
 	lines = []
@@ -87,7 +93,7 @@ func new_game(class_id: String) -> void:
 	say("You have the %s, callsign %s." % [hull.class_name, hull.callsign])
 	say("Hollow Latch is under the keel. Cinder is the near rust world. Red Keel hunts the Slat. Vellum Compact owns the pale world — the green lane remembers guns.")
 	if defs.has("harvest"):
-		say("Plasma gatherer is live. Right-click ore, torn plate, or an abandoned hull. Rust Arc, Pale Shelf, Copper Vein, and King's Drift are out in the dark.")
+		say("Plasma gatherer is live. Left-click anything to look. Right-click ore, torn plate, a world, a ship, or the Latch. Rocks clutter the dark around the keel.")
 		say("Hollow Latch buys ore and synthetics. The bay can pour alloy, circuit lace, and hull resin, then lay a weapon, a belt, or a boat.")
 
 
@@ -146,6 +152,281 @@ func wreck_by_id(id: String):
 		if str(wreck.id) == id:
 			return wreck
 	return null
+
+
+func interact(pos: Vector2, verb: String) -> void:
+	var hit := point_at(pos)
+	if verb == "inspect":
+		focus = hit
+		if not hit.is_empty():
+			say(_inspect_line(hit))
+		return
+	if hit.is_empty():
+		if bool(gather.get("active", false)):
+			gather.active = false
+			gather.target = ""
+			say("Plasma gatherer stowed.")
+		return
+	focus = hit
+	match str(hit.kind):
+		"node":
+			PlasmaHarvest.engage(self, pos)
+		"planet":
+			_use_planet(hit)
+		"wreck":
+			_use_wreck(hit)
+		"actor":
+			say(_inspect_line(hit))
+		"craft":
+			CraftOrders.recall(self, str(hit.id))
+		"keel":
+			say(_inspect_line(hit))
+			ui_open = "bay"
+		"star":
+			say("Ash Lamp. Capital ships stay off the crust.")
+		"latch":
+			say("Hollow Latch. The homestead and the chandlery sit under the keel.")
+			ui_open = "claim"
+		_:
+			say(_inspect_line(hit))
+
+
+func point_at(pos: Vector2) -> Dictionary:
+	var state := {"score": 1.0e9, "radius": 1.0e9, "hit": {}}
+	var slop := 22.0
+	for node in nodes:
+		_offer(state, pos, {
+			"kind": "node",
+			"id": str(node.id),
+			"name": str(node.name),
+			"pos": node.pos,
+			"radius": float(node.size),
+		}, float(node.size) + slop)
+	for body in planets:
+		_offer(state, pos, {
+			"kind": "planet",
+			"id": str(body.id),
+			"name": str(body.name),
+			"pos": body.pos,
+			"radius": float(body.radius),
+		}, float(body.radius) + slop)
+	var star_r := float(defs.system.star.radius)
+	_offer(state, pos, {
+		"kind": "star",
+		"id": str(defs.system.star.id),
+		"name": str(defs.system.star.name),
+		"pos": Vector2.ZERO,
+		"radius": star_r,
+	}, star_r + slop)
+	for wreck in wrecks:
+		_offer(state, pos, {
+			"kind": "wreck",
+			"id": str(wreck.id),
+			"name": str(wreck.name),
+			"pos": wreck.pos,
+			"radius": 18.0,
+			"stripped": bool(wreck.stripped),
+		}, 18.0 + slop)
+	for actor in actors:
+		if not bool(actor.alive):
+			continue
+		var reach := float(Fit.stats(defs, actor).hit_radius)
+		var team := str(actor.team)
+		var team_name := team
+		if defs.factions.has(team):
+			team_name = str(defs.factions[team].name)
+		_offer(state, pos, {
+			"kind": "actor",
+			"id": str(actor.id),
+			"name": str(actor.name),
+			"pos": actor.pos,
+			"radius": reach,
+			"team": team,
+			"team_name": team_name,
+			"hp": int(actor.hp),
+		}, reach + slop)
+	for item in craft:
+		if str(item.state) == "docked":
+			continue
+		var reach := float(item.radius)
+		_offer(state, pos, {
+			"kind": "craft",
+			"id": str(item.uid),
+			"name": str(item.name),
+			"pos": item.pos,
+			"radius": reach,
+			"state": str(item.state),
+		}, reach + slop)
+	if not player.is_empty() and bool(player.get("alive", false)):
+		var reach := float(Fit.stats(defs, player).hit_radius)
+		_offer(state, pos, {
+			"kind": "keel",
+			"id": str(player.id),
+			"name": str(player.name),
+			"pos": player.pos,
+			"radius": reach,
+		}, reach + slop)
+	_offer(state, pos, {
+		"kind": "latch",
+		"id": "hollow_latch",
+		"name": "Hollow Latch",
+		"pos": pocket_pos,
+		"radius": 48.0,
+	}, 48.0 + slop)
+	var hit: Dictionary = state.hit
+	return hit
+
+
+func _offer(state: Dictionary, pos: Vector2, cand: Dictionary, limit: float) -> void:
+	var center: Vector2 = cand.pos
+	var radius := float(cand.radius)
+	var dist := pos.distance_to(center)
+	if dist > limit:
+		return
+	var score := dist / maxf(radius, 1.0)
+	var best_score := float(state.score)
+	var best_radius := float(state.radius)
+	if score > best_score + 0.0001:
+		return
+	if absf(score - best_score) <= 0.0001 and radius >= best_radius:
+		return
+	state.score = score
+	state.radius = radius
+	state.hit = cand.duplicate()
+
+
+func _track_focus() -> void:
+	if focus.is_empty():
+		return
+	var live := _live_mark(focus)
+	if live.is_empty():
+		focus = {}
+		return
+	focus = live
+
+
+func _live_mark(mark: Dictionary) -> Dictionary:
+	var id := str(mark.get("id", ""))
+	var kind := str(mark.get("kind", ""))
+	var next := mark.duplicate()
+	match kind:
+		"node":
+			var node := PlasmaHarvest.by_id(self, id)
+			if node.is_empty():
+				return {}
+			next.pos = node.pos
+			next.radius = float(node.size)
+			next.name = str(node.name)
+		"planet":
+			var body = planet(id)
+			if body == null:
+				return {}
+			next.pos = body.pos
+			next.radius = float(body.radius)
+			next.name = str(body.name)
+		"star":
+			next.pos = Vector2.ZERO
+			next.radius = float(defs.system.star.radius)
+		"wreck":
+			var wreck = wreck_by_id(id)
+			if wreck == null:
+				return {}
+			next.pos = wreck.pos
+			next.stripped = bool(wreck.stripped)
+		"actor":
+			var found := false
+			for actor in actors:
+				if str(actor.id) != id:
+					continue
+				if not bool(actor.alive):
+					return {}
+				next.pos = actor.pos
+				next.hp = int(actor.hp)
+				next.radius = float(Fit.stats(defs, actor).hit_radius)
+				found = true
+				break
+			if not found:
+				return {}
+		"craft":
+			var found_craft := false
+			for item in craft:
+				if str(item.uid) != id:
+					continue
+				if str(item.state) == "docked":
+					return {}
+				next.pos = item.pos
+				next.state = str(item.state)
+				next.radius = float(item.radius)
+				found_craft = true
+				break
+			if not found_craft:
+				return {}
+		"keel":
+			if player.is_empty() or not bool(player.get("alive", false)):
+				return {}
+			next.pos = player.pos
+			next.radius = float(Fit.stats(defs, player).hit_radius)
+		"latch":
+			next.pos = pocket_pos
+			next.radius = 48.0
+		_:
+			return {}
+	return next
+
+
+func _inspect_line(hit: Dictionary) -> String:
+	match str(hit.kind):
+		"node":
+			var node := PlasmaHarvest.by_id(self, str(hit.id))
+			if node.is_empty():
+				return str(hit.name)
+			return "%s. %s. Right-click to cut." % [node.name, PlasmaHarvest.load_line(self, node)]
+		"planet":
+			var sealed := "dossier sealed" if dossier_complete(str(hit.id)) else "dossier open"
+			return "%s. %s. Right-click to send a craft." % [hit.name, sealed]
+		"wreck":
+			var rights := "spent" if bool(hit.get("stripped", false)) else "open"
+			return "%s. Wreck rights %s. Right-click to send a tender." % [hit.name, rights]
+		"actor":
+			return "%s. %s. Hull %d. Guns stay on Space." % [hit.name, str(hit.get("team_name", hit.get("team", ""))), int(hit.get("hp", 0))]
+		"craft":
+			return "%s is %s. Right-click to recall." % [hit.name, str(hit.get("state", "out"))]
+		"keel":
+			var purse := int(player.get("scrip", 0))
+			var cap := int(Fit.stats(defs, player).cargo_cap)
+			return "Your keel. Hold %d/%d. Purse %d scrip. Right-click to open the bay." % [Fit.cargo_used(player), cap, purse]
+		"star":
+			return "Ash Lamp. Stay off the crust."
+		"latch":
+			return "Hollow Latch. Right-click for the homestead."
+	return str(hit.get("name", "Contact"))
+
+
+func _use_planet(hit: Dictionary) -> void:
+	ui_open = "dossier"
+	var id := str(hit.id)
+	if not dossier_complete(id):
+		var msg := CraftOrders.send(self, "survey_probe", id)
+		if msg == "":
+			say("Probe away for %s." % hit.name)
+		else:
+			say(msg)
+		return
+	var dropped := CraftOrders.send(self, "harvest_drone", id)
+	if dropped == "":
+		say("Harvest drone dropped for %s." % hit.name)
+	else:
+		say(dropped)
+
+
+func _use_wreck(hit: Dictionary) -> void:
+	var msg := CraftOrders.send(self, "salvage_tender", str(hit.id))
+	if msg == "":
+		say("Tender out to strip %s." % hit.name)
+	elif msg.begins_with("This keel has no"):
+		say("Torn plate takes the beam. %s wants a salvage tender." % hit.name)
+	else:
+		say(msg)
 
 
 func dossier_complete(planet_id: String) -> bool:
@@ -401,6 +682,9 @@ func from_dict(data: Dictionary) -> void:
 	beacon = _beacon_in(data.get("beacon", {}))
 	aim = Vector2.ZERO
 	aim_id = ""
+	focus = {}
+	hover = {}
+	ui_open = ""
 	PlasmaHarvest.apply_stock(self, data.get("node_stock", {}))
 	PlasmaHarvest.restore_runtime(self, data.get("runtime_nodes", []))
 	_ensure_fab_slots(player)
@@ -428,8 +712,15 @@ func _step(dt: float, cmd: Dictionary) -> void:
 				_bump_world(actor)
 	if cmd.has("aim"):
 		aim = cmd.aim
+	if cmd.has("world_click"):
+		var click: Array = cmd.world_click
+		if click.size() >= 2:
+			var at: Vector2 = click[0]
+			interact(at, str(click[1]))
 	if cmd.has("gather_at"):
 		PlasmaHarvest.engage(self, cmd.gather_at)
+	hover = point_at(aim)
+	_track_focus()
 	PlasmaHarvest.step(self, dt)
 	for line in lines:
 		line.age = float(line.age) + dt
