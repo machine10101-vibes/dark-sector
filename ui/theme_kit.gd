@@ -41,6 +41,39 @@ static func glass(strong: bool = false) -> StyleBoxFlat:
 	return box
 
 
+static func rail(strong: bool = false) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.012, 0.036, 0.05, 0.58 if strong else 0.36)
+	box.border_color = Color(0.55, 0.9, 0.98, 0.7 if strong else 0.32)
+	box.set_border_width_all(1)
+	box.border_width_left = 2
+	box.set_corner_radius_all(2)
+	box.content_margin_left = 8
+	box.content_margin_right = 8
+	box.content_margin_top = 3
+	box.content_margin_bottom = 3
+	box.shadow_color = Color(0.0, 0.06, 0.1, 0.22)
+	box.shadow_size = 4
+	return box
+
+
+static func slim_chip(strong: bool = false) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	if strong:
+		box.bg_color = Color(0.04, 0.11, 0.14, 0.7)
+		box.border_color = Color(0.62, 0.92, 0.98, 0.75)
+	else:
+		box.bg_color = Color(0.03, 0.06, 0.08, 0.32)
+		box.border_color = Color(0.42, 0.74, 0.82, 0.28)
+	box.set_border_width_all(1)
+	box.set_corner_radius_all(2)
+	box.content_margin_left = 6
+	box.content_margin_right = 6
+	box.content_margin_top = 1
+	box.content_margin_bottom = 1
+	return box
+
+
 static func veil() -> StyleBoxFlat:
 	var box := glass(false)
 	# Dark enough that the ice limb stays behind the words instead of through them.
@@ -126,6 +159,35 @@ static func label(text: String, size: int = 15, color: Color = Color("e7f3f6")) 
 	node.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	node.add_theme_font_size_override("font_size", size)
 	node.add_theme_color_override("font_color", color)
+	return node
+
+
+static func slim_button(text: String) -> Button:
+	var node := Button.new()
+	node.text = text
+	node.focus_mode = Control.FOCUS_NONE
+	node.mouse_filter = Control.MOUSE_FILTER_STOP
+	node.custom_minimum_size = Vector2(72, 36)
+	node.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	node.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var normal := _button_box(false)
+	normal.content_margin_left = 8
+	normal.content_margin_right = 8
+	normal.content_margin_top = 2
+	normal.content_margin_bottom = 2
+	normal.set_corner_radius_all(2)
+	normal.bg_color = Color(0.03, 0.07, 0.1, 0.5)
+	normal.border_color = Color(0.45, 0.8, 0.88, 0.42)
+	var hover := normal.duplicate()
+	hover.bg_color = Color(0.08, 0.18, 0.22, 0.84)
+	hover.border_color = Color(0.65, 0.94, 0.98, 0.9)
+	var pressed := normal.duplicate()
+	pressed.bg_color = Color(0.12, 0.26, 0.3, 0.92)
+	node.add_theme_stylebox_override("normal", normal)
+	node.add_theme_stylebox_override("hover", hover)
+	node.add_theme_stylebox_override("pressed", pressed)
+	node.add_theme_color_override("font_color", Color("d7eef2"))
+	node.add_theme_font_size_override("font_size", 13)
 	return node
 
 

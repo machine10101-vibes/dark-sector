@@ -213,7 +213,7 @@ func _layout_chrome(screen: Vector2) -> void:
 		if show_tag and screen.y < 430.0:
 			helm_flight.add_theme_font_size_override("font_size", 14)
 		else:
-			helm_flight.add_theme_font_size_override("font_size", 18)
+			helm_flight.add_theme_font_size_override("font_size", 16)
 	if helm_zone != null:
 		helm_zone.visible = not short
 	if helm_cargo != null:
@@ -221,17 +221,25 @@ func _layout_chrome(screen: Vector2) -> void:
 	if helm_craft != null:
 		helm_craft.visible = not compact
 	if haul_cue != null:
-		haul_cue.add_theme_font_size_override("font_size", 15 if short else 20)
-	var corner := 84.0
+		haul_cue.add_theme_font_size_override("font_size", 14 if short else 15)
+	var stacked_corners := screen.x < 820.0
+	var corner := 84.0 if stacked_corners else 76.0
+	var cluster := corner if stacked_corners else corner * 2.0 + 6.0
 	if hold_button != null:
-		hold_button.position = Vector2(screen.x - corner - 8.0, 8.0)
+		if stacked_corners:
+			hold_button.position = Vector2(screen.x - corner - 8.0, 8.0)
+		else:
+			hold_button.position = Vector2(screen.x - cluster - 8.0, 8.0)
 		hold_button.size = Vector2(corner, 40.0)
 	if stick_button != null:
-		stick_button.position = Vector2(screen.x - corner - 8.0, 52.0)
+		if stacked_corners:
+			stick_button.position = Vector2(screen.x - corner - 8.0, 52.0)
+		else:
+			stick_button.position = Vector2(screen.x - corner - 8.0, 8.0)
 		stick_button.size = Vector2(corner, 40.0)
-	var helm_w := screen.x - margin - corner - 16.0
+	var helm_w := screen.x - margin - cluster - 16.0
 	if not compact:
-		helm_w = minf(520.0, screen.x - 220.0)
+		helm_w = minf(348.0, screen.x - cluster - 24.0)
 		if panel != null and panel.visible:
 			helm_w = minf(helm_w, screen.x - 500.0)
 	helm_w = clampf(helm_w, 148.0, screen.x - margin * 2.0)
@@ -253,14 +261,14 @@ func _layout_chrome(screen: Vector2) -> void:
 		right = left + need
 	var bar_room := right - left
 	_size_primary(bar_room < 520.0)
-	var primary_h := 72.0
+	var primary_h := 50.0
 	if primary_bar != null:
-		primary_h = maxf(primary_bar.get_combined_minimum_size().y, 60.0)
-	var secondary_h := 48.0
-	var pad_top := screen.y - 8.0
+		primary_h = maxf(primary_bar.get_combined_minimum_size().y, 46.0)
+	var secondary_h := 38.0
+	var pad_top := screen.y - 6.0
 	if touch_on and pad != null and pad.has_method("band_top"):
 		pad_top = pad.band_top(screen, short)
-	var gap := 8.0
+	var gap := 4.0
 	var secondary_y := pad_top - secondary_h - gap
 	var primary_y := secondary_y - primary_h - gap
 	primary_y = maxf(primary_y, 72.0 if short else 96.0)
@@ -276,8 +284,12 @@ func _layout_chrome(screen: Vector2) -> void:
 		primary_bar.position = Vector2(left, primary_y)
 		primary_bar.size = Vector2(maxf(primary_w, 120.0), primary_h)
 	if action_scroll != null:
+		var action_w := right - left
+		if not land_panel:
+			var cap := 720.0 if not compact else action_w
+			action_w = minf(action_w, _action_span(cap))
 		action_scroll.position = Vector2(left, secondary_y)
-		action_scroll.size = Vector2(maxf(right - left, 120.0), secondary_h)
+		action_scroll.size = Vector2(maxf(action_w, 120.0), secondary_h)
 	var status_top := 8.0
 	var room_bottom := primary_y - 8.0
 	if stat_hull != null:
@@ -290,7 +302,7 @@ func _layout_chrome(screen: Vector2) -> void:
 		status_card.position = Vector2(margin, status_top)
 		var want := 72.0
 		if helm_box != null:
-			want = helm_box.get_combined_minimum_size().y + 16.0
+			want = helm_box.get_combined_minimum_size().y + 8.0
 		var cap := maxf(72.0, room_bottom - status_top - 8.0)
 		status_card.size = Vector2(helm_w, minf(want, cap))
 		status_card.clip_contents = true
@@ -300,17 +312,17 @@ func _layout_chrome(screen: Vector2) -> void:
 	if banner != null:
 		var banner_y := status_bottom + 4.0
 		banner.position = Vector2(margin, banner_y)
-		banner.size = Vector2(helm_w, 28.0 if short else 32.0)
+		banner.size = Vector2(helm_w, 22.0 if short else 24.0)
 		banner.visible = banner.text != "" and banner_y + banner.size.y < room_bottom - 36.0
 	if log_card != null:
 		var log_y := status_bottom + 6.0
 		if banner != null and banner.visible:
 			log_y = banner.position.y + banner.size.y + 4.0
-		var log_cap := 44.0 if short else (64.0 if compact else 72.0)
+		var log_cap := 36.0 if short else (40.0 if compact else 44.0)
 		var log_room := room_bottom - 30.0 - log_y
 		var log_h := minf(log_cap, log_room)
 		log_card.position = Vector2(margin, log_y)
-		log_card.size = Vector2(helm_w if compact or short else minf(620.0, screen.x - margin * 2.0), maxf(log_h, 0.0))
+		log_card.size = Vector2(helm_w, maxf(log_h, 0.0))
 		if log_label != null and log_label.text == "":
 			log_card.visible = false
 		elif log_h < 28.0:
@@ -465,16 +477,16 @@ func _build_helm() -> void:
 	var status_panel := Panel.new()
 	status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	status_panel.add_theme_stylebox_override("panel", ThemeKit.glass(true))
+	status_panel.add_theme_stylebox_override("panel", ThemeKit.rail(true))
 	status_card.add_child(status_panel)
 	helm_box = VBoxContainer.new()
 	helm_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	helm_box.add_theme_constant_override("separation", 4)
 	helm_box.set_anchors_preset(Control.PRESET_FULL_RECT)
-	helm_box.offset_left = 12
-	helm_box.offset_top = 8
-	helm_box.offset_right = -12
-	helm_box.offset_bottom = -8
+	helm_box.offset_left = 10
+	helm_box.offset_top = 5
+	helm_box.offset_right = -8
+	helm_box.offset_bottom = -4
 	status_card.add_child(helm_box)
 	var box := helm_box
 	helm_name = ThemeKit.label("DARK SECTOR", 12, Color("7ed0dc"))
@@ -486,8 +498,8 @@ func _build_helm() -> void:
 	stats_grid = GridContainer.new()
 	stats_grid.columns = 4
 	stats_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stats_grid.add_theme_constant_override("h_separation", 8)
-	stats_grid.add_theme_constant_override("v_separation", 6)
+	stats_grid.add_theme_constant_override("h_separation", 4)
+	stats_grid.add_theme_constant_override("v_separation", 2)
 	box.add_child(helm_name)
 	box.add_child(helm_flight)
 	box.add_child(stats_grid)
@@ -511,7 +523,7 @@ func _build_helm() -> void:
 	root.add_child(banner)
 	log_card = PanelContainer.new()
 	log_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	log_card.add_theme_stylebox_override("panel", ThemeKit.glass(false))
+	log_card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
 	root.add_child(log_card)
 	log_label = ThemeKit.label("", 13, Color("d5e4e8"))
 	log_label.clip_text = true
@@ -523,8 +535,8 @@ func _chip(text: String, strong: bool) -> Label:
 	var chip := PanelContainer.new()
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chip.add_theme_stylebox_override("panel", ThemeKit.chip_box(strong))
-	var lab := ThemeKit.label(text, 16 if strong else 13, Color("f4fcff") if strong else Color("c5d6dc"))
+	chip.add_theme_stylebox_override("panel", ThemeKit.slim_chip(strong))
+	var lab := ThemeKit.label(text, 13 if strong else 12, Color("f4fcff") if strong else Color("c5d6dc"))
 	lab.autowrap_mode = TextServer.AUTOWRAP_OFF
 	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	chip.add_child(lab)
@@ -537,6 +549,7 @@ func _build_panel() -> void:
 	panel.visible = false
 	panel.clip_contents = true
 	panel.custom_minimum_size = Vector2(420, 400)
+	panel.add_theme_stylebox_override("panel", ThemeKit.rail(true))
 	root.add_child(panel)
 	var margin := MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -651,7 +664,7 @@ func _size_primary(is_compact: bool) -> void:
 func _mount_primary() -> void:
 	primary_bar = PanelContainer.new()
 	primary_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	primary_bar.add_theme_stylebox_override("panel", ThemeKit.glass(true))
+	primary_bar.add_theme_stylebox_override("panel", ThemeKit.rail(true))
 	root.add_child(primary_bar)
 	primary_row = HBoxContainer.new()
 	primary_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -670,6 +683,9 @@ func _mount_primary() -> void:
 	probe_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	probe_button.pressed.connect(func() -> void: _launch("survey_probe"))
 	primary_row.add_child(probe_button)
+	for node in primary_row.get_children():
+		if node is Button:
+			_sharpen(node)
 
 
 func _reparent(node: Control) -> void:
@@ -747,10 +763,39 @@ func _group(text: String) -> void:
 	action_row.add_child(tag)
 
 
+func _action_span(limit: float) -> float:
+	if action_row == null:
+		return limit
+	var x := 0.0
+	var last := 80.0
+	var gap := float(action_row.get_theme_constant("separation"))
+	for child in action_row.get_children():
+		var node := child as Control
+		var w := node.get_combined_minimum_size().x
+		if x + w > limit and last > 120.0:
+			return last
+		x += w
+		last = x
+		x += gap
+	return minf(last, limit)
+
+
+func _sharpen(node: Button) -> void:
+	for state in ["normal", "hover", "pressed"]:
+		var box := node.get_theme_stylebox(state, "Button") as StyleBoxFlat
+		if box == null:
+			continue
+		var copy := box.duplicate() as StyleBoxFlat
+		copy.set_corner_radius_all(2)
+		copy.content_margin_left = 10
+		copy.content_margin_right = 10
+		copy.content_margin_top = 4
+		copy.content_margin_bottom = 4
+		node.add_theme_stylebox_override(state, copy)
+
+
 func _action(text: String, call: Callable) -> void:
-	var node := ThemeKit.button(text, false)
-	node.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	node.custom_minimum_size = Vector2(84, 44)
+	var node := ThemeKit.slim_button(text)
 	node.pressed.connect(call)
 	action_row.add_child(node)
 
@@ -870,7 +915,7 @@ func _refresh_helm() -> void:
 	var bits: Array = []
 	for line in sim.lines:
 		bits.append(str(line.text))
-	var keep := 2 if compact else 3
+	var keep := 2
 	if bits.size() > keep:
 		bits = bits.slice(0, keep)
 	log_label.text = "\n".join(bits)
@@ -979,11 +1024,11 @@ func _place_minimap(screen: Vector2, primary_y: float, short: bool) -> void:
 		return
 	var top := stick_button.position.y + stick_button.size.y + 6.0
 	var room := primary_y - 8.0 - top
-	var want := 156.0
+	var want := 118.0
 	if compact:
-		want = 104.0
+		want = 96.0
 	if short:
-		want = 88.0
+		want = 80.0
 	var side := minf(want, room)
 	var right := screen.x - 8.0
 	var left_limit := 8.0
@@ -1064,7 +1109,7 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 		panel.size = Vector2(maxf(480.0, right - left), maxf(280.0, bottom - top))
 		_fit_ship_pane()
 		return
-	var side := 460.0
+	var side := 400.0
 	if compact:
 		panel.custom_minimum_size = Vector2(0, 0)
 		panel.position = Vector2(8, screen.y * 0.22)
