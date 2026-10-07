@@ -313,13 +313,7 @@ func _draw_craft(sim, item: Dictionary) -> void:
 			col = Color("e6d7bf")
 		"prospector":
 			col = Color("e07a3d")
-	var dir := Vector2.from_angle(float(item.rot))
-	var side := dir.orthogonal()
-	var reach := 16.0 if str(item.def_id) == "pathfinder" else 10.0
-	var nose := pos + dir * reach
-	var left := pos - dir * 6.0 + side * 4.0
-	var right := pos - dir * 6.0 - side * 4.0
-	draw_colored_polygon(PackedVector2Array([nose, left, right]), col)
+	Silhouette.draw_boat(self, pos, float(item.rot), str(item.def_id), 1.0, col)
 	if str(item.state) == "lost":
 		draw_line(pos + Vector2(-6, -6), pos + Vector2(6, 6), Color("c4512c"), 1.4, true)
 	if str(item.def_id) in ["survey_probe", "pathfinder"] and str(item.state) == "working":

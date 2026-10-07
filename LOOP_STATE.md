@@ -1,9 +1,9 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Cluttered ore around the keel, and click-anything
+Slice just completed: Plated steel hulls for every ship
 Player-visible what works now:
-- New game picks exactly one keel: Vesper Needle, Anvil Barn, or Kestrel Beak. Silhouettes differ before and after the yard module.
+- New game picks exactly one keel: Vesper Needle, Anvil Barn, or Kestrel Beak. Each hull is built from its own steel plates: the Needle is a long spine with a glass canopy, the Barn is broad hold plates and hatches, the Beak is angular armor with a lamp in the nose. Skiffs are patchwork. Cutters are regulation plate with a stripe and a dome. Rivets, seams, and nozzles stay visible. Yard parts and boats are hardware on that same steel, and they still change the outline.
 - Ashen Reach is one top-down system: Ash Lamp, Cinder, Mire, Vellum, the Slat, Hollow Latch, a Vellum Compact patrol, and a Red Keel pack. Green, amber, and dark rule layers are in the same view.
 - Helm is inertial: thrust, retro, strafe, independent yaw, camera zoom from tactical to sector.
 - A survey probe writes a layered dossier. A harvest drone returns ore and depletes the deposit. Barn can send a salvage tender; Beak can send a fighter and an away shuttle that marks Hollow Latch surveyed.

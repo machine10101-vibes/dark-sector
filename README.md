@@ -1,6 +1,6 @@
 # Dark Sector
 
-Top-down working-captain sector. One persistent keel, detachable craft, heat, and a claim pocket. This repo is the Ashen Reach helm slice.
+Top-down working-captain sector. One persistent keel, detachable craft, heat, and a claim pocket. This repo is the Ashen Reach helm slice. Every hull is drawn as plated steel: individual panels, seams, rivets, and a construction that belongs to that ship.
 
 ## Run
 

@@ -2,9 +2,9 @@
 
 Godot 4.7, windowed, GL Compatibility. One pass is enough if each line is actually done in the window, not only in the headless script.
 
-1. **New keel.** Menu shows New keel, Continue log (disabled until a log exists), and Leave. Open the yard and confirm Needle, Barn, and Beak are different shapes, including the bolted preview.
+1. **New keel.** Menu shows New keel, Continue log (disabled until a log exists), and Leave. Open the yard and confirm Needle, Barn, and Beak are different shapes, including the bolted preview. Zoom the card: Needle is narrow spine plates and a glass canopy, Barn is large rectangular plates with hatches, Beak is faceted armor with a red lamp. Seams and rivets read as separate pieces of steel.
 2. **Take the Needle.** The sector is Ashen Reach: Ash Lamp, Cinder, Mire, Vellum, the Slat belt, Hollow Latch, a Vellum Compact patrol, and a Red Keel pack. The ship is not a cursor: yaw is independent of the velocity vector.
-3. **Fly.** Thrust, retro, strafe, and coast. Zoom out until the planets read as a sector, then back in until the keel silhouette is readable.
+3. **Fly.** Thrust, retro, strafe, and coast. Zoom out until the planets read as a sector, then back in until the keel's steel plates, rivets, and nozzles are readable. A Red Keel skiff should look patched. A Compact cutter should look regulation-grey with a dome. Boats in the dark are small plated hulls, not flat wedges.
 4. **Probe.** Press 1 near Cinder. The probe returns. Dossier (D) lists orbit, atmosphere, surface, crust, biosign, ruins, and legal status. Cinder reads unclaimed.
 5. **Harvest.** Press 2 on Cinder. The drone returns cinder ore into the hold, and the deposit ticks down.
 6. **Bolt.** Bay (B). Bolt on the survey mast. The top-down shape gets longer. Mass is up, spare power is down, yaw is worse. The bolt control is gone; there is no uninstall.

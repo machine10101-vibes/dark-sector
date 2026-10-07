@@ -53,6 +53,29 @@ func _geometry() -> void:
 	var beak := Silhouette.extent(Silhouette.parts("kestrel", []))
 	var sponson := Silhouette.extent(Silhouette.parts("kestrel", ["sponson"]))
 	check(sponson.y > beak.y + 6.0, "sponson widens the Beak")
+	var builds: Array = []
+	var grids: Array = []
+	for class_id in ["vesper", "anvil", "kestrel", "skiff", "cutter"]:
+		var grid := Silhouette.plate_grid(class_id)
+		var plates := grid.x * grid.y
+		check(plates >= 10, "%s is built from steel plates (%d)" % [class_id, plates])
+		var build := Silhouette.build_of(class_id)
+		check(not builds.has(build), "%s has its own construction" % class_id)
+		builds.append(build)
+		grids.append(Vector2i(grid.x, grid.y))
+	check(grids[0] != grids[1] and grids[1] != grids[2], "plate layouts differ between keels")
+	var needle: PackedVector2Array = Silhouette.parts("vesper", []).hull
+	var mid := Silhouette.section_spans(needle, 0.0)
+	check(mid.size() == 1, "the Needle's spine is one plated section")
+	var beak_hull: PackedVector2Array = Silhouette.parts("kestrel", []).hull
+	var bite := Silhouette.section_spans(beak_hull, -26.0)
+	check(bite.size() >= 2, "the Beak's stern is two plated prongs")
+	var boats: Array = []
+	for kind in ["survey_probe", "harvest_drone", "salvage_tender", "away_shuttle", "fighter", "pathfinder", "prospector"]:
+		check(Silhouette.boat_grid(kind).x * Silhouette.boat_grid(kind).y >= 8, "%s is a plated boat" % kind)
+		var tag := Silhouette.boat_build(kind)
+		check(not boats.has(tag), "%s is not a copy of another boat" % kind)
+		boats.append(tag)
 
 
 func _keels() -> void:
