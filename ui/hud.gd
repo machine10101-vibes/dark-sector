@@ -1476,6 +1476,9 @@ func _refill_ship_list() -> void:
 
 func _add_ship_row(module_id: String) -> void:
 	var mod: Dictionary = Game.sim.defs.modules[module_id]
+	var block := VBoxContainer.new()
+	block.add_theme_constant_override("separation", 1)
+	block.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	var name := ThemeKit.label(str(mod.name), 14)
@@ -1484,9 +1487,8 @@ func _add_ship_row(module_id: String) -> void:
 	name.clip_text = true
 	row.add_child(name)
 	var meta := ThemeKit.label("", 12, Color("8d826c"))
-	meta.autowrap_mode = TextServer.AUTOWRAP_OFF
-	meta.custom_minimum_size = Vector2(168, 0)
-	row.add_child(meta)
+	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	meta.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var button := ThemeKit.button("Bolt on")
 	button.custom_minimum_size = Vector2(92, 44)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_END
@@ -1505,7 +1507,9 @@ func _add_ship_row(module_id: String) -> void:
 			Fit.weapon_line(mod.weapon),
 		]
 	row.add_child(button)
-	ship_list.add_child(row)
+	block.add_child(row)
+	block.add_child(meta)
+	ship_list.add_child(block)
 	bay_buttons[module_id] = {"meta": meta, "button": button}
 
 
