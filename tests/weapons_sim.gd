@@ -82,6 +82,7 @@ func _meshes() -> void:
 	stage.call("_build_missile_shot", rocket)
 	check(slug.get_node_or_null("Head") != null and slug.get_node_or_null("Fin0") == null, "a bullet slug is not a missile")
 	check(rocket.get_node_or_null("Fin0") != null and rocket.get_node_or_null("Fin3") != null, "a missile wears fins")
+	check(rocket.get_node_or_null("Seeker") != null, "a missile wears a seeker")
 	check(rocket.material_override != null, "a missile wears hull paint")
 	var slug_rod := slug.mesh as CylinderMesh
 	var rail_rod := rail.mesh as CylinderMesh
@@ -295,9 +296,13 @@ func _voices() -> void:
 	check(sim.install("gun_sponson").ok, "cheek gun for the voice test")
 	var turret: Dictionary = Fit.mounts(defs, sim.player)[0]
 	sim.sfx_queue.clear()
+	sim.muzzles = []
 	sim.player.mount_cd = {}
 	check(sim.try_fire(sim.player, turret), "the cheek gun fires")
 	check(sim.sfx_queue.has("gun"), "the cheek gun cracks")
+	check(not sim.muzzles.is_empty(), "the cheek gun leaves a muzzle flash")
+	if not sim.muzzles.is_empty():
+		check(str(sim.muzzles[-1].get("socket", "")) == "gun_sponson", "the flash sits on the cheek")
 	sim.uninstall("gun_sponson")
 	check(sim.install("missile_rack").ok, "rack for the voice test")
 	var skiff: Dictionary = sim._blank_ship("skiff", "Skiff", "agent:red_keel:voice", "npc", "red_keel")

@@ -10,7 +10,7 @@ func _ready() -> void:
 		return
 	for i in 6:
 		var node := AudioStreamPlayer.new()
-		node.volume_db = -7.0
+		node.volume_db = -4.0
 		add_child(node)
 		voices.append(node)
 	clips = {
@@ -48,6 +48,16 @@ func play(kind: String) -> void:
 		if not slot.playing:
 			voice = slot
 			break
+	var loud := -4.0
+	if kind == "heavy":
+		loud = -2.2
+	elif kind == "missile":
+		loud = -3.0
+	elif kind == "laser":
+		loud = -5.0
+	elif kind == "pd":
+		loud = -4.6
+	voice.volume_db = loud
 	voice.stream = clips[kind]
 	voice.play()
 
@@ -59,66 +69,73 @@ func _tone(freq: float, duration: float, volume: float, decay: float) -> AudioSt
 
 
 func _gun_crack() -> AudioStreamWAV:
-	return _render(0.12, func(t: float, env: float) -> float:
-		var bang: float = _noise(t * 980.0) * exp(-t * 52.0)
-		var body: float = sin(TAU * 190.0 * t) * exp(-t * 20.0)
-		var brass: float = sin(TAU * 1860.0 * t) * exp(-t * 42.0)
-		var slap: float = sin(TAU * 420.0 * t) * exp(-t * 28.0)
-		return (bang * 0.6 + body * 0.62 + brass * 0.32 + slap * 0.22) * env * 0.74
-	, 1.55)
+	return _render(0.16, func(t: float, env: float) -> float:
+		var bang: float = _noise(t * 1100.0) * exp(-t * 46.0)
+		var body: float = sin(TAU * 168.0 * t) * exp(-t * 16.0)
+		var brass: float = sin(TAU * 2140.0 * t) * exp(-t * 36.0)
+		var slap: float = sin(TAU * 390.0 * t) * exp(-t * 22.0)
+		var case_ping: float = sin(TAU * 2680.0 * t) * exp(-t * 18.0)
+		if t < 0.04:
+			case_ping = 0.0
+		return (bang * 0.7 + body * 0.68 + brass * 0.3 + slap * 0.24 + case_ping * 0.16) * env * 0.8
+	, 1.45)
 
 
 func _heavy_boom() -> AudioStreamWAV:
-	return _render(0.26, func(t: float, env: float) -> float:
-		var thump: float = sin(TAU * (62.0 - t * 28.0) * t) * exp(-t * 7.5)
-		var blast: float = _noise(t * 360.0) * exp(-t * 14.0)
-		var ring: float = sin(TAU * 310.0 * t) * exp(-t * 11.0)
-		var shell: float = _noise(t * 88.0 + 4.0) * exp(-t * 6.0)
-		return (thump * 1.05 + blast * 0.48 + ring * 0.2 + shell * 0.16) * env * 0.82
-	, 1.05)
+	return _render(0.38, func(t: float, env: float) -> float:
+		var thump: float = sin(TAU * (48.0 - t * 22.0) * t) * exp(-t * 5.8)
+		var blast: float = _noise(t * 280.0) * exp(-t * 10.0)
+		var ring: float = sin(TAU * 240.0 * t) * exp(-t * 8.5)
+		var room: float = _noise(t * 54.0 + 3.0) * exp(-t * 4.2)
+		var breech: float = sin(TAU * 720.0 * t) * exp(-t * 20.0)
+		return (thump * 1.12 + blast * 0.55 + ring * 0.22 + room * 0.2 + breech * 0.12) * env * 0.86
+	, 0.92)
 
 
 func _stake_snap() -> AudioStreamWAV:
-	return _render(0.1, func(t: float, env: float) -> float:
-		var tick: float = _noise(t * 1680.0) * exp(-t * 62.0)
-		var iron: float = sin(TAU * 1240.0 * t) * exp(-t * 34.0)
-		var coil: float = sin(TAU * 2480.0 * t) * exp(-t * 48.0)
-		var low: float = sin(TAU * 140.0 * t) * exp(-t * 22.0)
-		return (tick * 0.38 + iron * 0.5 + coil * 0.28 + low * 0.3) * env * 0.7
-	, 1.75)
+	return _render(0.14, func(t: float, env: float) -> float:
+		var charge: float = sin(TAU * (2100.0 + t * 900.0) * t) * exp(-t * 28.0)
+		var tick: float = _noise(t * 1880.0) * exp(-t * 58.0)
+		var iron: float = sin(TAU * 1360.0 * t) * exp(-t * 30.0)
+		var coil: float = sin(TAU * 2740.0 * t) * exp(-t * 42.0)
+		var low: float = sin(TAU * 118.0 * t) * exp(-t * 18.0)
+		return (charge * 0.32 + tick * 0.36 + iron * 0.48 + coil * 0.3 + low * 0.28) * env * 0.74
+	, 1.6)
 
 
 func _laser_hiss() -> AudioStreamWAV:
-	return _render(0.22, func(t: float, env: float) -> float:
-		var hz: float = 820.0 - t * 460.0
+	return _render(0.34, func(t: float, env: float) -> float:
+		var hz: float = 880.0 - t * 380.0
 		var arc: float = sin(TAU * hz * t)
-		var hiss: float = _noise(t * 2600.0) * (0.3 + 0.7 * absf(sin(TAU * 70.0 * t)))
-		var hum: float = sin(TAU * 96.0 * t) * 0.42
-		var zip: float = sin(TAU * 1480.0 * t) * exp(-t * 12.0)
-		return (arc * 0.28 + hiss * 0.72 + hum + zip * 0.18) * env * 0.52
-	, 0.62)
+		var hiss: float = _noise(t * 2800.0) * (0.28 + 0.72 * absf(sin(TAU * 62.0 * t)))
+		var hum: float = sin(TAU * 88.0 * t) * 0.48
+		var zip: float = sin(TAU * 1620.0 * t) * exp(-t * 9.0)
+		var beat: float = sin(TAU * 42.0 * t) * 0.2
+		return (arc * 0.26 + hiss * 0.78 + hum + zip * 0.16 + beat) * env * 0.5
+	, 0.55)
 
 
 func _missile_whoosh() -> AudioStreamWAV:
-	return _render(0.3, func(t: float, env: float) -> float:
-		var ignite: float = sin(TAU * (48.0 + t * 55.0) * t) * exp(-t * 5.2)
-		var rush: float = _noise(t * 240.0 + 11.0) * (0.18 + t * 1.7)
-		var hiss: float = _noise(t * 1100.0) * exp(-t * 7.0)
-		var rumble: float = sin(TAU * 36.0 * t) * (0.35 + t * 0.4)
-		return (ignite * 0.68 + rush * 0.58 + hiss * 0.2 + rumble * 0.28) * env * 0.72
-	, 0.78)
+	return _render(0.44, func(t: float, env: float) -> float:
+		var clunk: float = _noise(t * 140.0) * exp(-t * 28.0)
+		var ignite: float = sin(TAU * (42.0 + t * 70.0) * t) * exp(-t * 4.4)
+		var rush: float = _noise(t * 210.0 + 9.0) * (0.12 + t * 1.85)
+		var hiss: float = _noise(t * 1240.0) * exp(-t * 6.2)
+		var rumble: float = sin(TAU * 28.0 * t) * (0.28 + t * 0.5)
+		return (clunk * 0.22 + ignite * 0.64 + rush * 0.62 + hiss * 0.18 + rumble * 0.32) * env * 0.76
+	, 0.7)
 
 
 func _pd_chatter() -> AudioStreamWAV:
-	return _render(0.09, func(t: float, env: float) -> float:
-		var pulse: float = 0.12
-		if t < 0.016 or (t > 0.026 and t < 0.04) or (t > 0.05 and t < 0.064):
+	return _render(0.13, func(t: float, env: float) -> float:
+		var pulse: float = 0.1
+		if t < 0.014 or (t > 0.024 and t < 0.038) or (t > 0.048 and t < 0.062) or (t > 0.074 and t < 0.088):
 			pulse = 1.0
-		var tick: float = _noise(t * 2700.0) * pulse
-		var ping: float = sin(TAU * 3400.0 * t) * pulse * exp(-t * 36.0)
-		var body: float = sin(TAU * 520.0 * t) * pulse * 0.35
-		return (tick * 0.52 + ping * 0.42 + body) * env * 0.64
-	, 2.1)
+		var tick: float = _noise(t * 2900.0) * pulse
+		var ping: float = sin(TAU * 3600.0 * t) * pulse * exp(-t * 32.0)
+		var body: float = sin(TAU * 480.0 * t) * pulse * 0.4
+		return (tick * 0.55 + ping * 0.4 + body) * env * 0.68
+	, 1.9)
 
 
 func _noise(seed: float) -> float:

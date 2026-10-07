@@ -85,6 +85,7 @@ var banner_t = 0.0
 var pdo_alert = false
 var hailed = false
 var sfx_queue: Array = []
+var muzzles: Array = []
 var hold_npc = false
 var layer := 2
 var body_id := ""
@@ -110,6 +111,7 @@ func new_game(class_id: String) -> void:
 	wrecks = []
 	projectiles = []
 	beams = []
+	muzzles = []
 	impacts = []
 	heat_log = []
 	lines = []
@@ -538,6 +540,7 @@ func try_fire(unit: Dictionary, gun: Dictionary) -> bool:
 			"ttl": float(live.get("ttl", 1.1)),
 			"agent_id": unit.agent_id,
 		})
+	_note_muzzle(unit.pos + dir * float(unit.get("muzzle", 28.0)), dir, family if family != "" else "bullet", key, str(live.get("load", "")))
 	sfx(_gun_sfx(family, key))
 	if str(unit.get("controller", "")) == "human":
 		unit.fight_cd = 2.4
@@ -774,6 +777,32 @@ func sfx(name: String) -> void:
 	sfx_queue.append(name)
 	if sfx_queue.size() > 12:
 		sfx_queue.pop_front()
+
+
+func _note_muzzle(at: Vector2, dir: Vector2, family: String, socket: String, load: String) -> void:
+	var aim := dir
+	if aim.length() > 1.0:
+		aim = aim.normalized()
+	muzzles.append({
+		"pos": at,
+		"dir": aim,
+		"family": family,
+		"socket": socket,
+		"load": load,
+		"age": 0.0,
+	})
+	while muzzles.size() > 10:
+		muzzles.pop_front()
+
+
+func _age_muzzles(dt: float) -> void:
+	var kept: Array = []
+	for row in muzzles:
+		var flash: Dictionary = row
+		flash.age = float(flash.age) + dt
+		if float(flash.age) < 0.26:
+			kept.append(flash)
+	muzzles = kept
 
 
 func _gun_sfx(family: String, socket: String) -> String:
@@ -1251,6 +1280,7 @@ func _step_projectiles(dt: float) -> void:
 		kept.append(shot)
 	projectiles = kept
 	_age_beams(dt)
+	_age_muzzles(dt)
 
 
 func _steer_missile(shot: Dictionary, dt: float) -> void:
@@ -1307,6 +1337,12 @@ func _flak_missile(shot: Dictionary) -> bool:
 			"socket": "point_defense",
 		})
 		sfx("pd")
+		var aim: Vector2 = Vector2(shot.pos) - unit.pos
+		if aim.length() > 1.0:
+			aim = aim.normalized()
+		else:
+			aim = Vector2.RIGHT
+		_note_muzzle(unit.pos, aim, "pd", "point_defense", "flak")
 		return true
 	return false
 
@@ -2121,6 +2157,7 @@ func _arrive(system_id: String, gate_id: String) -> void:
 	seed_value = int(defs.system.seed)
 	projectiles = []
 	beams = []
+	muzzles = []
 	impacts = []
 	wrecks = []
 	actors = []
