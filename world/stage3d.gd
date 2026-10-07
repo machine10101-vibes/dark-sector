@@ -5720,6 +5720,55 @@ func _metal(color: Color) -> StandardMaterial3D:
 	return mat
 
 
+func ensure_stock_shaders() -> void:
+	if _rock_shader == null:
+		_rock_shader = _compile(ROCK_SHADER)
+	if _ice_shader == null:
+		_ice_shader = _compile(ICE_SHADER)
+	if _rubble_shader == null:
+		_rubble_shader = _compile(RUBBLE_SHADER)
+	if _plate_shader == null:
+		_plate_shader = _compile(PLATE_SHADER)
+
+
+func dress_stock(chunk: MeshInstance3D, id: String, tint: Color, vein: Color, seed: int) -> void:
+	ensure_stock_shaders()
+	var radius := 16.0
+	var mix := float(absi(seed) % 97) * 0.1
+	if id == "ice_spall":
+		chunk.mesh = _crystal_mesh(seed + 3, radius)
+		var ice := ShaderMaterial.new()
+		ice.shader = _ice_shader
+		ice.set_shader_parameter("seed", mix)
+		chunk.material_override = ice
+	elif id == "copper_slag":
+		chunk.mesh = _crystal_mesh(seed + 7, radius)
+		var slag := ShaderMaterial.new()
+		slag.shader = _rock_shader
+		slag.set_shader_parameter("albedo", tint)
+		slag.set_shader_parameter("vein_color", vein)
+		slag.set_shader_parameter("seed", mix)
+		chunk.material_override = slag
+	elif id == "hull_plate":
+		chunk.mesh = _wreck_mesh(seed + 40, radius)
+		chunk.material_override = _plate_mat(tint, float(seed) * 0.37)
+	elif id == "salvage_parts":
+		chunk.mesh = _wreck_mesh(seed + 11, radius * 0.72)
+		chunk.material_override = _plate_mat(tint, float(seed) * 0.21)
+	elif id == "raw_mass":
+		chunk.mesh = _rubble_mesh(seed + 5, radius)
+		chunk.material_override = _rubble_mat(tint, float(seed) * 0.13)
+	else:
+		chunk.mesh = _rock_mesh(seed + 3, radius)
+		var stone := ShaderMaterial.new()
+		stone.shader = _rock_shader
+		stone.set_shader_parameter("albedo", tint)
+		stone.set_shader_parameter("vein_color", vein)
+		stone.set_shader_parameter("seed", mix)
+		chunk.material_override = stone
+	chunk.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
 func _plate_mat(color: Color, seed: float) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = _plate_shader
