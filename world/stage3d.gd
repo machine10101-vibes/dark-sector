@@ -5733,7 +5733,7 @@ func ensure_stock_shaders() -> void:
 
 func dress_stock(chunk: MeshInstance3D, id: String, tint: Color, vein: Color, seed: int) -> void:
 	ensure_stock_shaders()
-	var radius := 16.0
+	var radius := 18.0
 	var mix := float(absi(seed) % 97) * 0.1
 	if id == "ice_spall":
 		chunk.mesh = _crystal_mesh(seed + 3, radius)
@@ -5766,6 +5766,8 @@ func dress_stock(chunk: MeshInstance3D, id: String, tint: Color, vein: Color, se
 		stone.set_shader_parameter("vein_color", vein)
 		stone.set_shader_parameter("seed", mix)
 		chunk.material_override = stone
+	if chunk.mesh != null:
+		chunk.mesh = _smooth_copy(chunk.mesh)
 	chunk.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
@@ -6030,12 +6032,11 @@ func _crystal_mesh(seed: int, radius: float) -> ArrayMesh:
 				nrm = d.normalized()
 			_rock_tri(st, b, c, d, nrm.normalized())
 	for i in 3:
-		var spike := BoxMesh.new()
 		var long := radius * rng.randf_range(0.7, 1.15)
 		var thick := radius * rng.randf_range(0.16, 0.28)
-		spike.size = Vector3(thick, long, thick)
 		var basis := Basis(Vector3(rng.randf() - 0.5, 1.0, rng.randf() - 0.5).normalized(), rng.randf_range(0.2, 1.1))
-		st.append_from(spike, 0, Transform3D(basis, Vector3(rng.randf_range(-0.2, 0.2), rng.randf_range(-0.1, 0.25), rng.randf_range(-0.2, 0.2)) * radius))
+		var xf := Transform3D(basis, Vector3(rng.randf_range(-0.2, 0.2), rng.randf_range(-0.1, 0.25), rng.randf_range(-0.2, 0.2)) * radius)
+		_add_box(st, xf, Vector3(thick, long, thick))
 	var mesh := st.commit()
 	_mesh_cache[key] = mesh
 	return mesh
@@ -6089,6 +6090,40 @@ func _rock_tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, nrm: Vector3
 	st.add_vertex(b)
 	st.set_normal(nrm)
 	st.add_vertex(c)
+
+
+func _add_box(st: SurfaceTool, xf: Transform3D, size: Vector3) -> void:
+	var h := size * 0.5
+	var p := PackedVector3Array([
+		xf * Vector3(-h.x, -h.y, -h.z),
+		xf * Vector3(h.x, -h.y, -h.z),
+		xf * Vector3(h.x, h.y, -h.z),
+		xf * Vector3(-h.x, h.y, -h.z),
+		xf * Vector3(-h.x, -h.y, h.z),
+		xf * Vector3(h.x, -h.y, h.z),
+		xf * Vector3(h.x, h.y, h.z),
+		xf * Vector3(-h.x, h.y, h.z),
+	])
+	var faces := [
+		[0, 1, 2, 3],
+		[5, 4, 7, 6],
+		[4, 0, 3, 7],
+		[1, 5, 6, 2],
+		[3, 2, 6, 7],
+		[4, 5, 1, 0],
+	]
+	for face in faces:
+		var a: Vector3 = p[int(face[0])]
+		var b: Vector3 = p[int(face[1])]
+		var c: Vector3 = p[int(face[2])]
+		var d: Vector3 = p[int(face[3])]
+		var nrm := (b - a).cross(d - a)
+		if nrm.length_squared() < 0.0001:
+			nrm = Vector3.UP
+		else:
+			nrm = nrm.normalized()
+		_rock_tri(st, a, b, c, nrm)
+		_rock_tri(st, a, c, d, nrm)
 
 
 func _ice_sparks(ring: MeshInstance3D, mid: float, band: float) -> void:

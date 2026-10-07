@@ -17,7 +17,6 @@ var hangar_box: VBoxContainer
 var fleet_box: VBoxContainer
 var stock_box: VBoxContainer
 var stock_sig := ""
-var stock_forge: Node3D
 var bay_box: VBoxContainer
 var dossier_box: VBoxContainer
 var pause_box: PanelContainer
@@ -1115,13 +1114,16 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 			right = minf(right, stick_button.position.x - 8.0)
 		var top := 16.0
 		var bottom := screen.y - 160.0
-		if overlay != null:
+		if panel_kind == "bay" and overlay != null:
 			var cap: Control = overlay.get("capsule")
 			if cap != null and cap.visible:
 				bottom = minf(bottom, cap.position.y - 8.0)
 		panel.custom_minimum_size = Vector2(0, 0)
 		panel.position = Vector2(left, top)
-		panel.size = Vector2(maxf(480.0, right - left), maxf(280.0, bottom - top))
+		var tall := 280.0
+		if panel_kind == "stock":
+			tall = 420.0
+		panel.size = Vector2(maxf(480.0, right - left), maxf(tall, bottom - top))
 		if panel_kind == "bay":
 			_fit_ship_pane()
 		else:
@@ -1939,7 +1941,6 @@ func _build_stock() -> void:
 			raws.append(id)
 		else:
 			other.append(id)
-	var forge := _ensure_stock_forge()
 	if raws.is_empty():
 		stock_box.add_child(ThemeKit.label("No raw stock in the hold yet. Harvest a seam.", 13, Color("8d826c")))
 	else:
@@ -1951,9 +1952,10 @@ func _build_stock() -> void:
 		grid.add_theme_constant_override("h_separation", 8)
 		grid.add_theme_constant_override("v_separation", 8)
 		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		stock_box.add_child(grid)
 		for id in raws:
-			grid.add_child(_stock_card(forge, str(id), int(cargo[id])))
+			grid.add_child(_stock_card(str(id), int(cargo[id])))
 	if not other.is_empty():
 		stock_box.add_child(ThemeKit.label("ALSO ABOARD", 15, Color("e6d7bf")))
 		for id in other:
@@ -1961,7 +1963,7 @@ func _build_stock() -> void:
 	_fit_stock_pane()
 
 
-func _stock_card(forge: Node3D, id: String, count: int) -> Control:
+func _stock_card(id: String, count: int) -> Control:
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(168, 0)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1972,25 +1974,17 @@ func _stock_card(forge: Node3D, id: String, count: int) -> Control:
 	card.add_child(box)
 	var glass := StockGlass.new()
 	glass.stock_id = id
-	glass.custom_minimum_size = Vector2(150, 150)
+	glass.custom_minimum_size = Vector2(140, 124)
 	glass.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_child(glass)
-	glass.call_deferred("show_stock", forge, id)
+	glass.call_deferred("show_stock", id)
 	var sim = Game.sim
 	var name := id
-	var line := ""
 	if sim != null:
 		name = sim.resource_name(id)
-		var book: Dictionary = sim._material_book()
-		if book.has(id):
-			line = str(book[id].get("line", ""))
-	var title := ThemeKit.label(name, 15, Color("e6d7bf"))
+	var title := ThemeKit.label("%s    ×%d" % [name, count], 14, Color("e6d7bf"))
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	box.add_child(title)
-	box.add_child(ThemeKit.label("×%d" % count, 18, Color("c4a46a")))
-	if line != "":
-		var note := ThemeKit.label(line, 12, Color("8d826c"))
-		box.add_child(note)
 	return card
 
 
@@ -2023,20 +2017,6 @@ func _cargo_sig() -> String:
 	return "|".join(bits)
 
 
-func _ensure_stock_forge() -> Node3D:
-	if stock_forge != null and is_instance_valid(stock_forge):
-		return stock_forge
-	stock_forge = preload("res://world/stage3d.gd").new()
-	stock_forge.name = "StockForge"
-	stock_forge.set("portrait_mode", true)
-	add_child(stock_forge)
-	stock_forge.set_process(false)
-	stock_forge.hide()
-	if stock_forge.has_method("ensure_stock_shaders"):
-		stock_forge.call("ensure_stock_shaders")
-	return stock_forge
-
-
 func _refresh_stock() -> void:
 	if Game.sim == null or stock_box == null:
 		return
@@ -2047,8 +2027,8 @@ func _refresh_stock() -> void:
 func _fit_stock_pane() -> void:
 	if panel_kind != "stock" or stock_box == null or panel == null:
 		return
-	var inner_h := panel.size.y - 86.0
-	stock_box.custom_minimum_size = Vector2(0, maxf(200.0, inner_h))
+	stock_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stock_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 
 func _fleet_order(verb: String) -> void:
@@ -2605,9 +2585,9 @@ class StockGlass extends Control:
 	var _view: SubViewportContainer
 	var _vp: SubViewport
 	var _cam: Camera3D
+	var _stage: Node3D
 	var _pivot: Node3D
 	var _chunk: MeshInstance3D
-	var _forge: Node3D
 	var _extent := 20.0
 
 	func _ready() -> void:
@@ -2616,7 +2596,6 @@ class StockGlass extends Control:
 		_view = SubViewportContainer.new()
 		_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_view.stretch = true
-		_view.set_anchors_preset(Control.PRESET_FULL_RECT)
 		add_child(_view)
 		_vp = SubViewport.new()
 		_vp.name = "StockView"
@@ -2630,25 +2609,13 @@ class StockGlass extends Control:
 		var env := WorldEnvironment.new()
 		var world := Environment.new()
 		world.background_mode = Environment.BG_COLOR
-		world.background_color = Color(0.012, 0.02, 0.03)
+		world.background_color = Color(0.035, 0.05, 0.062)
 		world.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-		world.ambient_light_color = Color(0.62, 0.68, 0.78)
-		world.ambient_light_energy = 0.58
+		world.ambient_light_color = Color(0.72, 0.78, 0.88)
+		world.ambient_light_energy = 0.95
 		world.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 		env.environment = world
 		_vp.add_child(env)
-		var sun := DirectionalLight3D.new()
-		sun.light_color = Color("fff0d4")
-		sun.light_energy = 2.4
-		sun.shadow_enabled = false
-		sun.rotation_degrees = Vector3(-48.0, -32.0, 0.0)
-		_vp.add_child(sun)
-		var fill := DirectionalLight3D.new()
-		fill.light_color = Color(0.7, 0.78, 0.92)
-		fill.light_energy = 0.95
-		fill.shadow_enabled = false
-		fill.rotation_degrees = Vector3(18.0, 148.0, 0.0)
-		_vp.add_child(fill)
 		_cam = Camera3D.new()
 		_cam.name = "StockEye"
 		_cam.current = true
@@ -2656,13 +2623,27 @@ class StockGlass extends Control:
 		_cam.near = 0.2
 		_cam.far = 800.0
 		_vp.add_child(_cam)
+		_stage = preload("res://world/stage3d.gd").new()
+		_stage.name = "StockStage"
+		_stage.set("portrait_mode", true)
+		_vp.add_child(_stage)
+		_stage.set_process(false)
+		_stage.call("ensure_stock_shaders")
+		var kick := DirectionalLight3D.new()
+		kick.light_color = Color(0.85, 0.92, 1.0)
+		kick.light_energy = 0.7
+		kick.shadow_enabled = false
+		kick.rotation_degrees = Vector3(22.0, 128.0, 0.0)
+		_vp.add_child(kick)
 		_pivot = Node3D.new()
 		_pivot.name = "Turn"
-		_vp.add_child(_pivot)
+		_stage.add_child(_pivot)
 		_chunk = MeshInstance3D.new()
 		_chunk.name = "Stock"
 		_pivot.add_child(_chunk)
 		resized.connect(_place_view)
+		if stock_id != "":
+			_sync_chunk()
 
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.008, 0.016, 0.022, 0.88))
@@ -2683,13 +2664,12 @@ class StockGlass extends Control:
 		_view.size = size
 		_frame_camera()
 
-	func show_stock(forge: Node3D, id: String) -> void:
-		_forge = forge
+	func show_stock(id: String) -> void:
 		stock_id = id
 		_sync_chunk()
 
 	func _sync_chunk() -> void:
-		if _forge == null or _chunk == null or stock_id == "":
+		if _stage == null or _chunk == null or stock_id == "":
 			return
 		var tint := Color("8a6238")
 		var vein := Color("f0a04a")
@@ -2700,7 +2680,7 @@ class StockGlass extends Control:
 				tint = Color(str(row.get("tint", "#8a6238")))
 				vein = Color(str(row.get("vein", "#f0a04a")))
 		var seed: int = absi(stock_id.hash()) % 80 + 3
-		_forge.call("dress_stock", _chunk, stock_id, tint, vein, seed)
+		_stage.call("dress_stock", _chunk, stock_id, tint, vein, seed)
 		var box := AABB(Vector3(-10, -10, -10), Vector3(20, 20, 20))
 		if _chunk.mesh != null:
 			box = _chunk.get_aabb()
@@ -2711,7 +2691,7 @@ class StockGlass extends Control:
 	func _frame_camera() -> void:
 		if _cam == null:
 			return
-		var dist := maxf(_extent * 2.15, 28.0)
-		_cam.position = Vector3(-0.52, 0.4, 0.94).normalized() * dist
+		var dist := maxf(_extent * 1.55, 36.0)
+		_cam.position = Vector3(-0.62, 0.48, 0.78).normalized() * dist
 		if _cam.is_inside_tree():
 			_cam.look_at(Vector3.ZERO, Vector3.UP)

@@ -137,8 +137,6 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 	var stock := _find_button(hud, "Stock")
 	if stock == null:
 		_bad(tag + " missing Stock")
-	elif stock.visible:
-		_inside(stock, screen, tag + " Stock")
 	if touch:
 		var pad: Node = hud.get("pad")
 		var joy: Control = pad.get("joy")
