@@ -14,6 +14,7 @@ func _init() -> void:
 		"quests": Serde.load_json("res://data/quests.json"),
 	}
 	_racks()
+	_escort_spread()
 	_scan_harvest_heat()
 	_loss_and_save()
 	_helm()
@@ -68,6 +69,28 @@ func _racks() -> void:
 	check(_count(kestrel, "fighter") == 1, "Kestrel racks one fighter")
 	check("parked" in CraftOrders.launch(kestrel, "fighter").to_lower(), "the fighter stays parked")
 	check(not bool(vesper.defs.system.pocket.plantable), "the pocket stays closed")
+
+
+func _escort_spread() -> void:
+	var sim := make("kestrel")
+	sim.time = 12.0
+	var reach := float(Fit.stats(sim.defs, sim.player).hit_radius)
+	var floor_dist := maxf(reach * 9.0, 280.0) * 1.8
+	var seen: Array = []
+	var index := 0
+	for item in sim.craft:
+		var pose: Dictionary = CraftOrders.escort_pose(sim, item, index)
+		var at := Vector2(pose.pos)
+		var dist := at.distance_to(sim.player.pos)
+		check(dist > floor_dist, "%s keeps clear of the keel (%.0f)" % [item.name, dist])
+		check(absf(wrapf(float(pose.rot) - sim.player.rot, -PI, PI)) > 0.15, "%s flies its own heading" % item.name)
+		for other in seen:
+			check(at.distance_to(other) > 120.0, "%s does not share a station" % item.name)
+		seen.append(at)
+		index += 1
+	sim.time = 20.0
+	var later: Dictionary = CraftOrders.escort_pose(sim, sim.craft[0], 0)
+	check(Vector2(later.pos).distance_to(seen[0]) > 40.0, "an escort station moves on its own pattern")
 
 
 func _scan_harvest_heat() -> void:

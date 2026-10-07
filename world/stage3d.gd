@@ -4680,25 +4680,29 @@ func _dish_mesh(radius: float) -> ArrayMesh:
 
 
 func _sync_craft(sim) -> void:
-	var parked := 0
 	var index := 0
 	for item in sim.craft:
 		var row: Dictionary = item
 		var pos: Vector2 = row.pos
 		var rot := float(row.rot)
-		if int(sim.layer) == ScaleFrame.CHART and str(row.get("state", "")) != "docked":
+		var height := 1.5
+		var docked := str(row.get("state", "")) == "docked"
+		if int(sim.layer) == ScaleFrame.CHART and not docked:
+			index += 1
 			continue
-		if str(row.get("state", "")) == "docked" and bool(sim.player.get("alive", false)):
-			var side := Vector2.from_angle(float(sim.player.rot) + PI * 0.5)
-			var back := Vector2.from_angle(float(sim.player.rot) + PI)
-			pos = sim.player.pos + back * (34.0 + float(parked) * 16.0) + side * (18.0 if parked % 2 == 0 else -18.0)
-			rot = float(sim.player.rot)
-			parked += 1
+		if docked:
+			if int(sim.layer) != ScaleFrame.BAND or not bool(sim.player.get("alive", false)):
+				index += 1
+				continue
+			var pose: Dictionary = CraftOrders.escort_pose(sim, row, index)
+			pos = pose.pos
+			rot = float(pose.rot)
+			height = float(pose.height)
 		var key := "c%d" % index
 		index += 1
 		var kind := str(row.get("def_id", "fighter"))
 		var holder := _craft_holder(key, kind)
-		_banked(holder, pos, rot, 1.5)
+		_banked(holder, pos, rot, height)
 		if Game.zoom > 0.9 and str(row.get("state", "")) != "docked":
 			_tag(str(row.get("name", kind)), chart(pos + Vector2(14.0, 10.0), 8.0), Color("d7e6c8"), 12)
 

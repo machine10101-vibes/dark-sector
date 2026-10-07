@@ -243,19 +243,17 @@ func _draw() -> void:
 		draw_line(tail, shot.pos, Color(col.r, col.g, col.b, 0.45), 3.4, true)
 		draw_line(tail, shot.pos, col.lightened(0.35), 1.3, true)
 		draw_circle(shot.pos, 1.5, Color("fff6e4"))
-	var parked := 0
+	var craft_index := 0
 	for item in sim.craft:
-		if str(item.state) == "docked":
-			var side := Vector2.from_angle(float(sim.player.rot) + PI * 0.5)
-			var back := Vector2.from_angle(float(sim.player.rot) + PI)
-			var spot: Vector2 = sim.player.pos + back * (34.0 + float(parked) * 16.0) + side * (18.0 if parked % 2 == 0 else -18.0)
+		if str(item.state) == "docked" and bool(sim.player.alive):
+			var pose: Dictionary = CraftOrders.escort_pose(sim, item, craft_index)
 			var ghost: Dictionary = item.duplicate(true)
-			ghost.pos = spot
-			ghost.rot = sim.player.rot
+			ghost.pos = pose.pos
+			ghost.rot = float(pose.rot)
 			_draw_craft(sim, ghost)
-			parked += 1
-		else:
+		elif str(item.state) != "docked":
 			_draw_craft(sim, item)
+		craft_index += 1
 	for actor in sim.actors:
 		if bool(actor.alive):
 			_draw_ship(sim, actor)

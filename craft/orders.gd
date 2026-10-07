@@ -405,6 +405,70 @@ static func _step_shuttle(sim, craft, dt: float) -> void:
 		_return_home(sim, craft, dt)
 
 
+static func escort_pose(sim, craft, index: int) -> Dictionary:
+	var lead: Vector2 = sim.player.pos
+	var now := _escort_offset(sim, craft, index, float(sim.time))
+	var ahead := _escort_offset(sim, craft, index, float(sim.time) + 0.4)
+	var delta: Vector2 = ahead - now
+	var rot := float(sim.player.rot)
+	if delta.length_squared() > 0.25:
+		rot = delta.angle()
+	var lift := 28.0 + float(index) * 12.0 + sin(float(sim.time) * 0.7 + float(index) * 1.3) * 10.0
+	return {"pos": lead + now, "rot": rot, "height": lift}
+
+
+static func _escort_offset(sim, craft, index: int, t: float) -> Vector2:
+	var reach := float(Fit.stats(sim.defs, sim.player).hit_radius)
+	var span := maxf(reach * 9.0, 280.0)
+	var phase := float(absi(str(craft.get("uid", index)).hash()) % 1000) * 0.00628
+	var kind := str(craft.get("def_id", ""))
+	var slot := float(index)
+	var nose := Vector2.from_angle(float(sim.player.rot))
+	var side := Vector2(-nose.y, nose.x)
+	var local := Vector2.RIGHT * span * 2.0
+	if kind == "fighter":
+		var flank := 1.0 if index % 2 == 0 else -1.0
+		var wobble := t * 0.85 + phase
+		var along := span * (0.15 + 0.55 * sin(wobble))
+		var beam := flank * span * (2.05 + slot * 0.35) + sin(wobble * 0.5) * span * 0.22
+		local = nose * along + side * beam
+	elif kind == "survey_probe":
+		var ang := t * (0.33 + slot * 0.05) + phase
+		var ring := span * (2.35 + slot * 0.38)
+		local = Vector2(cos(ang) * ring, sin(ang) * ring * 0.62)
+	elif kind == "harvest_drone":
+		var lap := t * 0.27 + phase + slot * 0.8
+		var along := -span * (2.15 + 0.35 * sin(lap))
+		var beam := sin(lap * 1.7) * span * (1.35 + slot * 0.2)
+		local = nose * along + side * beam
+	else:
+		var ang := -t * (0.22 + slot * 0.04) + phase + slot
+		var ring := span * (2.9 + slot * 0.42)
+		local = Vector2(cos(ang), sin(ang)) * ring
+	var body = sim.planet(str(sim.body_id))
+	if body != null:
+		var sky: Vector2 = sim.player.pos - Vector2(body.pos)
+		if sky.length() > 1.0:
+			sky = sky.normalized()
+			var outward := local.dot(sky)
+			if outward < span * 0.35:
+				local += sky * (span * 0.35 - outward)
+	if local.length() < span * 1.85:
+		if local.length() < 1.0:
+			local = Vector2.RIGHT
+		local = local.normalized() * span * 1.85
+	return local
+
+
+static func _seat(sim, craft) -> int:
+	var index := 0
+	for item in sim.craft:
+		if item == craft:
+			return index
+		index += 1
+	return 0
+
+
 static func _step_fighter(sim, craft, dt: float) -> void:
 	if str(craft.state) == "returning" or float(craft.battery) <= 8.0:
 		craft.state = "returning"
@@ -412,8 +476,8 @@ static func _step_fighter(sim, craft, dt: float) -> void:
 		return
 	var hostile = sim.nearest_hostile(craft.pos, 1100.0)
 	if hostile == null:
-		var aim = sim.player.pos + Vector2.from_angle(sim.time * 1.15) * 160.0
-		_fly_safe(sim, craft, aim, dt, float(craft.speed))
+		var pose: Dictionary = escort_pose(sim, craft, _seat(sim, craft))
+		_fly_safe(sim, craft, pose.pos, dt, float(craft.speed) * 0.65)
 		return
 	var dist = _fly_safe(sim, craft, hostile.pos, dt, float(craft.speed))
 	if dist < float(craft.gun.range) and _facing(craft, hostile.pos) < 0.45:
