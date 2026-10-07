@@ -60,6 +60,10 @@ func _run() -> void:
 	check(holder_part(stage, "lumen", "LampHeart"), "Wick wears a lamp crown")
 	check(holder_part(stage, "casque", "RamPlow"), "Ram wears a plow")
 	check(holder_part(stage, "alidade", "SkyDome"), "Kite wears a survey eye")
+	check(holder_part(stage, "vesper", "HeatTile0"), "Needle wears heat tiles")
+	check(holder_part(stage, "vesper", "DockRing"), "Needle wears a dock ring")
+	check(holder_part(stage, "anvil", "HeatTile0"), "Barn wears heat tiles")
+	check(holder_part(stage, "kestrel", "DockRing"), "Beak wears a dock ring")
 
 
 func holder_part(stage: Node, class_id: String, part_name: String) -> bool:
