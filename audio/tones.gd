@@ -60,61 +60,63 @@ func _tone(freq: float, duration: float, volume: float, decay: float) -> AudioSt
 
 func _gun_crack() -> AudioStreamWAV:
 	return _render(0.12, func(t: float, env: float) -> float:
-		var bang := _noise(t * 980.0) * exp(-t * 52.0)
-		var body := sin(TAU * 190.0 * t) * exp(-t * 20.0)
-		var brass := sin(TAU * 1860.0 * t) * exp(-t * 42.0)
-		var slap := sin(TAU * 420.0 * t) * exp(-t * 28.0)
+		var bang: float = _noise(t * 980.0) * exp(-t * 52.0)
+		var body: float = sin(TAU * 190.0 * t) * exp(-t * 20.0)
+		var brass: float = sin(TAU * 1860.0 * t) * exp(-t * 42.0)
+		var slap: float = sin(TAU * 420.0 * t) * exp(-t * 28.0)
 		return (bang * 0.6 + body * 0.62 + brass * 0.32 + slap * 0.22) * env * 0.74
 	, 1.55)
 
 
 func _heavy_boom() -> AudioStreamWAV:
 	return _render(0.26, func(t: float, env: float) -> float:
-		var thump := sin(TAU * (62.0 - t * 28.0) * t) * exp(-t * 7.5)
-		var blast := _noise(t * 360.0) * exp(-t * 14.0)
-		var ring := sin(TAU * 310.0 * t) * exp(-t * 11.0)
-		var shell := _noise(t * 88.0 + 4.0) * exp(-t * 6.0)
+		var thump: float = sin(TAU * (62.0 - t * 28.0) * t) * exp(-t * 7.5)
+		var blast: float = _noise(t * 360.0) * exp(-t * 14.0)
+		var ring: float = sin(TAU * 310.0 * t) * exp(-t * 11.0)
+		var shell: float = _noise(t * 88.0 + 4.0) * exp(-t * 6.0)
 		return (thump * 1.05 + blast * 0.48 + ring * 0.2 + shell * 0.16) * env * 0.82
 	, 1.05)
 
 
 func _stake_snap() -> AudioStreamWAV:
 	return _render(0.1, func(t: float, env: float) -> float:
-		var tick := _noise(t * 1680.0) * exp(-t * 62.0)
-		var iron := sin(TAU * 1240.0 * t) * exp(-t * 34.0)
-		var coil := sin(TAU * 2480.0 * t) * exp(-t * 48.0)
-		var low := sin(TAU * 140.0 * t) * exp(-t * 22.0)
+		var tick: float = _noise(t * 1680.0) * exp(-t * 62.0)
+		var iron: float = sin(TAU * 1240.0 * t) * exp(-t * 34.0)
+		var coil: float = sin(TAU * 2480.0 * t) * exp(-t * 48.0)
+		var low: float = sin(TAU * 140.0 * t) * exp(-t * 22.0)
 		return (tick * 0.38 + iron * 0.5 + coil * 0.28 + low * 0.3) * env * 0.7
 	, 1.75)
 
 
 func _laser_hiss() -> AudioStreamWAV:
 	return _render(0.22, func(t: float, env: float) -> float:
-		var hz := 820.0 - t * 460.0
-		var arc := sin(TAU * hz * t)
-		var hiss := _noise(t * 2600.0) * (0.3 + 0.7 * abs(sin(TAU * 70.0 * t)))
-		var hum := sin(TAU * 96.0 * t) * 0.42
-		var zip := sin(TAU * 1480.0 * t) * exp(-t * 12.0)
+		var hz: float = 820.0 - t * 460.0
+		var arc: float = sin(TAU * hz * t)
+		var hiss: float = _noise(t * 2600.0) * (0.3 + 0.7 * absf(sin(TAU * 70.0 * t)))
+		var hum: float = sin(TAU * 96.0 * t) * 0.42
+		var zip: float = sin(TAU * 1480.0 * t) * exp(-t * 12.0)
 		return (arc * 0.28 + hiss * 0.72 + hum + zip * 0.18) * env * 0.52
 	, 0.62)
 
 
 func _missile_whoosh() -> AudioStreamWAV:
 	return _render(0.3, func(t: float, env: float) -> float:
-		var ignite := sin(TAU * (48.0 + t * 55.0) * t) * exp(-t * 5.2)
-		var rush := _noise(t * 240.0 + 11.0) * (0.18 + t * 1.7)
-		var hiss := _noise(t * 1100.0) * exp(-t * 7.0)
-		var rumble := sin(TAU * 36.0 * t) * (0.35 + t * 0.4)
+		var ignite: float = sin(TAU * (48.0 + t * 55.0) * t) * exp(-t * 5.2)
+		var rush: float = _noise(t * 240.0 + 11.0) * (0.18 + t * 1.7)
+		var hiss: float = _noise(t * 1100.0) * exp(-t * 7.0)
+		var rumble: float = sin(TAU * 36.0 * t) * (0.35 + t * 0.4)
 		return (ignite * 0.68 + rush * 0.58 + hiss * 0.2 + rumble * 0.28) * env * 0.72
 	, 0.78)
 
 
 func _pd_chatter() -> AudioStreamWAV:
 	return _render(0.09, func(t: float, env: float) -> float:
-		var pulse := 1.0 if (t < 0.016 or (t > 0.026 and t < 0.04) or (t > 0.05 and t < 0.064)) else 0.12
-		var tick := _noise(t * 2700.0) * pulse
-		var ping := sin(TAU * 3400.0 * t) * pulse * exp(-t * 36.0)
-		var body := sin(TAU * 520.0 * t) * pulse * 0.35
+		var pulse: float = 0.12
+		if t < 0.016 or (t > 0.026 and t < 0.04) or (t > 0.05 and t < 0.064):
+			pulse = 1.0
+		var tick: float = _noise(t * 2700.0) * pulse
+		var ping: float = sin(TAU * 3400.0 * t) * pulse * exp(-t * 36.0)
+		var body: float = sin(TAU * 520.0 * t) * pulse * 0.35
 		return (tick * 0.52 + ping * 0.42 + body) * env * 0.64
 	, 2.1)
 
