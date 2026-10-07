@@ -101,10 +101,13 @@ func _dock() -> void:
 	var hold = sim.survey_node("seized_hold")
 	check(ring != null and str(ring.resource.id) == "raw_mass", "the ice ring still yields raw mass")
 	check(hold != null and str(hold.resource.id) == "raw_mass", "the seized hold still yields raw mass")
-	check(sim.ice_pos.distance_to(sim.beacon_pos) > 200.0, "ice spall stands off the pad")
-	check(sim.copper_pos.distance_to(sim.beacon_pos) > 200.0, "copper slag stands off the pad")
+	check(sim.ice_pos.distance_to(sim.beacon_pos) > 500.0, "ice spall stands off the pad")
+	check(sim.copper_pos.distance_to(sim.beacon_pos) > 500.0, "copper slag stands off the pad")
 	check(sim.ice_pos.distance_to(sim.belt_pos) > 80.0, "ice spall stands off the belt")
 	check(sim.copper_pos.distance_to(sim.belt_pos) > 80.0, "copper slag stands off the belt")
+	check(sim.ice_pos.distance_to(sim.copper_pos) > 400.0, "ice and copper sit in different sky")
+	check(sim.plate_pos.distance_to(sim.beacon_pos) > 400.0, "hull plate sits with the seized hold")
+	check(sim.ice_pos.distance_to(sim.plate_pos) > 200.0, "ice and plate sit in different sky")
 	var saw_ice := false
 	var saw_copper := false
 	var saw_nickel := false

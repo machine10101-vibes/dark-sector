@@ -198,7 +198,7 @@ func new_game(class_id: String) -> void:
 	say("The corner map is the local sky. Tap it, or press F10, for the whole chart. Tab locks the nearest contact.")
 	say("Shakedown is on the log. J reads it. Y marks the next place.")
 	if str(defs.system.get("belt", {}).get("name", "")) != "":
-		say("%s yields nickel cinder. Ice spall rides the gravel. Copper slag and hull plate sit beside the belt. Scan a rock, then Harvest." % str(defs.system.belt.name))
+		say("%s yields nickel cinder. Ice spall sits on the Homestead bearing. Copper slag sits toward The Unlet. Hull plate rides with the seized hold. Scan a rock, then Harvest." % str(defs.system.belt.name))
 	say("Moored at the Helion Dock pad. W casts off. The keel is in clear space, not in the city.")
 	if gang_name != "":
 		say("%s is the gang in the amber. %s" % [gang_name, _gang_line()])
@@ -2869,6 +2869,7 @@ func _spawn_belt(rng: RandomNumberGenerator) -> void:
 	var belt: Dictionary = defs.system.get("belt", {})
 	var count := int(belt.get("count", 0))
 	if count <= 0:
+		_seed_reach_stock(rng)
 		return
 	var composition := str(belt.get("composition", ""))
 	var tint := _belt_tint(composition)
@@ -2936,6 +2937,11 @@ func _spawn_belt(rng: RandomNumberGenerator) -> void:
 		if local:
 			material = "nickel_cinder"
 			vein = "#f6c36a"
+		else:
+			var stock: Dictionary = _reach_mineral(0)
+			material = str(stock.get("id", ""))
+			vein = str(stock.get("vein", vein))
+			tint = str(stock.get("tint", tint))
 		asteroids.append({
 			"pos": center,
 			"verts": verts,
@@ -2949,22 +2955,21 @@ func _spawn_belt(rng: RandomNumberGenerator) -> void:
 	if local and belt_pos != Vector2.ZERO:
 		_spawn_loners(rng, pad, composition, tint)
 		_spawn_seams(rng, pad, belt_pos)
+	else:
+		_seed_reach_stock(rng)
 
 
 func _spawn_loners(rng: RandomNumberGenerator, pad: Vector2, composition: String, tint: String) -> void:
-	# A few house-sized stones sit apart from the belt so the sky has individuals.
-	var spots: Array[Vector2] = [
-		pad + Vector2(-220.0, 70.0),
-		pad + Vector2(-90.0, 120.0),
-		pad + Vector2(-160.0, -10.0),
+	var belt: Dictionary = defs.system.get("belt", {})
+	var anchor = planet(str(belt.get("anchor", "")))
+	var seats: Array = [
+		{"ang": 2.2, "dist": 1240.0},
+		{"ang": 1.35, "dist": 1320.0},
+		{"ang": 3.35, "dist": 1180.0},
 	]
-	for i in spots.size():
-		var at: Vector2 = spots[i]
-		if at.distance_to(pad) < 210.0:
-			var push: Vector2 = at - pad
-			if push.length() < 1.0:
-				push = Vector2(0.0, -1.0)
-			at = pad + push.normalized() * 230.0
+	for i in seats.size():
+		var seat: Dictionary = seats[i]
+		var at := _orbit_seat(anchor, float(seat.ang), float(seat.dist), pad, 280.0)
 		var size := 34.0 + float(i) * 8.0
 		var rot := rng.randf() * TAU
 		var verts := PackedVector2Array()
@@ -2985,15 +2990,12 @@ func _spawn_loners(rng: RandomNumberGenerator, pad: Vector2, composition: String
 
 
 func _spawn_seams(rng: RandomNumberGenerator, pad: Vector2, _origin: Vector2) -> void:
-	# The berth eye sits on +Y and looks toward -Y. A flank step off the belt
-	# falls behind that eye. These offsets stay in the look cone, off the pad
-	# bubble and off the nickel field.
 	var belt: Dictionary = defs.system.get("belt", {})
 	var anchor = planet(str(belt.get("anchor", "")))
-	# Negative Y runs past the keel toward the horizon and clips off the top.
-	# These seats stay beside the belt, high enough to clear the gravel.
-	ice_pos = _clear_sky(pad + Vector2(-300.0, -55.0), pad, anchor, 230.0)
-	copper_pos = _clear_sky(pad + Vector2(-180.0, -150.0), pad, anchor, 230.0)
+	# Homestead Road sits on 0.4. The Unlet sits on -1.15. Keep each
+	# seam on its own bearing so the pad sky is the nickel field alone.
+	ice_pos = _orbit_seat(anchor, 0.4, 1180.0, pad, 280.0)
+	copper_pos = _orbit_seat(anchor, -1.15, 1420.0, pad, 280.0)
 	_pile(rng, ice_pos, 5, "#d5e6f0", "#f4fbff", "ice_spall", 20.0)
 	_pile(rng, copper_pos, 4, "#6e8f58", "#d6ee8a", "copper_slag", 22.0)
 
@@ -3040,6 +3042,47 @@ func _clear_sky(at: Vector2, pad: Vector2, anchor, keep: float) -> Vector2:
 	return placed
 
 
+func _orbit_seat(anchor, angle: float, dist: float, pad: Vector2, keep: float) -> Vector2:
+	if anchor == null:
+		return _clear_pad(Vector2.from_angle(angle) * dist, pad, keep)
+	var reach := maxf(dist, float(anchor.radius) * 1.34 + 120.0)
+	var at: Vector2 = anchor.pos + Vector2.from_angle(angle) * reach
+	return _clear_sky(at, pad, anchor, keep)
+
+
+func _reach_mineral(index: int) -> Dictionary:
+	var book := [
+		{"id": "nickel_cinder", "tint": "#c4a06a", "vein": "#f6c36a", "name": "Nickel cinder"},
+		{"id": "ice_spall", "tint": "#d5e6f0", "vein": "#f4fbff", "name": "Ice spall"},
+		{"id": "copper_slag", "tint": "#6e8f58", "vein": "#d6ee8a", "name": "Copper slag"},
+	]
+	var mix := absi(str(defs.system.id).hash()) + index
+	var row: Dictionary = book[mix % book.size()]
+	return row
+
+
+func _seed_reach_stock(rng: RandomNumberGenerator) -> void:
+	var home = planet(str(defs.system.get("pdo", {}).get("home", "")))
+	if home == null and planets.size() > 0:
+		home = planets[0]
+	if home == null:
+		return
+	var pad: Vector2 = home.pos + _dock_offset(home)
+	if ice_pos == Vector2.ZERO:
+		ice_pos = _orbit_seat(home, 0.85, maxf(float(home.radius) * 1.7, 820.0), pad, 260.0)
+		var ice: Dictionary = _reach_mineral(1)
+		_pile(rng, ice_pos, 4, str(ice.tint), str(ice.vein), "ice_spall", 18.0)
+	if copper_pos == Vector2.ZERO:
+		copper_pos = _orbit_seat(home, -2.05, maxf(float(home.radius) * 1.95, 980.0), pad, 260.0)
+		var slag: Dictionary = _reach_mineral(2)
+		_pile(rng, copper_pos, 4, str(slag.tint), str(slag.vein), "copper_slag", 18.0)
+	if plate_pos == Vector2.ZERO:
+		if trash_pos != Vector2.ZERO:
+			plate_pos = trash_pos
+		else:
+			plate_pos = _orbit_seat(home, 2.4, maxf(float(home.radius) * 1.55, 760.0), pad, 260.0)
+
+
 func _scatter_flank_scrap(rng: RandomNumberGenerator) -> void:
 	plate_pos = Vector2.ZERO
 	if belt_pos == Vector2.ZERO:
@@ -3049,13 +3092,11 @@ func _scatter_flank_scrap(rng: RandomNumberGenerator) -> void:
 	if anchor == null:
 		return
 	var pad: Vector2 = anchor.pos + _dock_offset(anchor)
-	# World -Y is the berth camera's look. These offsets sit in that footprint.
+	# Three chips stay in the pad sky. The harvestable plate rides with the hold.
 	var spots: Array[Vector2] = [
 		pad + Vector2(-40.0, 150.0),
 		pad + Vector2(-190.0, 40.0),
 		pad + Vector2(-70.0, 60.0),
-		pad + Vector2(-250.0, 110.0),
-		belt_pos + Vector2(40.0, 20.0),
 	]
 	for i in spots.size():
 		var at: Vector2 = spots[i]
@@ -3074,9 +3115,10 @@ func _scatter_flank_scrap(rng: RandomNumberGenerator) -> void:
 			"scale": rng.randf_range(1.45, 2.35),
 			"origin": str(belt.get("composition", "")),
 		})
-		plate_pos += at
-	if spots.size() > 0:
-		plate_pos /= float(spots.size())
+	if trash_pos != Vector2.ZERO:
+		plate_pos = trash_pos
+	else:
+		plate_pos = _orbit_seat(anchor, 2.2, 1100.0, pad, 280.0)
 
 
 func _pin_local_marks() -> void:
@@ -3098,6 +3140,32 @@ func _pin_local_marks() -> void:
 		if plate_pos != Vector2.ZERO and str(row.get("id", "")) == "hull_plate":
 			row.pos = plate_pos
 			row.radius = 90.0
+	_ensure_stock_node("ice_spall", "Ice Spall", ice_pos, "ice_spall", "Ice spall", 5)
+	_ensure_stock_node("copper_slag", "Copper Slag", copper_pos, "copper_slag", "Copper slag", 5)
+	_ensure_stock_node("hull_plate", "Hull Plate", plate_pos, "hull_plate", "Hull plate", 4)
+
+
+func _ensure_stock_node(nid: String, title: String, at: Vector2, res_id: String, res_name: String, amount: int) -> void:
+	if at == Vector2.ZERO:
+		return
+	for row in nodes:
+		var mark: Dictionary = row
+		if str(mark.get("id", "")) == nid:
+			return
+	nodes.append({
+		"id": nid,
+		"name": title,
+		"kind": "seam",
+		"pos": at,
+		"radius": 80.0,
+		"heat": "lease",
+		"resource": {
+			"id": res_id,
+			"name": res_name,
+			"amount": amount,
+		},
+	})
+	deposits[nid] = amount
 
 
 func _gang_book() -> Dictionary:

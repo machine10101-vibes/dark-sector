@@ -190,7 +190,7 @@
         "amount": 5
       },
       "layers": {
-        "orbit": "A timed gravel stream on the pad's other flank.",
+        "orbit": "A timed gravel stream that still crosses the pad sky.",
         "atmosphere": "None. The chips are in vacuum.",
         "surface": "Hot faces, cold backs, ore still in the stone.",
         "crust": "No crust. Moving mass.",
@@ -215,7 +215,7 @@
         "amount": 5
       },
       "layers": {
-        "orbit": "A short green seam beside Cinder Reach.",
+        "orbit": "A green seam on the Unlet bearing, off the Helion pad.",
         "atmosphere": "None. Open vacuum.",
         "surface": "Copper heart under green slag.",
         "crust": "No crust. The seam is the rock.",
@@ -240,7 +240,7 @@
         "amount": 4
       },
       "layers": {
-        "orbit": "Torn plate hanging off the pad, still stock.",
+        "orbit": "Torn plate riding with the seized hold, still stock.",
         "atmosphere": "None. Vacuum and paint flakes.",
         "surface": "Ribs, skin, and a snapped spar.",
         "crust": "No crust. Hollow plate.",
