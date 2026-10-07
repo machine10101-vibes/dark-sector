@@ -373,7 +373,8 @@ func _build_bay() -> void:
 		child.queue_free()
 	var sim = Game.sim
 	bay_preview = BayPreview.new()
-	bay_preview.custom_minimum_size = Vector2(360, 150)
+	bay_preview.custom_minimum_size = Vector2(360, 230)
+	bay_preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bay_box.add_child(bay_preview)
 	bay_detail = ThemeKit.label("", 14)
 	bay_box.add_child(bay_detail)
@@ -636,15 +637,14 @@ class BayPreview extends Control:
 		var ship: Dictionary = Game.sim.player
 		var hull: Dictionary = Game.sim.defs.ships[ship.class_id]
 		var shapes: Array = Silhouette.shapes_of(Game.sim.defs, ship.modules)
-		Silhouette.draw(
+		Silhouette.draw_fitted(
 			self,
-			size * 0.5,
-			-PI * 0.5,
+			size,
 			str(ship.class_id),
 			shapes,
-			1.35,
+			shapes,
 			Color(str(hull.color)),
 			Color(str(hull.accent)),
 			clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0),
-			false
+			0.0
 		)
