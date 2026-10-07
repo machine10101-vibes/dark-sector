@@ -46,6 +46,8 @@ var player: Dictionary = {}
 var actors: Array = []
 var craft: Array = []
 var projectiles: Array = []
+## Short-lived beam segments. Host writes them; guests read them.
+var beams: Array = []
 ## Visual-only bursts. Not saved, not snapshotted, not part of the gun rules.
 var impacts: Array = []
 var wrecks: Array = []
@@ -93,6 +95,7 @@ func new_game(class_id: String) -> void:
 	scans = {}
 	wrecks = []
 	projectiles = []
+	beams = []
 	impacts = []
 	heat_log = []
 	lines = []
@@ -132,6 +135,7 @@ func new_game(class_id: String) -> void:
 	player.alert = false
 	player.dock_x = player.pos.x
 	player.dock_y = player.pos.y
+	HelmCombat.ensure_rounds(player)
 	captains = []
 	commands = {}
 	law_target = ""
@@ -462,26 +466,54 @@ func nearest_hostile(pos: Vector2, radius: float):
 
 
 func try_fire(unit: Dictionary, gun: Dictionary) -> bool:
-	if float(unit.get("fire_cd", 0.0)) > 0.0:
-		return false
 	if gun.is_empty():
 		return false
-	if not HelmCombat.can_fire(self, unit, gun):
+	var family := str(gun.get("family", ""))
+	if family == "pd":
 		return false
-	unit.fire_cd = float(gun.cooldown)
-	var aimed: Dictionary = HelmCombat.aim(self, unit, gun)
+	var key := str(gun.get("socket", "nose"))
+	if key == "nose":
+		if float(unit.get("fire_cd", 0.0)) > 0.0:
+			return false
+	elif float(unit.get("mount_cd", {}).get(key, 0.0)) > 0.0:
+		return false
+	var live := _live_gun(unit, gun)
+	if (family == "laser" or family == "missile") and HelmCombat.locked_unit(self, unit) == null:
+		_gun_note(unit, "No lock. The mount holds.")
+		return false
+	if not HelmCombat.can_fire(self, unit, live):
+		return false
+	if not _spend_round(unit, live):
+		return false
+	if key == "nose":
+		unit.fire_cd = float(live.cooldown)
+	else:
+		_set_mount_cd(unit, key, float(live.cooldown))
+	var aimed: Dictionary = _family_aim(unit, live)
 	var dir: Vector2 = aimed.dir
-	HelmCombat.spend_shot(self, unit, gun)
-	projectiles.append({
-		"turret": bool(aimed.turret),
-		"mark": str(aimed.get("mark", "")),
-		"pos": unit.pos + dir * (float(unit.get("muzzle", 28.0))),
-		"vel": unit.vel + dir * float(gun.speed),
-		"damage": float(gun.damage),
-		"team": unit.team,
-		"ttl": float(gun.get("ttl", 1.1)),
-		"agent_id": unit.agent_id,
-	})
+	HelmCombat.spend_shot(self, unit, live)
+	var recoil := float(live.get("recoil", 0.0))
+	if recoil > 0.0:
+		unit.vel -= dir * recoil
+	if family == "laser":
+		_laser_strike(unit, live, aimed)
+	elif family == "missile":
+		_launch_missile(unit, live, aimed)
+	else:
+		var speed := float(live.get("speed", 700.0))
+		projectiles.append({
+			"family": family if family != "" else "bullet",
+			"load": str(live.get("load", "")),
+			"drop": float(live.get("drop", 0.0)),
+			"turret": bool(aimed.turret),
+			"mark": str(aimed.get("mark", "")),
+			"pos": unit.pos + dir * (float(unit.get("muzzle", 28.0))),
+			"vel": unit.vel + dir * speed,
+			"damage": float(live.damage),
+			"team": unit.team,
+			"ttl": float(live.get("ttl", 1.1)),
+			"agent_id": unit.agent_id,
+		})
 	sfx("gun")
 	if str(unit.get("controller", "")) == "human":
 		unit.fight_cd = 2.4
@@ -490,7 +522,171 @@ func try_fire(unit: Dictionary, gun: Dictionary) -> bool:
 	return true
 
 
-func damage_unit(unit: Dictionary, amount: float, attacker: String) -> void:
+func _family_aim(unit: Dictionary, gun: Dictionary) -> Dictionary:
+	var family := str(gun.get("family", ""))
+	if family == "missile":
+		var nose := Vector2.from_angle(float(unit.rot))
+		var other = HelmCombat.locked_unit(self, unit)
+		var dir := nose
+		var target := ""
+		if other != null:
+			var rel: Vector2 = other.pos - unit.pos
+			if rel.length() > 1.0:
+				dir = rel.normalized()
+			target = str(other.agent_id)
+		return {"dir": dir, "turret": false, "mark": "", "target": target}
+	return HelmCombat.aim(self, unit, gun)
+
+
+func _live_gun(unit: Dictionary, gun: Dictionary) -> Dictionary:
+	var live := gun.duplicate(true)
+	var family := str(live.get("family", ""))
+	if family == "":
+		return live
+	HelmCombat.ensure_rounds(unit)
+	if family == "laser":
+		var crystal := str(unit.get("crystal", "standard"))
+		live.load = crystal
+		if crystal == "infrared":
+			live.optimal = float(live.optimal) * 1.4
+			live.range = float(live.range) * 1.3
+			live.cap = float(live.cap) * 0.6
+			live.damage = float(live.damage) * 0.72
+			live.tracking = float(live.tracking) * 0.85
+		elif crystal == "ultraviolet":
+			live.optimal = float(live.optimal) * 0.5
+			live.range = float(live.range) * 0.62
+			live.cap = float(live.cap) * 1.65
+			live.damage = float(live.damage) * 1.1
+			live.tracking = float(live.tracking) * 0.9
+		else:
+			live.load = "standard"
+	elif family == "bullet":
+		var belt := str(unit.get("belt", "iron"))
+		if belt != "tungsten" and belt != "incendiary":
+			belt = "iron"
+		live.load = belt
+	elif family == "missile":
+		var rack := str(unit.get("rack", "splinter"))
+		if rack != "breacher" and rack != "siege":
+			rack = "splinter"
+		live.load = rack
+		if rack == "breacher":
+			live.blast = float(live.get("blast", 40.0)) * 0.55
+			live.damage = float(live.damage) * 1.15
+		elif rack == "siege":
+			live.blast = float(live.get("blast", 40.0)) * 1.85
+			live.speed = float(live.get("speed", 210.0)) * 0.62
+			live.damage = float(live.damage) * 1.35
+	return live
+
+
+func _spend_round(unit: Dictionary, gun: Dictionary) -> bool:
+	var family := str(gun.get("family", ""))
+	if family != "bullet" and family != "missile":
+		return true
+	if str(gun.get("socket", "")) == "" and family == "bullet":
+		return true
+	if str(unit.get("controller", "")) != "human":
+		return true
+	HelmCombat.ensure_rounds(unit)
+	var key := str(gun.get("load", "iron"))
+	var have := int(unit.rounds.get(key, 0))
+	if have <= 0:
+		_gun_note(unit, "The %s belt is empty." % key.replace("_", " "))
+		return false
+	unit.rounds[key] = have - 1
+	return true
+
+
+func _gun_note(unit: Dictionary, line: String) -> void:
+	if str(unit.get("agent_id", "")) != str(player.get("agent_id", "")):
+		return
+	if float(quest_flags.get("gun_note", -20.0)) > float(time) - 3.0:
+		return
+	quest_flags.gun_note = float(time)
+	say(line)
+
+
+func _set_mount_cd(unit: Dictionary, key: String, delay: float) -> void:
+	if not unit.has("mount_cd"):
+		unit.mount_cd = {}
+	unit.mount_cd[key] = delay
+
+
+func _tick_mounts(unit: Dictionary, dt: float) -> void:
+	if not unit.has("mount_cd"):
+		return
+	var table: Dictionary = unit.mount_cd
+	for key in table.keys():
+		table[key] = maxf(0.0, float(table[key]) - dt)
+
+
+func _laser_strike(unit: Dictionary, gun: Dictionary, aimed: Dictionary) -> void:
+	var dir: Vector2 = aimed.dir
+	var reach := float(gun.get("range", 600.0))
+	var muzzle: Vector2 = unit.pos + dir * float(unit.get("muzzle", 28.0))
+	var mark := str(aimed.get("mark", ""))
+	var hit = HelmCombat.find_unit(self, mark) if mark != "" else null
+	var dist := reach
+	var end := muzzle + dir * reach
+	if hit != null:
+		dist = maxf(1.0, unit.pos.distance_to(hit.pos))
+		end = hit.pos
+	var optimal := float(gun.get("optimal", reach * 0.7))
+	var fall := maxf(1.0, float(gun.get("falloff", 200.0)))
+	var scale := 1.0
+	if dist > optimal:
+		scale = clampf(1.0 - (dist - optimal) / fall, 0.12, 1.0)
+	if hit != null and dist <= reach * 1.08:
+		damage_unit(hit, float(gun.damage) * scale, str(unit.agent_id), {
+			"family": "laser",
+			"load": str(gun.get("load", "standard")),
+			"signature": HelmCombat.effective_signature(self, hit),
+		})
+		_note_impact(end, "scorch", str(unit.team), dir)
+	beams.append({
+		"from": muzzle,
+		"to": end,
+		"age": 0.0,
+		"team": str(unit.team),
+		"hot": hit != null,
+	})
+	while beams.size() > 8:
+		beams.pop_front()
+
+
+func _launch_missile(unit: Dictionary, gun: Dictionary, aimed: Dictionary) -> void:
+	var dir: Vector2 = aimed.dir
+	var speed := float(gun.get("speed", 210.0))
+	if speed > 320.0:
+		speed = 220.0
+	var span := float(gun.get("range", 700.0)) / maxf(40.0, speed)
+	projectiles.append({
+		"family": "missile",
+		"load": str(gun.get("load", "splinter")),
+		"blast": float(gun.get("blast", 40.0)),
+		"steer": float(gun.get("steer", 1.0)),
+		"target": str(aimed.get("target", "")),
+		"pos": unit.pos + dir * (float(unit.get("muzzle", 28.0)) + 8.0),
+		"vel": dir * speed,
+		"damage": float(gun.damage),
+		"team": unit.team,
+		"ttl": maxf(float(gun.get("ttl", 2.0)), span * 1.15),
+		"agent_id": unit.agent_id,
+		"mark": "",
+	})
+
+
+func _shot_profile(shot: Dictionary, unit: Dictionary) -> Dictionary:
+	return {
+		"family": str(shot.get("family", "")),
+		"load": str(shot.get("load", "")),
+		"signature": HelmCombat.effective_signature(self, unit),
+	}
+
+
+func damage_unit(unit: Dictionary, amount: float, attacker: String, profile: Dictionary = {}) -> void:
 	_note_hit(attacker, unit)
 	if unit.has("state"):
 		if str(unit.state) == "docked" or str(unit.state) == "lost":
@@ -509,7 +705,7 @@ func damage_unit(unit: Dictionary, amount: float, attacker: String) -> void:
 		if belt > 0.0:
 			amount = maxf(0.35, amount * (1.0 - belt))
 	if unit.has("class_id"):
-		amount = HelmCombat.absorb(self, unit, amount)
+		amount = HelmCombat.absorb(self, unit, amount, profile)
 		if amount <= 0.0 and str(unit.get("hit_layer", "")) == "shield":
 			sfx("shield")
 	if str(unit.get("controller", "")) == "human" and amount > 0.0:
@@ -577,6 +773,7 @@ func to_dict() -> Dictionary:
 		"actors": actor_rows,
 		"craft": craft_rows,
 		"projectiles": shots,
+		"beams": _beams_out(),
 		"wrecks": wreck_rows,
 		"scans": scans.duplicate(true),
 		"deposits": deposits.duplicate(true),
@@ -630,6 +827,7 @@ func from_dict(data: Dictionary) -> void:
 		shot.pos = Serde.vec_in(shot.pos)
 		shot.vel = Serde.vec_in(shot.vel)
 		projectiles.append(shot)
+	_beams_in(data.get("beams", []))
 	impacts = []
 	wrecks = []
 	for row in data.get("wrecks", []):
@@ -747,6 +945,7 @@ func _step_player(dt: float, cmd: Dictionary) -> void:
 
 func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 	unit.fire_cd = maxf(0.0, float(unit.fire_cd) - dt)
+	_tick_mounts(unit, dt)
 	unit.hurt_cd = maxf(0.0, float(unit.hurt_cd) - dt)
 	unit.fight_cd = maxf(0.0, float(unit.get("fight_cd", 0.0)) - dt)
 	if not bool(unit.alive):
@@ -856,11 +1055,14 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 	unit.pos += unit.vel * dt
 	if bool(cmd.get("fire", false)):
 		try_fire(unit, stats.gun)
+		for mount in Fit.mounts(defs, unit):
+			try_fire(unit, mount)
 	_arm_grace(unit, dt)
 
 
 func _step_npc(actor: Dictionary, dt: float) -> void:
 	actor.fire_cd = maxf(0.0, float(actor.fire_cd) - dt)
+	_tick_mounts(actor, dt)
 	actor.hurt_cd = maxf(0.0, float(actor.hurt_cd) - dt)
 	if not bool(actor.alive):
 		return
@@ -912,9 +1114,21 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 			banner = "%s cutter: \"You are in the green. Stow the guns.\"" % _pdo_name()
 			banner_t = 0.0
 			sfx("hail")
+		var arc := float(gun.get("arc", 0.42))
+		var bearing := absf(wrapf((target.pos - actor.pos).angle() - actor.rot, -PI, PI))
+		if str(actor.get("class_id", "")) == "cutter":
+			var offset: Vector2 = actor.pos - target.pos
+			if offset.length() < 1.0:
+				offset = Vector2.RIGHT
+			var radial := offset.normalized()
+			var tangent := Vector2(-radial.y, radial.x)
+			dest = target.pos + radial * 280.0 + tangent * 90.0
+			aligned = bearing < maxf(0.5, arc)
 		if dist < float(gun.range) and aligned and not hailing:
 			try_fire(actor, gun)
-		if dist < 190.0:
+			for mount in Fit.mounts(defs, actor):
+				try_fire(actor, mount)
+		if str(actor.get("class_id", "")) != "cutter" and dist < 190.0:
 			dest = actor.pos - (target.pos - actor.pos).normalized() * 30.0
 	_fly_ship(actor, dest, dt, target != null)
 
@@ -946,16 +1160,132 @@ func _step_projectiles(dt: float) -> void:
 		if float(shot.ttl) <= 0.0:
 			_note_impact(shot.pos, "fade", str(shot.get("team", "")), Vector2(shot.vel))
 			continue
+		if str(shot.get("family", "")) == "missile":
+			if _flak_missile(shot):
+				_note_impact(shot.pos, "flak", str(shot.get("team", "")), Vector2(shot.vel))
+				continue
+			_steer_missile(shot, dt)
+		elif float(shot.get("drop", 0.0)) > 0.0:
+			var side := Vector2(-float(shot.vel.y), float(shot.vel.x))
+			if side.length() > 1.0:
+				shot.vel = Vector2(shot.vel) + side.normalized() * float(shot.drop) * dt
 		var origin := Vector2(shot.pos)
-		shot.pos += shot.vel * dt
+		shot.pos += Vector2(shot.vel) * dt
 		var hit = _projectile_hit(shot, origin)
 		if hit != null:
-			damage_unit(hit, float(shot.damage), str(shot.agent_id))
+			damage_unit(hit, float(shot.damage), str(shot.agent_id), _shot_profile(shot, hit))
+			if str(shot.get("family", "")) == "missile":
+				_blast_around(shot, hit)
 			sfx("hit")
 			_note_impact(shot.pos, "hit", str(shot.get("team", "")), Vector2(shot.vel))
 			continue
 		kept.append(shot)
 	projectiles = kept
+	_age_beams(dt)
+
+
+func _steer_missile(shot: Dictionary, dt: float) -> void:
+	var speed := Vector2(shot.vel).length()
+	if speed < 1.0:
+		speed = 210.0
+	var aim := Vector2(shot.vel).normalized() if speed > 1.0 else Vector2.RIGHT
+	var target = HelmCombat.find_unit(self, str(shot.get("target", "")))
+	if target != null and bool(target.get("alive", false)):
+		var want: Vector2 = target.pos - shot.pos
+		if want.length() > 1.0:
+			var diff := wrapf(want.angle() - aim.angle(), -PI, PI)
+			var step := float(shot.get("steer", 1.0)) * dt
+			aim = aim.rotated(clampf(diff, -step, step))
+	shot.vel = aim * speed
+
+
+func _flak_missile(shot: Dictionary) -> bool:
+	var pool: Array = []
+	if bool(player.get("alive", false)):
+		pool.append(player)
+	for mate in captains:
+		if bool(mate.get("alive", false)):
+			pool.append(mate)
+	for actor in actors:
+		if bool(actor.get("alive", false)):
+			pool.append(actor)
+	for unit in pool:
+		if str(unit.get("team", "")) == str(shot.get("team", "")):
+			continue
+		var pd: Dictionary = {}
+		for mount in Fit.mounts(defs, unit):
+			if str(mount.get("family", "")) == "pd":
+				pd = mount
+				break
+		if pd.is_empty():
+			continue
+		if unit.pos.distance_to(Vector2(shot.pos)) > float(pd.get("range", 220.0)):
+			continue
+		if float(unit.get("mount_cd", {}).get("point_defense", 0.0)) > 0.0:
+			continue
+		if not HelmCombat.can_fire(self, unit, pd):
+			continue
+		HelmCombat.spend_shot(self, unit, pd)
+		_set_mount_cd(unit, "point_defense", float(pd.get("cooldown", 0.22)))
+		return true
+	return false
+
+
+func _blast_around(shot: Dictionary, primary: Dictionary) -> void:
+	var blast := float(shot.get("blast", 0.0))
+	if blast <= 1.0:
+		return
+	var pool: Array = []
+	if bool(player.get("alive", false)):
+		pool.append(player)
+	for mate in captains:
+		if bool(mate.get("alive", false)):
+			pool.append(mate)
+	for actor in actors:
+		if bool(actor.get("alive", false)):
+			pool.append(actor)
+	for unit in pool:
+		if unit == primary:
+			continue
+		if _friendly_fire(shot, unit):
+			continue
+		var dist: float = unit.pos.distance_to(Vector2(shot.pos))
+		var reach := blast + float(Fit.stats(defs, unit).hit_radius)
+		if dist > reach:
+			continue
+		var fall := clampf(1.0 - dist / maxf(1.0, blast), 0.2, 0.55)
+		damage_unit(unit, float(shot.damage) * fall, str(shot.agent_id), _shot_profile(shot, unit))
+
+
+func _beams_out() -> Array:
+	var rows: Array = []
+	for beam in beams:
+		var row: Dictionary = beam.duplicate(true)
+		row.from = Serde.vec_out(beam.from)
+		row.to = Serde.vec_out(beam.to)
+		rows.append(row)
+	return rows
+
+
+func _beams_in(rows: Array) -> void:
+	beams = []
+	for row in rows:
+		if typeof(row) != TYPE_DICTIONARY:
+			continue
+		var beam: Dictionary = row.duplicate(true)
+		beam.from = Serde.vec_in(beam.from)
+		beam.to = Serde.vec_in(beam.to)
+		beams.append(beam)
+
+
+func _age_beams(dt: float) -> void:
+	var kept: Array = []
+	for row in beams:
+		var beam: Dictionary = row
+		beam.age = float(beam.age) + dt
+		if float(beam.age) < 0.32:
+			kept.append(beam)
+	beams = kept
 
 
 func _note_impact(at: Vector2, kind: String, team: String, dir: Vector2 = Vector2.ZERO) -> void:
@@ -1004,6 +1334,8 @@ func _projectile_hit(shot: Dictionary, origin: Vector2):
 		if _friendly_fire(shot, unit):
 			continue
 		var radius = float(Fit.stats(defs, unit).hit_radius)
+		if str(shot.get("family", "")) == "missile":
+			radius = maxf(radius, float(shot.get("blast", 0.0)) * 0.35)
 		if _shot_reaches(origin, dest, unit.pos, radius):
 			return unit
 	for item in craft:
@@ -1228,6 +1560,7 @@ func _step_pirate(actor: Dictionary, dt: float) -> void:
 	elif dist < 150.0 and dist > 1.0:
 		dest = actor.pos - offset.normalized() * 40.0
 	var aligned := absf(wrapf((aim - actor.pos).angle() - actor.rot, -PI, PI)) < 0.42
+	HelmCombat.set_lock(self, actor, str(quarry.get("agent_id", "")))
 	if dist < float(gun.range) and aligned:
 		try_fire(actor, gun)
 	if pressing and dist < 280.0:
@@ -1672,6 +2005,7 @@ func _arrive(system_id: String, gate_id: String) -> void:
 	defs.system = defs.systems[system_id]
 	seed_value = int(defs.system.seed)
 	projectiles = []
+	beams = []
 	impacts = []
 	wrecks = []
 	actors = []
@@ -1961,6 +2295,7 @@ func net_snapshot() -> Dictionary:
 		"captains": people,
 		"actors": actor_rows,
 		"projectiles": shots,
+		"beams": _beams_out(),
 		"craft": craft_rows,
 		"wrecks": wreck_rows,
 		"law_target": law_target,
@@ -2016,6 +2351,7 @@ func apply_snapshot(data: Dictionary) -> void:
 		shot.pos = Serde.vec_in(shot.pos)
 		shot.vel = Serde.vec_in(shot.vel)
 		projectiles.append(shot)
+	_beams_in(data.get("beams", []))
 	impacts = []
 	craft = []
 	for row in data.get("craft", []):

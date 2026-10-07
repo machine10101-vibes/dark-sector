@@ -524,6 +524,51 @@ static func buy_good(sim) -> String:
 	return ""
 
 
+const MOUNT_PRICE := 80
+const KIT := {
+	"gun_sponson": {"price": 80, "name": "Cheek Gun"},
+	"laser_bank": {"price": 80, "name": "Beam Bank"},
+	"missile_rack": {"price": 80, "name": "Missile Rack"},
+	"iron_belt": {"price": 12, "name": "Iron belt", "round": "iron", "count": 40},
+	"splinter_pack": {"price": 16, "name": "Splinter reload", "round": "splinter", "count": 8},
+}
+
+
+static func paid_mount(sim, module_id: String) -> bool:
+	var rows: Array = sim.quest_flags.get("paid_mounts", [])
+	return rows.has(module_id)
+
+
+static func buy_kit(sim, kit_id: String) -> String:
+	if not KIT.has(kit_id):
+		return "The yard does not sell that."
+	if not at_pad(sim):
+		return "Buy that at the Helion pad."
+	var row: Dictionary = KIT[kit_id]
+	var price := int(row.price)
+	if purse(sim) < price:
+		return "Purse is short of %d for the %s." % [price, str(row.name)]
+	if row.has("round"):
+		HelmCombat.ensure_rounds(sim.player)
+		var key := str(row.round)
+		sim.player.rounds[key] = int(sim.player.rounds.get(key, 0)) + int(row.count)
+		sim.quest_flags.purse = purse(sim) - price
+		sim.say("Bought %s for %d. Purse %d." % [str(row.name), price, purse(sim)])
+		return ""
+	if paid_mount(sim, kit_id):
+		return "The %s is already paid." % str(row.name)
+	var paid: Array = []
+	if sim.quest_flags.has("paid_mounts"):
+		paid = sim.quest_flags.paid_mounts.duplicate()
+	paid.append(kit_id)
+	sim.quest_flags.paid_mounts = paid
+	sim.quest_flags.purse = purse(sim) - price
+	if not sim.player.yard.has(kit_id):
+		sim.player.yard.append(kit_id)
+	sim.say("Paid %d for the %s. Bolt it on the ship." % [price, str(row.name)])
+	return ""
+
+
 static func sell_good(sim) -> String:
 	if not at_pad(sim):
 		return "The Helion market stands on the pad."

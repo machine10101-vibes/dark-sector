@@ -1034,6 +1034,7 @@ func _sync_props(sim) -> void:
 	_sync_pocket(sim)
 	_sync_nebula()
 	_sync_shots(sim)
+	_sync_beams(sim)
 	_sync_impacts(sim)
 	_sync_wrecks(sim)
 	_sync_meteors(sim)
@@ -1258,8 +1259,12 @@ func _sync_shots(sim) -> void:
 			aim = shot_vel.normalized()
 			speed = shot_vel.length()
 		var read := _fx_read(sim)
+		var missile := str(row.get("family", "")) == "missile"
 		var length := clampf(speed * 0.07, 18.0, 58.0) * read
 		var thick := lerpf(1.15, read, 0.4)
+		if missile:
+			length = 14.0 * read
+			thick = 2.4 * read
 		thick *= 0.9 + 0.1 * sin(float(sim.time) * 36.0 + float(index) * 1.7)
 		var along := Vector3(aim.x, 0.0, -aim.y)
 		var side := Vector3(aim.y, 0.0, aim.x)
@@ -1270,6 +1275,8 @@ func _sync_shots(sim) -> void:
 		bolt.basis = Basis(side, along, Vector3.UP)
 		bolt.position = chart(row.pos, 8.0) - along * length * 0.28
 		var tint := _shot_tint(str(row.get("team", "")))
+		if missile:
+			tint = Color("d9d3c6")
 		var flicker := 0.85 + 0.15 * sin(float(sim.time) * 48.0 + float(index))
 		_paint_bolt(bolt, tint, 1.9 * flicker, 1.0)
 		var head_node := bolt.get_node("Head") as MeshInstance3D
@@ -1294,6 +1301,66 @@ func _sync_shots(sim) -> void:
 			var bulb := 1.6 + thick * 0.85
 			glow_node.scale = Vector3(bulb * 0.55, bulb * 1.4, bulb * 0.55)
 			_paint_bolt(glow_node, tint.lightened(0.3), 1.6 * flicker, 0.28)
+		if missile:
+			for puff in 3:
+				var crumb := _prop("smoke%d_%d" % [index, puff])
+				if str(crumb.get_meta("built", "")) != "yes":
+					var puff_mesh := SphereMesh.new()
+					puff_mesh.radius = 1.0
+					puff_mesh.height = 2.0
+					puff_mesh.radial_segments = 8
+					puff_mesh.rings = 4
+					crumb.mesh = puff_mesh
+					crumb.set_meta("built", "yes")
+				var back := float(puff + 1) * 9.0 * read
+				crumb.position = bolt.position - along * back
+				crumb.scale = Vector3.ONE * (1.4 + float(puff) * 0.7) * read
+				_paint_bolt(crumb, Color("9a9388"), 0.35, 0.28 - float(puff) * 0.06)
+		index += 1
+
+
+func _sync_beams(sim) -> void:
+	var index := 0
+	for row in sim.beams:
+		var beam: Dictionary = row
+		var a2: Vector2 = beam.from
+		var b2: Vector2 = beam.to
+		var span := b2 - a2
+		var length := span.length()
+		if length < 2.0:
+			continue
+		var rod := _prop("lase%d" % index)
+		if str(rod.get_meta("built", "")) != "yes":
+			var cyl := CylinderMesh.new()
+			cyl.top_radius = 0.55
+			cyl.bottom_radius = 0.9
+			cyl.height = 1.0
+			cyl.radial_segments = 10
+			rod.mesh = cyl
+			var sheath := MeshInstance3D.new()
+			sheath.name = "Sheath"
+			var soft := CylinderMesh.new()
+			soft.top_radius = 1.8
+			soft.bottom_radius = 2.4
+			soft.height = 1.0
+			soft.radial_segments = 10
+			sheath.mesh = soft
+			rod.add_child(sheath)
+			rod.set_meta("built", "yes")
+		var along := Vector3(span.x, 0.0, -span.y).normalized()
+		var mid := (a2 + b2) * 0.5
+		rod.position = chart(mid, 6.0)
+		_aim_rod(rod, along)
+		(rod.mesh as CylinderMesh).height = length
+		var sheath_node := rod.get_node("Sheath") as MeshInstance3D
+		(sheath_node.mesh as CylinderMesh).height = length
+		var hot := bool(beam.get("hot", false))
+		var core := Color("fff1d2") if hot else Color("ffb15a")
+		var edge := Color("ff6a1a")
+		var age := float(beam.get("age", 0.0))
+		var fade := clampf(1.0 - age / 0.32, 0.0, 1.0)
+		_paint_bolt(rod, core, 3.2 * fade, 0.95)
+		_paint_bolt(sheath_node, edge, 1.1 * fade, 0.28 * fade)
 		index += 1
 
 
@@ -2411,9 +2478,10 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 	var class_id := str(ship.get("class_id", "vesper"))
 	var shapes: Array = Silhouette.shapes_of(sim.defs, ship.modules)
 	var layers: Array = Silhouette.layers_of(sim.defs, ship.modules)
-	var mesh_key := class_id + "|" + str(shapes) + "|" + str(layers.size())
+	var sockets: Array = _weapon_sockets(ship.get("modules", []))
+	var mesh_key := class_id + "|" + str(shapes) + "|" + str(layers.size()) + "|" + "|".join(sockets)
 	if str(holder.get_meta("mesh_key", "")) != mesh_key:
-		_fill_ship(holder, class_id, shapes, layers)
+		_fill_ship(holder, class_id, shapes, layers, sockets)
 		holder.set_meta("mesh_key", mesh_key)
 	var hull: Dictionary = sim.defs.ships[class_id]
 	var hp := clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0)
@@ -2578,7 +2646,12 @@ func _turret_fx(holder: Node3D, sim, ship: Dictionary, band: bool) -> void:
 		for side in [-1.0, 1.0]:
 			var barrel := _tube(mount, "TurretBarrel%s" % ("P" if side > 0.0 else "S"), 0.32, 6.4, Vector3(4.6, 1.1, side * 0.72), "x", Color("1a1e24"))
 			_dress_barrel(barrel, 6.4, 0.18, 0.4)
-	mount.visible = band
+	var fitted := false
+	for socket_name in ["heavy_turret", "gun_sponson", "stake_gun"]:
+		if holder.get_node_or_null(socket_name) != null:
+			fitted = true
+			break
+	mount.visible = band and not fitted
 	if not band:
 		return
 	var want := 0.0
@@ -2592,8 +2665,16 @@ func _turret_fx(holder: Node3D, sim, ship: Dictionary, band: bool) -> void:
 	if arc > 0.0 and arc < PI:
 		want = clampf(want, -arc, arc)
 	var step := 3.2 * _frame_delta
-	var now := float(mount.rotation.y)
-	mount.rotation.y = now + clampf(wrapf(want - now, -PI, PI), -step, step)
+	var aim_at := mount
+	if fitted:
+		for socket_name in ["heavy_turret", "gun_sponson", "stake_gun"]:
+			var sock := holder.get_node_or_null(socket_name) as Node3D
+			if sock != null:
+				aim_at = sock
+				break
+	var now := float(aim_at.rotation.y)
+	aim_at.rotation.y = now + clampf(wrapf(want - now, -PI, PI), -step, step)
+	_pose_sockets(holder, ship)
 
 
 ## Shield hits light a shell around the hull with a ring running out from the
@@ -2847,7 +2928,7 @@ func _ship_holder(key: String) -> Node3D:
 	return node
 
 
-func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array) -> void:
+func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array, sockets: Array = []) -> void:
 	for child in holder.get_children():
 		holder.remove_child(child)
 		child.free()
@@ -2915,7 +2996,227 @@ func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array) 
 		circle_i += 1
 	_add_bridge(holder, class_id, height, float(geom.tail))
 	_mount_roles(holder, class_id, shapes, height)
+	_mount_sockets(holder, class_id, sockets)
 	_dress_volume(holder, class_id, height)
+
+
+func _weapon_sockets(module_ids: Array) -> Array:
+	var known := ["gun_sponson", "heavy_turret", "laser_bank", "missile_rack", "point_defense", "stake_gun"]
+	var out: Array = []
+	for module_id in module_ids:
+		var name := str(module_id)
+		if known.has(name):
+			out.append(name)
+	return out
+
+
+func _socket_at(holder: Node3D, class_id: String, socket_name: String) -> Vector3:
+	var nose := float(holder.get_meta("nose", 40.0))
+	var crown := float(holder.get_meta("crown", 16.0))
+	if class_id == "anvil":
+		match socket_name:
+			"heavy_turret":
+				return Vector3(2.0, crown * 1.08, 0.0)
+			"missile_rack":
+				return Vector3(-6.0, crown * 0.28, 24.0)
+			"gun_sponson":
+				return Vector3(8.0, crown * 0.42, 20.0)
+			"laser_bank":
+				return Vector3(nose * 0.35, crown * 0.22, 0.0)
+			"point_defense":
+				return Vector3(-nose * 0.2, crown * 0.7, -16.0)
+			_:
+				return Vector3(0.0, crown * 0.4, 12.0)
+	if class_id == "kestrel":
+		match socket_name:
+			"gun_sponson":
+				return Vector3(6.0, crown * 0.48, 13.0)
+			"laser_bank":
+				return Vector3(nose * 0.78, crown * 0.08, 0.0)
+			"missile_rack":
+				return Vector3(-4.0, crown * 0.32, 0.0)
+			"heavy_turret":
+				return Vector3(0.0, crown * 1.02, 0.0)
+			"point_defense":
+				return Vector3(-14.0, crown * 0.4, 8.0)
+			_:
+				return Vector3(nose * 0.2, crown * 0.3, 8.0)
+	match socket_name:
+		"gun_sponson":
+			return Vector3(nose * 0.22, crown * 0.62, 7.4)
+		"laser_bank":
+			return Vector3(nose * 0.86, crown * 0.28, 0.0)
+		"missile_rack":
+			return Vector3(nose * 0.02, crown * 0.78, 0.0)
+		"heavy_turret":
+			return Vector3(-4.0, crown * 1.05, 0.0)
+		"point_defense":
+			return Vector3(-nose * 0.32, crown * 0.36, 5.5)
+		_:
+			return Vector3(nose * 0.12, crown * 0.3, -8.0)
+
+
+func _mount_sockets(holder: Node3D, class_id: String, sockets: Array) -> void:
+	for socket_name in sockets:
+		var name := str(socket_name)
+		var node := Node3D.new()
+		node.name = name
+		node.position = _socket_at(holder, class_id, name)
+		holder.add_child(node)
+		if name == "laser_bank":
+			_build_laser(node, class_id)
+		elif name == "missile_rack":
+			_build_rack(node, class_id)
+		elif name == "point_defense":
+			_build_turret(node, 0.55, false)
+		elif name == "heavy_turret":
+			_build_turret(node, 1.35, true)
+		else:
+			_build_turret(node, 0.85, false)
+
+
+func _build_turret(node: Node3D, scale: float, heavy: bool) -> void:
+	var metal := Color("6a6560")
+	var bore := Color("1a1e24")
+	var drum := MeshInstance3D.new()
+	drum.name = "Ring"
+	var base := CylinderMesh.new()
+	base.top_radius = 2.2 * scale
+	base.bottom_radius = 2.8 * scale
+	base.height = 1.4 * scale
+	base.radial_segments = 14
+	drum.mesh = base
+	drum.material_override = _hull_mat(metal)
+	node.add_child(drum)
+	var head := MeshInstance3D.new()
+	head.name = "Head"
+	var cap := BoxMesh.new()
+	cap.size = Vector3(3.8, 1.5, 3.2) * scale
+	head.mesh = cap
+	head.position = Vector3(0.6 * scale, 1.15 * scale, 0.0)
+	head.material_override = _hull_mat(metal.lightened(0.12))
+	node.add_child(head)
+	var length := 8.4 * scale if heavy else 6.2 * scale
+	for side in [-1.0, 1.0]:
+		var barrel := _tube(node, "Barrel%s" % ("P" if side > 0.0 else "S"), 0.38 * scale, length, Vector3(length * 0.55, 1.2 * scale, side * 0.85 * scale), "x", bore)
+		_dress_barrel(barrel, length, 0.16 * scale, 0.28 * scale)
+		var tip := MeshInstance3D.new()
+		tip.name = "Heat%s" % ("P" if side > 0.0 else "S")
+		var band := CylinderMesh.new()
+		band.top_radius = 0.5 * scale
+		band.bottom_radius = 0.5 * scale
+		band.height = 0.7 * scale
+		band.radial_segments = 10
+		tip.mesh = band
+		tip.position = Vector3(length * 0.42, 0.0, 0.0)
+		tip.material_override = _hull_mat(Color("7a3e2c"))
+		barrel.add_child(tip)
+	if heavy:
+		var feed := MeshInstance3D.new()
+		feed.name = "Belt"
+		var chute := BoxMesh.new()
+		chute.size = Vector3(1.2, 2.4, 0.6) * scale
+		feed.mesh = chute
+		feed.position = Vector3(-0.4 * scale, 0.4 * scale, 1.6 * scale)
+		feed.material_override = _hull_mat(Color("b08a3e"))
+		node.add_child(feed)
+	_nav_lamp(node, "Run", Vector3(-1.2 * scale, 1.6 * scale, 0.0), Color("9fd0c8"), 0.35 * scale)
+
+
+func _build_laser(node: Node3D, class_id: String) -> void:
+	var scale := 1.15 if class_id == "vesper" else 1.0
+	var housing := MeshInstance3D.new()
+	housing.name = "Housing"
+	var box := BoxMesh.new()
+	box.size = Vector3(9.0, 3.2, 4.6) * scale
+	housing.mesh = box
+	housing.material_override = _hull_mat(Color("2a2e33"))
+	node.add_child(housing)
+	_tube(node, "Coolant", 0.28 * scale, 8.0 * scale, Vector3(0.2 * scale, 1.8 * scale, 1.5 * scale), "x", Color("3d6f86"))
+	_tube(node, "CoolantS", 0.28 * scale, 8.0 * scale, Vector3(0.2 * scale, 1.8 * scale, -1.5 * scale), "x", Color("3d6f86"))
+	for side in [-1.0, 1.0]:
+		var lens := MeshInstance3D.new()
+		lens.name = "Lens%s" % ("P" if side > 0.0 else "S")
+		var pane := BoxMesh.new()
+		pane.size = Vector3(1.4, 2.4, 2.4) * scale
+		lens.mesh = pane
+		lens.position = Vector3(4.6 * scale, 0.2 * scale, side * 1.35 * scale)
+		node.add_child(lens)
+		_paint_bolt(lens, Color("ff7a1a"), 2.4, 0.92)
+	var iris := MeshInstance3D.new()
+	iris.name = "Iris"
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.7 * scale
+	ring.outer_radius = 1.15 * scale
+	ring.rings = 12
+	ring.ring_segments = 8
+	iris.mesh = ring
+	iris.position = Vector3(5.3 * scale, 0.2 * scale, 0.0)
+	iris.rotation.z = PI * 0.5
+	node.add_child(iris)
+	_paint_bolt(iris, Color("ffd2a1"), 1.6, 0.85)
+
+
+func _build_rack(node: Node3D, class_id: String) -> void:
+	var scale := 1.45 if class_id == "anvil" else 1.0
+	var bed := MeshInstance3D.new()
+	bed.name = "Bed"
+	var slab := BoxMesh.new()
+	slab.size = Vector3(11.0, 1.6, 6.4) * scale
+	bed.mesh = slab
+	bed.material_override = _hull_mat(Color("5c584f"))
+	node.add_child(bed)
+	var door := MeshInstance3D.new()
+	door.name = "Door"
+	var lid := BoxMesh.new()
+	lid.size = Vector3(0.45, 2.2, 5.6) * scale
+	door.mesh = lid
+	door.position = Vector3(5.4 * scale, 1.3 * scale, 0.0)
+	door.material_override = _hull_mat(Color("3a3834"))
+	node.add_child(door)
+	var i := 0
+	for row in [-1.0, 1.0]:
+		for col in [-1.0, 1.0]:
+			var tube := _tube(node, "Tube%d" % i, 0.72 * scale, 10.5 * scale, Vector3(0.4 * scale, 1.5 * scale + row * 0.95 * scale, col * 1.35 * scale), "x", Color("d5d0c6"))
+			var mouth := MeshInstance3D.new()
+			mouth.name = "Mouth"
+			var ring := TorusMesh.new()
+			ring.inner_radius = 0.42 * scale
+			ring.outer_radius = 0.78 * scale
+			ring.rings = 10
+			ring.ring_segments = 6
+			mouth.mesh = ring
+			mouth.position = Vector3(5.1 * scale, 0.0, 0.0)
+			mouth.rotation.z = PI * 0.5
+			mouth.material_override = _hull_mat(Color("2a2420"))
+			tube.add_child(mouth)
+			i += 1
+	var hose := _tube(node, "Hose", 0.22 * scale, 6.0 * scale, Vector3(-2.0 * scale, 0.2 * scale, 2.4 * scale), "x", Color("1c2024"))
+	hose.rotation.y = 0.4
+	_nav_lamp(node, "Seeker", Vector3(4.8 * scale, 2.4 * scale, 0.0), Color("9ecfff"), 0.28 * scale)
+
+
+func _pose_sockets(holder: Node3D, ship: Dictionary) -> void:
+	var bank := holder.get_node_or_null("laser_bank") as Node3D
+	if bank != null:
+		var iris := bank.get_node_or_null("Iris") as MeshInstance3D
+		if iris != null:
+			var open := bool(ship.get("lock_ok", false)) and float(ship.get("cap", 0.0)) > 8.0
+			var gap := 1.0 if open else 0.42
+			iris.scale = Vector3(gap, gap, 1.0)
+	var rack := holder.get_node_or_null("missile_rack") as Node3D
+	if rack != null:
+		var door := rack.get_node_or_null("Door") as MeshInstance3D
+		if door != null:
+			var cd := float(ship.get("mount_cd", {}).get("missile_rack", 0.0))
+			var shut := 0.0 if cd > 1.15 else 1.0
+			door.position.y = door.position.y * 0.0 + (1.3 if shut > 0.5 else 2.6)
+	var heavy := holder.get_node_or_null("heavy_turret") as Node3D
+	if heavy != null:
+		var belt := heavy.get_node_or_null("Belt") as MeshInstance3D
+		if belt != null:
+			var cd := float(ship.get("mount_cd", {}).get("heavy_turret", 0.0))
+			belt.visible = cd > 0.45
 
 
 func _signature_mount(class_id: String) -> Array:

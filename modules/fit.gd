@@ -140,6 +140,35 @@ static func lock_time(scan_res: float, target_signature: float) -> float:
 	return clampf(LOCK_K / maxf(1.0, scan_res * maxf(0.05, target_signature)), 0.6, 6.0)
 
 
+static func mounts(defs: Dictionary, ship: Dictionary) -> Array:
+	var rows: Array = []
+	for module_id in working_ids(ship, ship.get("modules", [])):
+		var mod: Dictionary = defs.modules.get(module_id, {})
+		if not mod.has("weapon"):
+			continue
+		var gun: Dictionary = (mod.weapon as Dictionary).duplicate(true)
+		gun.id = str(module_id)
+		gun.socket = str(gun.get("socket", module_id))
+		gun.name = str(mod.get("name", module_id))
+		rows.append(gun)
+	return rows
+
+
+static func weapon_line(gun: Dictionary) -> String:
+	var family := str(gun.get("family", ""))
+	if family == "missile":
+		var speed := float(gun.get("speed", 210.0))
+		if speed > 320.0:
+			speed = 220.0
+		var flight := float(gun.get("range", 400.0)) / maxf(40.0, speed)
+		return "flight %.1f s, blast %.0f" % [flight, float(gun.get("blast", 40.0))]
+	if family == "pd":
+		return "flak %d m" % int(gun.get("range", 200.0))
+	if family == "laser":
+		return "optimal %d m, cap %.0f" % [int(gun.get("optimal", 400.0)), float(gun.get("cap", 0.0))]
+	return "optimal %d m" % int(gun.get("optimal", 400.0))
+
+
 static func signature_word(signature: float) -> String:
 	if signature < 0.45:
 		return "quiet"
@@ -187,6 +216,9 @@ static func try_install(defs: Dictionary, ship: Dictionary, module_id: String) -
 		extra += " Reactor overloaded."
 	if after.crew_over:
 		extra += " Crew budget is past the names on the board."
+	if mod.has("weapon"):
+		var piece: Dictionary = mod.weapon
+		extra += " Signature %.2f → %.2f. %s." % [before.signature, after.signature, weapon_line(piece)]
 	var reason := "%s bolted. Mass %.0f → %.0f. Yaw %.0f°/s → %.0f°/s. Thrust-to-weight %.2f → %.2f.%s" % [
 		mod.name, before.mass, after.mass, before.yaw_deg, after.yaw_deg, before.ttw, after.ttw, extra
 	]
