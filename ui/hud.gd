@@ -26,6 +26,11 @@ var hangar_sig := ""
 var bay_preview: Control
 var bay_detail: Label
 var bay_buttons: Dictionary = {}
+var ship_list: VBoxContainer
+var ship_list_scroll: ScrollContainer
+var ship_query := ""
+var ship_family := ""
+var ship_filters: Dictionary = {}
 var dossier_timer := 0.0
 var hold_button: Button
 var chat_line: LineEdit
@@ -679,7 +684,7 @@ func _build_actions() -> void:
 	_action("Lock", func() -> void: Game.tap("lock_cycle", 1))
 	_action("Stop", func() -> void: Game.tap("order", {"kind": "stop"}))
 	_group("SHIP")
-	_action("Bay", func() -> void: _toggle("bay"))
+	_action("Ship", func() -> void: _toggle("bay"))
 	_action("Weld", _repair)
 	_action("Hangar", func() -> void: _toggle("hangar"))
 	_action("Harvest", func() -> void: _launch("harvest_drone"))
@@ -915,7 +920,7 @@ func _toggle(kind: String) -> void:
 		market_box.visible = kind == "market"
 	match kind:
 		"bay":
-			panel_title.text = "Ship bay"
+			panel_title.text = "Ship"
 			_build_bay()
 		"hangar":
 			panel_title.text = "Hangar"
@@ -1023,6 +1028,28 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 	if panel_scroll != null:
 		panel_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 		panel_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	if panel_kind == "bay" and not compact:
+		# Fitting glass sits in the open helm: right of the status card, above
+		# the tank capsule, and clear of Hold and Stick.
+		var left := 360.0
+		if status_card != null and status_card.size.x > 40.0:
+			left = status_card.position.x + status_card.size.x + 12.0
+		var right := screen.x - 16.0
+		if hold_button != null and hold_button.visible:
+			right = minf(right, hold_button.position.x - 8.0)
+		if stick_button != null and stick_button.visible:
+			right = minf(right, stick_button.position.x - 8.0)
+		var top := 16.0
+		var bottom := screen.y - 160.0
+		if overlay != null:
+			var cap: Control = overlay.get("capsule")
+			if cap != null and cap.visible:
+				bottom = minf(bottom, cap.position.y - 8.0)
+		panel.custom_minimum_size = Vector2(0, 0)
+		panel.position = Vector2(left, top)
+		panel.size = Vector2(maxf(480.0, right - left), maxf(280.0, bottom - top))
+		_fit_ship_pane()
+		return
 	var side := 460.0
 	if compact:
 		panel.custom_minimum_size = Vector2(0, 0)
@@ -1249,39 +1276,210 @@ func _build_bay() -> void:
 	for child in bay_box.get_children():
 		child.queue_free()
 	bay_buttons = {}
-	var sim = Game.sim
-	bay_preview = BayPreview.new()
-	bay_preview.custom_minimum_size = Vector2(400, 170)
-	bay_box.add_child(bay_preview)
-	bay_detail = ThemeKit.label("", 14)
-	bay_box.add_child(bay_detail)
+	ship_filters = {}
+	ship_list = null
+	ship_list_scroll = null
+	var wide := not compact
+	var split: BoxContainer = HBoxContainer.new() if wide else VBoxContainer.new()
+	split.add_theme_constant_override("separation", 12)
+	split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	bay_box.add_child(split)
+	var browser := VBoxContainer.new()
+	browser.add_theme_constant_override("separation", 6)
+	browser.custom_minimum_size = Vector2(300, 0)
+	browser.size_flags_horizontal = Control.SIZE_EXPAND_FILL if not wide else Control.SIZE_SHRINK_BEGIN
+	browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	split.add_child(browser)
+	var search := LineEdit.new()
+	search.placeholder_text = "Search the yard"
+	search.text = ship_query
+	search.custom_minimum_size = Vector2(0, 36)
+	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_style_search(search)
+	search.text_changed.connect(func(next: String) -> void:
+		ship_query = next
+		_refill_ship_list()
+	)
+	browser.add_child(search)
+	var filters := GridContainer.new()
+	filters.columns = 3
+	filters.add_theme_constant_override("h_separation", 4)
+	filters.add_theme_constant_override("v_separation", 4)
+	browser.add_child(filters)
+	for pair in [["", "All"], ["hull", "Hull"], ["offense", "Guns"], ["hangar", "Hangar"], ["farm", "Farm"], ["claim", "Claim"]]:
+		var family := str(pair[0])
+		var chip := ThemeKit.button(str(pair[1]))
+		chip.custom_minimum_size = Vector2(72, 44)
+		chip.pressed.connect(_pick_family.bind(family))
+		filters.add_child(chip)
+		ship_filters[family] = chip
+		ThemeKit.paint(chip, family == ship_family)
 	var crew_lines: Array = []
-	for person in sim.player.crew:
+	for person in Game.sim.player.crew:
 		crew_lines.append("%s — %s" % [person.name, person.skill])
 	var crew_text := "No names on the board."
 	if not crew_lines.is_empty():
-		crew_text = "\n".join(crew_lines)
-	bay_box.add_child(ThemeKit.label("Crew\n" + crew_text, 14, Color("cbb892")))
-	bay_box.add_child(ThemeKit.label("Overload is allowed. A heavy keel just turns and accelerates worse. Pull a part off while nobody is shooting.", 13, Color("8d826c")))
-	var order: Array = ["cargo_blister", "gun_sponson", "sensor_mast", "farm_cassette", "armor_belt"]
-	for module_id in order:
+		crew_text = ", ".join(crew_lines)
+	var crew := ThemeKit.label(crew_text, 12, Color("9fd0c8"))
+	crew.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	browser.add_child(crew)
+	ship_list = VBoxContainer.new()
+	ship_list.add_theme_constant_override("separation", 4)
+	ship_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if wide:
+		ship_list_scroll = ScrollContainer.new()
+		ship_list_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		ship_list_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		ship_list_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		ship_list_scroll.custom_minimum_size = Vector2(250, 220)
+		ship_list_scroll.add_child(ship_list)
+		browser.add_child(ship_list_scroll)
+	else:
+		browser.add_child(ship_list)
+	bay_preview = ShipGlass.new()
+	bay_preview.custom_minimum_size = Vector2(280, 320) if wide else Vector2(0, 200)
+	bay_preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bay_preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	if wide:
+		split.add_child(bay_preview)
+	else:
+		split.add_child(bay_preview)
+		split.move_child(bay_preview, 0)
+	bay_detail = ThemeKit.label("", 13, Color("cbb892"))
+	bay_box.add_child(bay_detail)
+	_refill_ship_list()
+	_fit_ship_pane()
+
+
+func _fit_ship_pane() -> void:
+	if panel_kind != "bay" or bay_box == null or panel == null:
+		return
+	var inner_h := panel.size.y - 86.0
+	bay_box.custom_minimum_size = Vector2(0, maxf(200.0, inner_h))
+	if ship_list_scroll != null:
+		ship_list_scroll.custom_minimum_size = Vector2(250, maxf(160.0, inner_h - 150.0))
+
+
+func _pick_family(family: String) -> void:
+	ship_family = family
+	for key in ship_filters.keys():
+		var chip: Button = ship_filters[key]
+		if is_instance_valid(chip):
+			ThemeKit.paint(chip, str(key) == family)
+	_refill_ship_list()
+
+
+func _family_word(family: String) -> String:
+	match family:
+		"hull":
+			return "Hull"
+		"offense":
+			return "Guns"
+		"hangar":
+			return "Hangar"
+		"farm":
+			return "Farm"
+		"claim":
+			return "Claim"
+		_:
+			return family.capitalize()
+
+
+func _refill_ship_list() -> void:
+	if ship_list == null or Game.sim == null:
+		return
+	for child in ship_list.get_children():
+		child.queue_free()
+	bay_buttons = {}
+	var sim = Game.sim
+	var query := ship_query.strip_edges().to_lower()
+	var groups: Dictionary = {}
+	var ids: Array = []
+	for module_id in sim.player.yard:
+		ids.append(str(module_id))
+	for module_id in sim.player.modules:
+		var key := str(module_id)
+		if not ids.has(key):
+			ids.append(key)
+	for module_id in ids:
 		if not sim.defs.modules.has(module_id):
 			continue
-		if not sim.player.yard.has(module_id) and not sim.player.modules.has(module_id):
-			continue
 		var mod: Dictionary = sim.defs.modules[module_id]
-		var block := VBoxContainer.new()
-		block.add_theme_constant_override("separation", 2)
-		var title := "%s    %s    %s" % [mod.name, mod.size, mod.family]
-		block.add_child(ThemeKit.label(title, 15))
-		var meta := ThemeKit.label("", 13, Color("8d826c"))
-		block.add_child(meta)
-		var button := ThemeKit.button("Bolt on")
-		button.pressed.connect(_on_bolt.bind(str(module_id)))
-		block.add_child(button)
-		bay_box.add_child(block)
-		bay_buttons[str(module_id)] = {"meta": meta, "button": button}
+		var family := str(mod.get("family", ""))
+		if ship_family != "" and family != ship_family:
+			continue
+		var blob := ("%s %s" % [str(mod.get("name", "")), str(mod.get("blurb", ""))]).to_lower()
+		if query != "" and blob.find(query) < 0:
+			continue
+		if not groups.has(family):
+			groups[family] = []
+		var bucket: Array = groups[family]
+		bucket.append(module_id)
+	var order: Array = ["hull", "offense", "hangar", "farm", "claim"]
+	var any := false
+	for family in order:
+		if not groups.has(family):
+			continue
+		any = true
+		ship_list.add_child(ThemeKit.label(_family_word(str(family)), 12, Color("8a7344")))
+		var members: Array = groups[family]
+		members.sort()
+		for module_id in members:
+			_add_ship_row(str(module_id))
+	for family in groups.keys():
+		if order.has(str(family)):
+			continue
+		any = true
+		ship_list.add_child(ThemeKit.label(_family_word(str(family)), 12, Color("8a7344")))
+		var extra: Array = groups[family]
+		extra.sort()
+		for module_id in extra:
+			_add_ship_row(str(module_id))
+	if not any:
+		ship_list.add_child(ThemeKit.label("Nothing in the yard matches.", 13, Color("8d826c")))
 	_refresh_bay_text()
+
+
+func _add_ship_row(module_id: String) -> void:
+	var mod: Dictionary = Game.sim.defs.modules[module_id]
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var name := ThemeKit.label(str(mod.name), 14)
+	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name.autowrap_mode = TextServer.AUTOWRAP_OFF
+	name.clip_text = true
+	row.add_child(name)
+	var meta := ThemeKit.label("", 12, Color("8d826c"))
+	meta.autowrap_mode = TextServer.AUTOWRAP_OFF
+	meta.custom_minimum_size = Vector2(72, 0)
+	row.add_child(meta)
+	var button := ThemeKit.button("Bolt on")
+	button.custom_minimum_size = Vector2(92, 44)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	button.pressed.connect(_on_bolt.bind(module_id))
+	row.add_child(button)
+	ship_list.add_child(row)
+	bay_buttons[module_id] = {"meta": meta, "button": button}
+
+
+func _style_search(line: LineEdit) -> void:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.012, 0.025, 0.034, 0.94)
+	box.border_color = Color(0.45, 0.68, 0.76, 0.5)
+	box.set_border_width_all(1)
+	box.set_corner_radius_all(6)
+	box.content_margin_left = 8
+	box.content_margin_right = 8
+	box.content_margin_top = 4
+	box.content_margin_bottom = 4
+	var focus := box.duplicate() as StyleBoxFlat
+	focus.border_color = Color(0.62, 0.92, 0.96, 0.92)
+	line.add_theme_stylebox_override("normal", box)
+	line.add_theme_stylebox_override("focus", focus)
+	line.add_theme_color_override("font_color", Color("d7eef2"))
+	line.add_theme_color_override("font_placeholder_color", Color("7a8e96"))
+	line.add_theme_font_size_override("font_size", 14)
 
 
 func _refresh_bay_text() -> void:
@@ -1289,7 +1487,6 @@ func _refresh_bay_text() -> void:
 		return
 	var sim = Game.sim
 	var stats := Fit.stats(sim.defs, sim.player)
-	var com: Vector2 = stats.com
 	var keel := "Keel within tolerance."
 	if stats.keel_warn:
 		keel = "Keel complaining."
@@ -1302,14 +1499,12 @@ func _refresh_bay_text() -> void:
 	var shut := ""
 	if sim.in_combat():
 		shut = "\nBay shut. Break off before you touch a bolt."
-	bay_detail.text = "Mass %.0f t. Center of mass %.1f m off the spine. Thrust-to-weight %.2f. Yaw %.0f°/s.\nHold %d. Sensor %.0f. Signature %s. %s %s %s%s" % [
+	bay_detail.text = "Mass %.0f t. Yaw %.0f°/s. Hold %d. Sensor %.0f. %s. %s %s %s%s" % [
 		stats.mass,
-		com.length(),
-		stats.ttw,
 		stats.yaw_deg,
 		stats.cargo_cap,
 		stats.sensor,
-		stats.signature_word,
+		stats.signature_word.capitalize(),
 		power_line,
 		crew_line,
 		keel,
@@ -1328,17 +1523,11 @@ func _refresh_bay_text() -> void:
 		if not is_instance_valid(meta) or not is_instance_valid(button):
 			continue
 		var mod: Dictionary = sim.defs.modules[module_id]
-		var foot: Dictionary = mod.get("footprint", {})
-		var favored := _favored_line(sim, mod)
 		var mounted: bool = bool(sim.player.modules.has(module_id))
-		var state := "In the yard."
+		var state := "Yard"
 		if mounted:
-			state = "On the keel."
-		meta.text = "Mass %.0f. Power %.0f. Crew %.0f. Footprint %.0f×%.0f. %s %s" % [
-			float(mod.mass), float(mod.power), float(mod.crew),
-			float(foot.get("w", 0)), float(foot.get("h", 0)),
-			favored, state,
-		]
+			state = "Fitted"
+		meta.text = "%s  %s" % [str(mod.size), state]
 		button.disabled = fighting
 		if mounted:
 			button.text = "Pull off"
@@ -1346,14 +1535,6 @@ func _refresh_bay_text() -> void:
 			button.text = "Bolt on"
 	if bay_preview != null and is_instance_valid(bay_preview):
 		bay_preview.queue_redraw()
-
-
-func _favored_line(sim, mod: Dictionary) -> String:
-	var favored := str(mod.get("favored", ""))
-	if favored == "":
-		return "Any keel."
-	var hull: Dictionary = sim.defs.ships.get(favored, {})
-	return "%s-favored." % str(hull.get("callsign", favored))
 
 
 func _on_bolt(module_id: String) -> void:
@@ -1628,31 +1809,85 @@ func _menu() -> void:
 		main.show_menu()
 
 
-class BayPreview extends Control:
+class ShipGlass extends Control:
 	func _draw() -> void:
-		if Game.sim == null:
+		if Game.sim == null or size.x < 8.0 or size.y < 8.0:
 			return
 		var ship: Dictionary = Game.sim.player
-		var hull: Dictionary = Game.sim.defs.ships[ship.class_id]
+		var hull: Dictionary = Game.sim.defs.ships[str(ship.class_id)]
+		var accent := Color(str(hull.accent))
+		var body := Color(str(hull.color))
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.012, 0.022, 0.03, 0.55))
+		var center := size * 0.5
+		var radius := minf(size.x, size.y) * 0.38
+		var grid := Color(0.45, 0.72, 0.84, 0.14)
+		var step := radius * 0.34
+		for i in range(-3, 4):
+			var offset := float(i) * step
+			draw_line(center + Vector2(offset, -radius), center + Vector2(offset, radius), grid, 1.0)
+			draw_line(center + Vector2(-radius, offset), center + Vector2(radius, offset), grid, 1.0)
+		draw_arc(center, radius, 0.0, TAU, 72, Color(0.62, 0.84, 0.92, 0.7), 1.6, true)
+		draw_arc(center, radius * 1.08, 0.0, TAU, 72, Color(0.35, 0.55, 0.64, 0.35), 1.0, true)
 		var shapes: Array = Silhouette.shapes_of(Game.sim.defs, ship.modules)
 		var layers: Array = Silhouette.layers_of(Game.sim.defs, ship.modules)
-		var origin := size * 0.5
-		var scale := 1.2
-		Silhouette.draw(
-			self,
-			origin,
-			-PI * 0.5,
-			str(ship.class_id),
-			shapes,
-			scale,
-			Color(str(hull.color)),
-			Color(str(hull.accent)),
-			clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0),
-			false,
-			layers
-		)
-		var stats := Fit.stats(Game.sim.defs, ship)
-		var com: Vector2 = stats.com
-		var mark: Vector2 = Transform2D(-PI * 0.5, origin) * (com * scale)
-		draw_line(mark + Vector2(-5, 0), mark + Vector2(5, 0), Color("e7b15a"), 1.3, true)
-		draw_line(mark + Vector2(0, -5), mark + Vector2(0, 5), Color("e7b15a"), 1.3, true)
+		var geom := Silhouette.parts(str(ship.class_id), shapes, layers)
+		var bounds := _hull_bounds(geom)
+		var span := maxf(bounds.size.x, bounds.size.y)
+		var plan_scale := (radius * 1.55) / maxf(span, 1.0)
+		var mid := bounds.position + bounds.size * 0.5
+		var rot := -PI * 0.5
+		var origin := center - mid.rotated(rot) * plan_scale
+		var hp := clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0)
+		Silhouette.draw(self, origin, rot, str(ship.class_id), shapes, plan_scale, body, accent, hp, false, layers)
+		_draw_marks(center, radius * 0.96, hull, ship, accent)
+		var title := str(hull.callsign)
+		var font := ThemeDB.fallback_font
+		var title_size := 18
+		var title_w := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size).x
+		draw_string(font, Vector2(center.x - title_w * 0.5, 22.0), title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size, Color("e6d7bf"))
+
+	func _draw_marks(center: Vector2, radius: float, hull: Dictionary, ship: Dictionary, accent: Color) -> void:
+		var marks: Array = []
+		var used: Dictionary = {}
+		for module_id in ship.modules:
+			var mod: Dictionary = Game.sim.defs.modules.get(str(module_id), {})
+			marks.append(true)
+			used[str(mod.get("slot", ""))] = true
+		for slot_name in hull.get("slots", []):
+			if used.has(str(slot_name)):
+				continue
+			marks.append(false)
+		var count := mini(marks.size(), 12)
+		if count == 0:
+			return
+		for i in count:
+			var ang := -PI * 0.82 + (PI * 1.4) * (float(i) + 0.5) / float(count)
+			var at := center + Vector2(cos(ang), sin(ang)) * radius
+			var box := Rect2(at - Vector2(6, 6), Vector2(12, 12))
+			if bool(marks[i]):
+				draw_rect(box, accent)
+			else:
+				draw_rect(box, Color(0.03, 0.06, 0.08, 0.9))
+				draw_rect(box, Color(0.55, 0.78, 0.86, 0.75), false, 1.2)
+
+	func _hull_bounds(geom: Dictionary) -> Rect2:
+		var lo := Vector2(1.0e9, 1.0e9)
+		var hi := Vector2(-1.0e9, -1.0e9)
+		var lists: Array = [geom.hull]
+		lists.append_array(geom.extras)
+		for poly in lists:
+			for point in poly:
+				lo.x = minf(lo.x, point.x)
+				lo.y = minf(lo.y, point.y)
+				hi.x = maxf(hi.x, point.x)
+				hi.y = maxf(hi.y, point.y)
+		for circle in geom.circles:
+			var c := Vector2(float(circle.x), float(circle.y))
+			var rad := float(circle.r)
+			lo.x = minf(lo.x, c.x - rad)
+			lo.y = minf(lo.y, c.y - rad)
+			hi.x = maxf(hi.x, c.x + rad)
+			hi.y = maxf(hi.y, c.y + rad)
+		if hi.x < lo.x:
+			return Rect2(Vector2.ZERO, Vector2(40, 16))
+		return Rect2(lo, hi - lo)
