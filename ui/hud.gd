@@ -1935,23 +1935,196 @@ func _menu() -> void:
 
 
 class ShipGlass extends Control:
+	var _view: SubViewportContainer
+	var _vp: SubViewport
+	var _cam: Camera3D
+	var _stage: Node3D
+	var _pivot: Node3D
+	var _holder: Node3D
+	var _chrome: Control
+	var _mesh_key := ""
+	var _extent := Vector3(40, 16, 16)
+
+	class _GlassChrome extends Control:
+		func _draw() -> void:
+			var host := get_parent()
+			if host != null and host.has_method("_paint_chrome"):
+				host.call("_paint_chrome", self)
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_view = SubViewportContainer.new()
+		_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_view.stretch = true
+		var mask := Shader.new()
+		mask.code = "shader_type canvas_item;\nvoid fragment() {\n\tCOLOR = texture(TEXTURE, UV);\n\tvec2 p = UV - vec2(0.5);\n\tif (dot(p, p) > 0.25) {\n\t\tCOLOR.a = 0.0;\n\t}\n}\n"
+		var plate := ShaderMaterial.new()
+		plate.shader = mask
+		_view.material = plate
+		add_child(_view)
+		_vp = SubViewport.new()
+		_vp.name = "HullView"
+		_vp.own_world_3d = true
+		_vp.world_3d = World3D.new()
+		_vp.transparent_bg = false
+		_vp.handle_input_locally = false
+		_vp.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+		_vp.size = Vector2i(360, 360)
+		_view.add_child(_vp)
+		var env := WorldEnvironment.new()
+		var world := Environment.new()
+		world.background_mode = Environment.BG_COLOR
+		world.background_color = Color(0.012, 0.02, 0.03)
+		world.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		world.ambient_light_color = Color(0.62, 0.68, 0.78)
+		world.ambient_light_energy = 0.55
+		world.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		world.glow_enabled = true
+		world.glow_intensity = 0.35
+		world.glow_strength = 0.65
+		world.glow_bloom = 0.1
+		env.environment = world
+		_vp.add_child(env)
+		var sun := DirectionalLight3D.new()
+		sun.light_color = Color("fff0d4")
+		sun.light_energy = 2.4
+		sun.shadow_enabled = false
+		sun.rotation_degrees = Vector3(-48.0, -32.0, 0.0)
+		_vp.add_child(sun)
+		var fill := DirectionalLight3D.new()
+		fill.light_color = Color(0.7, 0.78, 0.92)
+		fill.light_energy = 0.9
+		fill.shadow_enabled = false
+		fill.rotation_degrees = Vector3(18.0, 148.0, 0.0)
+		_vp.add_child(fill)
+		_cam = Camera3D.new()
+		_cam.name = "HullEye"
+		_cam.current = true
+		_cam.fov = 28.0
+		_cam.near = 0.2
+		_cam.far = 4000.0
+		_vp.add_child(_cam)
+		_stage = preload("res://world/stage3d.gd").new()
+		_stage.name = "HullStage"
+		_stage.set("portrait_mode", true)
+		_vp.add_child(_stage)
+		_stage.set_process(false)
+		_pivot = Node3D.new()
+		_pivot.name = "Turn"
+		_stage.add_child(_pivot)
+		_holder = Node3D.new()
+		_holder.name = "Hull"
+		_pivot.add_child(_holder)
+		_chrome = _GlassChrome.new()
+		_chrome.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_chrome.set_anchors_preset(Control.PRESET_FULL_RECT)
+		add_child(_chrome)
+		resized.connect(_place_view)
+
 	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.008, 0.016, 0.022, 0.72))
+
+	func _process(_delta: float) -> void:
+		if not is_visible_in_tree() or Game.sim == null:
+			return
+		if size.x > 8.0 and _view != null and _view.size.x < 8.0:
+			_place_view()
+		_sync_hull()
+		if _pivot != null:
+			_pivot.rotation.y = 0.62 + sin(Time.get_ticks_msec() * 0.0004) * 0.16
+		if _stage != null and _holder != null and _stage.has_method("_pulse_lamps"):
+			_stage.call("_pulse_lamps", _holder)
+
+	func _place_view() -> void:
+		var radius := minf(size.x, size.y) * 0.34
+		var center := size * 0.5 + Vector2(0, 8)
+		var span := maxf(radius * 2.0, 8.0)
+		_view.position = center - Vector2(span, span) * 0.5
+		_view.size = Vector2(span, span)
+		_frame_camera()
+
+	func _sync_hull() -> void:
+		if _stage == null or Game.sim == null:
+			return
+		var ship: Dictionary = Game.sim.player
+		var class_id := str(ship.get("class_id", "vesper"))
+		var modules: Array = ship.get("modules", [])
+		var key := class_id
+		for module_id in modules:
+			key += "|" + str(module_id)
+		if key == _mesh_key and _holder.get_child_count() > 0:
+			return
+		_mesh_key = key
+		var shapes: Array = Silhouette.shapes_of(Game.sim.defs, modules)
+		var layers: Array = Silhouette.layers_of(Game.sim.defs, modules)
+		var sockets: Array = _stage.call("_weapon_sockets", modules)
+		_stage.call("_fill_ship", _holder, class_id, shapes, layers, sockets)
+		if Game.sim.defs.ships.has(class_id):
+			var hull: Dictionary = Game.sim.defs.ships[class_id]
+			var body := Color(str(hull.get("color", "#888888")))
+			var accent := Color(str(hull.get("accent", "#d7e6c8")))
+			for child in _holder.get_children():
+				var part := str(child.name)
+				if not bool(_stage.call("_hull_part", part)):
+					continue
+				var tone := body
+				if part == "Deck":
+					tone = body.lightened(0.16)
+				elif part.begins_with("Trim"):
+					tone = accent
+				_stage.call("_paint_hull", child, tone, accent)
+		var bounds := _local_bounds(_holder)
+		_extent = bounds.size
+		_holder.position = -bounds.get_center()
+		_frame_camera()
+		if _chrome != null:
+			_chrome.queue_redraw()
+
+	func _frame_camera() -> void:
+		if _cam == null:
+			return
+		var frame := _view.size if _view != null and _view.size.x > 8.0 else Vector2(360, 360)
+		var aspect := maxf(frame.x / maxf(frame.y, 1.0), 0.4)
+		var v_fov := deg_to_rad(_cam.fov)
+		var h_fov := 2.0 * atan(tan(v_fov * 0.5) * aspect)
+		var half_w := maxf(_extent.x, _extent.z) * 0.42
+		var half_h := maxf(_extent.y, 8.0) * 0.48
+		var dist := maxf(half_w / maxf(tan(h_fov * 0.5), 0.05), half_h / maxf(tan(v_fov * 0.5), 0.05))
+		dist *= 1.2
+		var eye := Vector3(-0.42, 0.36, 0.95).normalized() * dist
+		_cam.position = eye
+		_cam.look_at(Vector3.ZERO, Vector3.UP)
+
+	func _local_bounds(holder: Node3D) -> AABB:
+		var acc := AABB()
+		var any := false
+		var into := holder.global_transform.affine_inverse()
+		for node in holder.find_children("*", "MeshInstance3D", true, false):
+			var mesh_node := node as MeshInstance3D
+			if mesh_node.mesh == null:
+				continue
+			var part := str(mesh_node.name)
+			if part.begins_with("Exhaust") or part == "Wake":
+				continue
+			var box: AABB = into * mesh_node.global_transform * mesh_node.get_aabb()
+			if any:
+				acc = acc.merge(box)
+			else:
+				acc = box
+				any = true
+		if not any:
+			return AABB(Vector3(-20, -8, -8), Vector3(40, 16, 16))
+		return acc
+
+	func _paint_chrome(ci: CanvasItem) -> void:
 		if Game.sim == null or size.x < 8.0 or size.y < 8.0:
 			return
 		var ship: Dictionary = Game.sim.player
 		var hull: Dictionary = Game.sim.defs.ships[str(ship.class_id)]
 		var accent := Color(str(hull.accent))
-		var body := Color(str(hull.color))
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.008, 0.016, 0.022, 0.72))
 		var center := size * 0.5 + Vector2(0, 8)
 		var radius := minf(size.x, size.y) * 0.34
-		_corner_brackets(accent)
-		draw_circle(center, radius * 1.05, Color(0.03, 0.07, 0.09, 0.45))
-		var grid := Color(0.45, 0.72, 0.84, 0.1)
-		var step := radius * 0.28
-		for i in range(-4, 5):
-			_grid_chord(center, radius * 0.92, true, float(i) * step, grid)
-			_grid_chord(center, radius * 0.92, false, float(i) * step, grid)
+		_corner_brackets(ci, accent)
 		var tick := Color(0.62, 0.78, 0.84, 0.55)
 		var tick_long := Color(0.86, 0.78, 0.52, 0.9)
 		for i in 72:
@@ -1959,42 +2132,23 @@ class ShipGlass extends Control:
 			var dir := Vector2(cos(ang), sin(ang))
 			var major := i % 6 == 0
 			var inner := radius - (9.0 if major else 4.0)
-			draw_line(center + dir * inner, center + dir * radius, tick_long if major else tick, 1.4 if major else 1.0)
-		draw_arc(center, radius, 0.0, TAU, 96, Color(0.72, 0.86, 0.92, 0.85), 1.6, true)
-		draw_arc(center, radius * 0.78, 0.0, TAU, 80, Color(0.45, 0.64, 0.72, 0.35), 1.0, true)
-		draw_arc(center, radius * 0.46, 0.0, TAU, 64, Color(0.45, 0.64, 0.72, 0.22), 1.0, true)
-		var gap := radius * 0.16
-		var arm := radius * 0.42
-		var hair := Color(0.7, 0.84, 0.9, 0.28)
-		draw_line(center + Vector2(gap, 0), center + Vector2(arm, 0), hair, 1.0)
-		draw_line(center + Vector2(-arm, 0), center + Vector2(-gap, 0), hair, 1.0)
-		draw_line(center + Vector2(0, gap), center + Vector2(0, arm), hair, 1.0)
-		draw_line(center + Vector2(0, -arm), center + Vector2(0, -gap), hair, 1.0)
-		var shapes: Array = Silhouette.shapes_of(Game.sim.defs, ship.modules)
-		var layers: Array = Silhouette.layers_of(Game.sim.defs, ship.modules)
-		var geom := Silhouette.parts(str(ship.class_id), shapes, layers)
-		var bounds := _hull_bounds(geom)
-		var span := maxf(bounds.size.x, bounds.size.y)
-		var plan_scale := (radius * 1.35) / maxf(span, 1.0)
-		var mid := bounds.position + bounds.size * 0.5
-		var rot := -PI * 0.5
-		var origin := center - mid.rotated(rot) * plan_scale
-		var hp := clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0)
-		Silhouette.draw(self, origin, rot, str(ship.class_id), shapes, plan_scale, body, accent, hp, false, layers)
-		_draw_marks(center, radius * 1.12, hull, ship, accent)
+			ci.draw_line(center + dir * inner, center + dir * radius, tick_long if major else tick, 1.4 if major else 1.0)
+		ci.draw_arc(center, radius, 0.0, TAU, 96, Color(0.72, 0.86, 0.92, 0.85), 1.6, true)
+		ci.draw_arc(center, radius * 0.78, 0.0, TAU, 80, Color(0.45, 0.64, 0.72, 0.35), 1.0, true)
+		_draw_marks(ci, center, radius * 1.12, hull, ship, accent)
 		var font := ThemeDB.fallback_font
 		if font == null:
 			return
 		var title := str(hull.callsign)
 		var title_size := 18
 		var title_w := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size).x
-		draw_string(font, Vector2(center.x - title_w * 0.5, 22.0), title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size, Color("f4ecdf"))
+		ci.draw_string(font, Vector2(center.x - title_w * 0.5, 22.0), title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size, Color("f4ecdf"))
 		var rule := minf(title_w, size.x * 0.36)
-		draw_line(Vector2(center.x - rule * 0.5, 28.0), Vector2(center.x + rule * 0.5, 28.0), Color(accent.r, accent.g, accent.b, 0.9), 1.2)
+		ci.draw_line(Vector2(center.x - rule * 0.5, 28.0), Vector2(center.x + rule * 0.5, 28.0), Color(accent.r, accent.g, accent.b, 0.9), 1.2)
 		var klass := str(hull.get("class_name", ""))
 		var class_size := 12
 		var class_w := font.get_string_size(klass, HORIZONTAL_ALIGNMENT_LEFT, -1, class_size).x
-		draw_string(font, Vector2(center.x - class_w * 0.5, 44.0), klass, HORIZONTAL_ALIGNMENT_LEFT, -1, class_size, Color("c4a46a"))
+		ci.draw_string(font, Vector2(center.x - class_w * 0.5, 44.0), klass, HORIZONTAL_ALIGNMENT_LEFT, -1, class_size, Color("c4a46a"))
 		var mounts := Fit.mounts(Game.sim.defs, ship)
 		var words: PackedStringArray = PackedStringArray()
 		for mount in mounts:
@@ -2005,9 +2159,9 @@ class ShipGlass extends Control:
 		if fit_w > size.x - 16.0 and words.size() > 1:
 			fit_line = "%d mounts fitted" % words.size()
 			fit_w = font.get_string_size(fit_line, HORIZONTAL_ALIGNMENT_LEFT, -1, fit_size).x
-		draw_string(font, Vector2(center.x - fit_w * 0.5, size.y - 14.0), fit_line, HORIZONTAL_ALIGNMENT_LEFT, -1, fit_size, Color("d7e6ea"))
+		ci.draw_string(font, Vector2(center.x - fit_w * 0.5, size.y - 14.0), fit_line, HORIZONTAL_ALIGNMENT_LEFT, -1, fit_size, Color("d7e6ea"))
 
-	func _corner_brackets(accent: Color) -> void:
+	func _corner_brackets(ci: CanvasItem, accent: Color) -> void:
 		var col := Color(accent.r, accent.g, accent.b, 0.85)
 		var arm := 14.0
 		var inset := 8.0
@@ -2021,20 +2175,10 @@ class ShipGlass extends Control:
 		for i in corners.size():
 			var at: Vector2 = corners[i]
 			var sign: Vector2 = signs[i]
-			draw_line(at, at + Vector2(sign.x * arm, 0), col, 1.3)
-			draw_line(at, at + Vector2(0, sign.y * arm), col, 1.3)
+			ci.draw_line(at, at + Vector2(sign.x * arm, 0), col, 1.3)
+			ci.draw_line(at, at + Vector2(0, sign.y * arm), col, 1.3)
 
-	func _grid_chord(center: Vector2, radius: float, horizontal: bool, offset: float, color: Color) -> void:
-		var reach_sq := radius * radius - offset * offset
-		if reach_sq <= 1.0:
-			return
-		var reach := sqrt(reach_sq)
-		if horizontal:
-			draw_line(center + Vector2(-reach, offset), center + Vector2(reach, offset), color, 1.0)
-		else:
-			draw_line(center + Vector2(offset, -reach), center + Vector2(offset, reach), color, 1.0)
-
-	func _draw_marks(center: Vector2, radius: float, hull: Dictionary, ship: Dictionary, accent: Color) -> void:
+	func _draw_marks(ci: CanvasItem, center: Vector2, radius: float, hull: Dictionary, ship: Dictionary, accent: Color) -> void:
 		var marks: Array = []
 		var used: Dictionary = {}
 		for module_id in ship.modules:
@@ -2052,9 +2196,9 @@ class ShipGlass extends Control:
 			var ang := -PI * 0.5 + TAU * (float(i) + 0.5) / float(count)
 			var at := center + Vector2(cos(ang), sin(ang)) * radius
 			var mod: Dictionary = marks[i]
-			_mark_glyph(at, not mod.is_empty(), str(mod.get("family", "")), accent)
+			_mark_glyph(ci, at, not mod.is_empty(), str(mod.get("family", "")), accent)
 
-	func _mark_glyph(at: Vector2, fitted: bool, family: String, accent: Color) -> void:
+	func _mark_glyph(ci: CanvasItem, at: Vector2, fitted: bool, family: String, accent: Color) -> void:
 		var s := 5.5
 		if not fitted:
 			var open := PackedVector2Array([
@@ -2064,43 +2208,29 @@ class ShipGlass extends Control:
 				at + Vector2(-s, 0),
 				at + Vector2(0, -s),
 			])
-			draw_polyline(open, Color(0.62, 0.8, 0.88, 0.8), 1.2, true)
+			ci.draw_polyline(open, Color(0.62, 0.8, 0.88, 0.8), 1.2, true)
 			return
 		var ink := accent
 		ink.a = 0.95
 		match family:
 			"offense":
-				draw_colored_polygon(PackedVector2Array([
+				ci.draw_colored_polygon(PackedVector2Array([
 					at + Vector2(0, -s),
 					at + Vector2(s * 0.85, s * 0.7),
 					at + Vector2(-s * 0.85, s * 0.7),
 				]), ink)
 			"hangar":
-				draw_arc(at, s * 0.75, 0.0, TAU, 16, ink, 1.6, true)
-				draw_circle(at, 1.6, ink)
+				ci.draw_arc(at, s * 0.75, 0.0, TAU, 16, ink, 1.6, true)
+				ci.draw_circle(at, 1.6, ink)
 			"farm":
-				draw_line(at + Vector2(-s, 0), at + Vector2(s, 0), ink, 1.6)
-				draw_line(at + Vector2(0, -s), at + Vector2(0, s), ink, 1.6)
+				ci.draw_line(at + Vector2(-s, 0), at + Vector2(s, 0), ink, 1.6)
+				ci.draw_line(at + Vector2(0, -s), at + Vector2(0, s), ink, 1.6)
 			"claim":
-				draw_rect(Rect2(at - Vector2(s * 0.55, s * 0.55), Vector2(s * 1.1, s * 1.1)), ink, false, 1.5)
+				ci.draw_rect(Rect2(at - Vector2(s * 0.55, s * 0.55), Vector2(s * 1.1, s * 1.1)), ink, false, 1.5)
 			_:
-				draw_colored_polygon(PackedVector2Array([
+				ci.draw_colored_polygon(PackedVector2Array([
 					at + Vector2(0, -s),
 					at + Vector2(s, 0),
 					at + Vector2(0, s),
 					at + Vector2(-s, 0),
 				]), ink)
-
-	func _hull_bounds(geom: Dictionary) -> Rect2:
-		var lo := Vector2(1.0e9, 1.0e9)
-		var hi := Vector2(-1.0e9, -1.0e9)
-		var lists: Array = [geom.hull]
-		for poly in lists:
-			for point in poly:
-				lo.x = minf(lo.x, point.x)
-				lo.y = minf(lo.y, point.y)
-				hi.x = maxf(hi.x, point.x)
-				hi.y = maxf(hi.y, point.y)
-		if hi.x < lo.x:
-			return Rect2(Vector2.ZERO, Vector2(40, 16))
-		return Rect2(lo, hi - lo)
