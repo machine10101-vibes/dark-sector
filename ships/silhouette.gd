@@ -132,19 +132,11 @@ static func extent(geom: Dictionary) -> Vector2:
 
 
 static func plate_grid(class_id: String) -> Vector2i:
-	match class_id:
-		"vesper":
-			return Vector2i(14, 2)
-		"anvil":
-			return Vector2i(7, 4)
-		"kestrel":
-			return Vector2i(9, 3)
-		"skiff":
-			return Vector2i(5, 2)
-		"cutter":
-			return Vector2i(8, 3)
-		_:
-			return Vector2i(6, 2)
+	var cuts := _length_cuts(class_id)
+	var rows := _row_count(class_id)
+	if cuts.size() < 2 or rows < 1:
+		return Vector2i(6, 2)
+	return Vector2i(cuts.size() - 1, rows)
 
 
 static func build_of(class_id: String) -> String:
@@ -235,6 +227,7 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 	var paint := _paint(class_id, body, accent)
 	var worn := clampf((1.0 - hp_ratio) * 0.82, 0.0, 0.82)
 	_draw_shadow(ci, xf, hull, scale)
+	_draw_thickness(ci, xf, hull, scale, paint)
 	_draw_skin(ci, xf, hull, scale, paint)
 	_draw_panels(ci, xf, hull, scale, plate_grid(class_id), class_id, paint, worn, true)
 	_draw_rim(ci, xf, hull, scale)
@@ -268,6 +261,7 @@ static func draw_boat(ci: CanvasItem, origin: Vector2, rot: float, kind: String,
 	var xf := Transform2D(rot, origin)
 	var paint := _paint(kind, body, body.lightened(0.35))
 	_draw_shadow(ci, xf, hull, scale)
+	_draw_thickness(ci, xf, hull, scale, paint)
 	_draw_skin(ci, xf, hull, scale, paint)
 	_draw_panels(ci, xf, hull, scale, boat_grid(kind), kind, paint, 0.0, false)
 	_draw_rim(ci, xf, hull, scale)
@@ -325,6 +319,49 @@ static func _bounds_x(hull: PackedVector2Array) -> Vector2:
 	return Vector2(lo, hi)
 
 
+static func _length_cuts(class_id: String) -> PackedFloat32Array:
+	match class_id:
+		"vesper":
+			return PackedFloat32Array([0.0, 0.05, 0.11, 0.19, 0.3, 0.44, 0.58, 0.72, 0.84, 0.93, 1.0])
+		"anvil":
+			return PackedFloat32Array([0.0, 0.08, 0.16, 0.28, 0.42, 0.55, 0.68, 0.8, 0.9, 1.0])
+		"kestrel":
+			return PackedFloat32Array([0.0, 0.09, 0.18, 0.3, 0.44, 0.58, 0.72, 0.86, 1.0])
+		"skiff":
+			return PackedFloat32Array([0.0, 0.16, 0.34, 0.5, 0.72, 1.0])
+		"cutter":
+			return PackedFloat32Array([0.0, 0.08, 0.18, 0.32, 0.46, 0.6, 0.74, 0.88, 1.0])
+		_:
+			return PackedFloat32Array()
+
+
+static func _row_count(class_id: String) -> int:
+	match class_id:
+		"vesper":
+			return 2
+		"anvil":
+			return 5
+		"kestrel":
+			return 3
+		"skiff":
+			return 2
+		"cutter":
+			return 3
+		_:
+			return 0
+
+
+static func _draw_thickness(ci: CanvasItem, xf: Transform2D, hull: PackedVector2Array, scale: float, paint: Dictionary) -> void:
+	var pts := PackedVector2Array()
+	var off := Vector2(1.8, 2.5) * scale
+	for point in hull:
+		pts.append(xf * (point * scale) + off)
+	if _area(pts) < 3.0:
+		return
+	var steel: Color = paint.steel
+	ci.draw_colored_polygon(pts, steel.darkened(0.62))
+
+
 static func _draw_shadow(ci: CanvasItem, xf: Transform2D, hull: PackedVector2Array, scale: float) -> void:
 	var pts := PackedVector2Array()
 	var off := Vector2(2.1, 2.8) * scale
@@ -346,11 +383,17 @@ static func _draw_panels(ci: CanvasItem, xf: Transform2D, hull: PackedVector2Arr
 	var bounds := _bounds_x(hull)
 	if bounds.y - bounds.x < 1.0:
 		return
-	var cols := maxi(grid.x, 1)
-	var rows := maxi(grid.y, 1)
+	var cuts := _length_cuts(salt)
+	var use_cuts := cuts.size() >= 2
+	var cols := cuts.size() - 1 if use_cuts else maxi(grid.x, 1)
+	var rows := _row_count(salt)
+	if rows < 1:
+		rows = maxi(grid.y, 1)
 	for col in cols:
-		var x0 := lerpf(bounds.x, bounds.y, float(col) / float(cols))
-		var x1 := lerpf(bounds.x, bounds.y, float(col + 1) / float(cols))
+		var t0 := float(cuts[col]) if use_cuts else float(col) / float(cols)
+		var t1 := float(cuts[col + 1]) if use_cuts else float(col + 1) / float(cols)
+		var x0 := lerpf(bounds.x, bounds.y, t0)
+		var x1 := lerpf(bounds.x, bounds.y, t1)
 		var left: Array = section_spans(hull, lerpf(x0, x1, 0.2))
 		var right: Array = section_spans(hull, lerpf(x0, x1, 0.8))
 		if left.size() == right.size():
@@ -368,11 +411,16 @@ static func _draw_span_rows(ci: CanvasItem, xf: Transform2D, scale: float, x0: f
 	for row in rows:
 		var band_l := _band(span_l, row, rows, gap)
 		var band_r := _band(span_r, row, rows, gap)
+		if salt == "skiff" and col == 1 and row == 0:
+			for rib in 3:
+				var y := lerpf(band_l.x, band_l.y, float(rib) / 2.0)
+				ci.draw_line(xf * (Vector2(x0 + 0.4, y) * scale), xf * (Vector2(x1 - 0.4, y) * scale), Color("6a5c4e"), 0.9, true)
+			continue
 		var along := float(col) / float(maxi(cols - 1, 1))
 		var albedo := _plate_color(paint, salt, col, row + span_i * 3, along, worn, row, rows)
-		var stagger := (x1 - x0) * 0.22
-		var xa := x0 + 0.22 + (stagger if row % 2 == 1 else 0.0)
-		var xb := x1 - 0.22 - (0.0 if row % 2 == 1 else stagger)
+		var stagger := (x1 - x0) * 0.18
+		var xa := x0 + 0.2 + (stagger if row % 2 == 1 else 0.0)
+		var xb := x1 - 0.2 - (0.0 if row % 2 == 1 else stagger)
 		var quad := PackedVector2Array([
 			Vector2(xa, band_l.x),
 			Vector2(xb, band_r.x),
@@ -416,8 +464,12 @@ static func _plate_color(paint: Dictionary, salt: String, col: int, row: int, al
 	albedo = albedo.lerp(paint.paint.darkened(0.25), spread * grit)
 	if col % 2 == 0:
 		albedo = albedo.lightened(0.04)
-	if rows > 2 and (row_i == 0 or row_i == rows - 1):
-		albedo = albedo.darkened(0.08)
+	if salt == "kestrel" and (row_i == 0 or row_i == rows - 1):
+		albedo = albedo.darkened(0.2)
+	elif rows > 2 and (row_i == 0 or row_i == rows - 1):
+		albedo = albedo.darkened(0.1)
+	if salt == "kestrel" and along < 0.22:
+		albedo = albedo.lerp(Color("6a4038"), 0.28)
 	albedo = albedo.lerp(Color("e7eef2"), along * 0.12)
 	albedo = albedo.lerp(Color("2a2420"), (1.0 - along) * 0.16)
 	if salt == "skiff" and col == 2 and row == 0:
@@ -448,7 +500,13 @@ static func _paint_plate(ci: CanvasItem, xf: Transform2D, scale: float, ship_pts
 		for point in pts:
 			sheen.append(point.lerp(center - light * 3.0, 0.62))
 		if _area(sheen) > 2.0:
-			ci.draw_colored_polygon(sheen, Color(1, 1, 1, 0.1))
+			ci.draw_colored_polygon(sheen, Color(1, 1, 1, 0.16))
+	if pts.size() >= 4 and _area(pts) > 16.0:
+		for step in 3:
+			var u := 0.28 + float(step) * 0.2
+			var brush_a: Vector2 = pts[0].lerp(pts[3], u)
+			var brush_b: Vector2 = pts[1].lerp(pts[2], u)
+			ci.draw_line(brush_a, brush_b, Color(1, 1, 1, 0.08), 0.4, true)
 	if _area(pts) > 26.0:
 		var far := mini(2, pts.size() - 1)
 		var scratch_a: Vector2 = pts[0].lerp(pts[far], 0.38)
@@ -468,6 +526,12 @@ static func _paint_plate(ci: CanvasItem, xf: Transform2D, scale: float, ship_pts
 			ci.draw_line(a, b, albedo.lightened(0.62).lerp(Color.WHITE, 0.28), maxf(0.9, scale * 0.75), true)
 		elif lit < -0.12:
 			ci.draw_line(a, b, Color(0.02, 0.025, 0.03, 0.9), maxf(0.8, scale * 0.6), true)
+		if rivets and a.distance_to(b) > 8.0:
+			var bead := clampf(sqrt(_area(pts)) * 0.055, 0.4, 0.9)
+			for t in [0.33, 0.66]:
+				var stud: Vector2 = a.lerp(b, t)
+				ci.draw_circle(stud, bead, albedo.darkened(0.42))
+				ci.draw_circle(stud - light * bead * 0.35, bead * 0.35, albedo.lightened(0.3))
 	if rivets:
 		var rr := clampf(sqrt(_area(pts)) * 0.075, 0.5, 1.25)
 		for i in count:
@@ -509,49 +573,92 @@ static func _draw_rim(ci: CanvasItem, xf: Transform2D, hull: PackedVector2Array,
 
 
 static func _draw_features(ci: CanvasItem, xf: Transform2D, hull: PackedVector2Array, scale: float, class_id: String, paint: Dictionary, accent: Color) -> void:
+	var steel: Color = paint.steel
 	match class_id:
 		"vesper":
-			_ellipse(ci, xf, scale, Vector2(26, 0), 8.2, 2.15, Color("102026"))
-			_ellipse(ci, xf, scale, Vector2(27.2, 0), 6.4, 1.45, paint.glass)
-			var glass := xf * (Vector2(28.4, -0.2) * scale)
-			ci.draw_circle(glass + Vector2(-1.4, -1.2) * scale, 1.15 * scale, Color(1, 1, 1, 0.72))
-			_paint_plate(ci, xf, scale, PackedVector2Array([Vector2(6, 1.15), Vector2(16, 1.15), Vector2(16, 2.5), Vector2(6, 2.5)]), Color("1a2226"), false, false)
-			_paint_plate(ci, xf, scale, PackedVector2Array([Vector2(6, -2.5), Vector2(16, -2.5), Vector2(16, -1.15), Vector2(6, -1.15)]), Color("1a2226"), false, false)
-			ci.draw_line(xf * (Vector2(-18, 0) * scale), xf * (Vector2(42, 0) * scale), paint.steel.lightened(0.2), 0.9, true)
+			_raise(ci, xf, scale, PackedVector2Array([Vector2(-12, -0.55), Vector2(34, -0.55), Vector2(34, 0.55), Vector2(-12, 0.55)]), steel.lightened(0.12), 1.3)
+			for fin in 3:
+				var fx := -2.0 + float(fin) * 7.0
+				_raise(ci, xf, scale, PackedVector2Array([Vector2(fx, 3.4), Vector2(fx + 4.2, 3.6), Vector2(fx + 3.4, 8.2), Vector2(fx + 0.4, 8.0)]), steel.lerp(Color("7aa0b0"), 0.45), 0.8)
+				_raise(ci, xf, scale, PackedVector2Array([Vector2(fx, -3.4), Vector2(fx + 4.2, -3.6), Vector2(fx + 3.4, -8.2), Vector2(fx + 0.4, -8.0)]), steel.lerp(Color("7aa0b0"), 0.45), 0.8)
+			_raise(ci, xf, scale, PackedVector2Array([Vector2(18, -2.3), Vector2(34, -2.3), Vector2(34, 2.3), Vector2(18, 2.3)]), Color("141c20"), 1.6)
+			_ellipse(ci, xf, scale, Vector2(26, 0), 7.4, 1.7, paint.glass)
+			ci.draw_line(xf * (Vector2(22, 0) * scale), xf * (Vector2(31, 0) * scale), Color("061014"), 0.8, true)
+			ci.draw_line(xf * (Vector2(26, -1.3) * scale), xf * (Vector2(26, 1.3) * scale), Color("061014"), 0.7, true)
+			var glass := xf * (Vector2(28.2, -0.35) * scale)
+			ci.draw_circle(glass + Vector2(-1.3, -1.1) * scale, 1.2 * scale, Color(1, 1, 1, 0.78))
+			_paint_plate(ci, xf, scale, PackedVector2Array([Vector2(4, 1.2), Vector2(15, 1.2), Vector2(15, 2.6), Vector2(4, 2.6)]), Color("12181c"), false, false)
+			_paint_plate(ci, xf, scale, PackedVector2Array([Vector2(4, -2.6), Vector2(15, -2.6), Vector2(15, -1.2), Vector2(4, -1.2)]), Color("12181c"), false, false)
+			ci.draw_line(xf * (Vector2(46, 0) * scale), xf * (Vector2(52, 0) * scale), steel, 0.8, true)
+			ci.draw_circle(xf * (Vector2(52.6, 0) * scale), 0.7 * scale, Color("e7eef2"))
 		"anvil":
 			for col in 3:
 				for row in 2:
-					var x := -6.0 + float(col) * 8.0
-					var y := -6.0 + float(row) * 12.0
-					_paint_plate(ci, xf, scale, PackedVector2Array([
-						Vector2(x, y), Vector2(x + 5.5, y), Vector2(x + 5.5, y + 7.5), Vector2(x, y + 7.5)
-					]), paint.steel.darkened(0.18), true, false)
-			ci.draw_line(xf * (Vector2(8, 0) * scale), xf * (Vector2(8, 16) * scale), Color("5c564c"), 1.4, true)
-			ci.draw_circle(xf * (Vector2(8, 17) * scale), 1.6 * scale, Color("cbb892"))
+					var x := -8.0 + float(col) * 9.0
+					var y := -10.0 + float(row) * 14.0
+					ci.draw_colored_polygon(_transform_poly(xf, PackedVector2Array([
+						Vector2(x - 0.4, y - 0.4), Vector2(x + 6.4, y - 0.4), Vector2(x + 6.4, y + 8.6), Vector2(x - 0.4, y + 8.6)
+					]), scale), Color(0.02, 0.015, 0.01, 0.72))
+					_raise(ci, xf, scale, PackedVector2Array([
+						Vector2(x, y), Vector2(x + 5.6, y), Vector2(x + 5.6, y + 7.6), Vector2(x, y + 7.6)
+					]), steel.darkened(0.12), 1.1)
+			for lane in 4:
+				var yy := -8.0 + float(lane) * 5.0
+				ci.draw_line(xf * (Vector2(-16, yy) * scale), xf * (Vector2(14, yy) * scale), Color(1, 1, 1, 0.14), 0.6, true)
+			_raise(ci, xf, scale, PackedVector2Array([Vector2(6, -1.1), Vector2(10, -1.1), Vector2(10, 1.1), Vector2(6, 1.1)]), Color("5c564c"), 1.8)
+			ci.draw_line(xf * (Vector2(8, 1) * scale), xf * (Vector2(8, 18) * scale), Color("3a342c"), 1.8, true)
+			ci.draw_line(xf * (Vector2(8, 16) * scale), xf * (Vector2(16, 16) * scale), Color("6a6258"), 1.3, true)
+			ci.draw_circle(xf * (Vector2(16, 16) * scale), 1.1 * scale, Color("cbb892"))
+			for streak in 3:
+				var sx := -18.0 + float(streak) * 10.0
+				ci.draw_line(xf * (Vector2(sx, 6) * scale), xf * (Vector2(sx + 1.2, 18) * scale), Color("7a4030"), 1.1, true)
 		"kestrel":
-			ci.draw_line(xf * (Vector2(20, 2.2) * scale), xf * (Vector2(40, 0) * scale), paint.steel.lightened(0.25), 1.3, true)
-			ci.draw_line(xf * (Vector2(20, -2.2) * scale), xf * (Vector2(40, 0) * scale), paint.steel.lightened(0.25), 1.3, true)
-			var lamp := xf * (Vector2(16, 0) * scale)
-			ci.draw_circle(lamp, 2.1 * scale, Color("1a100e"))
-			ci.draw_circle(lamp, 1.25 * scale, accent)
-			ci.draw_circle(lamp + Vector2(-0.4, -0.45) * scale, 0.4 * scale, Color(1, 0.95, 0.85, 0.8))
+			_raise(ci, xf, scale, PackedVector2Array([Vector2(22, -1.6), Vector2(42, 0), Vector2(22, 1.6)]), steel.lightened(0.08), 1.5)
+			_raise(ci, xf, scale, PackedVector2Array([Vector2(-4, -1.3), Vector2(18, -1.3), Vector2(18, 1.3), Vector2(-4, 1.3)]), steel.darkened(0.05), 1.2)
+			var lamp := xf * (Vector2(14, 0) * scale)
+			ci.draw_circle(lamp, 2.8 * scale, Color("120c0a"))
+			ci.draw_arc(lamp, 2.8 * scale, 0.0, TAU, 12, steel.lightened(0.2), 1.1, true)
+			ci.draw_circle(lamp, 1.55 * scale, accent)
+			ci.draw_circle(lamp + Vector2(-0.45, -0.5) * scale, 0.5 * scale, Color(1, 0.95, 0.85, 0.85))
+			ci.draw_line(xf * (Vector2(-2, 8) * scale), xf * (Vector2(8, 12) * scale), Color("1a1c1e"), 1.6, true)
+			ci.draw_line(xf * (Vector2(-2, -8) * scale), xf * (Vector2(8, -12) * scale), Color("1a1c1e"), 1.6, true)
 		"skiff":
 			var weld := PackedVector2Array()
 			for i in 7:
-				var x := -8.0 + float(i) * 3.2
-				var y := 1.2 if i % 2 == 0 else -0.6
+				var x := -6.0 + float(i) * 2.8
+				var y := 0.8 if i % 2 == 0 else -0.4
 				weld.append(xf * (Vector2(x, y) * scale))
-			ci.draw_polyline(weld, Color("d7c4a4"), 1.15, true)
+			ci.draw_polyline(weld, Color("e6d2b0"), 1.25, true)
+			for bolt in 4:
+				var bx := -4.0 + float(bolt) * 3.5
+				var stud := xf * (Vector2(bx, 2.4) * scale)
+				ci.draw_circle(stud, 1.15 * scale, Color("4a4038"))
+				ci.draw_circle(stud, 0.45 * scale, Color("c4b8a4"))
+			ci.draw_line(xf * (Vector2(12, 0) * scale), xf * (Vector2(18, 3.2) * scale), Color("5a4038"), 1.2, true)
 		"cutter":
-			_ellipse(ci, xf, scale, Vector2(4, 0), 3.4, 3.4, Color("1c2420"))
-			_ellipse(ci, xf, scale, Vector2(4.3, -0.2), 2.3, 2.3, paint.glass.darkened(0.1))
-			ci.draw_circle(xf * (Vector2(4.8, -0.6) * scale), 0.7 * scale, Color(1, 1, 1, 0.65))
+			_raise(ci, xf, scale, PackedVector2Array([Vector2(0.5, -3.6), Vector2(8.2, -3.6), Vector2(8.2, 3.6), Vector2(0.5, 3.6)]), steel.darkened(0.08), 1.4)
+			_ellipse(ci, xf, scale, Vector2(4.2, 0), 2.5, 2.5, paint.glass.darkened(0.15))
+			ci.draw_arc(xf * (Vector2(4.2, 0) * scale), 2.5 * scale, 0.0, TAU, 14, steel.lightened(0.15), 0.9, true)
+			ci.draw_circle(xf * (Vector2(4.7, -0.7) * scale), 0.65 * scale, Color(1, 1, 1, 0.7))
+			_raise(ci, xf, scale, PackedVector2Array([Vector2(16, -1.4), Vector2(22, -1.4), Vector2(22, 1.4), Vector2(16, 1.4)]), Color("1c2422"), 1.0)
+			ci.draw_circle(xf * (Vector2(21, 0) * scale), 0.9 * scale, Color("f2f6e8"))
 			for i in 4:
-				var port := xf * (Vector2(-6.0 + float(i) * 3.4, 3.4) * scale)
-				ci.draw_circle(port, 0.85 * scale, Color("071014"))
-				ci.draw_circle(port, 0.5 * scale, paint.glass)
+				var port := xf * (Vector2(-8.0 + float(i) * 3.2, 4.2) * scale)
+				ci.draw_circle(port, 1.05 * scale, Color("2a3030"))
+				ci.draw_circle(port, 0.62 * scale, paint.glass)
+				ci.draw_circle(port + Vector2(-0.2, -0.2) * scale, 0.18 * scale, Color(1, 1, 1, 0.7))
 		_:
 			pass
+
+
+static func _raise(ci: CanvasItem, xf: Transform2D, scale: float, quad: PackedVector2Array, albedo: Color, lift: float) -> void:
+	var off := Vector2(0.9, 1.2) * lift * scale
+	var side := PackedVector2Array()
+	for point in quad:
+		side.append(xf * (point * scale) + off)
+	if _area(side) >= 1.4:
+		ci.draw_colored_polygon(side, albedo.darkened(0.48))
+	_paint_plate(ci, xf, scale, quad, albedo, true, false)
 
 
 static func _draw_boat_feature(ci: CanvasItem, xf: Transform2D, hull: PackedVector2Array, scale: float, kind: String, paint: Dictionary) -> void:

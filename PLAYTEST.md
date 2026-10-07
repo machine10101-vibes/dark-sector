@@ -2,7 +2,7 @@
 
 Godot 4.7, windowed, GL Compatibility. One pass is enough if each line is actually done in the window, not only in the headless script.
 
-1. **New keel.** Menu shows New keel, Continue log (disabled until a log exists), and Leave. Open the yard and confirm Needle, Barn, and Beak are different shapes, including the bolted preview. Zoom the card: Needle is narrow spine plates and a glass canopy, Barn is large rectangular plates with hatches, Beak is faceted armor with a red lamp. Seams and rivets read as separate pieces of steel.
+1. **New keel.** Menu shows New keel, Continue log (disabled until a log exists), and Leave. Open the yard and confirm Needle, Barn, and Beak are different shapes, including the bolted preview. The hull has a dark steel edge, not a flat fill. Needle shows a raised spine, a framed canopy, and radiator fins. Barn shows recessed hatches, a crane, and rust. Beak shows sloped armor and a red lamp. A skiff is missing a plate so the ribs show. A cutter has a dome, a searchlight, and portholes.
 2. **Take the Needle.** The sector is Ashen Reach: Ash Lamp, Cinder, Mire, Vellum, the Slat belt, Hollow Latch, a Vellum Compact patrol, and a Red Keel pack. The ship is not a cursor: yaw is independent of the velocity vector.
 3. **Fly.** Thrust, retro, strafe, and coast. Zoom out until the planets read as a sector, then back in until the keel's steel plates, rivets, and nozzles are readable. A Red Keel skiff should look patched. A Compact cutter should look regulation-grey with a dome. Boats in the dark are small plated hulls, not flat wedges.
 4. **Probe.** Press 1 near Cinder. The probe returns. Dossier (D) lists orbit, atmosphere, surface, crust, biosign, ruins, and legal status. Cinder reads unclaimed.
