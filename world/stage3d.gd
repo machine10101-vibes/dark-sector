@@ -116,7 +116,8 @@ void fragment() {
 		float street = 1.0 - smoothstep(0.015, 0.07, min(block.x, block.y));
 		float district = smoothstep(0.34, 0.7, fbm(n * 2.4 + vec3(seed, 1.2, 0.4)));
 		float window = step(0.62, fract(sin(dot(floor(n.xz * 160.0), vec2(19.0, 47.0))) * 123.4));
-		lamps = max(street, window * 0.65) * district * night_side * mix(0.7, 1.0, land_w);
+		float blob = smoothstep(0.62, 0.9, noise3(n * 26.0 + vec3(seed, 2.4, 0.6)));
+		lamps = max(max(street, window * 0.65), blob * 0.8) * district * night_side * mix(0.7, 1.0, land_w);
 	}
 	float shore = 1.0 - smoothstep(0.0, 0.035, abs(field - 0.5));
 	col += vec3(0.9, 0.93, 0.88) * shore * day * 0.55 * (1.0 - city);
@@ -305,7 +306,7 @@ void fragment() {
 	float hz = plate_h(local_pos + vec3(0.0, 0.0, 0.22));
 	vec3 tangent = abs(n.y) > 0.92 ? vec3(1.0, 0.0, 0.0) : normalize(cross(n, vec3(0.0, 1.0, 0.0)));
 	vec3 bitangent = normalize(cross(n, tangent));
-	vec3 bumped = normalize(n + tangent * (h - hx) * 9.0 + bitangent * (h - hz) * 9.0);
+	vec3 bumped = normalize(n + tangent * (h - hx) * 14.0 + bitangent * (h - hz) * 14.0);
 	vec3 world_n = normalize((MODEL_MATRIX * vec4(bumped, 0.0)).xyz);
 	NORMAL = normalize((VIEW_MATRIX * vec4(world_n, 0.0)).xyz);
 	float seam = clamp(seam_of(local_pos), 0.0, 1.0);
@@ -487,7 +488,13 @@ uniform vec4 albedo : source_color = vec4(0.45, 0.42, 0.38, 1.0);
 uniform vec4 vein_color : source_color = vec4(0.96, 0.62, 0.22, 1.0);
 uniform float seed = 0.0;
 " + _NOISE + "void vertex() {
-	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	vec3 nrm = normalize(NORMAL);
+	float bowl = noise3(nrm * 3.4 + vec3(seed * 1.7, 0.4, 2.1));
+	float pit = smoothstep(0.64, 0.82, bowl);
+	float lip = smoothstep(0.52, 0.66, bowl) * (1.0 - pit);
+	float grit = noise3(nrm * 12.0 + vec3(seed));
+	VERTEX += nrm * (lip * 0.06 - pit * 0.12 + (grit - 0.5) * 0.025) * length(VERTEX);
+	wnorm = normalize((MODEL_MATRIX * vec4(nrm, 0.0)).xyz);
 }
 void fragment() {
 	vec3 n = normalize(wnorm);
@@ -497,9 +504,16 @@ void fragment() {
 	float cavity = smoothstep(0.32, 0.72, fbm(n * 3.2 + vec3(seed * 2.0, 1.0, 0.2)));
 	float pits = smoothstep(0.62, 0.82, noise3(n * 18.0 + vec3(seed)));
 	vec3 mineral = mix(albedo.rgb, albedo.rgb * vec3(1.15, 0.92, 0.78), grit * 0.45);
-	vec3 col = mineral * (0.7 + 0.75 * ndl);
+	vec3 col = mineral * (0.34 + 0.9 * ndl);
 	col = mix(col, col * 0.42, cavity * 0.7);
 	col *= 1.0 - pits * 0.22;
+	float bowl = noise3(n * 3.4 + vec3(seed * 1.7, 0.4, 2.1));
+	float pit = smoothstep(0.64, 0.82, bowl);
+	float lip = smoothstep(0.52, 0.66, bowl) * (1.0 - pit);
+	col = mix(col, col * 0.32, pit * 0.9);
+	col += mineral * lip * 0.55;
+	float fill = clamp(dot(n, normalize(vec3(-0.45, 0.15, 0.75))), 0.0, 1.0);
+	col += mineral * fill * 0.16;
 	float vein = smoothstep(0.46, 0.7, fbm(n * 9.0 + vec3(seed, 2.2, 0.5)));
 	vec3 ore = vein_color.rgb;
 	col = mix(col, ore, vein * 0.92);
@@ -517,26 +531,61 @@ void fragment() {
 const ICE_SHADER := "shader_type spatial;
 render_mode diffuse_burley, specular_schlick_ggx;
 varying vec3 wnorm;
+varying vec3 wpos;
 uniform float seed = 0.0;
 void vertex() {
 	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 sun = normalize(vec3(0.35, 0.86, 0.22));
 	float ndl = clamp(dot(n, sun), 0.0, 1.0);
 	float crack = smoothstep(0.47, 0.5, abs(fract(n.y * 6.5 + n.x * 4.0 + seed) - 0.5));
+	float sheet = smoothstep(0.48, 0.5, abs(fract(n.x * 3.2 + n.z * 5.1 + seed * 1.7) - 0.5));
 	float grit = fract(sin(dot(n.xy, vec2(41.3, 17.7)) + seed) * 913.1);
-	vec3 deep = vec3(0.55, 0.68, 0.78);
-	vec3 face = vec3(0.9, 0.95, 0.98);
-	vec3 ice = mix(deep, face, 0.35 + 0.65 * ndl);
-	ice = mix(ice, vec3(0.62, 0.78, 0.9), grit * 0.18);
-	ice = mix(ice, deep * 0.72, crack * 0.7);
+	vec3 deep = vec3(0.42, 0.58, 0.72);
+	vec3 face = vec3(0.93, 0.97, 1.0);
+	vec3 ice = mix(deep, face, 0.28 + 0.72 * ndl);
+	ice = mix(ice, vec3(0.7, 0.84, 0.95), grit * 0.22);
+	ice = mix(ice, deep * 0.55, max(crack, sheet * 0.7) * 0.75);
+	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
+	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 2.1);
+	ice = mix(ice, vec3(0.85, 0.94, 1.0), fres * 0.55);
 	ALBEDO = ice;
-	ROUGHNESS = mix(0.16, 0.48, crack);
-	METALLIC = 0.02;
-	SPECULAR = 0.85;
-	EMISSION = vec3(0.75, 0.9, 1.0) * pow(ndl, 12.0) * 0.35;
+	ROUGHNESS = mix(0.08, 0.55, max(crack, sheet));
+	METALLIC = 0.04;
+	SPECULAR = 0.9;
+	EMISSION = vec3(0.75, 0.9, 1.0) * (pow(ndl, 10.0) * 0.45 + fres * 0.18);
+}
+"
+
+const PLATE_SHADER := "shader_type spatial;
+render_mode unshaded;
+varying vec3 onorm;
+uniform vec4 albedo : source_color = vec4(0.72, 0.58, 0.4, 1.0);
+uniform float seed = 0.0;
+void vertex() {
+	onorm = NORMAL;
+}
+void fragment() {
+	vec3 n = normalize(onorm);
+	float sky = clamp(n.y * 0.55 + 0.48, 0.22, 1.0);
+	vec2 uv = UV * vec2(4.0, 2.4);
+	float seam_x = smoothstep(0.08, 0.0, abs(fract(uv.x) - 0.5) - 0.42);
+	float seam_y = smoothstep(0.08, 0.0, abs(fract(uv.y) - 0.5) - 0.42);
+	float seam = max(seam_x, seam_y);
+	vec2 cell = fract(uv * vec2(7.0, 4.0)) - vec2(0.5);
+	float rivet = smoothstep(0.12, 0.02, length(cell)) * seam;
+	vec3 paint = albedo.rgb * (0.62 + 0.5 * sky);
+	paint = mix(paint, paint * vec3(0.28, 0.3, 0.32), seam * 0.85);
+	paint = mix(paint, vec3(0.72, 0.66, 0.52), rivet);
+	float scorch = smoothstep(0.78, 0.96, fract(sin(dot(uv, vec2(19.0, 47.0)) + seed) * 311.0));
+	paint = mix(paint, vec3(0.16, 0.1, 0.07), scorch * 0.55);
+	float bare = smoothstep(0.2, 0.7, abs(n.x) + abs(n.z) * 0.4);
+	paint = mix(paint, vec3(0.68, 0.64, 0.56), bare * 0.28);
+	ALBEDO = paint;
+	EMISSION = vec3(0.9, 0.72, 0.4) * scorch * 0.08;
 }
 "
 
@@ -647,6 +696,7 @@ var _gate_shader: Shader
 var _rock_shader: Shader
 var _ice_shader: Shader
 var _rubble_shader: Shader
+var _plate_shader: Shader
 var _wake_shader: Shader
 var _ground_shader: Shader
 var _fill: DirectionalLight3D
@@ -695,6 +745,7 @@ func _ready() -> void:
 	_rock_shader = _compile(ROCK_SHADER)
 	_ice_shader = _compile(ICE_SHADER)
 	_rubble_shader = _compile(RUBBLE_SHADER)
+	_plate_shader = _compile(PLATE_SHADER)
 	_wake_shader = _compile(WAKE_SHADER)
 	_ground_shader = _compile(GROUND_SHADER)
 	_build_grid()
@@ -791,12 +842,19 @@ func _sync_props(sim) -> void:
 			radius = maxf(9.0, span * 0.62)
 		if str(chunk.get_meta("built", "")) != "yes":
 			chunk.mesh = _rock_mesh(index + 3, radius)
-			var stone := ShaderMaterial.new()
-			stone.shader = _rock_shader
-			stone.set_shader_parameter("albedo", Color(str(row.get("tint", "#8a6238"))))
-			stone.set_shader_parameter("vein_color", Color(str(row.get("vein", "#f59e38"))))
-			stone.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
-			chunk.material_override = stone
+			var material_id := str(row.get("material", ""))
+			if material_id == "ice_spall":
+				var ice := ShaderMaterial.new()
+				ice.shader = _ice_shader
+				ice.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
+				chunk.material_override = ice
+			else:
+				var stone := ShaderMaterial.new()
+				stone.shader = _rock_shader
+				stone.set_shader_parameter("albedo", Color(str(row.get("tint", "#8a6238"))))
+				stone.set_shader_parameter("vein_color", Color(str(row.get("vein", "#f59e38"))))
+				stone.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
+				chunk.material_override = stone
 			chunk.set_meta("built", "yes")
 		var tumble := float(sim.time) * 0.18 + float(absi(hash(str(index))) % 628) * 0.01
 		var laid := _flat_xform(row.pos, tumble, radius * 0.42)
@@ -826,7 +884,7 @@ func _sync_props(sim) -> void:
 		if str(scrap.get_meta("built", "")) != "yes":
 			scrap.mesh = _wreck_mesh(index + 40, radius)
 			var tones: Array = [Color("c49262"), Color("6e5340"), Color("a87448"), Color("d4b48a")]
-			scrap.material_override = _rubble_mat(tones[index % tones.size()], float(index) * 0.37)
+			scrap.material_override = _plate_mat(tones[index % tones.size()], float(index) * 0.37)
 			scrap.set_meta("built", "yes")
 		scrap.visible = not on_chart
 		var tumble := float(row.rot) + float(sim.time) * 0.08
@@ -1666,9 +1724,10 @@ func _sync_meteors(sim) -> void:
 		var radius := maxf(12.0, float(row.get("size", 8.0)) * 1.7)
 		if str(node.get_meta("built", "")) != "yes":
 			node.mesh = _rock_mesh(index + 17, radius)
-			var ice := _rock_shader_mat(Color("d5e6f0"), float(index) * 0.37)
-			ice.set_shader_parameter("vein_color", Color("f4fbff"))
-			node.material_override = ice
+			var ice_body := ShaderMaterial.new()
+			ice_body.shader = _ice_shader
+			ice_body.set_shader_parameter("seed", float(index) * 0.37)
+			node.material_override = ice_body
 			node.set_meta("built", "yes")
 		node.visible = not on_chart
 		node.position = chart(row.pos, radius * 0.85)
@@ -1676,9 +1735,7 @@ func _sync_meteors(sim) -> void:
 		var tail := _prop("mettail%d" % index)
 		index += 1
 		if tail.mesh == null:
-			var streak := BoxMesh.new()
-			streak.size = Vector3(1.0, 1.0, 1.0)
-			tail.mesh = streak
+			tail.mesh = _ice_streak_mesh()
 			var burn := StandardMaterial3D.new()
 			burn.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 			burn.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -4858,9 +4915,42 @@ func _craft_holder(key: String, kind: String) -> Node3D:
 		burn.set_shader_parameter("core", 0.35)
 		nozzle.material_override = burn
 		node.add_child(nozzle)
+		_dress_craft(node, kind)
 	add_child(node)
 	_craft[key] = node
 	return node
+
+
+func _dress_craft(node: Node3D, kind: String) -> void:
+	match kind:
+		"survey_probe":
+			_lens(node, "Dish", 2.15, Vector3(9.4, 2.4, 0.0), Color("d7e6ee"))
+			var dish := node.get_node("Dish") as Node3D
+			dish.rotation.z = -PI * 0.5
+			_kit(node, "WingP", Vector3(5.2, 0.08, 2.5), Vector3(0.6, 2.55, 3.5), Color("163848"))
+			_kit(node, "WingS", Vector3(5.2, 0.08, 2.5), Vector3(0.6, 2.55, -3.5), Color("163848"))
+			_kit(node, "CellP", Vector3(3.4, 0.05, 1.7), Vector3(0.6, 2.62, 3.5), Color("1a4a68"))
+			_kit(node, "CellS", Vector3(3.4, 0.05, 1.7), Vector3(0.6, 2.62, -3.5), Color("1a4a68"))
+		"harvest_drone":
+			_cyl(node, "Cutter", 1.15, 1.7, Vector3(5.6, 2.1, 0.0), "z", Color("8d9296"))
+			_kit(node, "ArmP", Vector3(3.2, 0.26, 0.26), Vector3(3.8, 2.7, 2.3), Color("6a5438"))
+			_kit(node, "ArmS", Vector3(3.2, 0.26, 0.26), Vector3(3.8, 2.7, -2.3), Color("6a5438"))
+			_kit(node, "JawP", Vector3(0.7, 1.05, 0.2), Vector3(6.1, 2.15, 1.55), Color("d2c6b2"))
+			_kit(node, "JawS", Vector3(0.7, 1.05, 0.2), Vector3(6.1, 2.15, -1.55), Color("d2c6b2"))
+			_kit(node, "Bucket", Vector3(1.8, 0.7, 2.6), Vector3(-1.4, 1.15, 0.0), Color("5c4834"))
+		"salvage_tender":
+			_kit(node, "Boom", Vector3(6.8, 0.26, 0.26), Vector3(1.6, 6.2, 0.0), Color("8a5a32"))
+			_kit(node, "ClawP", Vector3(1.05, 0.72, 0.16), Vector3(5.2, 5.5, 0.55), Color("e4d8c4"))
+			_kit(node, "ClawS", Vector3(1.05, 0.72, 0.16), Vector3(5.2, 5.5, -0.55), Color("e4d8c4"))
+			_cyl(node, "Winch", 0.62, 0.7, Vector3(-1.6, 5.15, 0.0), "z", Color("24282c"))
+		"away_shuttle":
+			_kit(node, "WingP", Vector3(3.8, 0.16, 3.4), Vector3(-0.8, 2.5, 4.8), Color("d4cfc2"))
+			_kit(node, "WingS", Vector3(3.8, 0.16, 3.4), Vector3(-0.8, 2.5, -4.8), Color("d4cfc2"))
+		_:
+			_cyl(node, "GunP", 0.16, 3.6, Vector3(2.2, 3.15, 5.1), "x", Color("16181a"))
+			_cyl(node, "GunS", 0.16, 3.6, Vector3(2.2, 3.15, -5.1), "x", Color("16181a"))
+			_cyl(node, "BellP", 0.62, 1.35, Vector3(-4.8, 1.7, 1.55), "x", Color("2c2622"))
+			_cyl(node, "BellS", 0.62, 1.35, Vector3(-4.8, 1.7, -1.55), "x", Color("2c2622"))
 
 
 func _craft_poly(kind: String) -> PackedVector2Array:
@@ -5602,6 +5692,36 @@ func _metal(color: Color) -> StandardMaterial3D:
 	return mat
 
 
+func _plate_mat(color: Color, seed: float) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = _plate_shader
+	mat.set_shader_parameter("albedo", color)
+	mat.set_shader_parameter("seed", seed)
+	return mat
+
+
+func _ice_streak_mesh() -> ArrayMesh:
+	if _mesh_cache.has("ice_streak"):
+		return _mesh_cache["ice_streak"]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var sides := 8
+	for s in sides:
+		var a0 := float(s) / float(sides) * TAU
+		var a1 := float(s + 1) / float(sides) * TAU
+		var nose := Vector3(0.0, 0.0, 0.48)
+		var tail := Vector3(0.0, 0.0, -0.52)
+		var p0 := nose + Vector3(cos(a0) * 0.08, sin(a0) * 0.08, 0.0)
+		var p1 := nose + Vector3(cos(a1) * 0.08, sin(a1) * 0.08, 0.0)
+		var q0 := tail + Vector3(cos(a0) * 0.46, sin(a0) * 0.46, 0.0)
+		var q1 := tail + Vector3(cos(a1) * 0.46, sin(a1) * 0.46, 0.0)
+		_rock_tri(st, p0, q0, p1, Vector3.UP)
+		_rock_tri(st, p1, q0, q1, Vector3.UP)
+	var mesh := st.commit()
+	_mesh_cache["ice_streak"] = mesh
+	return mesh
+
+
 func _rubble_mat(color: Color, seed: float) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = _rubble_shader
@@ -5652,6 +5772,18 @@ func _wreck_mesh(seed: int, radius: float) -> ArrayMesh:
 	var chunk := BoxMesh.new()
 	chunk.size = Vector3(radius * 0.48, radius * 0.28, radius * 0.42)
 	st.append_from(chunk, 0, Transform3D(Basis(Vector3.UP, rng.randf() * TAU), Vector3(-radius * 0.95, -radius * 0.04, -radius * 0.18)))
+	var hatch := CylinderMesh.new()
+	hatch.top_radius = radius * 0.2
+	hatch.bottom_radius = radius * 0.24
+	hatch.height = radius * 0.08
+	hatch.radial_segments = 14
+	st.append_from(hatch, 0, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(radius * 0.15, radius * 0.3, 0.02)))
+	var lip := BoxMesh.new()
+	lip.size = Vector3(radius * 0.85, radius * 0.045, radius * 0.16)
+	st.append_from(lip, 0, Transform3D(Basis(Vector3.UP, 0.35), Vector3(radius * 0.95, radius * 0.02, -radius * 0.28)))
+	var spar := BoxMesh.new()
+	spar.size = Vector3(radius * 1.4, radius * 0.08, radius * 0.08)
+	st.append_from(spar, 0, Transform3D(Basis(Vector3.FORWARD, 0.2), Vector3(-radius * 0.2, -radius * 0.12, radius * 0.22)))
 	var mesh := st.commit()
 	_mesh_cache[key] = mesh
 	return mesh
@@ -5715,12 +5847,14 @@ func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
 		return _mesh_cache[key]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var lat := 9
-	var lon := 14
+	var lat := 12
+	var lon := 18
 	var rng := RandomNumberGenerator.new()
 	rng.seed = absi(seed) + 17
 	var rads := PackedFloat32Array()
 	rads.resize((lat + 1) * lon)
+	var crater_y := 3 + posmod(seed, 5)
+	var crater_x := 2 + posmod(seed * 3, lon)
 	var wobble := 0.0
 	for yi in lat + 1:
 		for xi in lon:
@@ -5729,6 +5863,15 @@ func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
 				wobble *= 0.55
 			if yi == 0 or yi == lat:
 				wobble = 0.72 + rng.randf() * 0.2
+			var dy := absi(yi - crater_y)
+			var dx := absi(xi - crater_x)
+			if dx > lon / 2:
+				dx = lon - dx
+			var ring := dy + dx
+			if ring <= 1:
+				wobble *= 0.42
+			elif ring == 2:
+				wobble *= 1.16
 			rads[yi * lon + xi] = wobble
 	var a := Vector3.ZERO
 	var b := Vector3.ZERO
@@ -5751,6 +5894,9 @@ func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
 			_rock_tri(st, b, c, d, nrm.normalized())
 	_add_rock_lobe(st, rng, radius * 0.62, Vector3(radius * 0.58, radius * 0.1, radius * 0.16))
 	_add_rock_lobe(st, rng, radius * 0.5, Vector3(-radius * 0.34, radius * 0.2, radius * 0.52))
+	_add_rock_lobe(st, rng, radius * 0.34, Vector3(radius * 0.08, -radius * 0.46, -radius * 0.4))
+	st.index()
+	st.generate_normals()
 	var mesh := st.commit()
 	_mesh_cache[key] = mesh
 	return mesh
