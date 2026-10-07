@@ -2797,6 +2797,15 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	elif class_id == "kestrel":
 		deck = Vector3(12.0, height, 0.0)
 		deck_size = Vector3(12.0, 5.0, 8.0)
+	elif class_id == "lumen":
+		deck = Vector3(22.0, height, 0.0)
+		deck_size = Vector3(11.0, 4.2, 4.6)
+	elif class_id == "casque":
+		deck = Vector3(-2.0, height, 0.0)
+		deck_size = Vector3(10.0, 6.2, 16.0)
+	elif class_id == "alidade":
+		deck = Vector3(2.0, height * 0.72, 0.0)
+		deck_size = Vector3(14.0, 3.4, 9.0)
 	elif class_id == "cutter" or class_id == "skiff":
 		deck = Vector3(6.0, height, 0.0)
 		deck_size = Vector3(8.0, 4.0, 5.0)
@@ -3013,6 +3022,42 @@ func _weapon_sockets(module_ids: Array) -> Array:
 func _socket_at(holder: Node3D, class_id: String, socket_name: String) -> Vector3:
 	var nose := float(holder.get_meta("nose", 40.0))
 	var crown := float(holder.get_meta("crown", 16.0))
+	if class_id == "lumen":
+		match socket_name:
+			"laser_bank":
+				return Vector3(20.0, crown * 0.38, 15.0)
+			"gun_sponson":
+				return Vector3(12.0, crown * 0.36, 14.0)
+			"missile_rack":
+				return Vector3(-10.0, crown * 0.48, 0.0)
+			"heavy_turret":
+				return Vector3(4.0, crown * 1.02, 0.0)
+			_:
+				return Vector3(nose * 0.2, crown * 0.4, 8.0)
+	if class_id == "casque":
+		match socket_name:
+			"missile_rack":
+				return Vector3(-2.0, crown * 0.3, 15.0)
+			"heavy_turret":
+				return Vector3(-4.0, crown * 1.05, 0.0)
+			"gun_sponson":
+				return Vector3(2.0, crown * 0.28, 18.0)
+			"laser_bank":
+				return Vector3(nose * 0.4, crown * 0.2, 0.0)
+			_:
+				return Vector3(0.0, crown * 0.35, 12.0)
+	if class_id == "alidade":
+		match socket_name:
+			"gun_sponson":
+				return Vector3(-16.0, crown * 0.22, 24.0)
+			"laser_bank":
+				return Vector3(24.0, crown * 0.18, 0.0)
+			"missile_rack":
+				return Vector3(-6.0, crown * 0.28, 0.0)
+			"heavy_turret":
+				return Vector3(0.0, crown * 0.95, 0.0)
+			_:
+				return Vector3(-8.0, crown * 0.24, 16.0)
 	if class_id == "anvil":
 		match socket_name:
 			"heavy_turret":
@@ -3227,6 +3272,12 @@ func _signature_mount(class_id: String) -> Array:
 			return ["cargo_blister"]
 		"kestrel":
 			return ["gun_sponson"]
+		"lumen":
+			return ["sensor_mast", "laser_bank"]
+		"casque":
+			return ["missile_rack"]
+		"alidade":
+			return ["gun_sponson"]
 		_:
 			return []
 
@@ -3259,6 +3310,11 @@ func _mount_mast(holder: Node3D, class_id: String, nose: float, y: float, height
 		boom.rotation = Vector3(0.4, 0.85, 0.1)
 		_rib_along(boom, 4, 0.55, 16.0)
 		_lens(holder, "MountMastDish", 2.6, Vector3(18.0, y + 6.0, 24.0), dish)
+	elif class_id == "lumen":
+		var crown_at := Vector3(nose - 8.0, y + 1.2, 0.0)
+		_hardware(holder, "MountMastCollar", Vector3(4.4, 1.1, 4.4), crown_at, metal)
+		_lens(holder, "MountMastDish", 3.4, crown_at + Vector3(0.0, 2.2, 0.0), dish)
+		_tube(holder, "MountMast", 0.35, 9.0, crown_at + Vector3(2.0, 0.4, 0.0), "x", metal)
 	else:
 		_hardware(holder, "MountMastCollar", Vector3(7.0, 1.3, 2.2), Vector3(nose - 4.0, y, 0.0), metal)
 		var boom := _tube(holder, "MountMast", 0.48, 16.0, Vector3(nose + 6.0, y + 0.4, 0.0), "x", metal)
@@ -3287,6 +3343,20 @@ func _mount_guns(holder: Node3D, class_id: String, y: float, _height: float) -> 
 		_hardware(holder, "MountGunBracket", Vector3(3.2, 1.2, 8.0), Vector3(1.0, y, 0.0), metal)
 		_hardware(holder, "GunFeedP", Vector3(3.4, 1.3, 1.6), Vector3(6.0, y + 0.4, 10.0), metal.darkened(0.15))
 		_hardware(holder, "GunFeedS", Vector3(3.4, 1.3, 1.6), Vector3(6.0, y + 0.4, -10.0), metal.darkened(0.15))
+	elif class_id == "alidade":
+		var port := _tube(holder, "MountGunP", 0.48, 12.0, Vector3(-18.0, y, 24.0), "x", bore)
+		port.rotation.y = -0.45
+		_dress_barrel(port, 12.0, 0.26, 0.55)
+		var starboard := _tube(holder, "MountGunS", 0.48, 12.0, Vector3(-18.0, y, -24.0), "x", bore)
+		starboard.rotation.y = 0.45
+		_dress_barrel(starboard, 12.0, 0.26, 0.55)
+		_hardware(holder, "MountGunBracket", Vector3(6.0, 0.8, 4.0), Vector3(-16.0, y, 24.0), metal)
+		_hardware(holder, "MountGunBracketS", Vector3(6.0, 0.8, 4.0), Vector3(-16.0, y, -24.0), metal)
+	elif class_id == "lumen":
+		_hardware(holder, "MountGunP", Vector3(3.2, 1.2, 2.0), Vector3(16.0, y * 0.7, 14.0), metal)
+		_hardware(holder, "MountGunS", Vector3(3.2, 1.2, 2.0), Vector3(16.0, y * 0.7, -14.0), metal)
+		_dress_barrel(_tube(holder, "MountBarrelP", 0.32, 11.0, Vector3(22.0, y * 0.7, 14.0), "x", bore), 11.0, 0.18, 0.36)
+		_dress_barrel(_tube(holder, "MountBarrelS", 0.32, 11.0, Vector3(22.0, y * 0.7, -14.0), "x", bore), 11.0, 0.18, 0.36)
 	else:
 		_hardware(holder, "MountGunP", Vector3(2.6, 1.3, 1.8), Vector3(10.0, y * 0.7, 6.2), metal)
 		_hardware(holder, "MountGunS", Vector3(2.6, 1.3, 1.8), Vector3(10.0, y * 0.7, -6.2), metal)
@@ -4085,6 +4155,8 @@ func _pulse_lamps(holder: Node3D) -> void:
 	_pulse_lamp(holder, "LampPort", 0.45 + 0.55 * maxf(sin(t * 3.2), 0.0))
 	_pulse_lamp(holder, "LampStbd", 0.45 + 0.55 * maxf(sin(t * 3.2 + 2.2), 0.0))
 	_pulse_lamp(holder, "LampNose", 0.7 + 0.3 * sin(t * 1.6))
+	_pulse_lamp(holder, "LampHeart", 0.62 + 0.38 * sin(t * 2.1))
+	_pulse_lamp(holder, "RamLamp", 0.5 + 0.5 * maxf(sin(t * 1.5), 0.0))
 
 
 func _pulse_lamp(holder: Node3D, lamp_name: String, energy: float) -> void:
@@ -4532,6 +4604,12 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 		port.rotation.y = -0.45
 		var starboard := _fairing(holder, "CheekS", Vector3(span * 0.2, 0.7, 2.4), Vector3(tail + span * 0.55, height * 0.34, -6.5))
 		starboard.rotation.y = 0.45
+	elif class_id == "lumen":
+		_dress_lumen(holder, height)
+	elif class_id == "casque":
+		_dress_casque(holder, height)
+	elif class_id == "alidade":
+		_dress_alidade(holder, height)
 	else:
 		_fairing(holder, "VaneP", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 0.78, 1.4))
 		_fairing(holder, "VaneS", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 0.78, -1.4))
@@ -4561,6 +4639,77 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 		_tube(holder, "Antenna%d" % i, 0.16, 3.6 + float(i) * 1.6, Vector3(ax, height * 1.2 + 1.8, 0.0), "y", Color("1a1e22"))
 	_nav_lamp(holder, "RunP", Vector3(mid + span * 0.12, height * 0.42, chine_z + 1.1), Color("d4553a"), 0.72)
 	_nav_lamp(holder, "RunS", Vector3(mid + span * 0.12, height * 0.42, -chine_z - 1.1), Color("7dcea0"), 0.72)
+
+
+func _dress_lumen(holder: Node3D, height: float) -> void:
+	var nose := float(holder.get_meta("nose", 50.0))
+	var heart := MeshInstance3D.new()
+	heart.name = "LampHeart"
+	var ball := SphereMesh.new()
+	ball.radius = 2.5
+	ball.height = 5.0
+	ball.radial_segments = 16
+	ball.rings = 8
+	heart.mesh = ball
+	heart.position = Vector3(nose - 10.0, height * 0.78, 0.0)
+	var glow := _metal(Color("f0c14a"))
+	glow.emission_enabled = true
+	glow.emission = Color("f0c14a")
+	glow.emission_energy_multiplier = 1.6
+	heart.material_override = glow
+	holder.add_child(heart)
+	var cage := MeshInstance3D.new()
+	cage.name = "LampCage"
+	var ring := TorusMesh.new()
+	ring.inner_radius = 3.2
+	ring.outer_radius = 3.85
+	ring.rings = 14
+	ring.ring_segments = 8
+	cage.mesh = ring
+	cage.position = heart.position
+	cage.rotation.y = PI * 0.5
+	cage.material_override = _hull_mat(Color("1a1408"))
+	holder.add_child(cage)
+	for side in [1.0, -1.0]:
+		var tag := "P" if side > 0.0 else "S"
+		var spar := _tube(holder, "Fork%s" % tag, 0.72, 16.0, Vector3(nose * 0.38, height * 0.34, side * 15.0), "x", Color("3a3458"))
+		spar.rotation.y = -0.62 * side
+		_nav_lamp(holder, "ForkLamp%s" % tag, Vector3(nose * 0.52, height * 0.46, side * 17.5), Color("f0c14a"), 0.7)
+
+
+func _dress_casque(holder: Node3D, height: float) -> void:
+	var nose := float(holder.get_meta("nose", 16.0))
+	var plow := _hardware(holder, "RamPlow", Vector3(7.5, height * 0.52, 13.0), Vector3(nose - 1.5, height * 0.2, 0.0), Color("241c16"))
+	plow.rotation.z = 0.08
+	_hardware(holder, "RamShoe", Vector3(5.4, 2.0, 9.5), Vector3(nose + 1.4, height * 0.06, 0.0), Color("6a5438"))
+	for side in [1.0, -1.0]:
+		var tag := "P" if side > 0.0 else "S"
+		var cheek := _hardware(holder, "RamCheek%s" % tag, Vector3(11.0, 4.4, 5.2), Vector3(1.0, height * 0.26, side * 15.5), Color("3a2c24"))
+		cheek.rotation.y = 0.28 * side
+	_nav_lamp(holder, "RamLamp", Vector3(nose * 0.55, height * 0.72, 0.0), Color("e6b15a"), 0.85)
+
+
+func _dress_alidade(holder: Node3D, height: float) -> void:
+	var dome := MeshInstance3D.new()
+	dome.name = "SkyDome"
+	var ball := SphereMesh.new()
+	ball.radius = 4.4
+	ball.height = 5.6
+	ball.radial_segments = 18
+	ball.rings = 10
+	dome.mesh = ball
+	dome.position = Vector3(4.0, height * 0.92, 0.0)
+	var pane := ShaderMaterial.new()
+	pane.shader = _glass_shader
+	pane.set_shader_parameter("albedo", Color(0.55, 0.9, 0.88, 0.62))
+	dome.material_override = pane
+	holder.add_child(dome)
+	_hardware(holder, "DomeLip", Vector3(9.2, 0.55, 9.2), Vector3(4.0, height * 0.7, 0.0), Color("1a2428"))
+	for side in [1.0, -1.0]:
+		var tag := "P" if side > 0.0 else "S"
+		var pod := _hardware(holder, "WingPod%s" % tag, Vector3(8.4, 2.1, 3.2), Vector3(-20.0, height * 0.26, side * 25.0), Color("1e3238"))
+		pod.rotation.y = 0.4 * side
+		_nav_lamp(holder, "Tip%s" % tag, Vector3(-30.0, height * 0.32, side * 27.0), Color("9fd0c8"), 0.55)
 
 
 func _fairing(holder: Node3D, part_name: String, size: Vector3, at: Vector3) -> MeshInstance3D:
@@ -5162,9 +5311,10 @@ func _dress_yard() -> void:
 	var worn: Array = _signature_mount(menu_class)
 	var shapes: Array = Silhouette.shapes_of(Game.defs, worn)
 	var layers: Array = Silhouette.layers_of(Game.defs, worn)
-	var mesh_key := menu_class + "|" + str(shapes)
+	var sockets: Array = _weapon_sockets(worn)
+	var mesh_key := menu_class + "|" + str(shapes) + "|" + str(sockets)
 	if str(holder.get_meta("mesh_key", "")) != mesh_key:
-		_fill_ship(holder, menu_class, shapes, layers)
+		_fill_ship(holder, menu_class, shapes, layers, sockets)
 		holder.set_meta("mesh_key", mesh_key)
 	var hull: Dictionary = Game.defs.ships[menu_class]
 	var body := Color(str(hull.color))
