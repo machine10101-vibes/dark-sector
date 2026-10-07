@@ -484,6 +484,7 @@ void fragment() {
 const ROCK_SHADER := "shader_type spatial;
 varying vec3 wnorm;
 uniform vec4 albedo : source_color = vec4(0.45, 0.42, 0.38, 1.0);
+uniform vec4 vein_color : source_color = vec4(0.96, 0.62, 0.22, 1.0);
 uniform float seed = 0.0;
 " + _NOISE + "void vertex() {
 	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
@@ -500,7 +501,7 @@ void fragment() {
 	col = mix(col, col * 0.42, cavity * 0.7);
 	col *= 1.0 - pits * 0.22;
 	float vein = smoothstep(0.46, 0.7, fbm(n * 9.0 + vec3(seed, 2.2, 0.5)));
-	vec3 ore = vec3(0.96, 0.62, 0.22);
+	vec3 ore = vein_color.rgb;
 	col = mix(col, ore, vein * 0.92);
 	float fleck = smoothstep(0.72, 0.9, noise3(n * 22.0 + vec3(seed * 3.0)));
 	col = mix(col, vec3(0.98, 0.86, 0.55), fleck * 0.7);
@@ -755,6 +756,14 @@ func chart(p: Vector2, height: float = 0.0) -> Vector3:
 	return Vector3(render.x, height, -render.y)
 
 
+func _pull_tag(sim, mark: Vector2) -> Vector2:
+	var pulled := Vector2(mark)
+	var pull := Vector2(sim.player.pos) - pulled
+	if pull.length() > 40.0:
+		pulled += pull.normalized() * minf(pull.length() * 0.45, 160.0)
+	return pulled
+
+
 func _sync_props(sim) -> void:
 	var on_chart := int(sim.layer) == ScaleFrame.CHART
 	var belt: Dictionary = sim.defs.system.get("belt", {})
@@ -785,6 +794,7 @@ func _sync_props(sim) -> void:
 			var stone := ShaderMaterial.new()
 			stone.shader = _rock_shader
 			stone.set_shader_parameter("albedo", Color(str(row.get("tint", "#8a6238"))))
+			stone.set_shader_parameter("vein_color", Color(str(row.get("vein", "#f59e38"))))
 			stone.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
 			chunk.material_override = stone
 			chunk.set_meta("built", "yes")
@@ -799,8 +809,12 @@ func _sync_props(sim) -> void:
 		var mark := Vector2(sim.belt_pos)
 		var pull := Vector2(sim.player.pos) - mark
 		if pull.length() > 40.0:
-			mark += pull.normalized() * minf(pull.length() * 0.45, 160.0)
-		_tag("%s  ·  raw mass" % str(belt.get("name", "Ore")), chart(mark, 48.0), Color("f0c27a"), 22)
+			mark += pull.normalized() * minf(pull.length() * 0.55, 240.0)
+		_tag("%s  ·  nickel cinder" % str(belt.get("name", "Ore")), chart(mark, 48.0), Color("f0c27a"), 22)
+	if sim.ice_pos != Vector2.ZERO and not on_chart:
+		_tag("Ice spall", chart(_pull_tag(sim, sim.ice_pos), 36.0), Color("d5e6f0"), 16)
+	if sim.copper_pos != Vector2.ZERO and not on_chart:
+		_tag("Copper slag", chart(_pull_tag(sim, sim.copper_pos), 36.0), Color("c6e38a"), 16)
 	var index := 0
 	var tagged_scrap := false
 	for hull in sim.trash:
@@ -818,7 +832,7 @@ func _sync_props(sim) -> void:
 		var tumble := float(row.rot) + float(sim.time) * 0.08
 		scrap.transform = _flat_xform(row.pos, tumble, radius * 0.55)
 		if not tagged_scrap and not on_chart and sim.player.pos.distance_to(row.pos) < 520.0:
-			_tag("Hull scrap", chart(row.pos, radius + 28.0), Color("e4c8a4"), 16)
+			_tag("Hull plate", chart(row.pos, radius + 28.0), Color("e4c8a4"), 16)
 			tagged_scrap = true
 	if sim.trash.size() > 0 and not on_chart:
 		_tag(str(sim.defs.system.trash.get("name", "Hold")), chart(sim.trash_pos, 160.0), Color("e4c8a4"), 20)
@@ -1652,7 +1666,9 @@ func _sync_meteors(sim) -> void:
 		var radius := maxf(12.0, float(row.get("size", 8.0)) * 1.7)
 		if str(node.get_meta("built", "")) != "yes":
 			node.mesh = _rock_mesh(index + 17, radius)
-			node.material_override = _rock_shader_mat(Color("c46a3a"), float(index) * 0.37)
+			var ice := _rock_shader_mat(Color("d5e6f0"), float(index) * 0.37)
+			ice.set_shader_parameter("vein_color", Color("f4fbff"))
+			node.material_override = ice
 			node.set_meta("built", "yes")
 		node.visible = not on_chart
 		node.position = chart(row.pos, radius * 0.85)
@@ -1666,10 +1682,10 @@ func _sync_meteors(sim) -> void:
 			var burn := StandardMaterial3D.new()
 			burn.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 			burn.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			burn.albedo_color = Color(1.0, 0.46, 0.16, 0.82)
+			burn.albedo_color = Color(0.84, 0.93, 1.0, 0.62)
 			burn.emission_enabled = true
-			burn.emission = Color("ff7a2a")
-			burn.emission_energy_multiplier = 2.4
+			burn.emission = Color("d5e6f0")
+			burn.emission_energy_multiplier = 1.35
 			tail.material_override = burn
 			tail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		var vel := Vector2(row.get("vel", Vector2.RIGHT))
@@ -1686,7 +1702,7 @@ func _sync_meteors(sim) -> void:
 	if index > 0 and not on_chart:
 		var lead: Dictionary = sim.meteors[0]
 		var spec: Dictionary = sim.defs.system.get("stream", {})
-		_tag(str(spec.get("name", "Gravel")), chart(lead.pos, 70.0), Color("ffb15a"), 18)
+		_tag("%s  ·  ice spall" % str(spec.get("name", "Gravel")), chart(lead.pos, 70.0), Color("d5e6f0"), 18)
 
 
 func _sync_claim(sim) -> void:
@@ -2552,10 +2568,16 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 		holder.set_meta("mesh_key", mesh_key)
 	var hull: Dictionary = sim.defs.ships[class_id]
 	var hp := clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0)
-	var body := Color(str(hull.color)).lerp(Color("3a1818"), (1.0 - hp) * 0.65)
+	var body_hex := str(ship.get("paint", ""))
+	if body_hex == "":
+		body_hex = str(hull.color)
+	var accent_hex := str(ship.get("accent", ""))
+	if accent_hex == "":
+		accent_hex = str(hull.accent)
+	var body := Color(body_hex).lerp(Color("3a1818"), (1.0 - hp) * 0.65)
 	var hurt := clampf(float(ship.get("hurt_cd", 0.0)) / 0.4, 0.0, 1.0)
 	body = body.lerp(Color("ffe6c8"), hurt * 0.62)
-	var accent := Color(str(hull.accent))
+	var accent := Color(accent_hex)
 	for child in holder.get_children():
 		var part := str(child.name)
 		if _hull_part(part):

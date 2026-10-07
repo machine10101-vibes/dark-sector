@@ -159,8 +159,8 @@
       "legal_title": "Compact lease, limited harvest",
       "heat": "lease",
       "resource": {
-        "id": "raw_mass",
-        "name": "Raw mass",
+        "id": "nickel_cinder",
+        "name": "Nickel cinder",
         "amount": 8
       },
       "layers": {
@@ -185,8 +185,8 @@
       "heat": "lease",
       "origin": "Gravel shaken off the ice lease. It crosses the pad flank on a timer.",
       "resource": {
-        "id": "raw_mass",
-        "name": "Raw mass",
+        "id": "ice_spall",
+        "name": "Ice spall",
         "amount": 5
       },
       "layers": {
@@ -196,6 +196,56 @@
         "crust": "No crust. Moving mass.",
         "biosign": "None.",
         "ruins": "None. The stream replaces itself.",
+        "legal": "Compact lease, limited harvest."
+      }
+    },
+    {
+      "id": "copper_slag",
+      "name": "Copper Slag",
+      "kind": "seam",
+      "anchor": "aegis_prime",
+      "angle": 1.2,
+      "distance": 1400,
+      "radius": 70,
+      "legal_title": "Compact lease, limited harvest",
+      "heat": "lease",
+      "resource": {
+        "id": "copper_slag",
+        "name": "Copper slag",
+        "amount": 5
+      },
+      "layers": {
+        "orbit": "A short green seam beside Cinder Reach.",
+        "atmosphere": "None. Open vacuum.",
+        "surface": "Copper heart under green slag.",
+        "crust": "No crust. The seam is the rock.",
+        "biosign": "None.",
+        "ruins": "A cut face with lease paint.",
+        "legal": "Compact lease, limited harvest."
+      }
+    },
+    {
+      "id": "hull_plate",
+      "name": "Hull Plate",
+      "kind": "seam",
+      "anchor": "aegis_prime",
+      "angle": 1.6,
+      "distance": 1300,
+      "radius": 80,
+      "legal_title": "Compact lease, limited harvest",
+      "heat": "lease",
+      "resource": {
+        "id": "hull_plate",
+        "name": "Hull plate",
+        "amount": 4
+      },
+      "layers": {
+        "orbit": "Torn plate hanging off the pad, still stock.",
+        "atmosphere": "None. Vacuum and paint flakes.",
+        "surface": "Ribs, skin, and a snapped spar.",
+        "crust": "No crust. Hollow plate.",
+        "biosign": "None living.",
+        "ruins": "A bow number scraped off.",
         "legal": "Compact lease, limited harvest."
       }
     }

@@ -157,12 +157,12 @@ func _draw_field(sim, origin: Vector2, center: Vector2, scale: float, span: floa
 		var row: Dictionary = rock
 		var plotted: Dictionary = _plot(row.pos, origin, center, scale, span)
 		if bool(plotted.inside):
-			draw_circle(plotted.at, 2.2, Color("e0a05a"))
+			draw_circle(plotted.at, 2.2, Color(str(row.get("tint", "#e0a05a"))))
 	for rock in sim.meteors:
 		var row: Dictionary = rock
 		var plotted: Dictionary = _plot(row.pos, origin, center, scale, span)
 		if bool(plotted.inside):
-			draw_circle(plotted.at, 2.0, Color("ff7a2a"))
+			draw_circle(plotted.at, 2.0, Color("d5e6f0"))
 	for hull in sim.trash:
 		var row: Dictionary = hull
 		var plotted: Dictionary = _plot(row.pos, origin, center, scale, span)
@@ -194,9 +194,15 @@ func _draw_contacts(sim, player: Dictionary, origin: Vector2, center: Vector2, s
 		if bool(ship.get("alive", true)) == false:
 			continue
 		var plotted: Dictionary = _plot(ship.pos, origin, center, scale, span)
-		if bool(plotted.inside) == false:
+		var hostile := str(ship.get("team", "")) == "red_keel"
+		if bool(plotted.inside) == false and not hostile:
 			continue
-		draw_circle(plotted.at, 2.0, Color(0.9, 0.94, 0.95, 0.85))
+		var ink := Color(0.9, 0.94, 0.95, 0.85)
+		if hostile:
+			var paint := str(ship.get("paint", "#ff6a5c"))
+			ink = Color(paint)
+		var rad := 3.4 if hostile else 2.0
+		draw_circle(plotted.at, rad, ink)
 
 
 func _draw_chevron(center: Vector2, rot: float) -> void:

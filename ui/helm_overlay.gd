@@ -435,12 +435,15 @@ func _marks(cam: Camera3D, stage, sim) -> Array:
 		var spot := _project(cam, stage, place.pos, reach, 28.0, 240.0)
 		if spot.is_empty():
 			continue
-		var res: Dictionary = place.get("resource", {})
-		var ore := str(res.get("id", "")) == "raw_mass" or str(place.get("kind", "")) == "belt" or str(place.get("kind", "")) == "stream"
+		var row: Dictionary = place
+		var ore: bool = sim.yields_material(row)
+		var mark_kind := "node"
+		if ore:
+			mark_kind = "ore"
 		marks.append({
 			"id": str(place.id),
 			"name": str(place.name),
-			"kind": "ore" if ore else "node",
+			"kind": mark_kind,
 			"pos": place.pos,
 			"range": reach,
 			"at": spot.at,
@@ -665,12 +668,10 @@ func _ore_near(at: Vector2) -> String:
 	if Game.sim == null:
 		return ""
 	var best := ""
-	var best_d := 220.0
+	var best_d := 280.0
 	for place in Game.sim.nodes:
 		var row: Dictionary = place
-		var res: Dictionary = row.get("resource", {})
-		var kind_name := str(row.get("kind", ""))
-		var ore := str(res.get("id", "")) == "raw_mass" or kind_name == "belt" or kind_name == "stream"
+		var ore := Game.sim.yields_material(row)
 		if not ore:
 			continue
 		var dist: float = at.distance_to(row.pos)

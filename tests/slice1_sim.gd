@@ -88,7 +88,54 @@ func _dock() -> void:
 		if sim.beacon_pos.distance_to(piece.pos) < 520.0:
 			scrap_near += 1
 	check(scrap_near >= 3, "hull scrap hangs in the pad sky")
-	check(sim.survey_node("cinder_reach") != null and int(sim.deposits.get("cinder_reach", 0)) > 0, "the ore field holds raw mass")
+	check(sim.survey_node("cinder_reach") != null and int(sim.deposits.get("cinder_reach", 0)) > 0, "the ore field holds a deposit")
+	var nickel = sim.survey_node("cinder_reach")
+	var ice = sim.survey_node("lease_gravel")
+	var copper = sim.survey_node("copper_slag")
+	var plate = sim.survey_node("hull_plate")
+	check(nickel != null and str(nickel.resource.id) == "nickel_cinder", "Cinder Reach yields nickel cinder")
+	check(ice != null and str(ice.resource.id) == "ice_spall", "Lease Gravel yields ice spall")
+	check(copper != null and str(copper.resource.id) == "copper_slag" and int(sim.deposits.get("copper_slag", 0)) > 0, "copper slag is a seam")
+	check(plate != null and str(plate.resource.id) == "hull_plate" and int(sim.deposits.get("hull_plate", 0)) > 0, "hull plate is a seam")
+	var ring = sim.survey_node("aegis_ring")
+	var hold = sim.survey_node("seized_hold")
+	check(ring != null and str(ring.resource.id) == "raw_mass", "the ice ring still yields raw mass")
+	check(hold != null and str(hold.resource.id) == "raw_mass", "the seized hold still yields raw mass")
+	check(sim.ice_pos.distance_to(sim.beacon_pos) > 200.0, "ice spall stands off the pad")
+	check(sim.copper_pos.distance_to(sim.beacon_pos) > 200.0, "copper slag stands off the pad")
+	check(sim.ice_pos.distance_to(sim.belt_pos) > 80.0, "ice spall stands off the belt")
+	check(sim.copper_pos.distance_to(sim.belt_pos) > 80.0, "copper slag stands off the belt")
+	var saw_ice := false
+	var saw_copper := false
+	var saw_nickel := false
+	for rock in sim.asteroids:
+		var chip: Dictionary = rock
+		var mat := str(chip.get("material", ""))
+		if mat == "ice_spall":
+			saw_ice = true
+		elif mat == "copper_slag":
+			saw_copper = true
+		elif mat == "nickel_cinder":
+			saw_nickel = true
+	check(saw_ice and saw_copper and saw_nickel, "the sky holds nickel, ice, and copper")
+	check(sim.gang_name != "" and sim.gang_id != "", "a pirate gang holds the amber")
+	var roster: Array = []
+	if sim.defs.has("gangs") and sim.defs.gangs.has(sim.gang_id):
+		var listed: Variant = sim.defs.gangs[sim.gang_id].get("ships", [])
+		if listed is Array:
+			roster = listed
+	check(roster.size() >= 3, "the gang lists its ships")
+	var pack := 0
+	var painted := true
+	for actor in sim.actors:
+		if str(actor.team) != "red_keel":
+			continue
+		if str(actor.gang) != str(sim.gang_id) or str(actor.paint) == "":
+			painted = false
+		if pack < roster.size() and str(actor.name) != str(roster[pack]):
+			painted = false
+		pack += 1
+	check(painted and pack >= 2 and pack <= 4, "the pack flies the gang's ships in one paint")
 	check(str(sim.defs.system.pocket.name) == "The Unlet", "claim pocket is marked")
 	check(not bool(sim.defs.system.pocket.plantable), "pocket is not plantable")
 	check(not bool(sim.claim.plantable), "new game keeps the pocket closed")
@@ -175,6 +222,7 @@ func _save() -> void:
 	check(str(copy.player.class_id) == "vesper", "reload keeps the Needle")
 	check(copy.player.pos.distance_to(Vector2(1234.0, -567.0)) < 1.0, "reload keeps the position")
 	check(str(copy.defs.system.id) == "HC-V1-R1-S1", "reload is still Helion Dock")
+	check(str(copy.gang_id) == str(sim.gang_id) and str(copy.gang_name) == str(sim.gang_name), "reload keeps the gang")
 	var barn := make("anvil")
 	check(str(barn.player.class_id) == "anvil", "Barn is a different hull")
 	var beak := make("kestrel")

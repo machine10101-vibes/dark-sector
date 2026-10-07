@@ -39,6 +39,12 @@ var trash: Array = []
 var meteors: Array = []
 var belt_pos := Vector2.ZERO
 var belt_span := 0.0
+var ice_pos := Vector2.ZERO
+var copper_pos := Vector2.ZERO
+var plate_pos := Vector2.ZERO
+var gang_id := ""
+var gang_name := ""
+var gang_salt := 0
 var visited: Array = []
 var stream_origin := Vector2.ZERO
 var stars: Array = []
@@ -192,8 +198,10 @@ func new_game(class_id: String) -> void:
 	say("The corner map is the local sky. Tap it, or press F10, for the whole chart. Tab locks the nearest contact.")
 	say("Shakedown is on the log. J reads it. Y marks the next place.")
 	if str(defs.system.get("belt", {}).get("name", "")) != "":
-		say("%s is the ore field between the pad and Aegis. Lease Gravel crosses the bow. Hull scrap hangs in the sky. Scan a rock, then Harvest." % str(defs.system.belt.name))
+		say("%s yields nickel cinder. Ice spall rides the gravel. Copper slag and hull plate sit beside the belt. Scan a rock, then Harvest." % str(defs.system.belt.name))
 	say("Moored at the Helion Dock pad. W casts off. The keel is in clear space, not in the city.")
+	if gang_name != "":
+		say("%s is the gang in the amber. %s" % [gang_name, _gang_line()])
 	_bind_band()
 
 
@@ -422,6 +430,9 @@ func _fill_market() -> void:
 
 
 func resource_name(id: String) -> String:
+	var book := _material_book()
+	if book.has(id):
+		return str(book[id].get("name", id))
 	if id == "raw_mass":
 		return "raw mass"
 	if id == "salvage_parts":
@@ -803,6 +814,9 @@ func to_dict() -> Dictionary:
 		"chat": chat.duplicate(true),
 		"lines": lines.duplicate(true),
 		"banner": banner,
+		"gang_id": gang_id,
+		"gang_name": gang_name,
+		"gang_salt": gang_salt,
 		"pdo_alert": pdo_alert,
 		"hailed": hailed,
 		"fined": fined,
@@ -875,6 +889,9 @@ func from_dict(data: Dictionary) -> void:
 		player.player_id = "captain-host"
 	lines = data.get("lines", []).duplicate(true)
 	banner = str(data.get("banner", ""))
+	gang_id = str(data.get("gang_id", ""))
+	gang_name = str(data.get("gang_name", ""))
+	gang_salt = int(data.get("gang_salt", 0))
 	banner_t = 0.0
 	pdo_alert = bool(data.get("pdo_alert", false))
 	hailed = bool(data.get("hailed", false))
@@ -1697,7 +1714,10 @@ func _kill(unit: Dictionary, attacker: String) -> void:
 		for actor in actors:
 			if str(actor.team) == "red_keel" and bool(actor.alive):
 				actor.ai.enraged = true
-		say("Red Keel will remember %s." % unit.name)
+		var pack := "Red Keel"
+		if gang_name != "":
+			pack = gang_name
+		say("%s will remember %s." % [pack, unit.name])
 	elif str(unit.team) == _pdo_id():
 		Ownership.add_heat(self, _pdo_id(), 36.0, "killed_patrol", attacker)
 		pdo_alert = true
@@ -2254,26 +2274,39 @@ func _spawn_factions() -> void:
 		hauler.ai = {"phase": phase, "radius": orbit, "enraged": false}
 		actors.append(hauler)
 	var pack_count := int(defs.system.pirates.count)
+	var gang := _pick_gang()
 	var roles := ["interceptor", "kite", "raider"]
 	var bolted := ["gun_sponson", "sensor_mast", "cargo_blister"]
+	var names: Array = gang.get("ships", [])
+	var paint := str(gang.get("color", "#6e2420"))
+	var accent := str(gang.get("accent", "#e0a090"))
 	for i in pack_count:
-		var actor = _blank_ship("skiff", "Red Keel %d" % (i + 1), "agent:red_keel:%d" % i, "npc", "red_keel")
+		var ship_name := "Red Keel %d" % (i + 1)
+		if i < names.size():
+			ship_name = str(names[i])
+		elif gang_name != "":
+			ship_name = "%s %d" % [gang_name, i + 1]
+		var actor = _blank_ship("skiff", ship_name, "agent:red_keel:%d" % i, "npc", "red_keel")
 		var ang = float(i) / float(maxi(pack_count, 1)) * TAU
 		var part: String = bolted[i % bolted.size()]
 		actor.home = pack_pos
-		actor.pos = pack_pos + Vector2.from_angle(ang) * 90.0
+		actor.pos = pack_pos + Vector2.from_angle(ang) * (110.0 + float(i) * 36.0)
 		actor.rot = ang
 		actor.modules = [part]
 		actor.module_hp = {part: 22.0}
+		actor.paint = paint
+		actor.accent = accent
+		actor.gang = gang_id
+		actor.corp_tag = gang_name
 		actor.ai = {
 			"phase": ang,
-			"radius": 140.0,
+			"radius": 140.0 + float(i) * 28.0,
 			"enraged": false,
 			"role": roles[i % roles.size()],
 			"chase": 0.0,
 			"fired_on_captain": false,
 		}
-		actor.cargo = {"scrap": 1}
+		actor.cargo = {"scrap": 1, "hull_plate": 1}
 		actors.append(actor)
 
 
@@ -2831,6 +2864,8 @@ func _spawn_belt(rng: RandomNumberGenerator) -> void:
 	asteroids = []
 	belt_pos = Vector2.ZERO
 	belt_span = 0.0
+	ice_pos = Vector2.ZERO
+	copper_pos = Vector2.ZERO
 	var belt: Dictionary = defs.system.get("belt", {})
 	var count := int(belt.get("count", 0))
 	if count <= 0:
@@ -2838,6 +2873,8 @@ func _spawn_belt(rng: RandomNumberGenerator) -> void:
 	var composition := str(belt.get("composition", ""))
 	var tint := _belt_tint(composition)
 	var local := bool(belt.get("local", false))
+	if local:
+		tint = "#c4a06a"
 	var origin := Vector2.ZERO
 	var span := float(belt.get("width", 40.0))
 	var pad := Vector2.ZERO
@@ -2894,6 +2931,11 @@ func _spawn_belt(rng: RandomNumberGenerator) -> void:
 			var a := rot + float(s) / float(sides) * TAU
 			var rr := size * rng.randf_range(0.55, 1.25)
 			verts.append(center + Vector2.from_angle(a) * rr)
+		var material := ""
+		var vein := "#f0a04a"
+		if local:
+			material = "nickel_cinder"
+			vein = "#f6c36a"
 		asteroids.append({
 			"pos": center,
 			"verts": verts,
@@ -2901,9 +2943,12 @@ func _spawn_belt(rng: RandomNumberGenerator) -> void:
 			"composition": composition,
 			"tint": tint,
 			"ore": local or str(belt.get("name", "")) != "",
+			"material": material,
+			"vein": vein,
 		})
 	if local and belt_pos != Vector2.ZERO:
 		_spawn_loners(rng, pad, composition, tint)
+		_spawn_seams(rng, pad, belt_pos)
 
 
 func _spawn_loners(rng: RandomNumberGenerator, pad: Vector2, composition: String, tint: String) -> void:
@@ -2934,10 +2979,69 @@ func _spawn_loners(rng: RandomNumberGenerator, pad: Vector2, composition: String
 			"composition": composition,
 			"tint": tint,
 			"ore": true,
+			"material": "nickel_cinder",
+			"vein": "#f6c36a",
 		})
 
 
+func _spawn_seams(rng: RandomNumberGenerator, pad: Vector2, _origin: Vector2) -> void:
+	# The berth eye sits on +Y and looks toward -Y. A flank step off the belt
+	# falls behind that eye. These offsets stay in the look cone, off the pad
+	# bubble and off the nickel field.
+	var belt: Dictionary = defs.system.get("belt", {})
+	var anchor = planet(str(belt.get("anchor", "")))
+	# Negative Y runs past the keel toward the horizon and clips off the top.
+	# These seats stay beside the belt, high enough to clear the gravel.
+	ice_pos = _clear_sky(pad + Vector2(-300.0, -55.0), pad, anchor, 230.0)
+	copper_pos = _clear_sky(pad + Vector2(-180.0, -150.0), pad, anchor, 230.0)
+	_pile(rng, ice_pos, 5, "#d5e6f0", "#f4fbff", "ice_spall", 20.0)
+	_pile(rng, copper_pos, 4, "#6e8f58", "#d6ee8a", "copper_slag", 22.0)
+
+
+func _pile(rng: RandomNumberGenerator, center: Vector2, count: int, tint: String, vein: String, material: String, size0: float) -> void:
+	for i in count:
+		var at := center + Vector2(rng.randf_range(-46.0, 46.0), rng.randf_range(-32.0, 32.0))
+		var size := size0 + float(i) * 3.0 + rng.randf_range(0.0, 4.0)
+		var rot := rng.randf() * TAU
+		var verts := PackedVector2Array()
+		var sides := 5 + (i % 3)
+		for s in sides:
+			var a := rot + float(s) / float(sides) * TAU
+			verts.append(at + Vector2.from_angle(a) * size * rng.randf_range(0.7, 1.15))
+		asteroids.append({
+			"pos": at,
+			"verts": verts,
+			"size": size,
+			"composition": material,
+			"tint": tint,
+			"vein": vein,
+			"material": material,
+			"ore": true,
+		})
+
+
+func _clear_pad(at: Vector2, pad: Vector2, keep: float) -> Vector2:
+	if at.distance_to(pad) >= keep:
+		return at
+	var push: Vector2 = at - pad
+	if push.length() < 1.0:
+		push = Vector2(0.0, -1.0)
+	return pad + push.normalized() * keep
+
+
+func _clear_sky(at: Vector2, pad: Vector2, anchor, keep: float) -> Vector2:
+	var placed := _clear_pad(at, pad, keep)
+	if anchor == null:
+		return placed
+	var crust := float(anchor.radius) * 1.34 + 80.0
+	if placed.distance_to(anchor.pos) < crust:
+		placed = anchor.pos + (placed - anchor.pos).normalized() * (crust + 40.0)
+		placed = _clear_pad(placed, pad, keep)
+	return placed
+
+
 func _scatter_flank_scrap(rng: RandomNumberGenerator) -> void:
+	plate_pos = Vector2.ZERO
 	if belt_pos == Vector2.ZERO:
 		return
 	var belt: Dictionary = defs.system.get("belt", {})
@@ -2970,6 +3074,9 @@ func _scatter_flank_scrap(rng: RandomNumberGenerator) -> void:
 			"scale": rng.randf_range(1.45, 2.35),
 			"origin": str(belt.get("composition", "")),
 		})
+		plate_pos += at
+	if spots.size() > 0:
+		plate_pos /= float(spots.size())
 
 
 func _pin_local_marks() -> void:
@@ -2982,6 +3089,67 @@ func _pin_local_marks() -> void:
 		if stream_origin != Vector2.ZERO and str(row.get("id", "")) == str(rain.get("id", "")):
 			row.pos = stream_origin
 			row.radius = 64.0
+		if ice_pos != Vector2.ZERO and str(row.get("id", "")) == "ice_spall":
+			row.pos = ice_pos
+			row.radius = 80.0
+		if copper_pos != Vector2.ZERO and str(row.get("id", "")) == "copper_slag":
+			row.pos = copper_pos
+			row.radius = 76.0
+		if plate_pos != Vector2.ZERO and str(row.get("id", "")) == "hull_plate":
+			row.pos = plate_pos
+			row.radius = 90.0
+
+
+func _gang_book() -> Dictionary:
+	if defs.has("gangs") and defs.gangs is Dictionary and not (defs.gangs as Dictionary).is_empty():
+		return defs.gangs
+	var book: Dictionary = Serde.load_json("res://data/gangs.json")
+	defs.gangs = book
+	return book
+
+
+func _material_book() -> Dictionary:
+	if defs.has("materials") and defs.materials is Dictionary and not (defs.materials as Dictionary).is_empty():
+		return defs.materials
+	var book: Dictionary = Serde.load_json("res://data/materials.json")
+	defs.materials = book
+	return book
+
+
+func _pick_gang() -> Dictionary:
+	var book := _gang_book()
+	var keys: Array = book.keys()
+	if keys.is_empty():
+		gang_id = "red_keel"
+		gang_name = "Red Keel"
+		return {}
+	if gang_salt == 0:
+		gang_salt = int(Time.get_ticks_msec() % 900) + 11
+	var mix := absi(gang_salt + str(defs.system.id).hash())
+	var picked: Dictionary = book[str(keys[mix % keys.size()])]
+	gang_id = str(picked.get("id", keys[0]))
+	gang_name = str(picked.get("name", "Red Keel"))
+	return picked
+
+
+func _gang_line() -> String:
+	var book := _gang_book()
+	if book.has(gang_id):
+		return str(book[gang_id].get("line", ""))
+	return "They hunt the amber."
+
+
+func yields_material(row: Dictionary) -> bool:
+	var kind_name := str(row.get("kind", ""))
+	if kind_name == "planet":
+		return false
+	var res: Dictionary = row.get("resource", {})
+	var id := str(res.get("id", ""))
+	if id == "":
+		return false
+	if id == "raw_mass" or kind_name == "belt" or kind_name == "stream" or kind_name == "seam" or kind_name == "gravel":
+		return true
+	return _material_book().has(id)
 
 
 func _belt_tint(composition: String) -> String:
