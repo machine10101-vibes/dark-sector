@@ -129,6 +129,53 @@ static func recall(sim, uid: String) -> void:
 		sim.say(message)
 
 
+static func strike(sim, uid: String, target_id: String) -> String:
+	var craft = _by_uid(sim, uid)
+	if craft == null:
+		return "That rack slot is empty."
+	if str(craft.def_id) != "fighter":
+		return "%s does not attack." % craft.name
+	if str(craft.state) == "lost":
+		return "%s is lost. Rebuild it from returned mass." % craft.name
+	if target_id == "":
+		return "Pick a ship first."
+	if str(craft.state) == "docked":
+		_depart(sim, craft, target_id)
+	craft.state = "escort"
+	craft.order = "attack"
+	craft.target = target_id
+	sim.say("%s breaks for %s." % [craft.name, _unit_name(sim, target_id)])
+	sim.sfx("launch")
+	return ""
+
+
+static func wing_strike(sim, target_id: String) -> String:
+	if target_id == "":
+		return "Pick a ship first."
+	var sent := 0
+	var first := ""
+	for craft in sim.craft:
+		if str(craft.def_id) != "fighter" or str(craft.state) == "lost":
+			continue
+		var message := strike(sim, str(craft.uid), target_id)
+		if message == "":
+			sent += 1
+		elif first == "":
+			first = message
+	if sent > 0:
+		return ""
+	if first != "":
+		return first
+	return "No fighter is on the keel."
+
+
+static func _unit_name(sim, target_id: String) -> String:
+	var other = HelmCombat.find_unit(sim, target_id)
+	if other != null:
+		return str(other.get("name", "the target"))
+	return "the target"
+
+
 static func fleet(sim, verb: String) -> String:
 	if verb == "recall":
 		return _fleet_recall(sim)

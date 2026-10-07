@@ -1070,7 +1070,23 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 		try_fire(unit, stats.gun)
 		for mount in Fit.mounts(defs, unit):
 			try_fire(unit, mount)
+	var armed := str(unit.get("engage", ""))
+	if armed != "":
+		if str(unit.get("lock_id", "")) == "":
+			unit.engage = ""
+		else:
+			_fire_socket(unit, stats, armed)
 	_arm_grace(unit, dt)
+
+
+func _fire_socket(unit: Dictionary, stats: Dictionary, socket: String) -> void:
+	if socket == "nose":
+		try_fire(unit, stats.gun)
+		return
+	for mount in Fit.mounts(defs, unit):
+		if str(mount.get("socket", "")) == socket or str(mount.get("id", "")) == socket:
+			try_fire(unit, mount)
+			return
 
 
 func _step_npc(actor: Dictionary, dt: float) -> void:
@@ -2492,6 +2508,19 @@ func _apply_verbs(unit: Dictionary, cmd: Dictionary) -> void:
 		HelmCombat.cycle_lock(self, unit, int(cmd.lock_cycle))
 	if cmd.has("order"):
 		HelmCombat.set_order(self, unit, cmd.order)
+	if cmd.has("engage"):
+		var spec: Dictionary = cmd.engage if typeof(cmd.engage) == TYPE_DICTIONARY else {}
+		var mark := str(spec.get("lock", ""))
+		if mark != "":
+			HelmCombat.set_lock(self, unit, mark)
+		unit.engage = str(spec.get("socket", ""))
+		if str(unit.get("agent_id", "")) == str(player.get("agent_id", "")):
+			if str(unit.engage) == "":
+				say("Weapons hold.")
+			else:
+				var who = HelmCombat.find_unit(self, mark)
+				var called := str(who.get("name", "the target")) if who != null else "the target"
+				say("%s on %s." % [str(spec.get("name", "The gun")), called])
 
 
 func _clear_oneshots() -> void:
@@ -2505,6 +2534,7 @@ func _clear_oneshots() -> void:
 		row.erase("lock")
 		row.erase("lock_cycle")
 		row.erase("order")
+		row.erase("engage")
 		commands[key] = row
 
 

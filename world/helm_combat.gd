@@ -232,6 +232,26 @@ static func targets(sim, unit: Dictionary, reach: float = -1.0) -> Array:
 	return rows
 
 
+## The mark under a cursor. A tighter disc wins, so a ship in front of a
+## planet or a lane buoy on the limb is the thing the click means.
+static func pick_mark(at: Vector2, marks: Array) -> Dictionary:
+	var best: Dictionary = {}
+	var best_gap := 0.0
+	var best_rad := 0.0
+	for row in marks:
+		var spot: Vector2 = row.at
+		var rad: float = float(row.rad)
+		var gap: float = at.distance_to(spot)
+		if gap > rad:
+			continue
+		var tighter := best.is_empty() or rad < best_rad - 4.0 or (absf(rad - best_rad) <= 4.0 and gap < best_gap)
+		if tighter:
+			best = row
+			best_gap = gap
+			best_rad = rad
+	return best
+
+
 static func set_lock(sim, unit: Dictionary, id: String) -> void:
 	if str(unit.get("lock_id", "")) == id:
 		return
@@ -408,6 +428,10 @@ static func set_order(sim, unit: Dictionary, order) -> void:
 	if order.has("x") and order.has("y"):
 		row.x = float(order.x)
 		row.y = float(order.y)
+	if str(order.get("label", "")) != "":
+		row.label = str(order.label)
+	if kind == "stop":
+		unit.engage = ""
 	if kind != "stop" and row.target == "" and not row.has("x"):
 		row.target = str(unit.get("lock_id", ""))
 		if row.target == "":
@@ -433,6 +457,8 @@ static func order_label(sim, order: Dictionary) -> String:
 		var wreck = sim.wreck_by_id(str(order.get("target", "")))
 		if wreck != null:
 			name = "wreck of %s" % str(wreck.get("name", "a keel"))
+		elif str(order.get("label", "")) != "":
+			name = str(order.label)
 	match kind:
 		"approach":
 			return "Approaching %s" % name

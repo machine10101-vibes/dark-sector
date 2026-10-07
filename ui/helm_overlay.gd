@@ -26,6 +26,8 @@ var _rows: Array = []
 var _orbit_pick := 1
 var _keep_pick := 0
 var _font: Font
+var strike_box: PanelContainer
+var strike_list: VBoxContainer
 
 
 func _ready() -> void:
@@ -57,6 +59,16 @@ func _ready() -> void:
 		button.pressed.connect(_press_order.bind(str(spec[0])))
 		order_row.add_child(button)
 		order_buttons[str(spec[0])] = button
+	strike_box = PanelContainer.new()
+	strike_box.visible = false
+	strike_box.mouse_filter = Control.MOUSE_FILTER_STOP
+	strike_box.z_index = 40
+	strike_box.add_theme_stylebox_override("panel", ThemeKit.glass(true))
+	add_child(strike_box)
+	strike_list = VBoxContainer.new()
+	strike_list.add_theme_constant_override("separation", 4)
+	strike_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	strike_box.add_child(strike_list)
 
 
 func _process(_delta: float) -> void:
@@ -280,6 +292,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var key := (event as InputEventKey).keycode
+		if key == KEY_ESCAPE and strike_box != null and strike_box.visible:
+			_close_strike()
+			get_viewport().set_input_as_handled()
+			return
 		var order := ""
 		match key:
 			KEY_F1:
@@ -294,18 +310,23 @@ func _unhandled_input(event: InputEvent) -> void:
 			_press_order(order)
 			get_viewport().set_input_as_handled()
 		return
-	if event is InputEventMouseButton and event.pressed and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
-		var at := (event as InputEventMouseButton).position
-		var best := {}
-		var best_d := 34.0
-		for row in _brackets:
-			var gap: float = (row.at as Vector2).distance_to(at)
-			if gap < best_d:
-				best_d = gap
-				best = row
-		if best.is_empty():
+	if event is InputEventMouseButton and event.pressed:
+		var press := event as InputEventMouseButton
+		if press.button_index != MOUSE_BUTTON_LEFT and press.button_index != MOUSE_BUTTON_RIGHT:
 			return
-		_pick(str(best.id), bool(best.wreck), (event as InputEventMouseButton).double_click)
+		var at := press.position
+		var hit := _hit(at)
+		if press.button_index == MOUSE_BUTTON_RIGHT:
+			if hit.is_empty():
+				_close_strike()
+				return
+			_open_strike(hit, at)
+			get_viewport().set_input_as_handled()
+			return
+		_close_strike()
+		if hit.is_empty():
+			return
+		_use_hit(hit, press.double_click)
 		get_viewport().set_input_as_handled()
 
 
@@ -313,14 +334,289 @@ func _overview_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton) or not event.pressed:
 		return
 	var press := event as InputEventMouseButton
-	if press.button_index != MOUSE_BUTTON_LEFT:
+	if press.button_index != MOUSE_BUTTON_LEFT and press.button_index != MOUSE_BUTTON_RIGHT:
 		return
 	var index := int((press.position.y - 30.0) / 24.0)
 	if press.position.y < 30.0 or index < 0 or index >= _rows.size():
 		return
 	var row: Dictionary = _rows[index]
+	_close_strike()
+	if press.button_index == MOUSE_BUTTON_RIGHT:
+		var marked := {
+			"id": str(row.id),
+			"name": str(row.name),
+			"kind": "wreck" if bool(row.wreck) else "ship",
+			"wreck": bool(row.wreck),
+		}
+		_open_strike(marked, overview.position + press.position)
+		overview.accept_event()
+		return
 	_pick(str(row.id), bool(row.wreck), press.double_click)
 	overview.accept_event()
+
+
+func _eye() -> Dictionary:
+	var helm: Node = hud.get_parent().get_node_or_null("Helm") if hud != null and hud.get_parent() != null else null
+	if helm == null:
+		return {}
+	var cam: Camera3D = helm.get("cam3")
+	var stage = helm.get("stage")
+	if cam == null or stage == null:
+		return {}
+	return {"cam": cam, "stage": stage}
+
+
+func _hit(at: Vector2) -> Dictionary:
+	var sim = Game.sim
+	if sim == null or int(sim.layer) != ScaleFrame.BAND:
+		return {}
+	var eye := _eye()
+	if eye.is_empty():
+		return {}
+	return HelmCombat.pick_mark(at, _marks(eye.cam, eye.stage, sim))
+
+
+func _marks(cam: Camera3D, stage, sim) -> Array:
+	var marks: Array = []
+	for row in _contacts(sim):
+		var unit: Dictionary = row.unit
+		var world_r := 16.0
+		if not bool(row.wreck):
+			world_r = float(Fit.stats(sim.defs, unit).hit_radius) * 1.6
+		var spot := _project(cam, stage, unit.pos, world_r, 28.0, 220.0)
+		if spot.is_empty():
+			continue
+		marks.append({
+			"id": str(row.id),
+			"name": str(row.name),
+			"kind": "wreck" if bool(row.wreck) else "ship",
+			"wreck": bool(row.wreck),
+			"at": spot.at,
+			"rad": spot.rad,
+		})
+	for body in sim.planets:
+		var spot := _project(cam, stage, body.pos, float(body.radius), 36.0, 4000.0)
+		if spot.is_empty():
+			continue
+		marks.append({
+			"id": str(body.id),
+			"name": str(body.name),
+			"kind": "planet",
+			"pos": body.pos,
+			"range": float(body.radius) + 160.0,
+			"at": spot.at,
+			"rad": spot.rad,
+		})
+	for gate in sim.gates:
+		var row: Dictionary = gate
+		var reach := float(row.get("radius", 80.0))
+		var spot := _project(cam, stage, row.pos, reach, 36.0, 800.0)
+		if spot.is_empty():
+			continue
+		marks.append({
+			"id": str(row.get("id", "")),
+			"name": str(row.get("name", "Lane")),
+			"kind": "gate",
+			"pos": row.pos,
+			"range": 30.0,
+			"at": spot.at,
+			"rad": spot.rad,
+		})
+	for place in sim.nodes:
+		if str(place.get("kind", "")) == "planet":
+			continue
+		var reach := maxf(28.0, float(place.get("radius", 40.0)))
+		var spot := _project(cam, stage, place.pos, reach, 28.0, 240.0)
+		if spot.is_empty():
+			continue
+		marks.append({
+			"id": str(place.id),
+			"name": str(place.name),
+			"kind": "node",
+			"pos": place.pos,
+			"range": reach,
+			"at": spot.at,
+			"rad": spot.rad,
+		})
+	if sim.beacon_pos != Vector2.ZERO:
+		var spot := _project(cam, stage, sim.beacon_pos, 40.0, 28.0, 80.0)
+		if not spot.is_empty():
+			marks.append({
+				"id": "beacon",
+				"name": "Helion Dock",
+				"kind": "beacon",
+				"pos": sim.beacon_pos,
+				"range": 36.0,
+				"at": spot.at,
+				"rad": spot.rad,
+			})
+	return marks
+
+
+func _project(cam: Camera3D, stage, world_pos: Vector2, world_r: float, lo: float, hi: float) -> Dictionary:
+	var at3: Vector3 = stage.chart(world_pos, 2.0)
+	if cam.is_position_behind(at3):
+		return {}
+	var sp := cam.unproject_position(at3)
+	if sp.x < -80.0 or sp.y < -80.0 or sp.x > size.x + 80.0 or sp.y > size.y + 80.0:
+		return {}
+	var edge: Vector3 = stage.chart(world_pos + Vector2(world_r, 0.0), 2.0)
+	var rad := clampf(sp.distance_to(cam.unproject_position(edge)), lo, hi)
+	return {"at": sp, "rad": rad}
+
+
+func _use_hit(hit: Dictionary, double: bool) -> void:
+	var kind := str(hit.get("kind", ""))
+	if kind == "ship" or kind == "wreck":
+		_pick(str(hit.id), kind == "wreck", double)
+		return
+	_approach_hit(hit)
+
+
+func _approach_hit(hit: Dictionary) -> void:
+	var pos: Vector2 = hit.pos
+	Game.tap("order", {
+		"kind": "approach",
+		"x": pos.x,
+		"y": pos.y,
+		"range": float(hit.get("range", 80.0)),
+		"label": str(hit.get("name", "the mark")),
+	})
+
+
+func _open_strike(hit: Dictionary, at: Vector2) -> void:
+	_close_strike()
+	var kind := str(hit.get("kind", ""))
+	_strike_title(str(hit.get("name", "Target")))
+	if kind == "ship" or kind == "wreck":
+		_strike_button("Target", _strike_target.bind(str(hit.id), kind == "wreck"))
+		if kind == "ship":
+			_strike_label("WEAPONS")
+			for gun in _weapon_rows():
+				_strike_button("Attack · %s" % str(gun.name), _strike_gun.bind(str(hit.id), str(gun.socket), str(gun.name)))
+			var wing: Array = _fighter_rows()
+			if not wing.is_empty():
+				_strike_label("FLEET")
+				for craft in wing:
+					_strike_button("Attack · %s" % str(craft.name), _strike_craft.bind(str(hit.id), str(craft.uid)))
+				if wing.size() > 1:
+					_strike_button("Attack · the wing", _strike_wing.bind(str(hit.id)))
+	elif kind == "gate":
+		_strike_button("Approach", _strike_approach.bind(hit))
+		_strike_button("Take the lane", _strike_lane.bind(str(hit.id)))
+	else:
+		_strike_button("Approach", _strike_approach.bind(hit))
+	var rows := strike_list.get_child_count()
+	var height := 16.0 + float(rows) * 40.0
+	var box := Vector2(248.0, height)
+	var pos := at
+	pos.x = clampf(pos.x, 8.0, maxf(8.0, size.x - box.x - 8.0))
+	pos.y = clampf(pos.y, 8.0, maxf(8.0, size.y - box.y - 8.0))
+	strike_box.position = pos
+	strike_box.size = box
+	strike_box.visible = true
+
+
+func _weapon_rows() -> Array:
+	var rows: Array = []
+	var sim = Game.sim
+	if sim == null:
+		return rows
+	var gun: Dictionary = Fit.stats(sim.defs, sim.player).gun
+	var nose := "Main turret" if str(gun.get("kind", "")) == "turret" else "Main gun"
+	rows.append({"socket": "nose", "name": nose})
+	for mount in Fit.mounts(sim.defs, sim.player):
+		if str(mount.get("family", "")) == "pd":
+			continue
+		rows.append({"socket": str(mount.get("socket", mount.get("id", ""))), "name": str(mount.get("name", "Mount"))})
+	return rows
+
+
+func _fighter_rows() -> Array:
+	var rows: Array = []
+	if Game.sim == null:
+		return rows
+	for item in Game.sim.craft:
+		if str(item.def_id) != "fighter" or str(item.state) == "lost":
+			continue
+		rows.append(item)
+	return rows
+
+
+func _strike_title(text: String) -> void:
+	var label := ThemeKit.label(text, 15, Color("f4fcff"))
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	strike_list.add_child(label)
+
+
+func _strike_label(text: String) -> void:
+	strike_list.add_child(ThemeKit.label(text, 11, Color("7ed0dc")))
+
+
+func _strike_button(text: String, call: Callable) -> void:
+	var button := ThemeKit.button(text, false)
+	button.custom_minimum_size = Vector2(220, 36)
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.add_theme_font_size_override("font_size", 13)
+	button.pressed.connect(call)
+	strike_list.add_child(button)
+
+
+func _close_strike() -> void:
+	if strike_box == null:
+		return
+	strike_box.visible = false
+	for child in strike_list.get_children():
+		strike_list.remove_child(child)
+		child.queue_free()
+
+
+func _strike_target(id: String, wreck: bool) -> void:
+	_close_strike()
+	_pick(id, wreck, false)
+
+
+func _strike_gun(id: String, socket: String, gun_name: String) -> void:
+	_close_strike()
+	Game.tap("engage", {"socket": socket, "lock": id, "name": gun_name})
+
+
+func _strike_craft(id: String, uid: String) -> void:
+	_close_strike()
+	if Game.sim == null:
+		return
+	Game.tap("lock", id)
+	var message := CraftOrders.strike(Game.sim, uid, id)
+	if message != "":
+		Game.sim.say(message)
+
+
+func _strike_wing(id: String) -> void:
+	_close_strike()
+	if Game.sim == null:
+		return
+	Game.tap("lock", id)
+	var message := CraftOrders.wing_strike(Game.sim, id)
+	if message != "":
+		Game.sim.say(message)
+
+
+func _strike_approach(hit: Dictionary) -> void:
+	_close_strike()
+	_approach_hit(hit)
+
+
+func _strike_lane(id: String) -> void:
+	_close_strike()
+	if Game.sim == null:
+		return
+	var gate := Game.sim.nearby_gate()
+	if gate.is_empty() or str(gate.get("id", "")) != id:
+		Game.sim.say("Fly into the ring, then take the lane.")
+		return
+	var message := Game.sim.try_lane()
+	if message != "":
+		Game.sim.say(message)
 
 
 func _pick(id: String, wreck: bool, double: bool) -> void:
