@@ -34,7 +34,7 @@ func _ready() -> void:
 	title = ThemeKit.label("SPACE MAP", 18, Color("f0c27a"))
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(title)
-	hint = ThemeKit.label("Drag to move. Tap a system. Tab, Esc, or Close.", 12, Color("8aa8b0"))
+	hint = ThemeKit.label("Drag to move. Tap a system. F10, Esc, or Close.", 12, Color("8aa8b0"))
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hint)
 	close_button = ThemeKit.button("Close", true)
