@@ -276,11 +276,10 @@ varying vec3 wpos;
 uniform vec4 albedo : source_color = vec4(0.5, 0.55, 0.58, 1.0);
 uniform vec4 accent : source_color = vec4(0.0, 0.0, 0.0, 0.0);
 float seam_of(vec3 p) {
-	float sx = smoothstep(0.455, 0.5, abs(fract(p.x * 0.2) - 0.5));
-	float sz = smoothstep(0.44, 0.5, abs(fract(p.z * 0.36) - 0.5));
-	float fx = smoothstep(0.478, 0.5, abs(fract(p.x * 0.82) - 0.5));
-	float fz = smoothstep(0.478, 0.5, abs(fract(p.z * 1.2) - 0.5));
-	return max(max(sx, sz), max(fx, fz) * 0.55);
+	float sx = smoothstep(0.488, 0.5, abs(fract(p.x * 0.11) - 0.5));
+	float sz = smoothstep(0.482, 0.5, abs(fract(p.z * 0.22) - 0.5));
+	float weld = smoothstep(0.494, 0.5, abs(fract(p.x * 0.11 + 0.5) - 0.5));
+	return max(max(sx, sz), weld * 0.35);
 }
 float plate_h(vec3 p) {
 	float seam = seam_of(p);
@@ -306,7 +305,7 @@ void fragment() {
 	float hz = plate_h(local_pos + vec3(0.0, 0.0, 0.22));
 	vec3 tangent = abs(n.y) > 0.92 ? vec3(1.0, 0.0, 0.0) : normalize(cross(n, vec3(0.0, 1.0, 0.0)));
 	vec3 bitangent = normalize(cross(n, tangent));
-	vec3 bumped = normalize(n + tangent * (h - hx) * 14.0 + bitangent * (h - hz) * 14.0);
+	vec3 bumped = normalize(n + tangent * (h - hx) * 3.6 + bitangent * (h - hz) * 3.6);
 	vec3 world_n = normalize((MODEL_MATRIX * vec4(bumped, 0.0)).xyz);
 	NORMAL = normalize((VIEW_MATRIX * vec4(world_n, 0.0)).xyz);
 	float seam = clamp(seam_of(local_pos), 0.0, 1.0);
@@ -919,7 +918,8 @@ func _sync_props(sim) -> void:
 			mat.metallic = 0.8
 			mat.roughness = 0.28
 			hoop.material_override = mat
-			hoop.set_meta("built", "yes")
+			_dress_gate(hoop, radius, tone)
+		hoop.set_meta("built", "yes")
 		var ang := float(row.get("angle", 0.0))
 		var through := Vector3(cos(ang), 0.0, -sin(ang))
 		var side := Vector3.UP.cross(through).normalized()
@@ -1030,6 +1030,7 @@ func _sync_props(sim) -> void:
 		chev_pa.rotation.y = -0.5
 		var chev_sa := pad.get_node("ChevronSA") as MeshInstance3D
 		chev_sa.rotation.y = 0.5
+		_dress_berth(pad)
 		pad.set_meta("built", "yes")
 	pad.visible = not on_chart
 	pad.position = chart(sim.beacon_pos, 1.2)
@@ -3098,20 +3099,22 @@ func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array, 
 		nose = maxf(nose, point.x)
 	holder.set_meta("nose", nose)
 	var lower := height * 0.62
-	var hull_mesh := _prism(geom.hull, lower)
+	var hull_mesh := _hull_loft(geom.hull, height)
+	if hull_mesh == null:
+		hull_mesh = _prism(geom.hull, lower)
 	if hull_mesh != null:
 		var plate := MeshInstance3D.new()
 		plate.name = "Plate"
 		plate.mesh = hull_mesh
 		plate.material_override = _hull_mat(Color("888888"))
 		holder.add_child(plate)
-	var deck_poly := _inset_poly(geom.hull, 0.78)
-	var deck_mesh := _prism(deck_poly, height * 0.48)
+	var deck_poly := _inset_poly(geom.hull, 0.55)
+	var deck_mesh := _prism(deck_poly, height * 0.07, 0.94)
 	if deck_mesh != null:
 		var deck := MeshInstance3D.new()
 		deck.name = "Deck"
 		deck.mesh = deck_mesh
-		deck.position.y = lower * 0.92
+		deck.position.y = height * 0.98
 		deck.material_override = _hull_mat(Color("9a9a9a"))
 		holder.add_child(deck)
 	_add_bridge(holder, class_id, height, float(geom.tail))
@@ -4864,19 +4867,21 @@ func _craft_holder(key: String, kind: String) -> Node3D:
 	node.name = key
 	node.set_meta("kind", kind)
 	var poly := _craft_poly(kind)
-	var mesh := _prism(poly, 4.6, 0.82)
+	var mesh := _hull_loft(poly, 4.4)
+	if mesh == null:
+		mesh = _prism(poly, 4.6, 0.82)
 	if mesh != null:
 		var body := MeshInstance3D.new()
 		body.name = "Plate"
 		body.mesh = mesh
 		body.material_override = _hull_mat(_craft_color(kind))
 		node.add_child(body)
-		var cap_mesh := _prism(_inset_poly(poly, 0.72), 2.2, 0.8)
+		var cap_mesh := _prism(_inset_poly(poly, 0.7), 0.55, 0.92)
 		if cap_mesh != null:
 			var cap := MeshInstance3D.new()
 			cap.name = "Deck"
 			cap.mesh = cap_mesh
-			cap.position.y = 3.8
+			cap.position.y = 3.15
 			cap.material_override = _hull_mat(_craft_color(kind).lightened(0.12))
 			node.add_child(cap)
 		var lamp := MeshInstance3D.new()
@@ -6003,7 +6008,7 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 		plate.mesh = _bevel_box(Vector3(span * 0.13, 0.85, maxf(height * 0.22, 3.2)), 0.12)
 		x = tail + span * (0.16 + float(i) * 0.15)
 		z = height * 0.2 if i % 2 == 0 else -height * 0.2
-		plate.position = Vector3(x, height * 0.72, z)
+		plate.position = Vector3(x, height * 1.02, z)
 		plate.material_override = _hull_mat(Color("8e9498"))
 		holder.add_child(plate)
 	if class_id == "anvil":
@@ -6021,8 +6026,8 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 	elif class_id == "alidade":
 		_dress_alidade(holder, height)
 	else:
-		_fairing(holder, "VaneP", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 0.78, 1.4))
-		_fairing(holder, "VaneS", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 0.78, -1.4))
+		_fairing(holder, "VaneP", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 1.02, 1.4))
+		_fairing(holder, "VaneS", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 1.02, -1.4))
 	_tube(holder, "Collar", maxf(height * 0.11, 1.5), 2.1, Vector3(tail + 1.6, height * 0.4, 0.0), "x", Color("5c6468"))
 	var mid := (nose + tail) * 0.42
 	var chine_z := maxf(height * 0.2, 2.8)
@@ -6031,15 +6036,15 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 	_hardware(holder, "SkidP", Vector3(span * 0.42, 0.55, 0.9), Vector3(mid, -0.35, maxf(height * 0.16, 2.2)), Color("4a5256"))
 	_hardware(holder, "SkidS", Vector3(span * 0.42, 0.55, 0.9), Vector3(mid, -0.35, -maxf(height * 0.16, 2.2)), Color("4a5256"))
 	for i in 3:
-		var fin := _hardware(holder, "Rad%d" % i, Vector3(span * 0.07, 0.22, maxf(height * 0.28, 3.2)), Vector3(tail + span * (0.22 + float(i) * 0.16), height * 0.95, 0.0), Color("3a3330"))
+		var fin := _hardware(holder, "Rad%d" % i, Vector3(span * 0.07, 0.22, maxf(height * 0.28, 3.2)), Vector3(tail + span * (0.22 + float(i) * 0.16), height * 1.06, 0.0), Color("3a3330"))
 		fin.rotation.x = 0.15 if i == 1 else -0.08
 	var hatch_z := maxf(height * 0.22, 3.8)
 	for i in 4:
 		var at_x := tail + span * (0.24 + float(i) * 0.15)
 		var side := 1.0 if i % 2 == 0 else -1.0
-		_hardware(holder, "Hatch%d" % i, Vector3(span * 0.1, 0.7, hatch_z), Vector3(at_x, height * 0.96, side * hatch_z * 0.85), Color("24282c"))
-		_hardware(holder, "HatchLip%d" % i, Vector3(span * 0.12, 0.28, hatch_z + 0.8), Vector3(at_x, height * 0.72, side * hatch_z * 0.85), Color("c4bfb4"))
-		_port_slit(holder, "Slit%d" % i, Vector3(span * 0.045, 0.35, 1.5), Vector3(at_x, height * 1.02, side * hatch_z * 0.35))
+		_hardware(holder, "Hatch%d" % i, Vector3(span * 0.1, 0.7, hatch_z), Vector3(at_x, height * 1.04, side * hatch_z * 0.85), Color("24282c"))
+		_hardware(holder, "HatchLip%d" % i, Vector3(span * 0.12, 0.28, hatch_z + 0.8), Vector3(at_x, height * 1.0, side * hatch_z * 0.85), Color("c4bfb4"))
+		_port_slit(holder, "Slit%d" % i, Vector3(span * 0.045, 0.35, 1.5), Vector3(at_x, height * 1.1, side * hatch_z * 0.35))
 	_hardware(holder, "ScoopP", Vector3(span * 0.14, maxf(height * 0.16, 2.4), 2.2), Vector3(mid, height * 0.34, chine_z + 1.8), Color("2a3034"))
 	_hardware(holder, "ScoopS", Vector3(span * 0.14, maxf(height * 0.16, 2.4), 2.2), Vector3(mid, height * 0.34, -chine_z - 1.8), Color("2a3034"))
 	_tube(holder, "Loom", 0.28, span * 0.55, Vector3(tail + span * 0.42, height * 0.55, chine_z * 0.55), "x", Color("17191c"))
@@ -6247,6 +6252,204 @@ func _round_poly(poly: PackedVector2Array) -> PackedVector2Array:
 		out.append(cur * 0.75 + nxt * 0.25)
 		out.append(cur * 0.25 + nxt * 0.75)
 	return out
+
+
+func _hull_loft(poly: PackedVector2Array, height: float) -> ArrayMesh:
+	if poly.size() < 3 or height < 0.4:
+		return null
+	var x0 := poly[0].x
+	var x1 := poly[0].x
+	for i in poly.size():
+		var point: Vector2 = poly[i]
+		x0 = minf(x0, point.x)
+		x1 = maxf(x1, point.x)
+	if x1 - x0 < 1.0:
+		return null
+	var stations := 26
+	var ring := 16
+	var cols := stations + 1
+	var verts := PackedVector3Array()
+	verts.resize(cols * ring)
+	var crowns := PackedFloat32Array()
+	crowns.resize(cols)
+	for s in cols:
+		var u := float(s) / float(stations)
+		var x := lerpf(x0, x1, u)
+		var beam := _beam_at(poly, x)
+		var tip := clampf(minf(u, 1.0 - u) / 0.14, 0.0, 1.0)
+		var crown := height * lerpf(0.46, 1.0, tip)
+		crowns[s] = crown
+		if beam < 0.12:
+			beam = 0.12
+		for n in ring:
+			var ang := TAU * float(n) / float(ring)
+			var cy := sin(ang)
+			var cz := cos(ang)
+			var t := cy * 0.5 + 0.5
+			var y := crown * (0.05 + pow(t, 0.66) * 0.95)
+			var flank := 0.74 + 0.26 * sin(t * PI)
+			verts[s * ring + n] = Vector3(x, y, beam * cz * flank)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for s in stations:
+		var axle_y := crowns[s] * 0.42
+		for n in ring:
+			var n1 := (n + 1) % ring
+			var a: Vector3 = verts[s * ring + n]
+			var b: Vector3 = verts[s * ring + n1]
+			var c: Vector3 = verts[(s + 1) * ring + n1]
+			var d: Vector3 = verts[(s + 1) * ring + n]
+			var mid := (a + b + c + d) * 0.25
+			var outward := mid - Vector3(mid.x, axle_y, 0.0)
+			if outward.length_squared() < 0.0001:
+				outward = Vector3.UP
+			_out_quad(st, a, b, c, d, outward)
+	var nose := Vector3(x1 + maxf((x1 - x0) * 0.018, 0.35), crowns[stations] * 0.4, 0.0)
+	var tail := Vector3(x0 - maxf((x1 - x0) * 0.012, 0.25), crowns[0] * 0.36, 0.0)
+	for n in ring:
+		var n1 := (n + 1) % ring
+		var na: Vector3 = verts[stations * ring + n]
+		var nb: Vector3 = verts[stations * ring + n1]
+		_out_tri(st, nose, na, nb, Vector3.RIGHT)
+		var ta: Vector3 = verts[n]
+		var tb: Vector3 = verts[n1]
+		_out_tri(st, tail, tb, ta, Vector3.LEFT)
+	st.index()
+	st.generate_normals()
+	return st.commit()
+
+
+func _beam_at(poly: PackedVector2Array, x: float) -> float:
+	var best := 0.0
+	var count := poly.size()
+	for i in count:
+		var a: Vector2 = poly[i]
+		var b: Vector2 = poly[(i + 1) % count]
+		var span := b.x - a.x
+		if absf(span) < 0.0001:
+			if absf(x - a.x) < 0.05:
+				best = maxf(best, maxf(absf(a.y), absf(b.y)))
+			continue
+		var t := (x - a.x) / span
+		if t < -0.0001 or t > 1.0001:
+			continue
+		var z := a.y + (b.y - a.y) * clampf(t, 0.0, 1.0)
+		best = maxf(best, absf(z))
+	return best
+
+
+func _dress_gate(hoop: MeshInstance3D, radius: float, tone: Color) -> void:
+	var lip := MeshInstance3D.new()
+	lip.name = "Lip"
+	var inner := TorusMesh.new()
+	inner.inner_radius = maxf(radius * 0.72, 6.0)
+	inner.outer_radius = maxf(radius * 0.84, 8.0)
+	inner.rings = 36
+	inner.ring_segments = 8
+	lip.mesh = inner
+	var iron := _metal(tone.darkened(0.45))
+	iron.emission_enabled = true
+	iron.emission = tone.darkened(0.15)
+	iron.emission_energy_multiplier = 0.35
+	lip.material_override = iron
+	hoop.add_child(lip)
+	var rail := maxf(radius - 1.0, 6.0)
+	for i in 8:
+		var tooth := MeshInstance3D.new()
+		tooth.name = "Chevron%d" % i
+		var bite := maxf(radius * 0.1, 2.2)
+		tooth.mesh = _bevel_box(Vector3(bite, maxf(radius * 0.04, 0.6), bite * 0.38), 0.12)
+		var ang := float(i) * TAU / 8.0 + 0.18
+		tooth.position = Vector3(cos(ang) * rail, 0.0, sin(ang) * rail)
+		tooth.rotation.y = -ang
+		var paint := _metal(tone.lightened(0.18))
+		paint.emission_enabled = true
+		paint.emission = tone
+		paint.emission_energy_multiplier = 1.2
+		tooth.material_override = paint
+		hoop.add_child(tooth)
+	for i in 12:
+		var lamp := MeshInstance3D.new()
+		lamp.name = "GateLamp%d" % i
+		var bulb := SphereMesh.new()
+		var lit := maxf(radius * 0.016, 0.7)
+		bulb.radius = lit
+		bulb.height = lit * 2.0
+		bulb.radial_segments = 8
+		bulb.rings = 6
+		lamp.mesh = bulb
+		var ang2 := float(i) * TAU / 12.0
+		lamp.position = Vector3(cos(ang2) * (radius + 5.0), 0.0, sin(ang2) * (radius + 5.0))
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.albedo_color = tone.lightened(0.4)
+		glow.emission_enabled = true
+		glow.emission = tone.lightened(0.25)
+		glow.emission_energy_multiplier = 2.1
+		lamp.material_override = glow
+		lamp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		hoop.add_child(lamp)
+
+
+func _dress_berth(pad: Node3D) -> void:
+	var span := 18.5
+	for side_i in 2:
+		var side := 1.0 if side_i == 0 else -1.0
+		var tag := "P" if side > 0.0 else "S"
+		var post := MeshInstance3D.new()
+		post.name = "Gantry%s" % tag
+		var col := CylinderMesh.new()
+		col.top_radius = 0.85
+		col.bottom_radius = 1.35
+		col.height = 34.0
+		col.radial_segments = 12
+		post.mesh = col
+		post.position = Vector3(8.0, 18.0, side * span)
+		post.material_override = _hull_mat(Color("3a4248"))
+		pad.add_child(post)
+		var lamp := MeshInstance3D.new()
+		lamp.name = "GantryLamp%s" % tag
+		var bulb := SphereMesh.new()
+		bulb.radius = 1.15
+		bulb.height = 2.3
+		bulb.radial_segments = 12
+		bulb.rings = 8
+		lamp.mesh = bulb
+		lamp.position = Vector3(8.0, 36.2, side * span)
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.albedo_color = Color("9eecf5")
+		glow.emission_enabled = true
+		glow.emission = Color("7ee7f2")
+		glow.emission_energy_multiplier = 1.8
+		lamp.material_override = glow
+		lamp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pad.add_child(lamp)
+	var arch := MeshInstance3D.new()
+	arch.name = "GantryBeam"
+	arch.mesh = _bevel_box(Vector3(2.4, 1.6, span * 2.0 + 2.4), 0.18)
+	arch.position = Vector3(8.0, 33.4, 0.0)
+	arch.material_override = _hull_mat(Color("2c3438"))
+	pad.add_child(arch)
+	for i in 4:
+		var light := MeshInstance3D.new()
+		light.name = "Approach%d" % i
+		var dot := SphereMesh.new()
+		dot.radius = 0.55
+		dot.height = 1.1
+		dot.radial_segments = 8
+		dot.rings = 6
+		light.mesh = dot
+		light.position = Vector3(-24.0 + float(i) * 16.0, 2.4, 0.0)
+		var amber := StandardMaterial3D.new()
+		amber.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		amber.albedo_color = Color("f0c27a")
+		amber.emission_enabled = true
+		amber.emission = Color("f0c27a")
+		amber.emission_energy_multiplier = 1.4
+		light.material_override = amber
+		light.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pad.add_child(light)
 
 
 func _prism(poly: PackedVector2Array, height: float, top_scale: float = 0.86) -> ArrayMesh:
