@@ -566,19 +566,26 @@ func _draw_capsule(pane: Control) -> void:
 	_text(Vector2(rx, 24.0), "HELM", 11, Color("9fb7be"), pane)
 	_clip_text(pane, Vector2(rx, 40.0), r_end - rx, helm_word, 12, helm_col)
 	var gun: Dictionary = Fit.stats(sim.defs, p).gun
+	var mounts := Fit.mounts(sim.defs, p)
 	var gun_word := "GUN READY"
 	var gun_col := Color("9be7d0")
 	if hot:
-		gun_word = "GUN COOLING"
+		gun_word = "COOLING"
 		gun_col = HOT_C
 	elif cap < float(gun.get("cap", 0.0)):
-		gun_word = "GUN DRY"
+		gun_word = "CAP DRY"
 		gun_col = HOT_C
-	elif float(p.get("fire_cd", 0.0)) > 0.0:
-		gun_word = "GUN CYCLING"
+	elif float(p.get("fire_cd", 0.0)) > 0.0 and mounts.is_empty():
+		gun_word = "CYCLING"
 		gun_col = CAP_C
+	elif not mounts.is_empty():
+		var bits: PackedStringArray = PackedStringArray()
+		for mount in mounts:
+			bits.append(str(mount.get("name", "Mount")))
+		gun_word = " · ".join(bits)
 	_text(Vector2(rx, 62.0), "WEAPON", 11, Color("9fb7be"), pane)
-	_text(Vector2(rx, 78.0), gun_word, 12, gun_col, pane)
+	pane.draw_line(Vector2(rx, 68.0), Vector2(minf(rx + 72.0, r_end), 68.0), Color(0.77, 0.64, 0.38, 0.8), 1.0)
+	_clip_text(pane, Vector2(rx, 84.0), r_end - rx, gun_word, 12, gun_col)
 	var lock_word := "Tab to lock"
 	var target = HelmCombat.find_unit(sim, str(p.get("lock_id", "")))
 	if target != null:

@@ -1385,6 +1385,24 @@ func _pick_family(family: String) -> void:
 	_refill_ship_list()
 
 
+func _family_head(word: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var lab := ThemeKit.label(word.to_upper(), 12, Color("c4a46a"))
+	lab.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	lab.autowrap_mode = TextServer.AUTOWRAP_OFF
+	row.add_child(lab)
+	var rule := ColorRect.new()
+	rule.color = Color(0.72, 0.58, 0.32, 0.75)
+	rule.custom_minimum_size = Vector2(24, 1)
+	rule.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rule.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(rule)
+	return row
+
+
 func _family_word(family: String) -> String:
 	match family:
 		"hull":
@@ -1437,7 +1455,7 @@ func _refill_ship_list() -> void:
 		if not groups.has(family):
 			continue
 		any = true
-		ship_list.add_child(ThemeKit.label(_family_word(str(family)), 12, Color("8a7344")))
+		ship_list.add_child(_family_head(_family_word(str(family))))
 		var members: Array = groups[family]
 		members.sort()
 		for module_id in members:
@@ -1446,7 +1464,7 @@ func _refill_ship_list() -> void:
 		if order.has(str(family)):
 			continue
 		any = true
-		ship_list.add_child(ThemeKit.label(_family_word(str(family)), 12, Color("8a7344")))
+		ship_list.add_child(_family_head(_family_word(str(family))))
 		var extra: Array = groups[family]
 		extra.sort()
 		for module_id in extra:
@@ -1458,6 +1476,9 @@ func _refill_ship_list() -> void:
 
 func _add_ship_row(module_id: String) -> void:
 	var mod: Dictionary = Game.sim.defs.modules[module_id]
+	var block := VBoxContainer.new()
+	block.add_theme_constant_override("separation", 1)
+	block.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	var name := ThemeKit.label(str(mod.name), 14)
@@ -1466,9 +1487,8 @@ func _add_ship_row(module_id: String) -> void:
 	name.clip_text = true
 	row.add_child(name)
 	var meta := ThemeKit.label("", 12, Color("8d826c"))
-	meta.autowrap_mode = TextServer.AUTOWRAP_OFF
-	meta.custom_minimum_size = Vector2(168, 0)
-	row.add_child(meta)
+	meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	meta.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var button := ThemeKit.button("Bolt on")
 	button.custom_minimum_size = Vector2(92, 44)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_END
@@ -1487,7 +1507,9 @@ func _add_ship_row(module_id: String) -> void:
 			Fit.weapon_line(mod.weapon),
 		]
 	row.add_child(button)
-	ship_list.add_child(row)
+	block.add_child(row)
+	block.add_child(meta)
+	ship_list.add_child(block)
 	bay_buttons[module_id] = {"meta": meta, "button": button}
 
 
@@ -1920,58 +1942,154 @@ class ShipGlass extends Control:
 		var hull: Dictionary = Game.sim.defs.ships[str(ship.class_id)]
 		var accent := Color(str(hull.accent))
 		var body := Color(str(hull.color))
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.012, 0.022, 0.03, 0.55))
-		var center := size * 0.5
-		var radius := minf(size.x, size.y) * 0.38
-		var grid := Color(0.45, 0.72, 0.84, 0.14)
-		var step := radius * 0.34
-		for i in range(-3, 4):
-			var offset := float(i) * step
-			draw_line(center + Vector2(offset, -radius), center + Vector2(offset, radius), grid, 1.0)
-			draw_line(center + Vector2(-radius, offset), center + Vector2(radius, offset), grid, 1.0)
-		draw_arc(center, radius, 0.0, TAU, 72, Color(0.62, 0.84, 0.92, 0.7), 1.6, true)
-		draw_arc(center, radius * 1.08, 0.0, TAU, 72, Color(0.35, 0.55, 0.64, 0.35), 1.0, true)
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.008, 0.016, 0.022, 0.72))
+		var center := size * 0.5 + Vector2(0, 8)
+		var radius := minf(size.x, size.y) * 0.34
+		_corner_brackets(accent)
+		draw_circle(center, radius * 1.05, Color(0.03, 0.07, 0.09, 0.45))
+		var grid := Color(0.45, 0.72, 0.84, 0.1)
+		var step := radius * 0.28
+		for i in range(-4, 5):
+			_grid_chord(center, radius * 0.92, true, float(i) * step, grid)
+			_grid_chord(center, radius * 0.92, false, float(i) * step, grid)
+		var tick := Color(0.62, 0.78, 0.84, 0.55)
+		var tick_long := Color(0.86, 0.78, 0.52, 0.9)
+		for i in 72:
+			var ang := TAU * float(i) / 72.0
+			var dir := Vector2(cos(ang), sin(ang))
+			var major := i % 6 == 0
+			var inner := radius - (9.0 if major else 4.0)
+			draw_line(center + dir * inner, center + dir * radius, tick_long if major else tick, 1.4 if major else 1.0)
+		draw_arc(center, radius, 0.0, TAU, 96, Color(0.72, 0.86, 0.92, 0.85), 1.6, true)
+		draw_arc(center, radius * 0.78, 0.0, TAU, 80, Color(0.45, 0.64, 0.72, 0.35), 1.0, true)
+		draw_arc(center, radius * 0.46, 0.0, TAU, 64, Color(0.45, 0.64, 0.72, 0.22), 1.0, true)
+		var gap := radius * 0.16
+		var arm := radius * 0.42
+		var hair := Color(0.7, 0.84, 0.9, 0.28)
+		draw_line(center + Vector2(gap, 0), center + Vector2(arm, 0), hair, 1.0)
+		draw_line(center + Vector2(-arm, 0), center + Vector2(-gap, 0), hair, 1.0)
+		draw_line(center + Vector2(0, gap), center + Vector2(0, arm), hair, 1.0)
+		draw_line(center + Vector2(0, -arm), center + Vector2(0, -gap), hair, 1.0)
 		var shapes: Array = Silhouette.shapes_of(Game.sim.defs, ship.modules)
 		var layers: Array = Silhouette.layers_of(Game.sim.defs, ship.modules)
 		var geom := Silhouette.parts(str(ship.class_id), shapes, layers)
 		var bounds := _hull_bounds(geom)
 		var span := maxf(bounds.size.x, bounds.size.y)
-		var plan_scale := (radius * 1.55) / maxf(span, 1.0)
+		var plan_scale := (radius * 1.35) / maxf(span, 1.0)
 		var mid := bounds.position + bounds.size * 0.5
 		var rot := -PI * 0.5
 		var origin := center - mid.rotated(rot) * plan_scale
 		var hp := clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0)
 		Silhouette.draw(self, origin, rot, str(ship.class_id), shapes, plan_scale, body, accent, hp, false, layers)
-		_draw_marks(center, radius * 0.96, hull, ship, accent)
-		var title := str(hull.callsign)
+		_draw_marks(center, radius * 1.12, hull, ship, accent)
 		var font := ThemeDB.fallback_font
+		if font == null:
+			return
+		var title := str(hull.callsign)
 		var title_size := 18
 		var title_w := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size).x
-		draw_string(font, Vector2(center.x - title_w * 0.5, 22.0), title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size, Color("e6d7bf"))
+		draw_string(font, Vector2(center.x - title_w * 0.5, 22.0), title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size, Color("f4ecdf"))
+		var rule := minf(title_w, size.x * 0.36)
+		draw_line(Vector2(center.x - rule * 0.5, 28.0), Vector2(center.x + rule * 0.5, 28.0), Color(accent.r, accent.g, accent.b, 0.9), 1.2)
+		var klass := str(hull.get("class_name", ""))
+		var class_size := 12
+		var class_w := font.get_string_size(klass, HORIZONTAL_ALIGNMENT_LEFT, -1, class_size).x
+		draw_string(font, Vector2(center.x - class_w * 0.5, 44.0), klass, HORIZONTAL_ALIGNMENT_LEFT, -1, class_size, Color("c4a46a"))
+		var mounts := Fit.mounts(Game.sim.defs, ship)
+		var words: PackedStringArray = PackedStringArray()
+		for mount in mounts:
+			words.append(str(mount.get("name", "")))
+		var fit_line := "Clean keel" if words.is_empty() else " · ".join(words)
+		var fit_size := 12
+		var fit_w := font.get_string_size(fit_line, HORIZONTAL_ALIGNMENT_LEFT, -1, fit_size).x
+		if fit_w > size.x - 16.0 and words.size() > 1:
+			fit_line = "%d mounts fitted" % words.size()
+			fit_w = font.get_string_size(fit_line, HORIZONTAL_ALIGNMENT_LEFT, -1, fit_size).x
+		draw_string(font, Vector2(center.x - fit_w * 0.5, size.y - 14.0), fit_line, HORIZONTAL_ALIGNMENT_LEFT, -1, fit_size, Color("d7e6ea"))
+
+	func _corner_brackets(accent: Color) -> void:
+		var col := Color(accent.r, accent.g, accent.b, 0.85)
+		var arm := 14.0
+		var inset := 8.0
+		var corners: Array = [
+			Vector2(inset, inset),
+			Vector2(size.x - inset, inset),
+			Vector2(inset, size.y - inset),
+			Vector2(size.x - inset, size.y - inset),
+		]
+		var signs: Array = [Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, -1)]
+		for i in corners.size():
+			var at: Vector2 = corners[i]
+			var sign: Vector2 = signs[i]
+			draw_line(at, at + Vector2(sign.x * arm, 0), col, 1.3)
+			draw_line(at, at + Vector2(0, sign.y * arm), col, 1.3)
+
+	func _grid_chord(center: Vector2, radius: float, horizontal: bool, offset: float, color: Color) -> void:
+		var reach_sq := radius * radius - offset * offset
+		if reach_sq <= 1.0:
+			return
+		var reach := sqrt(reach_sq)
+		if horizontal:
+			draw_line(center + Vector2(-reach, offset), center + Vector2(reach, offset), color, 1.0)
+		else:
+			draw_line(center + Vector2(offset, -reach), center + Vector2(offset, reach), color, 1.0)
 
 	func _draw_marks(center: Vector2, radius: float, hull: Dictionary, ship: Dictionary, accent: Color) -> void:
 		var marks: Array = []
 		var used: Dictionary = {}
 		for module_id in ship.modules:
 			var mod: Dictionary = Game.sim.defs.modules.get(str(module_id), {})
-			marks.append(true)
+			marks.append(mod)
 			used[str(mod.get("slot", ""))] = true
 		for slot_name in hull.get("slots", []):
 			if used.has(str(slot_name)):
 				continue
-			marks.append(false)
+			marks.append({})
 		var count := mini(marks.size(), 12)
 		if count == 0:
 			return
 		for i in count:
-			var ang := -PI * 0.82 + (PI * 1.4) * (float(i) + 0.5) / float(count)
+			var ang := -PI * 0.5 + TAU * (float(i) + 0.5) / float(count)
 			var at := center + Vector2(cos(ang), sin(ang)) * radius
-			var box := Rect2(at - Vector2(6, 6), Vector2(12, 12))
-			if bool(marks[i]):
-				draw_rect(box, accent)
-			else:
-				draw_rect(box, Color(0.03, 0.06, 0.08, 0.9))
-				draw_rect(box, Color(0.55, 0.78, 0.86, 0.75), false, 1.2)
+			var mod: Dictionary = marks[i]
+			_mark_glyph(at, not mod.is_empty(), str(mod.get("family", "")), accent)
+
+	func _mark_glyph(at: Vector2, fitted: bool, family: String, accent: Color) -> void:
+		var s := 5.5
+		if not fitted:
+			var open := PackedVector2Array([
+				at + Vector2(0, -s),
+				at + Vector2(s, 0),
+				at + Vector2(0, s),
+				at + Vector2(-s, 0),
+				at + Vector2(0, -s),
+			])
+			draw_polyline(open, Color(0.62, 0.8, 0.88, 0.8), 1.2, true)
+			return
+		var ink := accent
+		ink.a = 0.95
+		match family:
+			"offense":
+				draw_colored_polygon(PackedVector2Array([
+					at + Vector2(0, -s),
+					at + Vector2(s * 0.85, s * 0.7),
+					at + Vector2(-s * 0.85, s * 0.7),
+				]), ink)
+			"hangar":
+				draw_arc(at, s * 0.75, 0.0, TAU, 16, ink, 1.6, true)
+				draw_circle(at, 1.6, ink)
+			"farm":
+				draw_line(at + Vector2(-s, 0), at + Vector2(s, 0), ink, 1.6)
+				draw_line(at + Vector2(0, -s), at + Vector2(0, s), ink, 1.6)
+			"claim":
+				draw_rect(Rect2(at - Vector2(s * 0.55, s * 0.55), Vector2(s * 1.1, s * 1.1)), ink, false, 1.5)
+			_:
+				draw_colored_polygon(PackedVector2Array([
+					at + Vector2(0, -s),
+					at + Vector2(s, 0),
+					at + Vector2(0, s),
+					at + Vector2(-s, 0),
+				]), ink)
 
 	func _hull_bounds(geom: Dictionary) -> Rect2:
 		var lo := Vector2(1.0e9, 1.0e9)
