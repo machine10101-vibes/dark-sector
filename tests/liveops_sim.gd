@@ -367,6 +367,8 @@ func _grief() -> void:
 	dock.player.grace_armed = true
 	dock.player.grace_t = 20.0
 	dock.player.hp = 4.0
+	dock.player.shield = 0.0
+	dock.player.armor_hp = 0.0
 	dock.damage_unit(dock.player, 40.0, str(bully.agent_id))
 	check(bool(dock.player.alive) and float(dock.player.hp) == 1.0, "green grace keeps a new Helion keel")
 	dock.player.flagged = true

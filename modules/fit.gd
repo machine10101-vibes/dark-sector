@@ -10,7 +10,10 @@ const EFFECT_KEYS := [
 	"mass", "power_draw", "cargo", "sensor", "signature",
 	"gun_damage", "thrust", "strafe", "turn", "radius",
 	"crew", "armor",
+	"shield", "armor_hp", "capacitor", "cap_regen", "cooling", "scan_res", "tracking",
 ]
+
+const LOCK_K := 403.0
 
 
 static func module_effects(mod: Dictionary) -> Dictionary:
@@ -82,6 +85,13 @@ static func stats(defs: Dictionary, ship: Dictionary) -> Dictionary:
 	var sensor := float(hull.sensor) + float(effects.sensor)
 	var gun: Dictionary = hull.gun.duplicate(true)
 	gun.damage = float(gun.damage) + float(effects.gun_damage)
+	gun.cap = float(gun.get("cap", 0.0))
+	gun.therm = float(gun.get("therm", 0.0))
+	gun.tracking = maxf(0.15, float(gun.get("tracking", 0.6)) + float(effects.tracking))
+	gun.optimal = float(gun.get("optimal", float(gun.get("range", 400.0)) * 0.7))
+	gun.falloff = float(gun.get("falloff", float(gun.get("range", 400.0)) * 0.4))
+	gun.arc = float(gun.get("arc", 0.0))
+	gun.kind = str(gun.get("kind", "nose"))
 	var radius := float(hull.radius) + float(bolted.radius)
 	var crew_budget := 0
 	if ship.has("crew"):
@@ -116,7 +126,18 @@ static func stats(defs: Dictionary, ship: Dictionary) -> Dictionary:
 		"crew_used": crew_used,
 		"crew_over": crew_used > crew_budget,
 		"armor": armor,
+		"shield_max": float(hull.get("shield", 0.0)) + float(effects.shield),
+		"shield_regen": float(hull.get("shield_regen", 0.0)),
+		"armor_max": float(hull.get("armor_hp", 0.0)) + float(effects.armor_hp),
+		"cap_max": float(hull.get("capacitor", 0.0)) + float(effects.capacitor),
+		"cap_regen": float(hull.get("cap_regen", 0.0)) + float(effects.cap_regen),
+		"cooling": float(hull.get("cooling", 8.0)) + float(effects.cooling),
+		"scan_res": float(hull.get("scan_res", 300.0)) + float(effects.scan_res),
 	}
+
+
+static func lock_time(scan_res: float, target_signature: float) -> float:
+	return clampf(LOCK_K / maxf(1.0, scan_res * maxf(0.05, target_signature)), 0.6, 6.0)
 
 
 static func signature_word(signature: float) -> String:

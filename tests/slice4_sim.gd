@@ -204,6 +204,8 @@ func _heat_ladder() -> void:
 	pirate.ai.fired_on_captain = true
 	provoked.heat.helion_compact = 10.0
 	pirate.hp = 1.0
+	pirate.shield = 0.0
+	pirate.armor_hp = 0.0
 	provoked.damage_unit(pirate, 8.0, "agent:captain")
 	check(float(provoked.heat.helion_compact) == 5.0, "a pirate who fired first costs no heat and eases the slate")
 	var seized := make("vesper")
@@ -215,6 +217,8 @@ func _heat_ladder() -> void:
 	loot.pos = seized.trash_pos
 	loot.ai.fired_on_captain = false
 	loot.hp = 1.0
+	loot.shield = 0.0
+	loot.armor_hp = 0.0
 	seized.damage_unit(loot, 8.0, "agent:captain")
 	check(absf(float(seized.heat.helion_compact) - 6.0) < 0.1, "an unprovoked kill in the trash field adds a little heat")
 	check(int(seized.wrecks[-1].cargo.get("scrap", 0)) == 1, "the wreck keeps a scrap, not a jackpot")
@@ -265,6 +269,8 @@ func _death_and_save() -> void:
 	check(sim.install("cargo_blister").ok, "the blister is on the keel")
 	sim.player.cargo["raw_mass"] = 4
 	sim.player.hp = 1.0
+	sim.player.shield = 0.0
+	sim.player.armor_hp = 0.0
 	var spawn: Vector2 = sim.beacon_pos
 	sim.player.pos = sim.pack_pos
 	sim.damage_unit(sim.player, 80.0, "agent:red_keel:0")

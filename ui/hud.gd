@@ -64,6 +64,7 @@ var touch_on := false
 var touch_chosen := false
 var compact := false
 var panel_inner: VBoxContainer
+var overlay: Control
 
 
 func _ready() -> void:
@@ -73,6 +74,10 @@ func _ready() -> void:
 	root.theme = ThemeKit.build()
 	add_child(root)
 	touch_on = DisplayServer.is_touchscreen_available() or OS.has_feature("mobile")
+	overlay = preload("res://ui/helm_overlay.gd").new()
+	overlay.name = "HelmOverlay"
+	overlay.hud = self
+	root.add_child(overlay)
 	_build_helm()
 	_build_panel()
 	_build_actions()
@@ -670,28 +675,17 @@ func _build_actions() -> void:
 	action_row = HBoxContainer.new()
 	action_row.add_theme_constant_override("separation", 6)
 	action_scroll.add_child(action_row)
-	_action("Market", func() -> void: _toggle("market"))
-	_action("Lane", func() -> void:
-		if Game.sim == null:
-			return
-		_say_result(Game.sim.try_lane())
-	)
-	_action("Weld", _repair)
-	_action("Hail", func() -> void: Game.tap("hail", true))
-	_action("Flag", func() -> void: Game.tap("flag", true))
+	_group("COMBAT")
+	_action("Lock", func() -> void: Game.tap("lock_cycle", 1))
+	_action("Stop", func() -> void: Game.tap("order", {"kind": "stop"}))
+	_group("SHIP")
 	_action("Bay", func() -> void: _toggle("bay"))
-	_action("Claim", func() -> void: _toggle("claim"))
-	_action("Site", func() -> void:
-		if Game.sim == null:
-			return
-		_say_result(Game.sim.enter_site())
-	)
+	_action("Weld", _repair)
+	_action("Hangar", func() -> void: _toggle("hangar"))
 	_action("Harvest", func() -> void: _launch("harvest_drone"))
 	_action("Boat", func() -> void: _launch(_boat_id()))
-	_action("Heat", func() -> void: _toggle("heat"))
-	_action("Hangar", func() -> void: _toggle("hangar"))
+	_group("SURVEY")
 	_action("Scan", func() -> void: _toggle("dossier"))
-	_action("Crack", func() -> void: Game.tap("crack", true))
 	_action("Mark", func() -> void:
 		if Game.sim == null:
 			return
@@ -702,7 +696,40 @@ func _build_actions() -> void:
 			return
 		_say_result(QuestBoard.accept(Game.sim))
 	)
+	_action("Site", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Game.sim.enter_site())
+	)
+	_group("DOCK")
+	_action("Market", func() -> void: _toggle("market"))
+	_action("Lane", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Game.sim.try_lane())
+	)
+	_group("LAW")
+	_action("Hail", func() -> void: Game.tap("hail", true))
+	_action("Flag", func() -> void: Game.tap("flag", true))
+	_action("Heat", func() -> void: _toggle("heat"))
+	_action("Claim", func() -> void: _toggle("claim"))
+	_action("Crack", func() -> void: Game.tap("crack", true))
+	_group("COMMS")
 	_action("Chat", _toggle_chat)
+
+
+func _group(text: String) -> void:
+	var tag := ThemeKit.label(text, 10, Color("6fa6b2"))
+	tag.autowrap_mode = TextServer.AUTOWRAP_OFF
+	tag.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tag.custom_minimum_size = Vector2(0, 0)
+	if action_row.get_child_count() > 0:
+		var gap := VSeparator.new()
+		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		gap.add_theme_constant_override("separation", 10)
+		action_row.add_child(gap)
+	action_row.add_child(tag)
 
 
 func _action(text: String, call: Callable) -> void:
