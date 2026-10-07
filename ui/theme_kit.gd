@@ -15,7 +15,7 @@ static func build() -> Theme:
 	theme.set_stylebox("normal", "Button", normal)
 	theme.set_stylebox("hover", "Button", hover)
 	theme.set_stylebox("pressed", "Button", pressed)
-	theme.set_stylebox("disabled", "Button", pressed)
+	theme.set_stylebox("disabled", "Button", _quiet_box())
 	theme.set_color("font_color", "Button", Color("d7eef2"))
 	theme.set_color("font_hover_color", "Button", Color("f4fcff"))
 	theme.set_color("font_disabled_color", "Button", Color("7f9098"))
@@ -43,8 +43,10 @@ static func glass(strong: bool = false) -> StyleBoxFlat:
 
 static func veil() -> StyleBoxFlat:
 	var box := glass(false)
-	box.bg_color = Color(0.02, 0.035, 0.05, 0.5)
-	box.border_color = Color(0.62, 0.86, 0.92, 0.42)
+	# Dark enough that the ice limb stays behind the words instead of through them.
+	box.bg_color = Color(0.012, 0.022, 0.03, 0.78)
+	box.border_color = Color(0.72, 0.86, 0.9, 0.55)
+	box.set_border_width_all(1)
 	box.content_margin_left = 14
 	box.content_margin_right = 14
 	box.content_margin_top = 12
@@ -96,9 +98,23 @@ static func paint(node: Button, primary: bool) -> void:
 	node.add_theme_stylebox_override("normal", normal)
 	node.add_theme_stylebox_override("hover", hover)
 	node.add_theme_stylebox_override("pressed", pressed)
-	node.add_theme_stylebox_override("disabled", pressed)
+	node.add_theme_stylebox_override("disabled", _quiet_box())
 	node.add_theme_color_override("font_color", Color("e9fbff") if primary else Color("c5d6dc"))
+	node.add_theme_color_override("font_disabled_color", Color("6d7c82"))
 	node.add_theme_font_size_override("font_size", 16 if primary else 14)
+
+
+static func _quiet_box() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.025, 0.04, 0.05, 0.38)
+	box.border_color = Color(0.28, 0.4, 0.46, 0.22)
+	box.set_border_width_all(1)
+	box.set_corner_radius_all(8)
+	box.content_margin_left = 12
+	box.content_margin_right = 12
+	box.content_margin_top = 8
+	box.content_margin_bottom = 8
+	return box
 
 
 static func label(text: String, size: int = 15, color: Color = Color("e7f3f6")) -> Label:
