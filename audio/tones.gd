@@ -23,6 +23,9 @@ func _ready() -> void:
 		"destroyed": _tone(80.0, 0.28, 0.45, 0.5),
 		"thrust": _tone(110.0, 0.14, 0.22, 0.8),
 		"save": _tone(360.0, 0.12, 0.22, 0.9),
+		"lock": _tone(1180.0, 0.16, 0.2, 0.4),
+		"shield": _tone(240.0, 0.12, 0.3, 1.0),
+		"dry": _tone(70.0, 0.1, 0.3, 1.6),
 	}
 	ready_audio = true
 

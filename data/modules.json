@@ -38,7 +38,8 @@
     "effects": {
       "sensor": 480,
       "signature": 0.1,
-      "radius": 2
+      "radius": 2,
+      "scan_res": 160
     }
   },
   "cargo_blister": {
@@ -328,7 +329,8 @@
     ],
     "effects": {
       "signature": 0.06,
-      "radius": 6
+      "radius": 6,
+      "armor_hp": 40
     }
   },
   "keel_stretch": {
@@ -456,7 +458,8 @@
     ],
     "effects": {
       "signature": -0.1,
-      "radius": 4
+      "radius": 4,
+      "cooling": 6
     }
   },
   "battery_pack": {
@@ -500,7 +503,9 @@
       ]
     ],
     "effects": {
-      "radius": 4
+      "radius": 4,
+      "capacitor": 50,
+      "cap_regen": 3
     }
   },
   "heavy_turret": {
@@ -542,7 +547,8 @@
     "effects": {
       "gun_damage": 7,
       "radius": 7,
-      "signature": 0.16
+      "signature": 0.16,
+      "tracking": -0.15
     }
   },
   "missile_rack": {
@@ -630,7 +636,8 @@
     "effects": {
       "gun_damage": 2,
       "radius": 4,
-      "signature": 0.08
+      "signature": 0.08,
+      "shield": 12
     }
   },
   "probe_rack": {
@@ -1371,7 +1378,8 @@
     ],
     "effects": {
       "signature": -0.08,
-      "radius": 2
+      "radius": 2,
+      "cooling": 2
     }
   },
   "choir_bell": {

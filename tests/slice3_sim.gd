@@ -120,10 +120,14 @@ func _armor_and_craft() -> void:
 	var sim := make("kestrel")
 	var dmg := float(Fit.stats(defs, sim.player).gun.damage)
 	sim.player.hp = 80.0
+	sim.player.shield = 0.0
+	sim.player.armor_hp = 0.0
 	sim.damage_unit(sim.player, dmg, "starter")
 	var bare_loss := 80.0 - float(sim.player.hp)
 	check(sim.install("armor_belt").ok, "Beak wears the armor belt")
 	sim.player.hp = 80.0
+	sim.player.shield = 0.0
+	sim.player.armor_hp = 0.0
 	sim.damage_unit(sim.player, dmg, "starter")
 	var belted_loss := 80.0 - float(sim.player.hp)
 	check(belted_loss < bare_loss - 0.5, "the belt takes less from the starter gun (%.1f vs %.1f)" % [belted_loss, bare_loss])

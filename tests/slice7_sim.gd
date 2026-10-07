@@ -199,6 +199,8 @@ func _grace_and_scan() -> void:
 	sim.player.grace_armed = true
 	sim.player.grace_t = 20.0
 	sim.player.hp = 4.0
+	sim.player.shield = 0.0
+	sim.player.armor_hp = 0.0
 	var klass := str(sim.player.class_id)
 	sim.damage_unit(sim.player, 40.0, str(bully.agent_id))
 	check(bool(sim.player.alive) and float(sim.player.hp) == 1.0, "green grace keeps a new keel from being wiped in Helion Dock")
@@ -265,6 +267,8 @@ func _crack() -> void:
 
 	raider.cargo = {"raw_mass": 4}
 	raider.hp = 3.0
+	raider.shield = 0.0
+	raider.armor_hp = 0.0
 	held.damage_unit(raider, 20.0, "agent:red_keel:0")
 	check(bool(raider.alive) and str(raider.class_id) == "kestrel", "a broken guest keel respawns as the same ship")
 	check(int(raider.cargo.get("raw_mass", 0)) == 2, "wreck rules drop half the hold and keep the rest")

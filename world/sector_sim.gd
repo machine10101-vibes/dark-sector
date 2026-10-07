@@ -466,9 +466,15 @@ func try_fire(unit: Dictionary, gun: Dictionary) -> bool:
 		return false
 	if gun.is_empty():
 		return false
+	if not HelmCombat.can_fire(self, unit, gun):
+		return false
 	unit.fire_cd = float(gun.cooldown)
-	var dir = Vector2.from_angle(float(unit.rot))
+	var aimed: Dictionary = HelmCombat.aim(self, unit, gun)
+	var dir: Vector2 = aimed.dir
+	HelmCombat.spend_shot(self, unit, gun)
 	projectiles.append({
+		"turret": bool(aimed.turret),
+		"mark": str(aimed.get("mark", "")),
 		"pos": unit.pos + dir * (float(unit.get("muzzle", 28.0))),
 		"vel": unit.vel + dir * float(gun.speed),
 		"damage": float(gun.damage),
@@ -502,7 +508,11 @@ func damage_unit(unit: Dictionary, amount: float, attacker: String) -> void:
 		var belt := float(Fit.stats(defs, unit).armor)
 		if belt > 0.0:
 			amount = maxf(0.35, amount * (1.0 - belt))
-	if str(unit.get("controller", "")) == "human":
+	if unit.has("class_id"):
+		amount = HelmCombat.absorb(self, unit, amount)
+		if amount <= 0.0 and str(unit.get("hit_layer", "")) == "shield":
+			sfx("shield")
+	if str(unit.get("controller", "")) == "human" and amount > 0.0:
 		_chip_capital(unit, amount)
 	var shooter = human_by_agent(attacker)
 	if shooter != null and str(unit.get("controller", "")) == "human" and str(shooter.agent_id) != str(unit.agent_id):
@@ -746,6 +756,9 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 		unit.retro_hold = false
 		unit.pos += unit.vel * dt
 		return
+	var kit = Fit.stats(defs, unit)
+	HelmCombat.step_systems(self, unit, kit, dt, bool(cmd.get("boost", false)))
+	HelmCombat.step_lock(self, unit, kit, dt)
 	_release_mooring(unit)
 	var cast_off := false
 	if bool(unit.get("moored", false)):
@@ -780,6 +793,7 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 		if str(unit.get("agent_id", "")) == str(player.agent_id):
 			say("Cast off. Helion Dock is behind you.")
 	var stats = Fit.stats(defs, unit)
+	cmd = HelmCombat.steer(self, unit, cmd, stats)
 	var spd_before := float(unit.vel.length())
 	var yaw_rate := float(stats.turn)
 	# Full turn at rest (the slice yaw check). At cruise the nose still answers,
@@ -850,6 +864,9 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 	actor.hurt_cd = maxf(0.0, float(actor.hurt_cd) - dt)
 	if not bool(actor.alive):
 		return
+	var kit = Fit.stats(defs, actor)
+	HelmCombat.step_systems(self, actor, kit, dt, false)
+	HelmCombat.step_lock(self, actor, kit, dt)
 	var dest: Vector2 = actor.pos
 	var target = null
 	var guns_at := 40.0
@@ -881,6 +898,7 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 		if target == null:
 			var ang = time * 0.16 + float(actor.ai.phase)
 			dest = actor.home + Vector2.from_angle(ang) * float(actor.ai.radius)
+	HelmCombat.set_lock(self, actor, "" if target == null else str(target.get("agent_id", "")))
 	if target != null:
 		dest = target.pos
 		var dist = actor.pos.distance_to(target.pos)
@@ -970,6 +988,9 @@ func _age_impacts(dt: float) -> void:
 
 func _projectile_hit(shot: Dictionary, origin: Vector2):
 	var dest := Vector2(shot.pos)
+	var marked = HelmCombat.sure_hit(self, shot, origin, dest)
+	if marked != null:
+		return marked
 	var bodies: Array = []
 	if player.alive:
 		bodies.append(player)
@@ -1058,6 +1079,8 @@ func try_repair() -> String:
 	if player.pos.distance_to(beacon_pos) > 170.0:
 		return "The dock beacon is the crane. Bring the keel in."
 	var hurt := float(player.hp) < float(player.max_hp) - 0.5
+	if float(player.get("armor_hp", 0.0)) < float(player.get("armor_max", 0.0)) - 0.5:
+		hurt = true
 	if float(player.get("hangar_hp", 22.0)) < float(player.get("hangar_max", 22.0)) - 0.5:
 		hurt = true
 	var hpmap: Dictionary = player.get("module_hp", {})
@@ -1075,6 +1098,8 @@ func try_repair() -> String:
 	else:
 		say("Compact standing waives the mass.")
 	player.hp = minf(float(player.max_hp), float(player.hp) + 28.0)
+	player.armor_hp = float(player.get("armor_max", 0.0))
+	player.shield = float(player.get("shield_max", 0.0))
 	player.hangar_hp = float(player.get("hangar_max", 22.0))
 	if not player.has("module_hp"):
 		player.module_hp = {}
@@ -1341,6 +1366,10 @@ func _respawn_captain(unit: Dictionary) -> void:
 	unit.thrusting = false
 	unit.vel = Vector2.ZERO
 	unit.hp = maxf(1.0, float(unit.max_hp) * 0.45)
+	HelmCombat.ensure_tank(self, unit)
+	HelmCombat.refill(unit, 0.45)
+	HelmCombat.set_lock(self, unit, "")
+	unit.order = {}
 	var nudge := 0.0
 	if str(unit.agent_id) != str(player.agent_id):
 		nudge = 90.0
@@ -2055,6 +2084,12 @@ func _apply_verbs(unit: Dictionary, cmd: Dictionary) -> void:
 	var spoken := str(cmd.get("chat", ""))
 	if spoken != "":
 		post_chat(str(unit.get("player_id", "")), spoken)
+	if cmd.has("lock"):
+		HelmCombat.set_lock(self, unit, str(cmd.lock))
+	if cmd.has("lock_cycle"):
+		HelmCombat.cycle_lock(self, unit, int(cmd.lock_cycle))
+	if cmd.has("order"):
+		HelmCombat.set_order(self, unit, cmd.order)
 
 
 func _clear_oneshots() -> void:
@@ -2065,6 +2100,9 @@ func _clear_oneshots() -> void:
 		row.erase("hail")
 		row.erase("flag")
 		row.erase("chat")
+		row.erase("lock")
+		row.erase("lock_cycle")
+		row.erase("order")
 		commands[key] = row
 
 
@@ -2116,7 +2154,7 @@ func _friendly_fire(shot: Dictionary, unit: Dictionary) -> bool:
 
 func _blank_ship(class_id: String, ship_name: String, agent_id: String, controller: String, team: String) -> Dictionary:
 	var stats = Fit.stats(defs, {"class_id": class_id, "modules": []})
-	return {
+	var ship := {
 		"id": agent_id,
 		"class_id": class_id,
 		"name": ship_name,
@@ -2154,6 +2192,8 @@ func _blank_ship(class_id: String, ship_name: String, agent_id: String, controll
 		"dock_x": 0.0,
 		"dock_y": 0.0,
 	}
+	HelmCombat.ensure_tank(self, ship, stats)
+	return ship
 
 
 func _make_craft(def_id: String, index: int) -> Dictionary:
@@ -2319,6 +2359,8 @@ func _ship_in(row: Dictionary) -> Dictionary:
 		ship.muzzle = 34.0
 	for key in ship.cargo.keys():
 		ship.cargo[key] = int(ship.cargo[key])
+	if ship.has("class_id") and defs.get("ships", {}).has(str(ship.class_id)):
+		HelmCombat.ensure_tank(self, ship)
 	return ship
 
 
