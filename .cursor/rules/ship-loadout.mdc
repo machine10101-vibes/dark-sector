@@ -1,0 +1,9 @@
+---
+description: Locked visual example for the Dark Sector ship loadout
+globs: ui/hud.gd
+alwaysApply: false
+---
+
+Before changing the ship loadout (the Ship panel, formerly the bay), open `design/ship-loadout/LOCKED-EXAMPLE.jpg` and follow `design/ship-loadout/LOCK.md`.
+
+That image is locked. Do not replace it. Match its composition: a hardware browser on the left, and a large ship inside a round glass on the right with slot marks on the ring. Keep Dark Sector's own hulls, modules, and families. Do not copy the example's ship name, category names, or artwork into the game.
