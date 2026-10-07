@@ -1309,54 +1309,17 @@ func _sync_shots(sim) -> void:
 	for shot in sim.projectiles:
 		var row: Dictionary = shot
 		var bolt := _prop("shot%d" % index)
-		if str(bolt.get_meta("tracer", "")) != "yes":
-			var rod := CylinderMesh.new()
-			rod.top_radius = 0.42
-			rod.bottom_radius = 1.05
-			rod.height = 18.0
-			rod.radial_segments = 8
-			bolt.mesh = rod
-			var head := MeshInstance3D.new()
-			head.name = "Head"
-			var tip := SphereMesh.new()
-			tip.radius = 1.15
-			tip.height = 2.3
-			tip.radial_segments = 10
-			tip.rings = 6
-			head.mesh = tip
-			head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			bolt.add_child(head)
-			var tail := MeshInstance3D.new()
-			tail.name = "Tail"
-			var fade := CylinderMesh.new()
-			fade.top_radius = 0.85
-			fade.bottom_radius = 0.15
-			fade.height = 14.0
-			fade.radial_segments = 8
-			tail.mesh = fade
-			tail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			bolt.add_child(tail)
-			var core := MeshInstance3D.new()
-			core.name = "Core"
-			var wire := CylinderMesh.new()
-			wire.top_radius = 0.16
-			wire.bottom_radius = 0.28
-			wire.height = 16.0
-			wire.radial_segments = 6
-			core.mesh = wire
-			core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			bolt.add_child(core)
-			var glow := MeshInstance3D.new()
-			glow.name = "Glow"
-			var halo := SphereMesh.new()
-			halo.radius = 1.8
-			halo.height = 3.6
-			halo.radial_segments = 10
-			halo.rings = 6
-			glow.mesh = halo
-			glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			bolt.add_child(glow)
-			bolt.set_meta("tracer", "yes")
+		var family := str(row.get("family", "bullet"))
+		var load := str(row.get("load", ""))
+		var socket := str(row.get("socket", ""))
+		var kind := "%s|%s|%s" % [family, load, socket]
+		if str(bolt.get_meta("kind", "")) != kind:
+			_clear_shot(bolt)
+			if family == "missile":
+				_build_missile_shot(bolt, load)
+			else:
+				_build_bullet_shot(bolt, load, socket)
+			bolt.set_meta("kind", kind)
 		var shot_vel: Vector2 = row.vel
 		var aim := Vector2.RIGHT
 		var speed := 0.0
@@ -1364,48 +1327,57 @@ func _sync_shots(sim) -> void:
 			aim = shot_vel.normalized()
 			speed = shot_vel.length()
 		var read := _fx_read(sim)
-		var missile := str(row.get("family", "")) == "missile"
-		var length := clampf(speed * 0.07, 18.0, 58.0) * read
-		var thick := lerpf(1.15, read, 0.4)
+		var missile := family == "missile"
+		var length := clampf(speed * 0.055, 12.0, 42.0) * read
+		var thick := lerpf(1.0, read, 0.35)
+		if load == "tungsten":
+			length *= 1.15
+			thick *= 0.72
+		elif load == "incendiary":
+			length *= 0.85
+			thick *= 1.15
+		if socket == "heavy_turret":
+			length *= 0.9
+			thick *= 1.55
+		elif socket == "stake_gun":
+			length *= 1.48
+			thick *= 0.5
+		elif socket == "nose":
+			length *= 1.08
+			thick *= 0.86
 		if missile:
-			length = 14.0 * read
-			thick = 2.4 * read
-		thick *= 0.9 + 0.1 * sin(float(sim.time) * 36.0 + float(index) * 1.7)
+			if load == "siege":
+				length = 13.8 * read
+				thick = 1.55 * read
+			elif load == "breacher":
+				length = 9.4 * read
+				thick = 1.02 * read
+			else:
+				length = 11.2 * read
+				thick = 1.18 * read
+		thick *= 0.92 + 0.08 * sin(float(sim.time) * 36.0 + float(index) * 1.7)
 		var along := Vector3(aim.x, 0.0, -aim.y)
 		var side := Vector3(aim.y, 0.0, aim.x)
-		var rod_mesh := bolt.mesh as CylinderMesh
-		rod_mesh.height = length
-		rod_mesh.top_radius = 0.42 * thick
-		rod_mesh.bottom_radius = 1.05 * thick
 		bolt.basis = Basis(side, along, Vector3.UP)
-		bolt.position = chart(row.pos, 8.0) - along * length * 0.28
+		bolt.position = chart(row.pos, 8.0) - along * length * 0.22
 		var tint := _shot_tint(str(row.get("team", "")))
 		if missile:
-			tint = Color("d9d3c6")
+			if load == "breacher":
+				tint = Color("6a5a4a")
+			elif load == "siege":
+				tint = Color("b8b0a0")
+			else:
+				tint = Color("d9d3c6")
+		elif socket == "stake_gun":
+			tint = Color("e8f2ff")
+		elif socket == "heavy_turret":
+			tint = Color("ffb060")
+		elif load == "tungsten":
+			tint = Color("c5d4e6")
+		elif load == "incendiary":
+			tint = Color("ff7a32")
 		var flicker := 0.85 + 0.15 * sin(float(sim.time) * 48.0 + float(index))
-		_paint_bolt(bolt, tint, 1.9 * flicker, 1.0)
-		var head_node := bolt.get_node("Head") as MeshInstance3D
-		head_node.position = Vector3(0.0, length * 0.5, 0.0)
-		_paint_bolt(head_node, tint.lightened(0.42), 2.8 * flicker, 1.0)
-		var tail_node := bolt.get_node("Tail") as MeshInstance3D
-		var tail_mesh := tail_node.mesh as CylinderMesh
-		tail_mesh.height = length * 0.85
-		tail_node.position = Vector3(0.0, -length * 0.55, 0.0)
-		_paint_bolt(tail_node, tint, 0.7 * flicker, 0.35)
-		var core_node := bolt.get_node_or_null("Core") as MeshInstance3D
-		if core_node != null:
-			var core_mesh := core_node.mesh as CylinderMesh
-			core_mesh.height = length * 0.92
-			core_mesh.top_radius = 0.16 * thick
-			core_mesh.bottom_radius = 0.28 * thick
-			core_node.position = Vector3(0.0, length * 0.04, 0.0)
-			_paint_bolt(core_node, tint.lightened(0.55), 3.4 * flicker, 0.95)
-		var glow_node := bolt.get_node_or_null("Glow") as MeshInstance3D
-		if glow_node != null:
-			glow_node.position = Vector3(0.0, length * 0.42, 0.0)
-			var bulb := 1.6 + thick * 0.85
-			glow_node.scale = Vector3(bulb * 0.55, bulb * 1.4, bulb * 0.55)
-			_paint_bolt(glow_node, tint.lightened(0.3), 1.6 * flicker, 0.28)
+		_pose_shot(bolt, length, thick, tint, flicker, missile)
 		if missile:
 			for puff in 3:
 				var crumb := _prop("smoke%d_%d" % [index, puff])
@@ -1417,11 +1389,216 @@ func _sync_shots(sim) -> void:
 					puff_mesh.rings = 4
 					crumb.mesh = puff_mesh
 					crumb.set_meta("built", "yes")
-				var back := float(puff + 1) * 9.0 * read
+				var back := float(puff + 1) * 8.0 * read
 				crumb.position = bolt.position - along * back
-				crumb.scale = Vector3.ONE * (1.4 + float(puff) * 0.7) * read
-				_paint_bolt(crumb, Color("9a9388"), 0.35, 0.28 - float(puff) * 0.06)
+				crumb.scale = Vector3.ONE * (1.2 + float(puff) * 0.85) * read
+				_paint_bolt(crumb, Color("8a8478"), 0.28, 0.3 - float(puff) * 0.07)
 		index += 1
+
+
+func _clear_shot(bolt: MeshInstance3D) -> void:
+	for child in bolt.get_children():
+		bolt.remove_child(child)
+		child.queue_free()
+	bolt.mesh = null
+
+
+func _build_bullet_shot(bolt: MeshInstance3D, load: String, socket: String = "") -> void:
+	var rail := socket == "stake_gun"
+	var heavy := socket == "heavy_turret"
+	var rod := CylinderMesh.new()
+	if rail:
+		rod.top_radius = 0.16
+		rod.bottom_radius = 0.34
+	elif heavy:
+		rod.top_radius = 0.48
+		rod.bottom_radius = 1.18
+	elif load == "tungsten":
+		rod.top_radius = 0.28
+		rod.bottom_radius = 0.72
+	else:
+		rod.top_radius = 0.4
+		rod.bottom_radius = 0.95
+	rod.height = 14.0
+	rod.radial_segments = 8
+	bolt.mesh = rod
+	var head := MeshInstance3D.new()
+	head.name = "Head"
+	var tip := SphereMesh.new()
+	if rail:
+		tip.radius = 0.42
+	elif heavy:
+		tip.radius = 1.35
+	elif load == "tungsten":
+		tip.radius = 0.7
+	else:
+		tip.radius = 1.05
+	tip.height = tip.radius * 2.0
+	tip.radial_segments = 10
+	tip.rings = 6
+	head.mesh = tip
+	head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bolt.add_child(head)
+	var tail := MeshInstance3D.new()
+	tail.name = "Tail"
+	var fade := CylinderMesh.new()
+	fade.top_radius = 0.38 if rail else (1.05 if heavy else 0.7)
+	fade.bottom_radius = 0.06 if rail else 0.12
+	fade.height = 16.0 if rail else 12.0
+	fade.radial_segments = 8
+	tail.mesh = fade
+	tail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bolt.add_child(tail)
+	var core := MeshInstance3D.new()
+	core.name = "Core"
+	var wire := CylinderMesh.new()
+	wire.top_radius = 0.12
+	wire.bottom_radius = 0.22
+	wire.height = 12.0
+	wire.radial_segments = 6
+	core.mesh = wire
+	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bolt.add_child(core)
+	var glow := MeshInstance3D.new()
+	glow.name = "Glow"
+	var halo := SphereMesh.new()
+	halo.radius = 1.4
+	halo.height = 2.8
+	halo.radial_segments = 10
+	halo.rings = 6
+	glow.mesh = halo
+	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bolt.add_child(glow)
+
+
+func _build_missile_shot(bolt: MeshInstance3D, load: String = "splinter") -> void:
+	var body := CylinderMesh.new()
+	body.top_radius = 0.85
+	body.bottom_radius = 1.15
+	body.height = 14.0
+	body.radial_segments = 10
+	bolt.mesh = body
+	var skin := Color("c4bba8")
+	if load == "breacher":
+		skin = Color("5c5044")
+	elif load == "siege":
+		skin = Color("a89f8c")
+	_skin_metal(bolt, skin)
+	var nose := MeshInstance3D.new()
+	nose.name = "Head"
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.08
+	cone.bottom_radius = 0.85
+	cone.height = 3.6
+	cone.radial_segments = 10
+	nose.mesh = cone
+	nose.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_skin_metal(nose, skin.lightened(0.12))
+	bolt.add_child(nose)
+	var band := MeshInstance3D.new()
+	band.name = "Core"
+	var ring := CylinderMesh.new()
+	ring.top_radius = 1.22
+	ring.bottom_radius = 1.22
+	ring.height = 1.1
+	ring.radial_segments = 10
+	band.mesh = ring
+	band.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_skin_metal(band, Color("6a3a22"))
+	bolt.add_child(band)
+	for i in 4:
+		var fin := MeshInstance3D.new()
+		fin.name = "Fin%d" % i
+		var plate := BoxMesh.new()
+		plate.size = Vector3(0.12, 3.2, 2.1)
+		fin.mesh = plate
+		var ang := float(i) * PI * 0.5
+		fin.position = Vector3(cos(ang) * 1.15, -4.2, sin(ang) * 1.15)
+		fin.rotation.y = ang
+		fin.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_skin_metal(fin, Color("8a8276"))
+		bolt.add_child(fin)
+	var plume := MeshInstance3D.new()
+	plume.name = "Tail"
+	var jet := CylinderMesh.new()
+	jet.top_radius = 0.35
+	jet.bottom_radius = 1.35
+	jet.height = 6.5
+	jet.radial_segments = 8
+	plume.mesh = jet
+	plume.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bolt.add_child(plume)
+	var glow := MeshInstance3D.new()
+	glow.name = "Glow"
+	var halo := SphereMesh.new()
+	halo.radius = 1.3
+	halo.height = 2.6
+	halo.radial_segments = 8
+	halo.rings = 4
+	glow.mesh = halo
+	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bolt.add_child(glow)
+
+
+func _pose_shot(bolt: MeshInstance3D, length: float, thick: float, tint: Color, flicker: float, missile: bool) -> void:
+	var rod_mesh := bolt.mesh as CylinderMesh
+	if rod_mesh != null:
+		rod_mesh.height = length
+		if missile:
+			rod_mesh.top_radius = 0.55 * thick
+			rod_mesh.bottom_radius = 0.78 * thick
+		else:
+			rod_mesh.top_radius = 0.32 * thick
+			rod_mesh.bottom_radius = 0.82 * thick
+			_paint_bolt(bolt, tint, 1.8 * flicker, 1.0)
+	var head_node := bolt.get_node_or_null("Head") as MeshInstance3D
+	if head_node != null:
+		head_node.position = Vector3(0.0, length * 0.5, 0.0)
+		if missile:
+			var cone := head_node.mesh as CylinderMesh
+			if cone != null:
+				cone.height = length * 0.22
+				cone.bottom_radius = 0.55 * thick
+		else:
+			_paint_bolt(head_node, tint.lightened(0.42), 2.8 * flicker, 1.0)
+	var tail_node := bolt.get_node_or_null("Tail") as MeshInstance3D
+	if tail_node != null:
+		var tail_mesh := tail_node.mesh as CylinderMesh
+		if tail_mesh != null:
+			tail_mesh.height = length * (0.42 if missile else 0.85)
+		tail_node.position = Vector3(0.0, -length * (0.58 if missile else 0.55), 0.0)
+		if missile:
+			_paint_bolt(tail_node, Color("ff8a3a"), 3.4 * flicker, 0.7)
+		else:
+			_paint_bolt(tail_node, tint, 0.7 * flicker, 0.35)
+	var core_node := bolt.get_node_or_null("Core") as MeshInstance3D
+	if core_node != null:
+		if missile:
+			core_node.position = Vector3(0.0, length * 0.08, 0.0)
+		else:
+			var core_mesh := core_node.mesh as CylinderMesh
+			if core_mesh != null:
+				core_mesh.height = length * 0.92
+				core_mesh.top_radius = 0.12 * thick
+				core_mesh.bottom_radius = 0.22 * thick
+			core_node.position = Vector3(0.0, length * 0.04, 0.0)
+			_paint_bolt(core_node, tint.lightened(0.55), 3.4 * flicker, 0.95)
+	var glow_node := bolt.get_node_or_null("Glow") as MeshInstance3D
+	if glow_node != null:
+		glow_node.position = Vector3(0.0, length * (-0.48 if missile else 0.42), 0.0)
+		var bulb := (1.1 if missile else 1.4) + thick * 0.7
+		glow_node.scale = Vector3(bulb * 0.55, bulb * (0.8 if missile else 1.3), bulb * 0.55)
+		if missile:
+			_paint_bolt(glow_node, Color("ffb060"), 2.4 * flicker, 0.4)
+		else:
+			_paint_bolt(glow_node, tint.lightened(0.3), 1.6 * flicker, 0.28)
+	if missile:
+		for i in 4:
+			var fin := bolt.get_node_or_null("Fin%d" % i) as MeshInstance3D
+			if fin == null:
+				continue
+			var ang := float(i) * PI * 0.5
+			fin.position = Vector3(cos(ang) * 0.85 * thick, -length * 0.32, sin(ang) * 0.85 * thick)
 
 
 func _sync_beams(sim) -> void:
@@ -1460,12 +1637,78 @@ func _sync_beams(sim) -> void:
 		var sheath_node := rod.get_node("Sheath") as MeshInstance3D
 		(sheath_node.mesh as CylinderMesh).height = length
 		var hot := bool(beam.get("hot", false))
+		var family := str(beam.get("family", "laser"))
+		var load := str(beam.get("load", "standard"))
 		var core := Color("fff1d2") if hot else Color("ffb15a")
 		var edge := Color("ff6a1a")
+		if load == "infrared":
+			core = Color("ff6a3a") if hot else Color("c44a22")
+			edge = Color("ff3a10")
+		elif load == "ultraviolet":
+			core = Color("e4c8ff") if hot else Color("9a70e6")
+			edge = Color("7a40d8")
+		if family == "pd":
+			core = Color("e8f4ff")
+			edge = Color("8ec8ff")
 		var age := float(beam.get("age", 0.0))
-		var fade := clampf(1.0 - age / 0.32, 0.0, 1.0)
-		_paint_bolt(rod, core, 3.2 * fade, 0.95)
-		_paint_bolt(sheath_node, edge, 1.1 * fade, 0.28 * fade)
+		var life := 0.18 if family == "pd" else 0.32
+		var fade := clampf(1.0 - age / life, 0.0, 1.0)
+		var pulse := 0.82 + 0.18 * sin(float(sim.time) * 70.0 + float(index))
+		if family == "pd":
+			(rod.mesh as CylinderMesh).top_radius = 0.22
+			(rod.mesh as CylinderMesh).bottom_radius = 0.38
+			(sheath_node.mesh as CylinderMesh).top_radius = 0.7
+			(sheath_node.mesh as CylinderMesh).bottom_radius = 1.05
+		else:
+			(rod.mesh as CylinderMesh).top_radius = 0.42
+			(rod.mesh as CylinderMesh).bottom_radius = 0.7
+			(sheath_node.mesh as CylinderMesh).top_radius = 1.5
+			(sheath_node.mesh as CylinderMesh).bottom_radius = 2.1
+		var needle := rod.get_node_or_null("Core") as MeshInstance3D
+		if needle == null:
+			needle = MeshInstance3D.new()
+			needle.name = "Core"
+			var wire := CylinderMesh.new()
+			wire.top_radius = 0.12
+			wire.bottom_radius = 0.16
+			wire.height = 1.0
+			wire.radial_segments = 8
+			needle.mesh = wire
+			needle.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			rod.add_child(needle)
+		(needle.mesh as CylinderMesh).height = length
+		if family == "pd":
+			(needle.mesh as CylinderMesh).top_radius = 0.08
+			(needle.mesh as CylinderMesh).bottom_radius = 0.11
+		else:
+			(needle.mesh as CylinderMesh).top_radius = 0.14
+			(needle.mesh as CylinderMesh).bottom_radius = 0.2
+		_paint_bolt(rod, core, 3.6 * fade * pulse, 0.95)
+		_paint_bolt(sheath_node, edge, 1.25 * fade, 0.3 * fade)
+		_paint_bolt(needle, core.lightened(0.5), 5.4 * fade * pulse, 1.0)
+		var bloom := _prop("lasebloom%d" % index)
+		if bloom.mesh == null:
+			var ball := SphereMesh.new()
+			ball.radius = 1.0
+			ball.height = 2.0
+			ball.radial_segments = 10
+			ball.rings = 6
+			bloom.mesh = ball
+		bloom.position = chart(a2, 7.0)
+		bloom.scale = Vector3.ONE * (2.4 if family != "pd" else 1.4) * fade
+		_paint_bolt(bloom, core.lightened(0.25), 3.8 * fade, clampf(fade, 0.05, 0.85))
+		if hot:
+			var scorch := _prop("lasemark%d" % index)
+			if scorch.mesh == null:
+				var spark := SphereMesh.new()
+				spark.radius = 1.0
+				spark.height = 2.0
+				spark.radial_segments = 8
+				spark.rings = 4
+				scorch.mesh = spark
+			scorch.position = chart(b2, 7.2)
+			scorch.scale = Vector3.ONE * (1.8 if family != "pd" else 1.1) * fade
+			_paint_bolt(scorch, core, 2.6 * fade, clampf(fade, 0.04, 0.7))
 		index += 1
 
 
@@ -1628,6 +1871,16 @@ func _shot_tint(team: String) -> Color:
 	if team == "helion_compact" or team == "vellum_compact":
 		return Color("9eecf5")
 	return Color("e7b15a")
+
+
+func _skin_metal(node: MeshInstance3D, color: Color) -> void:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = color
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 0.32
+	node.material_override = mat
 
 
 func _paint_bolt(node: MeshInstance3D, color: Color, energy: float, alpha: float) -> void:
@@ -2774,6 +3027,7 @@ func _combat_fx(holder: Node3D, sim, ship: Dictionary, band: bool) -> void:
 		var jig := sin(float(sim.time) * 54.0) * hurt * 0.9
 		holder.position += holder.basis * Vector3(jig * 0.35, jig, jig * 0.45)
 	_turret_fx(holder, sim, ship, band)
+	_weapon_live(holder, sim, ship, band)
 	_tank_fx(holder, sim, ship, band)
 
 
@@ -4522,6 +4776,184 @@ func _build_rack(node: Node3D, class_id: String) -> void:
 	var hose := _tube(node, "Hose", 0.22 * scale, 6.0 * scale, Vector3(-2.0 * scale, 0.2 * scale, 2.4 * scale), "x", Color("1c2024"))
 	hose.rotation.y = 0.4
 	_nav_lamp(node, "Seeker", Vector3(4.8 * scale, 2.4 * scale, 0.0), Color("9ecfff"), 0.28 * scale)
+
+
+func _weapon_live(holder: Node3D, sim, ship: Dictionary, band: bool) -> void:
+	if not band:
+		return
+	for socket_name in ["gun_sponson", "heavy_turret", "stake_gun", "laser_bank", "missile_rack", "point_defense"]:
+		var sock := holder.get_node_or_null(socket_name) as Node3D
+		if sock == null:
+			continue
+		var life := _socket_life(sim, ship, socket_name)
+		_kick_mount(sock, socket_name, life)
+		_glow_mount(sock, socket_name, life)
+
+
+func _socket_life(sim, ship: Dictionary, socket: String) -> float:
+	var cool := 0.34
+	if socket == "heavy_turret":
+		cool = 0.72
+	elif socket == "laser_bank":
+		cool = 0.42
+	elif socket == "missile_rack":
+		cool = 1.7
+	elif socket == "point_defense":
+		cool = 0.22
+	elif socket == "stake_gun":
+		cool = 0.5
+	for mount in Fit.mounts(sim.defs, ship):
+		if str(mount.get("socket", "")) == socket:
+			cool = float(mount.get("cooldown", cool))
+			break
+	var cd := float(ship.get("mount_cd", {}).get(socket, 0.0))
+	if cd <= 0.0:
+		return 0.0
+	var window := 0.16
+	if socket == "missile_rack":
+		window = 0.34
+	elif socket == "heavy_turret":
+		window = 0.22
+	elif socket == "point_defense":
+		window = 0.1
+	var since := cool - cd
+	if since < 0.0 or since > window:
+		return 0.0
+	return 1.0 - since / window
+
+
+func _kick_mount(sock: Node3D, socket: String, life: float) -> void:
+	var kick := 0.0
+	if socket == "heavy_turret":
+		kick = 2.25 * life
+	elif socket == "stake_gun":
+		kick = 1.4 * life
+	elif socket == "gun_sponson":
+		kick = 0.9 * life
+	elif socket == "point_defense":
+		kick = 0.42 * life
+	for name in ["BarrelP", "BarrelS"]:
+		var barrel := sock.get_node_or_null(name) as MeshInstance3D
+		if barrel == null:
+			continue
+		if not barrel.has_meta("rest_x"):
+			barrel.set_meta("rest_x", barrel.position.x)
+		var rest := float(barrel.get_meta("rest_x"))
+		barrel.position.x = rest - kick
+	if socket == "missile_rack":
+		var door := sock.get_node_or_null("Door") as MeshInstance3D
+		if door != null:
+			if not door.has_meta("rest_y"):
+				door.set_meta("rest_y", door.position.y)
+			door.position.y = float(door.get_meta("rest_y")) + life * 1.1
+
+
+func _glow_mount(sock: Node3D, socket: String, life: float) -> void:
+	var flash := sock.get_node_or_null("SockFlash") as MeshInstance3D
+	if flash == null:
+		flash = MeshInstance3D.new()
+		flash.name = "SockFlash"
+		var ball := SphereMesh.new()
+		ball.radius = 1.4
+		ball.height = 2.8
+		ball.radial_segments = 10
+		ball.rings = 6
+		flash.mesh = ball
+		flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var flare := MeshInstance3D.new()
+		flare.name = "Flare"
+		var rod := CylinderMesh.new()
+		rod.top_radius = 0.25
+		rod.bottom_radius = 1.1
+		rod.height = 6.2
+		rod.radial_segments = 8
+		flare.mesh = rod
+		flare.position = Vector3(3.2, 0.0, 0.0)
+		flare.rotation = Vector3(0.0, 0.0, -PI * 0.5)
+		flare.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		flash.add_child(flare)
+		sock.add_child(flash)
+	flash.visible = life > 0.02
+	if life > 0.02:
+		var tint := Color("ffd59a")
+		if socket == "laser_bank":
+			tint = Color("fff1d2")
+		elif socket == "missile_rack":
+			tint = Color("ffb060")
+		elif socket == "point_defense":
+			tint = Color("d8eeff")
+		elif socket == "heavy_turret":
+			tint = Color("ff9a4a")
+		elif socket == "stake_gun":
+			tint = Color("e8f2ff")
+		flash.position = Vector3(5.2, 1.1, 0.0)
+		if socket == "laser_bank":
+			flash.position = Vector3(5.6, 0.2, 0.0)
+		elif socket == "missile_rack":
+			flash.position = Vector3(5.4, 1.5, 0.0)
+		elif socket == "stake_gun":
+			flash.position = Vector3(6.4, 1.1, 0.0)
+		var span := 0.55 + life * 1.15
+		if socket == "heavy_turret":
+			span = 0.85 + life * 2.05
+		elif socket == "stake_gun":
+			span = 0.38 + life * 0.85
+		elif socket == "point_defense":
+			span = 0.32 + life * 0.7
+		flash.scale = Vector3(span, span, span)
+		_paint_bolt(flash, tint.lightened(0.3), 2.2 + life * 3.4, 0.9)
+		var flare_node := flash.get_node_or_null("Flare") as MeshInstance3D
+		if flare_node != null:
+			flare_node.visible = socket != "laser_bank"
+			var jet := flare_node.mesh as CylinderMesh
+			if jet != null:
+				if socket == "stake_gun":
+					jet.height = 9.4
+					jet.top_radius = 0.12
+					jet.bottom_radius = 0.55
+				elif socket == "heavy_turret":
+					jet.height = 5.4
+					jet.top_radius = 0.42
+					jet.bottom_radius = 1.55
+				elif socket == "missile_rack":
+					jet.height = 7.8
+					jet.top_radius = 0.3
+					jet.bottom_radius = 1.25
+				else:
+					jet.height = 6.2
+					jet.top_radius = 0.25
+					jet.bottom_radius = 1.1
+			_paint_bolt(flare_node, tint, 1.4 + life * 2.4, 0.5)
+	for pair in [["BarrelP", "HeatP"], ["BarrelS", "HeatS"]]:
+		var barrel := sock.get_node_or_null(str(pair[0])) as Node3D
+		if barrel == null:
+			continue
+		var band := barrel.get_node_or_null(str(pair[1])) as MeshInstance3D
+		if band == null:
+			continue
+		if life > 0.02:
+			_paint_bolt(band, Color("ff6a28"), 1.1 + life * 3.6, 0.92)
+		else:
+			band.material_override = _hull_mat(Color("7a3e2c"))
+	if socket == "laser_bank":
+		for name in ["LensP", "LensS", "Iris"]:
+			var lens := sock.get_node_or_null(name) as MeshInstance3D
+			if lens == null:
+				continue
+			var glow := 2.4 + life * 5.5
+			_paint_bolt(lens, Color("ffd2a1") if name == "Iris" else Color("ff7a1a"), glow, 0.92)
+	if socket == "missile_rack":
+		for i in 4:
+			var tube := sock.get_node_or_null("Tube%d" % i) as Node3D
+			if tube == null:
+				continue
+			var mouth := tube.get_node_or_null("Mouth") as MeshInstance3D
+			if mouth == null:
+				continue
+			if life > 0.02:
+				_paint_bolt(mouth, Color("ff8a3a"), 1.6 + life * 3.0, 0.85)
+			else:
+				mouth.material_override = _hull_mat(Color("2a2420"))
 
 
 func _pose_sockets(holder: Node3D, ship: Dictionary) -> void:

@@ -38,6 +38,7 @@ func _run() -> void:
 	_meshes()
 	_families()
 	_fights()
+	_voices()
 	_purse()
 
 
@@ -71,6 +72,24 @@ func _meshes() -> void:
 	check(barn_gun != null and beak_gun != null, "Barn and Beak grow their own mounts")
 	if barn_gun != null and beak_gun != null:
 		check(barn_gun.position.distance_to(beak_gun.position) > 4.0, "Barn turret and Beak cheek do not share a seat")
+	var slug := MeshInstance3D.new()
+	stage.call("_build_bullet_shot", slug, "iron")
+	var rail := MeshInstance3D.new()
+	stage.call("_build_bullet_shot", rail, "iron", "stake_gun")
+	var fat := MeshInstance3D.new()
+	stage.call("_build_bullet_shot", fat, "iron", "heavy_turret")
+	var rocket := MeshInstance3D.new()
+	stage.call("_build_missile_shot", rocket)
+	check(slug.get_node_or_null("Head") != null and slug.get_node_or_null("Fin0") == null, "a bullet slug is not a missile")
+	check(rocket.get_node_or_null("Fin0") != null and rocket.get_node_or_null("Fin3") != null, "a missile wears fins")
+	check(rocket.material_override != null, "a missile wears hull paint")
+	var slug_rod := slug.mesh as CylinderMesh
+	var rail_rod := rail.mesh as CylinderMesh
+	var fat_rod := fat.mesh as CylinderMesh
+	check(slug_rod != null and rail_rod != null and fat_rod != null, "each bullet family keeps a rod")
+	if slug_rod != null and rail_rod != null and fat_rod != null:
+		check(rail_rod.top_radius < slug_rod.top_radius, "the stake gun fires a thin rail")
+		check(fat_rod.bottom_radius > slug_rod.bottom_radius, "the heavy turret throws a fat slug")
 
 
 func _families() -> void:
@@ -145,9 +164,12 @@ func _fights() -> void:
 	sim.player.cap = 40.0
 	var shield_before := float(skiff.shield)
 	var hull_before := float(skiff.hp)
+	sim.sfx_queue.clear()
 	check(sim.try_fire(sim.player, bank), "the bank fires while the capacitor holds")
+	check(sim.sfx_queue.has("laser"), "the bank sounds like a beam")
 	check(float(sim.player.cap) < 40.0, "the beam spends capacitor")
 	check(not sim.beams.is_empty(), "the beam is a visible segment")
+	check(str(sim.beams[0].get("family", "")) == "laser", "the beam keeps its family")
 	check(float(skiff.shield) < shield_before or float(skiff.hp) < hull_before, "the beam reaches the skiff")
 	sim.player.cap = 0.0
 	sim.player.mount_cd = {}
@@ -195,6 +217,8 @@ func _missile_flak(sim: SectorSim, skiff: Dictionary) -> void:
 		"agent_id": str(skiff.agent_id),
 		"mark": "",
 	}]
+	sim.sfx_queue.clear()
+	sim.beams = []
 	sim._step_projectiles(0.05)
 	check(sim.projectiles.is_empty(), "point defense shoots the missile down")
 	var flak := false
@@ -202,6 +226,12 @@ func _missile_flak(sim: SectorSim, skiff: Dictionary) -> void:
 		if str(row.get("kind", "")) == "flak":
 			flak = true
 	check(flak, "the intercept leaves flak")
+	var pd_beam := false
+	for row in sim.beams:
+		if str(row.get("family", "")) == "pd":
+			pd_beam = true
+	check(pd_beam, "point defense draws a flak beam")
+	check(sim.sfx_queue.has("pd"), "point defense chatters")
 
 
 func _missile_run(sim: SectorSim, skiff: Dictionary) -> void:
@@ -246,6 +276,45 @@ func _chase(sim: SectorSim, skiff: Dictionary, vel: Vector2, seconds: float) -> 
 		sim._step_projectiles(0.05)
 		skiff.pos += skiff.vel * 0.05
 	return float(skiff.hp) < start
+
+
+func _voices() -> void:
+	var sim := SectorSim.new(defs)
+	check(sim._gun_sfx("laser", "laser_bank") == "laser", "the bank names a laser voice")
+	check(sim._gun_sfx("missile", "missile_rack") == "missile", "the rack names a missile voice")
+	check(sim._gun_sfx("pd", "point_defense") == "pd", "point defense names its own voice")
+	check(sim._gun_sfx("bullet", "heavy_turret") == "heavy", "the heavy turret names a boom")
+	check(sim._gun_sfx("bullet", "stake_gun") == "stake", "the stake gun names a snap")
+	check(sim._gun_sfx("bullet", "gun_sponson") == "gun", "the cheek gun keeps the crack")
+	sim.new_game("vesper")
+	sim.hold_npc = true
+	sim.player.moored = false
+	sim.player.pos = Vector2(7000, 7000)
+	sim.player.cap = 80.0
+	sim.player.therm = 0.0
+	check(sim.install("gun_sponson").ok, "cheek gun for the voice test")
+	var turret: Dictionary = Fit.mounts(defs, sim.player)[0]
+	sim.sfx_queue.clear()
+	sim.player.mount_cd = {}
+	check(sim.try_fire(sim.player, turret), "the cheek gun fires")
+	check(sim.sfx_queue.has("gun"), "the cheek gun cracks")
+	sim.uninstall("gun_sponson")
+	check(sim.install("missile_rack").ok, "rack for the voice test")
+	var skiff: Dictionary = sim._blank_ship("skiff", "Skiff", "agent:red_keel:voice", "npc", "red_keel")
+	skiff.pos = sim.player.pos + Vector2(240, 0)
+	skiff.alive = true
+	sim.actors.append(skiff)
+	HelmCombat.set_lock(sim, sim.player, str(skiff.agent_id))
+	sim.player.lock_ok = true
+	var rack: Dictionary = Fit.mounts(defs, sim.player)[0]
+	sim.sfx_queue.clear()
+	sim.player.mount_cd = {}
+	sim.player.cap = 80.0
+	check(sim.try_fire(sim.player, rack), "the rack fires")
+	check(sim.sfx_queue.has("missile"), "the rack whooshes")
+	var rocket: Dictionary = sim.projectiles[-1]
+	check(str(rocket.get("family", "")) == "missile", "the missile is a flight row")
+	check(str(rocket.get("socket", "")) == "missile_rack", "the missile remembers its rack")
 
 
 func _purse() -> void:

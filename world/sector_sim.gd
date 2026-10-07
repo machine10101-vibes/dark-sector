@@ -526,6 +526,7 @@ func try_fire(unit: Dictionary, gun: Dictionary) -> bool:
 		var speed := float(live.get("speed", 700.0))
 		projectiles.append({
 			"family": family if family != "" else "bullet",
+			"socket": key,
 			"load": str(live.get("load", "")),
 			"drop": float(live.get("drop", 0.0)),
 			"turret": bool(aimed.turret),
@@ -537,7 +538,7 @@ func try_fire(unit: Dictionary, gun: Dictionary) -> bool:
 			"ttl": float(live.get("ttl", 1.1)),
 			"agent_id": unit.agent_id,
 		})
-	sfx("gun")
+	sfx(_gun_sfx(family, key))
 	if str(unit.get("controller", "")) == "human":
 		unit.fight_cd = 2.4
 		if str(unit.agent_id) == str(player.agent_id) and not Law.muzzle_clean(self, unit):
@@ -674,6 +675,9 @@ func _laser_strike(unit: Dictionary, gun: Dictionary, aimed: Dictionary) -> void
 		"age": 0.0,
 		"team": str(unit.team),
 		"hot": hit != null,
+		"family": "laser",
+		"load": str(gun.get("load", "standard")),
+		"socket": "laser_bank",
 	})
 	while beams.size() > 8:
 		beams.pop_front()
@@ -687,6 +691,7 @@ func _launch_missile(unit: Dictionary, gun: Dictionary, aimed: Dictionary) -> vo
 	var span := float(gun.get("range", 700.0)) / maxf(40.0, speed)
 	projectiles.append({
 		"family": "missile",
+		"socket": "missile_rack",
 		"load": str(gun.get("load", "splinter")),
 		"blast": float(gun.get("blast", 40.0)),
 		"steer": float(gun.get("steer", 1.0)),
@@ -769,6 +774,20 @@ func sfx(name: String) -> void:
 	sfx_queue.append(name)
 	if sfx_queue.size() > 12:
 		sfx_queue.pop_front()
+
+
+func _gun_sfx(family: String, socket: String) -> String:
+	if family == "laser":
+		return "laser"
+	if family == "missile":
+		return "missile"
+	if family == "pd":
+		return "pd"
+	if socket == "heavy_turret":
+		return "heavy"
+	if socket == "stake_gun":
+		return "stake"
+	return "gun"
 
 
 func to_dict() -> Dictionary:
@@ -1277,6 +1296,17 @@ func _flak_missile(shot: Dictionary) -> bool:
 			continue
 		HelmCombat.spend_shot(self, unit, pd)
 		_set_mount_cd(unit, "point_defense", float(pd.get("cooldown", 0.22)))
+		beams.append({
+			"from": unit.pos,
+			"to": Vector2(shot.pos),
+			"age": 0.0,
+			"team": str(unit.team),
+			"hot": true,
+			"family": "pd",
+			"load": "flak",
+			"socket": "point_defense",
+		})
+		sfx("pd")
 		return true
 	return false
 

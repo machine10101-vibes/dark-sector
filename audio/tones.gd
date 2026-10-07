@@ -1,6 +1,6 @@
 extends Node
 
-var player: AudioStreamPlayer
+var voices: Array = []
 var clips: Dictionary = {}
 var ready_audio := false
 
@@ -8,11 +8,18 @@ var ready_audio := false
 func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
-	player = AudioStreamPlayer.new()
-	player.volume_db = -8.0
-	add_child(player)
+	for i in 6:
+		var node := AudioStreamPlayer.new()
+		node.volume_db = -7.0
+		add_child(node)
+		voices.append(node)
 	clips = {
-		"gun": _tone(880.0, 0.07, 0.35, 1.2),
+		"gun": _gun_crack(),
+		"heavy": _heavy_boom(),
+		"stake": _stake_snap(),
+		"laser": _laser_hiss(),
+		"missile": _missile_whoosh(),
+		"pd": _pd_chatter(),
 		"launch": _tone(420.0, 0.12, 0.3, 0.8),
 		"dock": _tone(540.0, 0.1, 0.28, 1.0),
 		"hit": _tone(150.0, 0.09, 0.4, 1.4),
@@ -35,24 +42,99 @@ func play(kind: String) -> void:
 		return
 	if not clips.has(kind):
 		return
-	player.stream = clips[kind]
-	player.play()
+	var voice: AudioStreamPlayer = voices[0]
+	for node in voices:
+		var slot := node as AudioStreamPlayer
+		if not slot.playing:
+			voice = slot
+			break
+	voice.stream = clips[kind]
+	voice.play()
 
 
 func _tone(freq: float, duration: float, volume: float, decay: float) -> AudioStreamWAV:
+	return _render(duration, func(t: float, env: float) -> float:
+		return sin(TAU * freq * t) * volume * env
+	, decay)
+
+
+func _gun_crack() -> AudioStreamWAV:
+	return _render(0.12, func(t: float, env: float) -> float:
+		var bang := _noise(t * 980.0) * exp(-t * 52.0)
+		var body := sin(TAU * 190.0 * t) * exp(-t * 20.0)
+		var brass := sin(TAU * 1860.0 * t) * exp(-t * 42.0)
+		var slap := sin(TAU * 420.0 * t) * exp(-t * 28.0)
+		return (bang * 0.6 + body * 0.62 + brass * 0.32 + slap * 0.22) * env * 0.74
+	, 1.55)
+
+
+func _heavy_boom() -> AudioStreamWAV:
+	return _render(0.26, func(t: float, env: float) -> float:
+		var thump := sin(TAU * (62.0 - t * 28.0) * t) * exp(-t * 7.5)
+		var blast := _noise(t * 360.0) * exp(-t * 14.0)
+		var ring := sin(TAU * 310.0 * t) * exp(-t * 11.0)
+		var shell := _noise(t * 88.0 + 4.0) * exp(-t * 6.0)
+		return (thump * 1.05 + blast * 0.48 + ring * 0.2 + shell * 0.16) * env * 0.82
+	, 1.05)
+
+
+func _stake_snap() -> AudioStreamWAV:
+	return _render(0.1, func(t: float, env: float) -> float:
+		var tick := _noise(t * 1680.0) * exp(-t * 62.0)
+		var iron := sin(TAU * 1240.0 * t) * exp(-t * 34.0)
+		var coil := sin(TAU * 2480.0 * t) * exp(-t * 48.0)
+		var low := sin(TAU * 140.0 * t) * exp(-t * 22.0)
+		return (tick * 0.38 + iron * 0.5 + coil * 0.28 + low * 0.3) * env * 0.7
+	, 1.75)
+
+
+func _laser_hiss() -> AudioStreamWAV:
+	return _render(0.22, func(t: float, env: float) -> float:
+		var hz := 820.0 - t * 460.0
+		var arc := sin(TAU * hz * t)
+		var hiss := _noise(t * 2600.0) * (0.3 + 0.7 * abs(sin(TAU * 70.0 * t)))
+		var hum := sin(TAU * 96.0 * t) * 0.42
+		var zip := sin(TAU * 1480.0 * t) * exp(-t * 12.0)
+		return (arc * 0.28 + hiss * 0.72 + hum + zip * 0.18) * env * 0.52
+	, 0.62)
+
+
+func _missile_whoosh() -> AudioStreamWAV:
+	return _render(0.3, func(t: float, env: float) -> float:
+		var ignite := sin(TAU * (48.0 + t * 55.0) * t) * exp(-t * 5.2)
+		var rush := _noise(t * 240.0 + 11.0) * (0.18 + t * 1.7)
+		var hiss := _noise(t * 1100.0) * exp(-t * 7.0)
+		var rumble := sin(TAU * 36.0 * t) * (0.35 + t * 0.4)
+		return (ignite * 0.68 + rush * 0.58 + hiss * 0.2 + rumble * 0.28) * env * 0.72
+	, 0.78)
+
+
+func _pd_chatter() -> AudioStreamWAV:
+	return _render(0.09, func(t: float, env: float) -> float:
+		var pulse := 1.0 if (t < 0.016 or (t > 0.026 and t < 0.04) or (t > 0.05 and t < 0.064)) else 0.12
+		var tick := _noise(t * 2700.0) * pulse
+		var ping := sin(TAU * 3400.0 * t) * pulse * exp(-t * 36.0)
+		var body := sin(TAU * 520.0 * t) * pulse * 0.35
+		return (tick * 0.52 + ping * 0.42 + body) * env * 0.64
+	, 2.1)
+
+
+func _noise(seed: float) -> float:
+	return fposmod(sin(seed * 12.9898) * 43758.5453, 1.0) * 2.0 - 1.0
+
+
+func _render(duration: float, voice: Callable, decay: float) -> AudioStreamWAV:
 	var rate := 22050
 	var count := int(rate * duration)
 	var bytes := PackedByteArray()
 	bytes.resize(count * 2)
-	var phase := 0.0
-	var step := TAU * freq / float(rate)
 	for i in count:
+		var t := float(i) / float(rate)
 		var env := pow(1.0 - float(i) / float(count), decay)
-		var sample := sin(phase) * volume * env
+		var sample := float(voice.call(t, env))
 		var iv := int(clampf(sample * 32767.0, -32767.0, 32767.0))
 		bytes[i * 2] = iv & 255
 		bytes[i * 2 + 1] = (iv >> 8) & 255
-		phase += step
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = rate
