@@ -2542,6 +2542,169 @@ func _combat_fx(holder: Node3D, sim, ship: Dictionary, band: bool) -> void:
 		_paint_bolt(ring, Color("ffe6c8"), 1.2 + hurt * 2.4, clampf(hurt * 0.8, 0.08, 0.85))
 		var jig := sin(float(sim.time) * 54.0) * hurt * 0.9
 		holder.position += holder.basis * Vector3(jig * 0.35, jig, jig * 0.45)
+	_turret_fx(holder, sim, ship, band)
+	_tank_fx(holder, sim, ship, band)
+
+
+## A dorsal mount that traverses onto the lock. The holder basis is mirrored
+## (local +Z is screen-left), so a turn of rel off the nose is local -rel.
+func _turret_fx(holder: Node3D, sim, ship: Dictionary, band: bool) -> void:
+	var mount := holder.get_node_or_null("Turret") as Node3D
+	if mount == null:
+		mount = Node3D.new()
+		mount.name = "Turret"
+		var crown := float(holder.get_meta("crown", 16.0))
+		var nose := float(holder.get_meta("nose", 24.0))
+		mount.position = Vector3(nose * 0.18, crown * 1.04, 0.0)
+		holder.add_child(mount)
+		var ring_base := MeshInstance3D.new()
+		ring_base.name = "TurretRing"
+		var drum := CylinderMesh.new()
+		drum.top_radius = 2.1
+		drum.bottom_radius = 2.6
+		drum.height = 1.3
+		drum.radial_segments = 14
+		ring_base.mesh = drum
+		ring_base.material_override = _hull_mat(Color("7c7a76"))
+		mount.add_child(ring_base)
+		var head := MeshInstance3D.new()
+		head.name = "TurretHead"
+		var cap := BoxMesh.new()
+		cap.size = Vector3(3.6, 1.3, 2.8)
+		head.mesh = cap
+		head.position = Vector3(0.4, 1.0, 0.0)
+		head.material_override = _hull_mat(Color("9a958c"))
+		mount.add_child(head)
+		for side in [-1.0, 1.0]:
+			var barrel := _tube(mount, "TurretBarrel%s" % ("P" if side > 0.0 else "S"), 0.32, 6.4, Vector3(4.6, 1.1, side * 0.72), "x", Color("1a1e24"))
+			_dress_barrel(barrel, 6.4, 0.18, 0.4)
+	mount.visible = band
+	if not band:
+		return
+	var want := 0.0
+	if bool(ship.get("lock_ok", false)) and ship.has("turret_aim"):
+		var other = HelmCombat.find_unit(sim, str(ship.get("lock_id", "")))
+		if other != null:
+			var to: Vector2 = Vector2(other.pos) - Vector2(ship.pos)
+			want = -wrapf(to.angle() - float(ship.rot), -PI, PI)
+	var gun: Dictionary = Fit.stats(sim.defs, ship).gun
+	var arc := float(gun.get("arc", 0.0))
+	if arc > 0.0 and arc < PI:
+		want = clampf(want, -arc, arc)
+	var step := 3.2 * _frame_delta
+	var now := float(mount.rotation.y)
+	mount.rotation.y = now + clampf(wrapf(want - now, -PI, PI), -step, step)
+
+
+## Shield hits light a shell around the hull with a ring running out from the
+## impact side. Plate hits throw sparks; hull hits throw hotter, redder ones.
+func _tank_fx(holder: Node3D, sim, ship: Dictionary, band: bool) -> void:
+	var shell := holder.get_node_or_null("ShieldShell") as MeshInstance3D
+	if shell == null:
+		shell = MeshInstance3D.new()
+		shell.name = "ShieldShell"
+		var orb := SphereMesh.new()
+		orb.radius = 1.0
+		orb.height = 2.0
+		orb.radial_segments = 28
+		orb.rings = 14
+		shell.mesh = orb
+		shell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var mat := ShaderMaterial.new()
+		mat.shader = _shield_shader()
+		shell.material_override = mat
+		var nose := float(holder.get_meta("nose", 24.0))
+		var crown := float(holder.get_meta("crown", 16.0))
+		shell.position = Vector3(nose * 0.05, crown * 0.6, 0.0)
+		shell.scale = Vector3(nose * 1.25, crown * 0.95, maxf(nose * 0.62, crown * 1.1))
+		holder.add_child(shell)
+	var sparks := holder.get_node_or_null("Sparks") as Node3D
+	if sparks == null:
+		sparks = Node3D.new()
+		sparks.name = "Sparks"
+		holder.add_child(sparks)
+		var chip := BoxMesh.new()
+		chip.size = Vector3(1.3, 0.5, 0.5)
+		for i in 7:
+			var bit := MeshInstance3D.new()
+			bit.name = "Spark%d" % i
+			bit.mesh = chip
+			bit.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			sparks.add_child(bit)
+	var age := float(sim.time) - float(ship.get("hit_at", -10.0))
+	var layer := str(ship.get("hit_layer", ""))
+	var side := _hit_side(sim, ship)
+	var shield_on := band and layer == "shield" and age >= 0.0 and age < 0.5
+	shell.visible = shield_on
+	if shield_on:
+		var mat := shell.material_override as ShaderMaterial
+		mat.set_shader_parameter("flash", 1.0 - age / 0.5)
+		mat.set_shader_parameter("hit_dir", side)
+	var spark_on := band and (layer == "armor" or layer == "hull") and age >= 0.0 and age < 0.4
+	sparks.visible = spark_on
+	if spark_on:
+		var hot := layer == "hull"
+		var nose_r := float(holder.get_meta("nose", 24.0))
+		var crown_r := float(holder.get_meta("crown", 16.0))
+		var base := Vector3(side.x * nose_r * 0.7, crown_r * 0.6, side.z * nose_r * 0.4)
+		var fade := 1.0 - age / 0.4
+		var seed_i := int(float(ship.get("hit_at", 0.0)) * 97.0)
+		var i := 0
+		for bit in sparks.get_children():
+			var mesh_bit := bit as MeshInstance3D
+			var a := float((seed_i * 37 + i * 61) % 360) * PI / 180.0
+			var lift := float((seed_i * 13 + i * 29) % 100) / 100.0
+			var fly := Vector3(side.x + cos(a) * 0.8, 0.4 + lift, side.z + sin(a) * 0.8).normalized()
+			mesh_bit.position = base + fly * (2.0 + age * (60.0 if hot else 44.0))
+			mesh_bit.look_at_from_position(mesh_bit.position, mesh_bit.position + fly + Vector3(0.001, 0.0, 0.0), Vector3.UP)
+			var tint := Color("ffcf7a") if not hot else Color("ff7a3c")
+			_paint_bolt(mesh_bit, tint, 2.6 * fade + 0.4, clampf(fade, 0.05, 1.0))
+			i += 1
+
+
+func _hit_side(sim, ship: Dictionary) -> Vector3:
+	var best := Vector2.ZERO
+	var best_d := 1.0e9
+	for row in sim.impacts:
+		if str(row.get("kind", "")) != "hit":
+			continue
+		var gap: float = Vector2(row.pos).distance_to(Vector2(ship.pos))
+		if gap < best_d and gap < 80.0:
+			best_d = gap
+			best = -Vector2(row.get("dir", Vector2.ZERO))
+	if best.length() < 0.01:
+		return Vector3(1.0, 0.1, 0.0)
+	var rel := wrapf(best.angle() - float(ship.rot), -PI, PI)
+	return Vector3(cos(rel), 0.12, sin(rel)).normalized()
+
+
+func _shield_shader() -> Shader:
+	if _mesh_cache.has("shield_shader"):
+		return _mesh_cache["shield_shader"]
+	var shader := _compile("""
+shader_type spatial;
+render_mode unshaded, blend_add, cull_back, depth_draw_never, shadows_disabled;
+uniform vec4 tint : source_color = vec4(0.44, 0.8, 1.0, 1.0);
+uniform float flash = 0.0;
+uniform vec3 hit_dir = vec3(1.0, 0.0, 0.0);
+varying vec3 obj_n;
+void vertex() {
+	obj_n = NORMAL;
+}
+void fragment() {
+	float rim = pow(1.0 - clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0), 2.4);
+	float d = acos(clamp(dot(normalize(obj_n), normalize(hit_dir)), -1.0, 1.0));
+	float wave = (1.0 - flash) * 2.2;
+	float ring = smoothstep(0.32, 0.0, abs(d - wave));
+	float spot = smoothstep(1.1, 0.0, d) * flash;
+	float cells = 0.6 + 0.4 * sin(obj_n.x * 40.0) * sin(obj_n.y * 40.0) * sin(obj_n.z * 40.0);
+	float glow = flash * (0.18 * rim + ring * 0.8 * cells) + spot * 0.7;
+	ALBEDO = tint.rgb * glow * 1.6;
+	ALPHA = clamp(glow, 0.0, 1.0);
+}
+""")
+	_mesh_cache["shield_shader"] = shader
+	return shader
 
 
 func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -> void:
