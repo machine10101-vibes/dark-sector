@@ -2095,20 +2095,12 @@ class ShipGlass extends Control:
 		var lo := Vector2(1.0e9, 1.0e9)
 		var hi := Vector2(-1.0e9, -1.0e9)
 		var lists: Array = [geom.hull]
-		lists.append_array(geom.extras)
 		for poly in lists:
 			for point in poly:
 				lo.x = minf(lo.x, point.x)
 				lo.y = minf(lo.y, point.y)
 				hi.x = maxf(hi.x, point.x)
 				hi.y = maxf(hi.y, point.y)
-		for circle in geom.circles:
-			var c := Vector2(float(circle.x), float(circle.y))
-			var rad := float(circle.r)
-			lo.x = minf(lo.x, c.x - rad)
-			lo.y = minf(lo.y, c.y - rad)
-			hi.x = maxf(hi.x, c.x + rad)
-			hi.y = maxf(hi.y, c.y + rad)
 		if hi.x < lo.x:
 			return Rect2(Vector2.ZERO, Vector2(40, 16))
 		return Rect2(lo, hi - lo)
