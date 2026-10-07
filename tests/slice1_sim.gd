@@ -34,6 +34,23 @@ func check(cond: bool, message: String) -> void:
 		print("FAIL: %s" % message)
 
 
+func _material_span(sim: SectorSim, material: String) -> float:
+	var spots: Array = []
+	for rock in sim.asteroids:
+		var chip: Dictionary = rock
+		if str(chip.get("material", "")) == material:
+			spots.append(Vector2(chip.pos))
+	var span := 0.0
+	for i in spots.size():
+		var a: Vector2 = spots[i]
+		for j in range(i + 1, spots.size()):
+			var b: Vector2 = spots[j]
+			var dist: float = a.distance_to(b)
+			if dist > span:
+				span = dist
+	return span
+
+
 func make(class_id: String) -> SectorSim:
 	var sim := SectorSim.new(defs)
 	sim.new_game(class_id)
@@ -121,6 +138,23 @@ func _dock() -> void:
 		elif mat == "nickel_cinder":
 			saw_nickel = true
 	check(saw_ice and saw_copper and saw_nickel, "the sky holds nickel, ice, and copper")
+	check(_material_span(sim, "ice_spall") > 400.0, "ice rocks are not one pile")
+	check(_material_span(sim, "copper_slag") > 400.0, "copper rocks are not one pile")
+	check(_material_span(sim, "nickel_cinder") > 400.0, "nickel rocks are not one pile")
+	var ice_mark := Vector2(sim.ice_pos)
+	check(sim.try_extract("ice_spall") == "ok", "ice spall can be cut")
+	check(sim.ice_pos.distance_to(ice_mark) > 280.0, "cut ice reseats in other sky")
+	var ice_node = sim.survey_node("ice_spall")
+	check(ice_node != null and Vector2(ice_node.pos).distance_to(sim.ice_pos) < 4.0, "the ice mark follows the new seam")
+	var copper_mark := Vector2(sim.copper_pos)
+	check(sim.try_extract("copper_slag") == "ok", "copper slag can be cut")
+	check(sim.copper_pos.distance_to(copper_mark) > 280.0, "cut copper reseats in other sky")
+	var nickel_mark := Vector2(sim.belt_pos)
+	check(sim.try_extract("cinder_reach") == "ok", "nickel cinder can be cut")
+	check(sim.belt_pos.distance_to(nickel_mark) > 280.0, "cut nickel reseats in other sky")
+	sim.deposits["ice_spall"] = 1
+	check(sim.try_extract("ice_spall") == "ok", "the last ice cut still lands")
+	check(int(sim.deposits.get("ice_spall", 0)) > 0, "a worked-out ice seam lights elsewhere")
 	check(sim.gang_name != "" and sim.gang_id != "", "a pirate gang holds the amber")
 	var roster: Array = []
 	if sim.defs.has("gangs") and sim.defs.gangs.has(sim.gang_id):

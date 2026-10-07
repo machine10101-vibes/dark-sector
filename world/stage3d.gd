@@ -830,7 +830,7 @@ func _pull_tag(sim, mark: Vector2) -> Vector2:
 	var pulled := Vector2(mark)
 	var pull := Vector2(sim.player.pos) - pulled
 	if pull.length() > 40.0:
-		pulled += pull.normalized() * minf(pull.length() * 0.45, 160.0)
+		pulled += pull.normalized() * minf(pull.length() * 0.12, 36.0)
 	return pulled
 
 
@@ -895,7 +895,7 @@ func _sync_props(sim) -> void:
 		var mark := Vector2(sim.belt_pos)
 		var pull := Vector2(sim.player.pos) - mark
 		if pull.length() > 40.0:
-			mark += pull.normalized() * minf(pull.length() * 0.55, 240.0)
+			mark += pull.normalized() * minf(pull.length() * 0.12, 36.0)
 		_tag("%s  ·  nickel cinder" % str(belt.get("name", "Ore")), chart(mark, 48.0), Color("f0c27a"), 22)
 	if sim.ice_pos != Vector2.ZERO and not on_chart:
 		_tag("Ice spall", chart(_pull_tag(sim, sim.ice_pos), 36.0), Color("d5e6f0"), 16)
