@@ -43,5 +43,33 @@
       "signature": 0.14,
       "radius": 6
     }
+  },
+  "battery_pack": {
+    "id": "battery_pack",
+    "name": "Battery Pack",
+    "family": "power",
+    "slot": "Power",
+    "shape": "battery",
+    "blurb": "A cased bank of cells on the deck, cabled into the bus. Spare climbs. Mass climbs with it.",
+    "effects": {
+      "mass": 8,
+      "power_draw": -4,
+      "signature": 0.05,
+      "radius": 2
+    }
+  },
+  "armor_belt": {
+    "id": "armor_belt",
+    "name": "Armor Belt",
+    "family": "hull",
+    "slot": "M",
+    "shape": "armor",
+    "blurb": "Overlapping plates wrapped on the flanks and bolted through the skin. Wider, heavier, a little louder.",
+    "effects": {
+      "mass": 14,
+      "power_draw": 1,
+      "signature": 0.06,
+      "radius": 4
+    }
   }
 }

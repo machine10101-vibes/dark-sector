@@ -107,10 +107,13 @@ func _card(class_id: String) -> PanelContainer:
 	box.add_child(ThemeKit.label(str(hull.class_name), 13, Color("8a7344")))
 	var previews := HBoxContainer.new()
 	previews.add_theme_constant_override("separation", 4)
-	previews.add_child(_preview(class_id, [], "As launched"))
 	var yard: Array = hull.yard
-	if not yard.is_empty():
-		previews.add_child(_preview(class_id, [str(yard[0])], "Bolted"))
+	var fit_modules: Array = []
+	for part in yard:
+		fit_modules.append(str(part))
+	previews.add_child(_preview(class_id, [], "As launched", fit_modules))
+	if not fit_modules.is_empty():
+		previews.add_child(_preview(class_id, fit_modules, "Bolted", fit_modules))
 	box.add_child(previews)
 	box.add_child(ThemeKit.label(str(hull.select_blurb), 13, Color("d9d0c2")))
 	var stats := Fit.stats(Game.defs, {"class_id": class_id, "modules": []})
@@ -129,12 +132,15 @@ func _card(class_id: String) -> PanelContainer:
 	return card
 
 
-func _preview(class_id: String, modules: Array, caption: String) -> VBoxContainer:
+func _preview(class_id: String, modules: Array, caption: String, fit_modules: Array) -> VBoxContainer:
 	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var preview := KeelPreview.new()
 	preview.class_id = class_id
 	preview.modules = modules
-	preview.custom_minimum_size = Vector2(140, 110)
+	preview.fit_modules = fit_modules
+	preview.custom_minimum_size = Vector2(156, 188)
+	preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(preview)
 	col.add_child(ThemeKit.label(caption, 12, Color("8a7344")))
@@ -161,6 +167,7 @@ class Backdrop extends Control:
 class KeelPreview extends Control:
 	var class_id := "vesper"
 	var modules: Array = []
+	var fit_modules: Array = []
 
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_RESIZED:
@@ -171,15 +178,15 @@ class KeelPreview extends Control:
 			return
 		var hull: Dictionary = Game.defs.ships[class_id]
 		var shapes: Array = Silhouette.shapes_of(Game.defs, modules)
-		Silhouette.draw(
+		var fit: Array = Silhouette.shapes_of(Game.defs, fit_modules if not fit_modules.is_empty() else modules)
+		Silhouette.draw_fitted(
 			self,
-			size * 0.5 + Vector2(0, 8),
-			-PI * 0.5,
+			size,
 			class_id,
 			shapes,
-			1.05,
+			fit,
 			Color(str(hull.color)),
 			Color(str(hull.accent)),
 			1.0,
-			false
+			-PI * 0.5
 		)
