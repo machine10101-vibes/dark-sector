@@ -21,9 +21,7 @@ var root: Control
 var stage: SubViewportContainer
 var yard_line: Label
 var prompt_line: Label
-var title_label: Label
-var sky_label: Label
-var tagline: Label
+var title_plate: TitlePlate
 var slate_actions: GridContainer
 var pinned_keel := ""
 var _fit_warmup := 0
@@ -54,7 +52,10 @@ func _ready() -> void:
 	var slate_panel := Panel.new()
 	slate_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	slate_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	slate_panel.add_theme_stylebox_override("panel", ThemeKit.veil())
+	var slate_veil := ThemeKit.veil()
+	slate_veil.bg_color = Color(0.012, 0.02, 0.028, 0.58)
+	slate_veil.border_color = Color(0.78, 0.7, 0.48, 0.42)
+	slate_panel.add_theme_stylebox_override("panel", slate_veil)
 	slate_glass.add_child(slate_panel)
 	slate_scroll = ScrollContainer.new()
 	slate_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -72,18 +73,13 @@ func _ready() -> void:
 	root_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root_box.add_theme_constant_override("separation", 8)
 	slate_scroll.add_child(root_box)
-	title_label = ThemeKit.label("DARK SECTOR", 42, Color("e6d7bf"))
-	title_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	root_box.add_child(title_label)
 	var sky := "HELION DOCK"
 	if Game.defs.has("system"):
 		sky = str(Game.defs.system.name).to_upper()
-	sky_label = ThemeKit.label(sky, 16, Color("8a7344"))
-	sky_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	root_box.add_child(sky_label)
-	tagline = ThemeKit.label("One keel. The dock is a place, not a menu.", 14, Color("b7ab96"))
-	tagline.autowrap_mode = TextServer.AUTOWRAP_OFF
-	root_box.add_child(tagline)
+	title_plate = TitlePlate.new()
+	title_plate.sky = sky
+	title_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(title_plate)
 	new_button = ThemeKit.button("New keel")
 	new_button.pressed.connect(func(): _show_select("offline"))
 	var host := ThemeKit.button("Host the dock")
@@ -113,8 +109,8 @@ func _ready() -> void:
 	slate_actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slate_actions.add_theme_constant_override("h_separation", 8)
 	slate_actions.add_theme_constant_override("v_separation", 6)
-	slate_actions.add_child(new_button)
-	slate_actions.add_child(continue_button)
+	root_box.add_child(new_button)
+	root_box.add_child(continue_button)
 	slate_actions.add_child(host)
 	slate_actions.add_child(join)
 	slate_actions.add_child(address_line)
@@ -144,8 +140,10 @@ func _ready() -> void:
 	select_box.offset_bottom = -8
 	select_glass.add_child(select_box)
 	prompt_line = ThemeKit.label("Choose the keel. The other two stay in someone else's yard.", 16, Color("cbb892"))
+	prompt_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	select_box.add_child(prompt_line)
 	yard_line = ThemeKit.label("Needle is in the yard.", 14, Color("9eecf5"))
+	yard_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	select_box.add_child(yard_line)
 	keel_scroll = ScrollContainer.new()
 	keel_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -184,24 +182,14 @@ func _fit() -> void:
 	var margin := 8.0 if phone else 12.0
 	var two := phone and landscape
 	var tight := portrait and screen.x < 560.0
-	if title_label != null:
-		var title_size := 42
-		if two:
-			title_size = 26
-		elif tight:
-			title_size = 30
-		title_label.add_theme_font_size_override("font_size", title_size)
-	if sky_label != null:
-		sky_label.add_theme_font_size_override("font_size", 13 if two or tight else 16)
-	if tagline != null:
-		tagline.visible = not two and not tight
 	if dedicated_button != null:
 		# A headless-host note does not earn a seat on a short landscape slate.
 		dedicated_button.visible = not two
 	if root_box != null:
 		root_box.add_theme_constant_override("separation", 4 if two or tight else 8)
 	if slate_actions != null:
-		slate_actions.columns = 2 if two else 1
+		# Two columns keep the quieter actions in a short stack. A narrow portrait stays one column.
+		slate_actions.columns = 2 if two or screen.x >= 480.0 else 1
 		slate_actions.add_theme_constant_override("v_separation", 4 if two or tight else 6)
 		for action in slate_actions.get_children():
 			if action is Button:
@@ -296,29 +284,57 @@ func _fit() -> void:
 		else:
 			keel_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 			keel_scroll.custom_minimum_size = Vector2(0, 0)
-	if root_box != null:
-		root_box.custom_minimum_size = Vector2(maxf(120.0, col_w - 64.0), 0)
 	if address_line != null:
-		var addr_w := 0.0 if two else maxf(160.0, col_w - 68.0)
-		address_line.custom_minimum_size = Vector2(addr_w, 44)
+		var addr_w := 0.0
+		if not two and slate_actions != null and slate_actions.columns == 1:
+			addr_w = maxf(160.0, col_w - 68.0)
+		address_line.custom_minimum_size = Vector2(addr_w, 40 if two else 44)
 	if note != null:
 		note.visible = note.text != ""
 	if slate_glass != null:
 		var slate_h := _title_block_height()
 		if root_box != null:
-			var measured := root_box.get_combined_minimum_size().y + 52.0
-			if measured > 120.0 and measured < screen.y * 0.72:
+			var measured := root_box.get_combined_minimum_size().y + 36.0
+			if measured > 80.0:
 				slate_h = maxf(slate_h, measured)
-		var budget := screen.y * (0.58 if portrait else 0.86)
+		var budget := screen.y * (0.56 if portrait else 0.74)
 		slate_h = minf(slate_h, budget)
 		slate_h = minf(slate_h, screen.y - margin * 2.0)
 		if slate_scroll != null:
 			slate_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
-		var slate_y := margin
-		if landscape and slate_h < screen.y - margin * 2.0 - 8.0:
-			slate_y = margin + (screen.y - margin * 2.0 - slate_h) * 0.5
-		slate_glass.position = Vector2(margin, slate_y)
-		slate_glass.size = Vector2(col_w, slate_h)
+		# Phone landscape keeps the stack on the left, beside the keel.
+		# Everywhere else the stack sits on the bottom center, under the open sky.
+		if two:
+			var slate_y := margin
+			if slate_h < screen.y - margin * 2.0 - 8.0:
+				slate_y = margin + (screen.y - margin * 2.0 - slate_h) * 0.5
+			slate_glass.position = Vector2(margin, slate_y)
+			slate_glass.size = Vector2(col_w, slate_h)
+		else:
+			var stack_w := minf(460.0, screen.x - margin * 2.0)
+			slate_glass.position = Vector2((screen.x - stack_w) * 0.5, screen.y - slate_h - margin)
+			slate_glass.size = Vector2(stack_w, slate_h)
+		if root_box != null:
+			root_box.custom_minimum_size = Vector2(maxf(120.0, slate_glass.size.x - 48.0), 0)
+	if title_plate != null and slate_glass != null:
+		var plate_h := 112.0
+		if two or tight:
+			plate_h = 68.0
+		var plate_w := minf(760.0, screen.x - margin * 2.0)
+		var plate_x := (screen.x - plate_w) * 0.5
+		var plate_y := margin + (20.0 if not two else 4.0)
+		if two:
+			plate_x = slate_glass.position.x + slate_glass.size.x + 8.0
+			plate_w = maxf(96.0, screen.x - plate_x - margin)
+			plate_y = margin
+		var overlaps := plate_x < slate_glass.position.x + slate_glass.size.x and plate_x + plate_w > slate_glass.position.x
+		if overlaps:
+			var room := slate_glass.position.y - plate_y - 10.0
+			if room < plate_h:
+				plate_h = maxf(52.0, room)
+		title_plate.position = Vector2(plate_x, plate_y)
+		title_plate.size = Vector2(maxf(96.0, plate_w), maxf(48.0, plate_h))
+		title_plate.queue_redraw()
 	if select_glass != null:
 		select_glass.position = select_pos
 		select_glass.size = select_size
@@ -356,6 +372,8 @@ func _show_root() -> void:
 	_release_focus()
 	if slate_glass != null:
 		slate_glass.show()
+	if title_plate != null:
+		title_plate.show()
 	if select_glass != null:
 		select_glass.hide()
 	root_box.show()
@@ -374,6 +392,8 @@ func _show_select(next: String) -> void:
 	intent = next
 	if slate_glass != null:
 		slate_glass.hide()
+	if title_plate != null:
+		title_plate.hide()
 	if select_glass != null:
 		select_glass.show()
 	root_box.hide()
@@ -536,6 +556,13 @@ func _card(class_id: String) -> PanelContainer:
 	callsign.name = "Callsign"
 	callsign.autowrap_mode = TextServer.AUTOWRAP_OFF
 	box.add_child(callsign)
+	var rule := ColorRect.new()
+	rule.name = "Rule"
+	rule.color = Color(str(hull.accent))
+	rule.color.a = 0.7
+	rule.custom_minimum_size = Vector2(0, 1)
+	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(rule)
 	var role := _role_word(str(hull.role))
 	var class_line := ThemeKit.label("%s · %s" % [role, str(hull.class_name)], 13, Color("8a7344"))
 	class_line.name = "ClassLine"
@@ -808,12 +835,84 @@ class Backdrop extends Control:
 			stars.append(Vector2(rng.randf(), rng.randf()))
 
 	func _draw() -> void:
-		if size.y > size.x:
-			draw_rect(Rect2(0, 0, size.x, minf(360.0, size.y * 0.34)), Color(0.015, 0.02, 0.03, 0.22), true)
-		elif size.x >= 860.0:
-			draw_rect(Rect2(0, 0, minf(520.0, size.x * 0.42), size.y), Color(0.015, 0.02, 0.03, 0.28), true)
-		else:
-			draw_rect(Rect2(0, 0, minf(340.0, size.x * 0.48), size.y), Color(0.015, 0.02, 0.03, 0.26), true)
+		for i in stars.size():
+			var star: Vector2 = stars[i]
+			var at := Vector2(star.x * size.x, star.y * size.y)
+			var bright := 0.16 + float(i % 5) * 0.05
+			var rad := 0.6 if i % 7 != 0 else 1.15
+			draw_circle(at, rad, Color(0.78, 0.84, 0.9, bright))
+		# Darken the edges and the floor under the action stack. The center-right stays clear for the keel.
+		draw_rect(Rect2(0, 0, size.x, size.y * 0.16), Color(0.01, 0.014, 0.02, 0.28), true)
+		draw_rect(Rect2(0, size.y * 0.72, size.x, size.y * 0.28), Color(0.012, 0.016, 0.022, 0.38), true)
+		draw_rect(Rect2(0, 0, size.x * 0.06, size.y), Color(0.01, 0.014, 0.02, 0.22), true)
+
+
+## Title in the open sky: a small dock line over the large name.
+class TitlePlate extends Control:
+	var sky := "HELION DOCK"
+	var title := "DARK SECTOR"
+	var tagline := "One keel. The dock is a place, not a menu."
+
+	func _draw() -> void:
+		if size.x < 8.0 or size.y < 8.0:
+			return
+		var font := ThemeDB.fallback_font
+		if font == null:
+			return
+		var compact := size.y < 88.0 or size.x < 460.0
+		var sky_size := 12 if compact else 15
+		var title_size := 22 if compact else 46
+		if size.x < 280.0:
+			title_size = 18
+		elif size.y < 64.0:
+			title_size = 20
+		var sky_gap := 2.4 if compact else 4.6
+		var title_gap := 2.2 if compact else 7.0
+		sky_gap = _fit_gap(font, sky, sky_size, sky_gap, size.x - 12.0)
+		title_gap = _fit_gap(font, title, title_size, title_gap, size.x - 12.0)
+		var sky_w := _tracked_width(font, sky, sky_size, sky_gap)
+		var title_w := _tracked_width(font, title, title_size, title_gap)
+		var y := 16.0 if not compact else 12.0
+		_draw_tracked(font, sky, Vector2((size.x - sky_w) * 0.5, y), sky_size, sky_gap, Color("c4a46a"))
+		y += 8.0
+		_hairline((size.x - minf(168.0, sky_w)) * 0.5, y, minf(168.0, sky_w))
+		y += 8.0 + float(title_size)
+		_draw_tracked(font, title, Vector2((size.x - title_w) * 0.5, y), title_size, title_gap, Color("f4ecdf"))
+		y += 10.0
+		var rule_w := minf(size.x * 0.42, maxf(title_w * 0.46, 96.0))
+		_hairline((size.x - rule_w) * 0.5, y, rule_w)
+		if not compact and size.y > y + 22.0:
+			var tag_size := 13
+			var tag_w := font.get_string_size(tagline, HORIZONTAL_ALIGNMENT_LEFT, -1, tag_size).x
+			if tag_w > size.x - 16.0:
+				return
+			draw_string(font, Vector2((size.x - tag_w) * 0.5, y + 20.0), tagline, HORIZONTAL_ALIGNMENT_LEFT, -1, tag_size, Color("b7ab96"))
+
+	func _hairline(x: float, y: float, width: float) -> void:
+		draw_line(Vector2(x, y), Vector2(x + width, y), Color(0.78, 0.66, 0.4, 0.85), 1.0)
+		draw_line(Vector2(x + width * 0.38, y), Vector2(x + width * 0.62, y), Color(0.95, 0.88, 0.7, 0.95), 1.0)
+
+	func _fit_gap(font: Font, text: String, font_size: int, gap: float, limit: float) -> float:
+		var bare := _tracked_width(font, text, font_size, 0.0)
+		if bare >= limit or text.length() < 2:
+			return 0.0
+		var room := (limit - bare) / float(text.length() - 1)
+		return minf(gap, room)
+
+	func _tracked_width(font: Font, text: String, font_size: int, gap: float) -> float:
+		var width := 0.0
+		for i in text.length():
+			width += font.get_string_size(text.substr(i, 1), HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+			if i < text.length() - 1:
+				width += gap
+		return width
+
+	func _draw_tracked(font: Font, text: String, at: Vector2, font_size: int, gap: float, color: Color) -> void:
+		var x := at.x
+		for i in text.length():
+			var ch := text.substr(i, 1)
+			draw_string(font, Vector2(x, at.y), ch, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color)
+			x += font.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + gap
 
 
 ## Plan view of a keel, the same silhouette the yard bolts onto.
@@ -844,6 +943,16 @@ class KeelPlan extends Control:
 		var accent := Color(str(hull.get("accent", "#d7e6c8")))
 		var body := Color(str(hull.get("color", "#1f6f73")))
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.012, 0.02, 0.028, 0.85))
+		var tick := 7.0
+		var edge := Color(accent.r, accent.g, accent.b, 0.9)
+		draw_line(Vector2(1, 1), Vector2(tick, 1), edge, 1.2)
+		draw_line(Vector2(1, 1), Vector2(1, tick), edge, 1.2)
+		draw_line(Vector2(size.x - 1, 1), Vector2(size.x - tick, 1), edge, 1.2)
+		draw_line(Vector2(size.x - 1, 1), Vector2(size.x - 1, tick), edge, 1.2)
+		draw_line(Vector2(1, size.y - 1), Vector2(tick, size.y - 1), edge, 1.2)
+		draw_line(Vector2(1, size.y - 1), Vector2(1, size.y - tick), edge, 1.2)
+		draw_line(Vector2(size.x - 1, size.y - 1), Vector2(size.x - tick, size.y - 1), edge, 1.2)
+		draw_line(Vector2(size.x - 1, size.y - 1), Vector2(size.x - 1, size.y - tick), edge, 1.2)
 		var shapes: Array = Silhouette.shapes_of(Game.defs, modules)
 		var layers: Array = Silhouette.layers_of(Game.defs, modules)
 		var geom := Silhouette.parts(class_id, shapes, layers)
