@@ -30,6 +30,8 @@
     "slots": [
       "Utility",
       "S",
+      "S",
+      "M",
       "Hangar"
     ],
     "yard": [
@@ -64,6 +66,7 @@
       "quiet_baffle",
       "choir_bell",
       "lamp_spine",
+      "laser_bank",
       "stake_gun"
     ],
     "gun": {
@@ -138,6 +141,7 @@
       "Utility",
       "Farm",
       "Hangar",
+      "M",
       "L"
     ],
     "yard": [
@@ -172,6 +176,7 @@
       "quiet_baffle",
       "choir_bell",
       "lamp_spine",
+      "laser_bank",
       "stake_gun"
     ],
     "gun": {
@@ -287,6 +292,7 @@
       "quiet_baffle",
       "choir_bell",
       "lamp_spine",
+      "laser_bank",
       "stake_gun"
     ],
     "gun": {
@@ -368,7 +374,10 @@
       "tracking": 0.6,
       "optimal": 300,
       "falloff": 180,
-      "kind": "turret",
+      "family": "missile",
+      "blast": 52,
+      "steer": 0.95,
+      "kind": "rack",
       "arc": 1.2
     },
     "starting_craft": [],
@@ -414,6 +423,7 @@
       "tracking": 0.6,
       "optimal": 380,
       "falloff": 240,
+      "family": "bullet",
       "kind": "turret",
       "arc": 1.6
     },

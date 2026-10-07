@@ -76,27 +76,90 @@ static func effective_signature(sim, unit: Dictionary) -> float:
 	return sig * (1.0 + 0.5 * float(unit.get("therm", 0.0)) / THERM_MAX)
 
 
+static func ensure_rounds(unit: Dictionary) -> void:
+	if not unit.has("rounds"):
+		unit.rounds = {
+			"iron": 40,
+			"tungsten": 0,
+			"incendiary": 0,
+			"splinter": 8,
+			"breacher": 0,
+			"siege": 0,
+		}
+	if not unit.has("belt"):
+		unit.belt = "iron"
+	if not unit.has("crystal"):
+		unit.crystal = "standard"
+	if not unit.has("rack"):
+		unit.rack = "splinter"
+
+
+## How a load bites each tank layer. 1.0 is the bare gun. Empty profile stays even.
+static func layer_bias(profile: Dictionary) -> Dictionary:
+	var bias := {"shield": 1.0, "armor": 1.0, "hull": 1.0, "heat": 0.0}
+	var family := str(profile.get("family", ""))
+	var load := str(profile.get("load", ""))
+	var small := float(profile.get("signature", 1.0))
+	if family == "bullet":
+		if load == "tungsten":
+			bias = {"shield": 0.62, "armor": 1.5, "hull": 0.85, "heat": 0.0}
+		elif load == "incendiary":
+			bias = {"shield": 0.4, "armor": 0.85, "hull": 1.0, "heat": 16.0}
+		elif load == "iron":
+			bias = {"shield": 0.9, "armor": 0.72, "hull": 1.25, "heat": 0.0}
+	elif family == "laser":
+		if load == "infrared":
+			bias = {"shield": 0.75, "armor": 0.7, "hull": 0.8, "heat": 0.0}
+		elif load == "ultraviolet":
+			bias = {"shield": 1.75, "armor": 0.5, "hull": 0.45, "heat": 0.0}
+		elif load == "standard":
+			bias = {"shield": 1.15, "armor": 0.9, "hull": 0.8, "heat": 0.0}
+	elif family == "missile":
+		if load == "breacher":
+			bias = {"shield": 0.5, "armor": 1.65, "hull": 0.75, "heat": 0.0}
+		elif load == "siege":
+			bias = {"shield": 1.05, "armor": 1.15, "hull": 1.35, "heat": 0.0}
+			if small < 0.5:
+				bias.shield = 0.45
+				bias.armor = 0.45
+				bias.hull = 0.4
+		elif load == "splinter":
+			bias = {"shield": 0.85, "armor": 0.8, "hull": 1.1, "heat": 0.0}
+			if small < 0.55:
+				bias.hull = 1.45
+	return bias
+
+
 ## Shield first, then armor plate, then the hull. Returns what the hull takes.
-static func absorb(sim, unit: Dictionary, amount: float) -> float:
+static func absorb(sim, unit: Dictionary, amount: float, profile: Dictionary = {}) -> float:
 	if not unit.has("shield"):
 		ensure_tank(sim, unit)
+	var bias := layer_bias(profile)
 	unit.tank_cd = SHIELD_DELAY
 	var left := amount
 	var layer := "hull"
 	var sh := float(unit.shield)
 	if sh > 0.0:
-		var take := minf(sh, left)
+		var bite := left * float(bias.shield)
+		var take := minf(sh, bite)
 		unit.shield = sh - take
-		left -= take
+		left -= take / maxf(0.05, float(bias.shield))
 		layer = "shield"
 	var ar := float(unit.armor_hp)
 	if left > 0.0 and ar > 0.0:
-		var plate := minf(ar, left)
+		var plate_bite := left * float(bias.armor)
+		var plate := minf(ar, plate_bite)
 		unit.armor_hp = ar - plate
-		left -= plate
+		left -= plate / maxf(0.05, float(bias.armor))
 		layer = "armor"
 	if left > 0.0:
+		left *= float(bias.hull)
 		layer = "hull"
+	if float(bias.heat) > 0.0 and amount > 0.0:
+		unit.therm = float(unit.get("therm", 0.0)) + float(bias.heat)
+		if float(unit.therm) >= THERM_MAX:
+			unit.therm = THERM_MAX
+			unit.overheat = true
 	unit.hit_layer = layer
 	unit.hit_at = float(sim.time)
 	return left

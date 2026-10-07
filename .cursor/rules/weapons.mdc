@@ -1,0 +1,9 @@
+---
+description: Locked visual examples for Dark Sector weapon fittings
+globs: data/modules.json,data/ships.json,modules/fit.gd,world/helm_combat.gd,world/sector_sim.gd,world/stage3d.gd
+alwaysApply: false
+---
+
+Before changing weapon fittings, open `design/weapons/` and follow `design/weapons/LOCK.md`.
+
+`turret.jpg`, `laser.jpg`, and `missiles.jpg` are locked. Do not replace them. Bullets, beams, and missiles stay different meshes and different fights. Do not collapse them back into a shared gun_damage bonus.

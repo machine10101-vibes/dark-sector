@@ -1137,6 +1137,13 @@ func _fill_market() -> void:
 	var sell := ThemeKit.button("Sell glasswheat")
 	sell.pressed.connect(_sell_good)
 	market_box.add_child(sell)
+	market_box.add_child(_flat("Yard. One mount is a first slip.", 14, Color("cbb892")))
+	for kit_id in ["gun_sponson", "laser_bank", "missile_rack", "iron_belt", "splinter_pack"]:
+		var kit: Dictionary = DockBoard.KIT[kit_id]
+		var label := "%s  %d" % [str(kit.name), int(kit.price)]
+		var buy_kit := ThemeKit.button(label)
+		buy_kit.pressed.connect(_buy_kit.bind(kit_id))
+		market_box.add_child(buy_kit)
 	market_box.add_child(_flat("Corp tag", 14, Color("cbb892")))
 	tag_edit = LineEdit.new()
 	tag_edit.name = "CorpTag"
@@ -1302,6 +1309,14 @@ func _build_bay() -> void:
 		_refill_ship_list()
 	)
 	browser.add_child(search)
+	var loads := HBoxContainer.new()
+	loads.add_theme_constant_override("separation", 4)
+	for pair in [["belt", "Belt"], ["crystal", "Crystal"], ["rack", "Rack"]]:
+		var chip := ThemeKit.button(str(pair[1]))
+		chip.custom_minimum_size = Vector2(72, 44)
+		chip.pressed.connect(_cycle_load.bind(str(pair[0])))
+		loads.add_child(chip)
+	browser.add_child(loads)
 	var filters := GridContainer.new()
 	filters.columns = 3
 	filters.add_theme_constant_override("h_separation", 4)
@@ -1452,12 +1467,25 @@ func _add_ship_row(module_id: String) -> void:
 	row.add_child(name)
 	var meta := ThemeKit.label("", 12, Color("8d826c"))
 	meta.autowrap_mode = TextServer.AUTOWRAP_OFF
-	meta.custom_minimum_size = Vector2(72, 0)
+	meta.custom_minimum_size = Vector2(168, 0)
 	row.add_child(meta)
 	var button := ThemeKit.button("Bolt on")
 	button.custom_minimum_size = Vector2(92, 44)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_END
 	button.pressed.connect(_on_bolt.bind(module_id))
+	if mod.has("weapon"):
+		var before := Fit.stats(Game.sim.defs, Game.sim.player)
+		var hypo: Dictionary = Game.sim.player.duplicate(true)
+		if not hypo.modules.has(module_id):
+			hypo.modules = hypo.modules.duplicate()
+			hypo.modules.append(module_id)
+		var after := Fit.stats(Game.sim.defs, hypo)
+		button.tooltip_text = "Mass %+.0f. Power %+.0f. Signature %+.2f. %s" % [
+			float(after.mass) - float(before.mass),
+			float(after.power_draw) - float(before.power_draw),
+			float(after.signature) - float(before.signature),
+			Fit.weapon_line(mod.weapon),
+		]
 	row.add_child(button)
 	ship_list.add_child(row)
 	bay_buttons[module_id] = {"meta": meta, "button": button}
@@ -1499,7 +1527,20 @@ func _refresh_bay_text() -> void:
 	var shut := ""
 	if sim.in_combat():
 		shut = "\nBay shut. Break off before you touch a bolt."
-	bay_detail.text = "Mass %.0f t. Yaw %.0f°/s. Hold %d. Sensor %.0f. %s. %s %s %s%s" % [
+	HelmCombat.ensure_rounds(sim.player)
+	var rounds: Dictionary = sim.player.rounds
+	var kit_line := "Sig %.2f. Belt %s %d. Crystal %s. Rack %s %d." % [
+		stats.signature,
+		str(sim.player.get("belt", "iron")),
+		int(rounds.get(str(sim.player.get("belt", "iron")), 0)),
+		str(sim.player.get("crystal", "standard")),
+		str(sim.player.get("rack", "splinter")),
+		int(rounds.get(str(sim.player.get("rack", "splinter")), 0)),
+	]
+	var mounts := ""
+	for mount in Fit.mounts(sim.defs, sim.player):
+		mounts += "\n%s — %s." % [str(mount.name), Fit.weapon_line(mount)]
+	bay_detail.text = "Mass %.0f t. Yaw %.0f°/s. Hold %d. Sensor %.0f. %s. %s %s %s. %s%s%s" % [
 		stats.mass,
 		stats.yaw_deg,
 		stats.cargo_cap,
@@ -1508,6 +1549,8 @@ func _refresh_bay_text() -> void:
 		power_line,
 		crew_line,
 		keel,
+		kit_line,
+		mounts,
 		shut,
 	]
 	var hot := bool(stats.keel_warn) or float(stats.power_spare) < -0.01 or bool(stats.crew_over)
@@ -1527,7 +1570,13 @@ func _refresh_bay_text() -> void:
 		var state := "Yard"
 		if mounted:
 			state = "Fitted"
-		meta.text = "%s  %s" % [str(mod.size), state]
+		var weapon_note := ""
+		if mod.has("weapon"):
+			weapon_note = "  " + Fit.weapon_line(mod.weapon)
+		var price := int(mod.get("price", 0))
+		if price > 0 and not mounted and not DockBoard.paid_mount(sim, str(module_id)):
+			weapon_note += "  %d" % price
+		meta.text = "%s  %s%s" % [str(mod.size), state, weapon_note]
 		button.disabled = fighting
 		if mounted:
 			button.text = "Pull off"
@@ -1540,10 +1589,64 @@ func _refresh_bay_text() -> void:
 func _on_bolt(module_id: String) -> void:
 	if Game.sim == null:
 		return
-	if Game.sim.player.modules.has(module_id):
-		Game.sim.uninstall(module_id)
+	var sim = Game.sim
+	if sim.player.modules.has(module_id):
+		sim.uninstall(module_id)
 	else:
-		Game.sim.install(module_id)
+		var mod: Dictionary = sim.defs.modules.get(module_id, {})
+		var price := int(mod.get("price", 0))
+		if price > 0:
+			if not DockBoard.at_pad(sim):
+				sim.say("Weld that mount at the Helion pad.")
+				return
+			if not DockBoard.paid_mount(sim, module_id):
+				var note := DockBoard.buy_kit(sim, module_id)
+				if note != "":
+					sim.say(note)
+					return
+		sim.install(module_id)
+	_refresh_bay_text()
+	if bay_preview != null and is_instance_valid(bay_preview):
+		bay_preview.queue_redraw()
+
+
+func _buy_kit(kit_id: String) -> void:
+	if Game.sim == null:
+		return
+	var note := DockBoard.buy_kit(Game.sim, kit_id)
+	if note != "":
+		Game.sim.say(note)
+	_refresh_bay_text()
+
+
+func _cycle_load(kind: String) -> void:
+	if Game.sim == null:
+		return
+	var ship: Dictionary = Game.sim.player
+	HelmCombat.ensure_rounds(ship)
+	if kind == "belt":
+		var order := ["iron", "tungsten", "incendiary"]
+		var at := order.find(str(ship.get("belt", "iron")))
+		for step in order.size():
+			var nxt: String = order[(at + 1 + step) % order.size()]
+			if int(ship.rounds.get(nxt, 0)) > 0:
+				ship.belt = nxt
+				Game.sim.say("Belt set to %s." % nxt)
+				break
+	elif kind == "crystal":
+		var order := ["standard", "infrared", "ultraviolet"]
+		var at := order.find(str(ship.get("crystal", "standard")))
+		ship.crystal = order[(at + 1) % order.size()]
+		Game.sim.say("Crystal set to %s." % str(ship.crystal))
+	elif kind == "rack":
+		var order := ["splinter", "breacher", "siege"]
+		var at := order.find(str(ship.get("rack", "splinter")))
+		for step in order.size():
+			var nxt: String = order[(at + 1 + step) % order.size()]
+			if int(ship.rounds.get(nxt, 0)) > 0:
+				ship.rack = nxt
+				Game.sim.say("Rack set to %s." % nxt)
+				break
 	_refresh_bay_text()
 
 

@@ -126,6 +126,24 @@
     },
     "shape": "sponson",
     "blurb": "A light cheek turret. The outline breaks, and the reactor feeds the mount.",
+    "price": 80,
+    "weapon": {
+      "family": "bullet",
+      "socket": "gun_sponson",
+      "damage": 7,
+      "cooldown": 0.34,
+      "speed": 880,
+      "range": 500,
+      "ttl": 0.75,
+      "cap": 1.1,
+      "therm": 3.4,
+      "tracking": 1.25,
+      "optimal": 300,
+      "falloff": 170,
+      "arc": 2.6,
+      "drop": 22,
+      "kind": "turret"
+    },
     "layer": [
       [
         [
@@ -528,6 +546,24 @@
     },
     "shape": "turret",
     "blurb": "A second, larger turret. The cheek gun looks small beside it.",
+    "weapon": {
+      "family": "bullet",
+      "socket": "heavy_turret",
+      "damage": 14,
+      "cooldown": 0.72,
+      "speed": 740,
+      "range": 640,
+      "ttl": 1.05,
+      "cap": 2.4,
+      "therm": 8.0,
+      "tracking": 0.52,
+      "optimal": 440,
+      "falloff": 210,
+      "arc": 2.8,
+      "drop": 12,
+      "recoil": 11,
+      "kind": "turret"
+    },
     "layer": [
       [
         [
@@ -571,6 +607,25 @@
     },
     "shape": "rack",
     "blurb": "A rack of missiles along the spine. Power and mass both complain.",
+    "price": 80,
+    "weapon": {
+      "family": "missile",
+      "socket": "missile_rack",
+      "damage": 18,
+      "cooldown": 1.7,
+      "speed": 210,
+      "range": 860,
+      "ttl": 4.6,
+      "cap": 4.0,
+      "therm": 2.0,
+      "blast": 46,
+      "steer": 1.05,
+      "tracking": 0.2,
+      "optimal": 700,
+      "falloff": 220,
+      "arc": 3.1,
+      "kind": "rack"
+    },
     "layer": [
       [
         [
@@ -616,7 +671,23 @@
       "h": 16
     },
     "shape": "defense",
-    "blurb": "A close gun on the tail. It wants power more than it wants glory.",
+    "blurb": "A close gun on the tail. It shoots missiles and drones, not ships.",
+    "weapon": {
+      "family": "pd",
+      "socket": "point_defense",
+      "damage": 5,
+      "cooldown": 0.22,
+      "speed": 1100,
+      "range": 230,
+      "ttl": 0.35,
+      "cap": 0.4,
+      "therm": 0.8,
+      "tracking": 2.2,
+      "optimal": 180,
+      "falloff": 50,
+      "arc": 3.1,
+      "kind": "pd"
+    },
     "layer": [
       [
         [
@@ -1465,6 +1536,69 @@
       "radius": 2
     }
   },
+  "laser_bank": {
+    "id": "laser_bank",
+    "name": "Beam Bank",
+    "family": "offense",
+    "size": "M",
+    "slot": "M",
+    "favored": "",
+    "mass": 12,
+    "power": 16,
+    "crew": 1,
+    "price": 80,
+    "attach": {
+      "x": 46,
+      "y": 0
+    },
+    "footprint": {
+      "w": 22,
+      "h": 14
+    },
+    "shape": "lamp",
+    "blurb": "A spinal beam bank. No belt. It drinks the capacitor and reaches past a gun.",
+    "layer": [
+      [
+        [
+          40,
+          6
+        ],
+        [
+          78,
+          8
+        ],
+        [
+          78,
+          -8
+        ],
+        [
+          40,
+          -6
+        ]
+      ]
+    ],
+    "weapon": {
+      "family": "laser",
+      "socket": "laser_bank",
+      "damage": 9,
+      "cooldown": 0.42,
+      "speed": 0,
+      "range": 760,
+      "ttl": 0.2,
+      "cap": 16,
+      "therm": 2.4,
+      "tracking": 0.38,
+      "optimal": 560,
+      "falloff": 220,
+      "arc": 1.15,
+      "kind": "turret"
+    },
+    "effects": {
+      "signature": 0.2,
+      "radius": 5,
+      "gun_damage": 0
+    }
+  },
   "stake_gun": {
     "id": "stake_gun",
     "name": "Stake Gun",
@@ -1484,7 +1618,24 @@
       "h": 16
     },
     "shape": "stake",
-    "blurb": "A gun that plants perimeter stakes. It is a tool and it still draws power.",
+    "blurb": "A gun that plants perimeter stakes. It is a bullet mount, and it still draws power.",
+    "weapon": {
+      "family": "bullet",
+      "socket": "stake_gun",
+      "damage": 4,
+      "cooldown": 0.5,
+      "speed": 700,
+      "range": 380,
+      "ttl": 0.7,
+      "cap": 0.8,
+      "therm": 2.0,
+      "tracking": 0.8,
+      "optimal": 240,
+      "falloff": 120,
+      "arc": 1.4,
+      "drop": 16,
+      "kind": "turret"
+    },
     "layer": [
       [
         [
