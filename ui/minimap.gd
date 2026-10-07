@@ -69,6 +69,7 @@ func _draw() -> void:
 	_draw_planets(sim, origin, center, scale, span)
 	_draw_pocket(sim, origin, center, scale, span)
 	_draw_gates(sim, origin, center, scale, span)
+	_draw_field(sim, origin, center, scale, span)
 	_draw_dock(sim, origin, center, scale, span)
 	_draw_contacts(sim, player, origin, center, scale, span)
 	_draw_chevron(center, float(player.get("rot", 0.0)))
@@ -149,6 +150,24 @@ func _draw_gates(sim, origin: Vector2, center: Vector2, scale: float, span: floa
 		if bool(plotted.inside):
 			rad = clampf(float(row.get("radius", 80.0)) * scale, 3.5, 10.0)
 		draw_arc(at, rad, 0.0, TAU, 12, ink, 1.5)
+
+
+func _draw_field(sim, origin: Vector2, center: Vector2, scale: float, span: float) -> void:
+	for rock in sim.asteroids:
+		var row: Dictionary = rock
+		var plotted: Dictionary = _plot(row.pos, origin, center, scale, span)
+		if bool(plotted.inside):
+			draw_circle(plotted.at, 2.2, Color("e0a05a"))
+	for rock in sim.meteors:
+		var row: Dictionary = rock
+		var plotted: Dictionary = _plot(row.pos, origin, center, scale, span)
+		if bool(plotted.inside):
+			draw_circle(plotted.at, 2.0, Color("ff7a2a"))
+	for hull in sim.trash:
+		var row: Dictionary = hull
+		var plotted: Dictionary = _plot(row.pos, origin, center, scale, span)
+		if bool(plotted.inside):
+			draw_rect(Rect2(plotted.at - Vector2(1.6, 1.6), Vector2(3.2, 3.2)), Color("c4a882"))
 
 
 func _draw_dock(sim, origin: Vector2, center: Vector2, scale: float, span: float) -> void:

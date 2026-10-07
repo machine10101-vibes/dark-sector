@@ -499,15 +499,17 @@ void fragment() {
 	vec3 col = mineral * (0.7 + 0.75 * ndl);
 	col = mix(col, col * 0.42, cavity * 0.7);
 	col *= 1.0 - pits * 0.22;
-	float vein = smoothstep(0.52, 0.74, fbm(n * 11.0 + vec3(seed, 2.2, 0.5)));
-	col = mix(col, mineral * vec3(0.62, 0.48, 0.32), vein * 0.42);
-	float fleck = smoothstep(0.78, 0.92, noise3(n * 28.0 + vec3(seed * 3.0)));
-	col = mix(col, mineral * vec3(1.2, 1.05, 0.82), fleck * 0.55);
+	float vein = smoothstep(0.46, 0.7, fbm(n * 9.0 + vec3(seed, 2.2, 0.5)));
+	vec3 ore = vec3(0.96, 0.62, 0.22);
+	col = mix(col, ore, vein * 0.92);
+	float fleck = smoothstep(0.72, 0.9, noise3(n * 22.0 + vec3(seed * 3.0)));
+	col = mix(col, vec3(0.98, 0.86, 0.55), fleck * 0.7);
 	float rim = pow(1.0 - ndl, 2.2);
 	col += mineral * rim * 0.12;
 	ALBEDO = col;
-	ROUGHNESS = mix(mix(0.72, 0.96, cavity), 0.38, fleck);
-	METALLIC = mix(0.04, 0.35, fleck);
+	ROUGHNESS = mix(mix(0.62, 0.92, cavity), 0.28, max(vein, fleck));
+	METALLIC = mix(0.08, 0.72, max(vein, fleck));
+	EMISSION = ore * vein * 0.45 + vec3(1.0, 0.82, 0.45) * fleck * 0.2;
 }
 "
 
@@ -757,52 +759,67 @@ func _sync_props(sim) -> void:
 	var on_chart := int(sim.layer) == ScaleFrame.CHART
 	var belt: Dictionary = sim.defs.system.get("belt", {})
 	var volume := ScaleFrame.belt_is_volume(belt)
-	var index := 0
-	var shown := 0
-	for rock in sim.asteroids:
-		if volume and shown >= 6:
-			break
-		shown += 1
-		var row: Dictionary = rock
+	var local_belt := bool(belt.get("local", false))
+	var order: Array = []
+	for i in sim.asteroids.size():
+		order.append(i)
+	var cap: int = sim.asteroids.size()
+	if volume and not local_belt and cap > 36:
+		cap = 36
+		order.sort_custom(func(a, b):
+			var ra: Dictionary = sim.asteroids[a]
+			var rb: Dictionary = sim.asteroids[b]
+			return sim.player.pos.distance_squared_to(ra.pos) < sim.player.pos.distance_squared_to(rb.pos)
+		)
+		order = order.slice(0, cap)
+	for n in order.size():
+		var index: int = order[n]
+		var row: Dictionary = sim.asteroids[index]
 		var chunk := _prop("rock%d" % index)
-		index += 1
+		var span := float(row.get("size", 12.0))
+		var radius := maxf(10.0, span * 0.78)
+		if local_belt:
+			radius = maxf(9.0, span * 0.62)
 		if str(chunk.get_meta("built", "")) != "yes":
-			var verts: PackedVector2Array = row.verts
-			var center := Vector2.ZERO
-			for point in verts:
-				center += point
-			if verts.size() > 0:
-				center /= float(verts.size())
-			var span := float(row.get("size", 12.0))
-			var radius := maxf(8.0, span * 0.72)
 			chunk.mesh = _rock_mesh(index + 3, radius)
-			var tumble := float(absi(hash(str(index))) % 628) * 0.01
-			var laid := _flat_xform(center, tumble, radius * 0.45)
-			laid.basis = laid.basis * Basis(Vector3(1.0, 0.0, 0.0), 0.55)
-			chunk.transform = laid
 			var stone := ShaderMaterial.new()
 			stone.shader = _rock_shader
-			stone.set_shader_parameter("albedo", Color(str(row.get("tint", "#6a6258"))))
+			stone.set_shader_parameter("albedo", Color(str(row.get("tint", "#8a6238"))))
 			stone.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
 			chunk.material_override = stone
 			chunk.set_meta("built", "yes")
+		var tumble := float(sim.time) * 0.18 + float(absi(hash(str(index))) % 628) * 0.01
+		var laid := _flat_xform(row.pos, tumble, radius * 0.42)
+		laid.basis = laid.basis * Basis(Vector3(1.0, 0.2, 0.15).normalized(), 0.45 + float(index % 5) * 0.08)
+		chunk.transform = laid
 		chunk.visible = chunk.mesh != null and not on_chart
-	if volume:
+	if volume or local_belt:
 		_sync_belt_volume(sim, belt)
-	index = 0
+	if local_belt and sim.belt_pos != Vector2.ZERO and not on_chart:
+		var mark := Vector2(sim.belt_pos)
+		var pull := Vector2(sim.player.pos) - mark
+		if pull.length() > 40.0:
+			mark += pull.normalized() * minf(pull.length() * 0.45, 160.0)
+		_tag("%s  ·  raw mass" % str(belt.get("name", "Ore")), chart(mark, 48.0), Color("f0c27a"), 22)
+	var index := 0
+	var tagged_scrap := false
 	for hull in sim.trash:
 		var row: Dictionary = hull
 		var scrap := _prop("trash%d" % index)
 		index += 1
 		var scale := float(row.get("scale", 1.0))
-		var radius := maxf(18.0, 26.0 * scale)
+		var radius := maxf(16.0, 20.0 * scale)
 		if str(scrap.get_meta("built", "")) != "yes":
-			scrap.mesh = _rubble_mesh(index + 40, radius)
+			scrap.mesh = _wreck_mesh(index + 40, radius)
 			var tones: Array = [Color("c49262"), Color("6e5340"), Color("a87448"), Color("d4b48a")]
 			scrap.material_override = _rubble_mat(tones[index % tones.size()], float(index) * 0.37)
 			scrap.set_meta("built", "yes")
 		scrap.visible = not on_chart
-		scrap.transform = _flat_xform(row.pos, float(row.rot), radius * 0.72)
+		var tumble := float(row.rot) + float(sim.time) * 0.08
+		scrap.transform = _flat_xform(row.pos, tumble, radius * 0.55)
+		if not tagged_scrap and not on_chart and sim.player.pos.distance_to(row.pos) < 520.0:
+			_tag("Hull scrap", chart(row.pos, radius + 28.0), Color("e4c8a4"), 16)
+			tagged_scrap = true
 	if sim.trash.size() > 0 and not on_chart:
 		_tag(str(sim.defs.system.trash.get("name", "Hold")), chart(sim.trash_pos, 160.0), Color("e4c8a4"), 20)
 	index = 0
@@ -1628,17 +1645,48 @@ func _sync_wrecks(sim) -> void:
 
 func _sync_meteors(sim) -> void:
 	var index := 0
+	var on_chart := int(sim.layer) == ScaleFrame.CHART
 	for rock in sim.meteors:
 		var row: Dictionary = rock
 		var node := _prop("meteor%d" % index)
-		index += 1
-		var radius := maxf(36.0, float(row.get("size", 4.0)) * 8.0)
+		var radius := maxf(12.0, float(row.get("size", 8.0)) * 1.7)
 		if str(node.get_meta("built", "")) != "yes":
-			node.mesh = _rubble_mesh(index + 17, radius)
-			node.material_override = _rubble_mat(Color("a85a32"), float(index) * 0.37)
+			node.mesh = _rock_mesh(index + 17, radius)
+			node.material_override = _rock_shader_mat(Color("c46a3a"), float(index) * 0.37)
 			node.set_meta("built", "yes")
-		node.position = chart(row.pos, radius * 0.7)
-		node.rotation = Vector3(float(index) * 0.4, float(index) * 0.7, 0.2)
+		node.visible = not on_chart
+		node.position = chart(row.pos, radius * 0.85)
+		node.rotation = Vector3(float(sim.time) * 0.7 + float(index), float(sim.time) * 0.45, 0.2)
+		var tail := _prop("mettail%d" % index)
+		index += 1
+		if tail.mesh == null:
+			var streak := BoxMesh.new()
+			streak.size = Vector3(1.0, 1.0, 1.0)
+			tail.mesh = streak
+			var burn := StandardMaterial3D.new()
+			burn.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			burn.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			burn.albedo_color = Color(1.0, 0.46, 0.16, 0.82)
+			burn.emission_enabled = true
+			burn.emission = Color("ff7a2a")
+			burn.emission_energy_multiplier = 2.4
+			tail.material_override = burn
+			tail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var vel := Vector2(row.get("vel", Vector2.RIGHT))
+		if vel.length() < 0.1:
+			vel = Vector2.RIGHT
+		vel = vel.normalized()
+		var back := chart(row.pos - vel * radius * 1.6, radius * 0.7)
+		tail.position = back
+		tail.visible = not on_chart
+		var aim := chart(row.pos, radius * 0.7) - back
+		if aim.length() > 0.1:
+			tail.look_at(chart(row.pos, radius * 0.7), Vector3.UP)
+		tail.scale = Vector3(radius * 0.28, radius * 0.28, radius * 3.2)
+	if index > 0 and not on_chart:
+		var lead: Dictionary = sim.meteors[0]
+		var spec: Dictionary = sim.defs.system.get("stream", {})
+		_tag(str(spec.get("name", "Gravel")), chart(lead.pos, 70.0), Color("ffb15a"), 18)
 
 
 func _sync_claim(sim) -> void:
@@ -2004,14 +2052,33 @@ func _sync_belt_volume(sim, belt: Dictionary) -> void:
 		var mat := StandardMaterial3D.new()
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.albedo_color = Color(0.45, 0.4, 0.34, 0.28)
+		mat.albedo_color = Color(0.72, 0.48, 0.28, 0.5)
+		mat.emission_enabled = true
+		mat.emission = Color(0.9, 0.55, 0.24)
+		mat.emission_energy_multiplier = 0.55
 		hoop.material_override = mat
 		hoop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var local := bool(belt.get("local", false))
+	if Vector2(sim.belt_pos) == Vector2.ZERO:
+		local = false
 	var radius := float(belt.get("radius", 1000.0))
 	var width := maxf(float(belt.get("width", 40.0)), 24.0)
-	(hoop.mesh as TorusMesh).inner_radius = maxf(radius - width, 8.0)
-	(hoop.mesh as TorusMesh).outer_radius = radius + width
-	hoop.position = chart(Vector2.ZERO, 0.0)
+	if local:
+		radius = maxf(float(sim.belt_span) * 0.85, 70.0)
+		width = 8.0
+		(hoop.mesh as TorusMesh).inner_radius = maxf(radius - width, 12.0)
+		(hoop.mesh as TorusMesh).outer_radius = radius + width
+		hoop.position = chart(Vector2(sim.belt_pos), 6.0)
+	else:
+		(hoop.mesh as TorusMesh).inner_radius = maxf(radius - width, 8.0)
+		(hoop.mesh as TorusMesh).outer_radius = radius + width
+		hoop.position = chart(Vector2.ZERO, 0.0)
+	var dust := hoop.material_override as StandardMaterial3D
+	if dust != null:
+		var haze := 0.34
+		if local:
+			haze = 0.12
+		dust.albedo_color = Color(0.72, 0.48, 0.28, haze)
 	hoop.visible = int(sim.layer) == ScaleFrame.BAND
 
 
@@ -5535,6 +5602,37 @@ func _rock_shader_mat(color: Color, seed: float) -> ShaderMaterial:
 	mat.set_shader_parameter("albedo", color)
 	mat.set_shader_parameter("seed", seed)
 	return mat
+
+
+func _wreck_mesh(seed: int, radius: float) -> ArrayMesh:
+	var bucket := int(round(radius))
+	var key := "wreck|%d|%d" % [posmod(seed, 9), bucket]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = absi(seed) + 41
+	var spine := BoxMesh.new()
+	spine.size = Vector3(radius * 2.6, radius * 0.22, radius * 0.38)
+	st.append_from(spine, 0, Transform3D.IDENTITY)
+	var bow := BoxMesh.new()
+	bow.size = Vector3(radius * 0.85, radius * 0.18, radius * 0.62)
+	var bow_basis := Basis(Vector3(0.2, 1.0, 0.15).normalized(), 0.62)
+	st.append_from(bow, 0, Transform3D(bow_basis, Vector3(radius * 1.2, radius * 0.16, radius * 0.08)))
+	var plate := BoxMesh.new()
+	plate.size = Vector3(radius * 1.15, radius * 0.07, radius * 0.72)
+	var plate_basis := Basis(Vector3.UP, rng.randf_range(-0.35, 0.35)) * Basis(Vector3(1.0, 0.15, 0.2).normalized(), 0.85)
+	st.append_from(plate, 0, Transform3D(plate_basis, Vector3(-radius * 0.15, radius * 0.32, radius * 0.42)))
+	var rib := BoxMesh.new()
+	rib.size = Vector3(radius * 0.12, radius * 0.78, radius * 0.14)
+	st.append_from(rib, 0, Transform3D(Basis(Vector3.FORWARD, 0.45), Vector3(radius * 0.15, radius * 0.22, -radius * 0.36)))
+	var chunk := BoxMesh.new()
+	chunk.size = Vector3(radius * 0.48, radius * 0.28, radius * 0.42)
+	st.append_from(chunk, 0, Transform3D(Basis(Vector3.UP, rng.randf() * TAU), Vector3(-radius * 0.95, -radius * 0.04, -radius * 0.18)))
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
 
 
 func _rubble_mesh(seed: int, radius: float) -> ArrayMesh:

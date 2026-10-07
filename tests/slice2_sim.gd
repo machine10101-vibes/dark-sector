@@ -163,7 +163,8 @@ func _buy_wing() -> void:
 
 func _scan_harvest_heat() -> void:
 	var sim := make("vesper")
-	check(sim.nodes.size() == 3, "Helion Dock has three scan nodes")
+	check(sim.survey_node("aegis_prime") != null and sim.survey_node("aegis_ring") != null and sim.survey_node("seized_hold") != null, "the dock still has planet, ring, and seized hold")
+	check(sim.survey_node("cinder_reach") != null and sim.survey_node("lease_gravel") != null, "the ore field and the gravel stream are scan nodes")
 	var probe = _craft(sim, "survey_probe_1")
 	check(CraftOrders.order(sim, str(probe.uid), "orbit", "aegis_prime") == "", "probe accepts an orbit order")
 	for _i in 50:

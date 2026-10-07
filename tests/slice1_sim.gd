@@ -68,7 +68,27 @@ func _dock() -> void:
 	check("Helion Compact Guard" in str(aegis.layers.legal), "Aegis Prime has a legal title")
 	check(sim.trash.size() >= 8, "confiscated hulls are in the hold field")
 	check("confiscated" in str(sim.defs.system.trash.origin).to_lower(), "trash names its origin")
-	check(sim.asteroids.is_empty(), "no clone rock belt")
+	check(sim.asteroids.size() >= 8, "Cinder Reach is a field of rocks")
+	check(str(sim.defs.system.belt.name) == "Cinder Reach", "the ore field is named")
+	check("nickel cinder" in str(sim.defs.system.belt.composition), "the ore names its mix")
+	check(sim.belt_pos.distance_to(sim.beacon_pos) > 180.0, "the ore field stands off the pad")
+	check(sim.belt_pos.distance_to(aegis.pos) > float(aegis.radius) * 1.3, "the ore field sits outside the ice")
+	var toward: Vector2 = aegis.pos - sim.beacon_pos
+	check((sim.belt_pos - sim.beacon_pos).dot(toward) > 0.0, "the ore field sits between the pad and Aegis")
+	check(sim.meteors.size() >= 4, "lease gravel is in the sky")
+	var gravel_near := false
+	for rock in sim.meteors:
+		var chip: Dictionary = rock
+		if sim.beacon_pos.distance_to(chip.pos) < 520.0:
+			gravel_near = true
+	check(gravel_near, "lease gravel crosses the pad sky")
+	var scrap_near := 0
+	for hull in sim.trash:
+		var piece: Dictionary = hull
+		if sim.beacon_pos.distance_to(piece.pos) < 520.0:
+			scrap_near += 1
+	check(scrap_near >= 3, "hull scrap hangs in the pad sky")
+	check(sim.survey_node("cinder_reach") != null and int(sim.deposits.get("cinder_reach", 0)) > 0, "the ore field holds raw mass")
 	check(str(sim.defs.system.pocket.name) == "The Unlet", "claim pocket is marked")
 	check(not bool(sim.defs.system.pocket.plantable), "pocket is not plantable")
 	check(not bool(sim.claim.plantable), "new game keeps the pocket closed")

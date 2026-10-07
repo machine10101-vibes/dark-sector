@@ -37,6 +37,8 @@ var nodes: Array = []
 var asteroids: Array = []
 var trash: Array = []
 var meteors: Array = []
+var belt_pos := Vector2.ZERO
+var belt_span := 0.0
 var visited: Array = []
 var stream_origin := Vector2.ZERO
 var stars: Array = []
@@ -189,6 +191,8 @@ func new_game(class_id: String) -> void:
 	say("Green spine buoys leave for Brass Lantern and Writ. From First Soil the amber road reaches Perimeter, and the hatch reaches Gyre.")
 	say("The corner map is the local sky. Tap it, or press F10, for the whole chart. Tab locks the nearest contact.")
 	say("Shakedown is on the log. J reads it. Y marks the next place.")
+	if str(defs.system.get("belt", {}).get("name", "")) != "":
+		say("%s is the ore field between the pad and Aegis. Lease Gravel crosses the bow. Hull scrap hangs in the sky. Scan a rock, then Harvest." % str(defs.system.belt.name))
 	say("Moored at the Helion Dock pad. W casts off. The keel is in clear space, not in the city.")
 	_bind_band()
 
@@ -1957,28 +1961,8 @@ func _build_static() -> void:
 				"scale": rng.randf_range(0.85, 1.55),
 				"origin": str(field.get("origin", "")),
 			})
-	var belt: Dictionary = defs.system.belt
-	var composition := str(belt.get("composition", ""))
-	var tint := _belt_tint(composition)
-	for i in int(belt.count):
-		var ang = rng.randf() * TAU
-		var rad = float(belt.radius) + rng.randf_range(-float(belt.width), float(belt.width))
-		var center = Vector2.from_angle(ang) * rad
-		var size = (rng.randf_range(7.0, 16.0) + float(i % 5) * 1.4) * ROCK_SCALE
-		var rot = rng.randf() * TAU
-		var verts = PackedVector2Array()
-		var sides = 5 + (i + composition.length()) % 4
-		for s in sides:
-			var a = rot + float(s) / float(sides) * TAU
-			var rr = size * rng.randf_range(0.55, 1.25)
-			verts.append(center + Vector2.from_angle(a) * rr)
-		asteroids.append({
-			"pos": center,
-			"verts": verts,
-			"size": size,
-			"composition": composition,
-			"tint": tint,
-		})
+	_spawn_belt(rng)
+	_scatter_flank_scrap(rng)
 	_build_meteors(rng)
 	stars = []
 	for _i in 420:
@@ -2190,6 +2174,7 @@ func _build_nodes() -> void:
 			row.solid = false
 		nodes.append(row)
 		deposits[str(row.id)] = int(row.resource.amount)
+	_pin_local_marks()
 
 
 func _clear_orbit(body, authored: float, pad: float) -> float:
@@ -2842,6 +2827,163 @@ func _craft_in(row: Dictionary) -> Dictionary:
 	return item
 
 
+func _spawn_belt(rng: RandomNumberGenerator) -> void:
+	asteroids = []
+	belt_pos = Vector2.ZERO
+	belt_span = 0.0
+	var belt: Dictionary = defs.system.get("belt", {})
+	var count := int(belt.get("count", 0))
+	if count <= 0:
+		return
+	var composition := str(belt.get("composition", ""))
+	var tint := _belt_tint(composition)
+	var local := bool(belt.get("local", false))
+	var origin := Vector2.ZERO
+	var span := float(belt.get("width", 40.0))
+	var pad := Vector2.ZERO
+	if local:
+		var anchor = planet(str(belt.get("anchor", "")))
+		if anchor == null:
+			return
+		pad = anchor.pos + _dock_offset(anchor)
+		var away: Vector2 = pad - anchor.pos
+		if away.length() < 1.0:
+			away = Vector2.RIGHT
+		away = away.normalized()
+		# The berth eye sits on +Y and looks toward -Y. A flank offset lands
+		# behind that eye. Park the field between the pad and the crust.
+		var reach := float(belt.get("radius", 460.0))
+		origin = pad - away * reach
+		var crust := float(anchor.radius) * 1.34 + 80.0
+		if origin.distance_to(anchor.pos) < crust:
+			origin = anchor.pos + (origin - anchor.pos).normalized() * (crust + 40.0)
+		belt_pos = origin
+		belt_span = span
+	for i in count:
+		var center := Vector2.ZERO
+		if local:
+			var away_l: Vector2 = pad - origin
+			if away_l.length() < 1.0:
+				away_l = Vector2.RIGHT
+			away_l = away_l.normalized()
+			var flank_l := Vector2(-away_l.y, away_l.x)
+			var along := flank_l * rng.randf_range(-span, span)
+			var radial := away_l * rng.randf_range(-span * 0.16, span * 0.1)
+			center = origin + along + radial
+			var crust_l := 0.0
+			var anchor_l = planet(str(belt.get("anchor", "")))
+			if anchor_l != null:
+				crust_l = float(anchor_l.radius) * 1.34 + 80.0
+			var guard := 0
+			while guard < 8 and (center.distance_to(pad) < 190.0 or (crust_l > 0.0 and anchor_l != null and center.distance_to(anchor_l.pos) < crust_l)):
+				along = flank_l * rng.randf_range(-span, span)
+				radial = away_l * rng.randf_range(-span * 0.16, span * 0.1)
+				center = origin + along + radial
+				guard += 1
+		else:
+			var ang := rng.randf() * TAU
+			var rad := float(belt.radius) + rng.randf_range(-span, span)
+			center = Vector2.from_angle(ang) * rad
+		var size := (rng.randf_range(7.0, 16.0) + float(i % 5) * 1.4) * ROCK_SCALE
+		if local:
+			size = 16.0 + float(i % 5) * 4.5 + rng.randf_range(0.0, 6.0)
+		var rot := rng.randf() * TAU
+		var verts := PackedVector2Array()
+		var sides := 5 + (i + composition.length()) % 4
+		for s in sides:
+			var a := rot + float(s) / float(sides) * TAU
+			var rr := size * rng.randf_range(0.55, 1.25)
+			verts.append(center + Vector2.from_angle(a) * rr)
+		asteroids.append({
+			"pos": center,
+			"verts": verts,
+			"size": size,
+			"composition": composition,
+			"tint": tint,
+			"ore": local or str(belt.get("name", "")) != "",
+		})
+	if local and belt_pos != Vector2.ZERO:
+		_spawn_loners(rng, pad, composition, tint)
+
+
+func _spawn_loners(rng: RandomNumberGenerator, pad: Vector2, composition: String, tint: String) -> void:
+	# A few house-sized stones sit apart from the belt so the sky has individuals.
+	var spots: Array[Vector2] = [
+		pad + Vector2(-220.0, 70.0),
+		pad + Vector2(-90.0, 120.0),
+		pad + Vector2(-160.0, -10.0),
+	]
+	for i in spots.size():
+		var at: Vector2 = spots[i]
+		if at.distance_to(pad) < 210.0:
+			var push: Vector2 = at - pad
+			if push.length() < 1.0:
+				push = Vector2(0.0, -1.0)
+			at = pad + push.normalized() * 230.0
+		var size := 34.0 + float(i) * 8.0
+		var rot := rng.randf() * TAU
+		var verts := PackedVector2Array()
+		var sides := 6 + i
+		for s in sides:
+			var a := rot + float(s) / float(sides) * TAU
+			verts.append(at + Vector2.from_angle(a) * size * rng.randf_range(0.7, 1.15))
+		asteroids.append({
+			"pos": at,
+			"verts": verts,
+			"size": size,
+			"composition": composition,
+			"tint": tint,
+			"ore": true,
+		})
+
+
+func _scatter_flank_scrap(rng: RandomNumberGenerator) -> void:
+	if belt_pos == Vector2.ZERO:
+		return
+	var belt: Dictionary = defs.system.get("belt", {})
+	var anchor = planet(str(belt.get("anchor", "")))
+	if anchor == null:
+		return
+	var pad: Vector2 = anchor.pos + _dock_offset(anchor)
+	# World -Y is the berth camera's look. These offsets sit in that footprint.
+	var spots: Array[Vector2] = [
+		pad + Vector2(-40.0, 150.0),
+		pad + Vector2(-190.0, 40.0),
+		pad + Vector2(-70.0, 60.0),
+		pad + Vector2(-250.0, 110.0),
+		belt_pos + Vector2(40.0, 20.0),
+	]
+	for i in spots.size():
+		var at: Vector2 = spots[i]
+		if at.distance_to(pad) < 210.0:
+			var push: Vector2 = at - pad
+			if push.length() < 1.0:
+				push = Vector2(0.0, -1.0)
+			at = pad + push.normalized() * 240.0
+		var crust := float(anchor.radius) * 1.34 + 80.0
+		if at.distance_to(anchor.pos) < crust:
+			at = anchor.pos + (at - anchor.pos).normalized() * (crust + 30.0)
+		trash.append({
+			"pos": at,
+			"rot": rng.randf() * TAU,
+			"kind": i % 3,
+			"scale": rng.randf_range(1.45, 2.35),
+			"origin": str(belt.get("composition", "")),
+		})
+
+
+func _pin_local_marks() -> void:
+	var belt: Dictionary = defs.system.get("belt", {})
+	var rain: Dictionary = defs.system.get("stream", {})
+	for row in nodes:
+		if belt_pos != Vector2.ZERO and str(row.get("id", "")) == str(belt.get("id", "")):
+			row.pos = belt_pos
+			row.radius = maxf(110.0, belt_span)
+		if stream_origin != Vector2.ZERO and str(row.get("id", "")) == str(rain.get("id", "")):
+			row.pos = stream_origin
+			row.radius = 64.0
+
+
 func _belt_tint(composition: String) -> String:
 	if composition == "":
 		return "#3a342c"
@@ -2857,16 +2999,30 @@ func _build_meteors(rng: RandomNumberGenerator) -> void:
 		return
 	var anchor = planet(str(spec.get("anchor", "")))
 	var origin := Vector2.ZERO
-	if anchor != null:
-		origin = anchor.pos
-	stream_origin = origin + Vector2.from_angle(float(spec.get("angle", 0.0))) * float(spec.get("distance", 0.0))
-	var count := 7
+	var vector := _stream_vector(spec)
+	if bool(spec.get("local", false)) and anchor != null:
+		var pad: Vector2 = anchor.pos + _dock_offset(anchor)
+		var reach := clampf(float(spec.get("distance", 200.0)), 160.0, 280.0)
+		origin = pad + Vector2(-0.94, 0.34).normalized() * reach
+		vector = _stream_vector(spec)
+	elif anchor != null:
+		origin = anchor.pos + Vector2.from_angle(float(spec.get("angle", 0.0))) * float(spec.get("distance", 0.0))
+	stream_origin = origin
+	var count := 9 if bool(spec.get("local", false)) else 7
+	var period := maxf(float(spec.get("period", 12.0)), 0.1)
+	var span := float(spec.get("span", float(spec.get("speed", 70.0)) * period))
+	var speed := span / period
 	for i in count:
+		var phase := float(i) / float(count)
+		var walk := phase * span
+		var offset := Vector2(rng.randf_range(-55.0, 55.0), rng.randf_range(-36.0, 36.0))
+		var size := rng.randf_range(8.0, 14.0) if bool(spec.get("local", false)) else rng.randf_range(4.0, 9.0)
 		meteors.append({
-			"phase": float(i) / float(count),
-			"offset": Vector2(rng.randf_range(-40.0, 40.0), rng.randf_range(-28.0, 28.0)),
-			"size": rng.randf_range(3.0, 8.0),
-			"pos": stream_origin,
+			"phase": phase,
+			"offset": offset,
+			"size": size,
+			"pos": stream_origin + vector * walk + offset,
+			"vel": vector * speed,
 		})
 
 
@@ -2877,7 +3033,7 @@ func _step_stream(dt: float) -> void:
 	var period := maxf(float(spec.get("period", 12.0)), 0.1)
 	var span := float(spec.get("span", float(spec.get("speed", 70.0)) * period))
 	var along := fmod(time, period) / period * span
-	var vector := Vector2.from_angle(float(spec.get("vector", 0.0)))
+	var vector := _stream_vector(spec)
 	var node = survey_node(str(spec.id))
 	if node != null:
 		node.pos = stream_origin + vector * along
@@ -2885,6 +3041,14 @@ func _step_stream(dt: float) -> void:
 		var phase := float(rock.phase)
 		var walk := fmod(along + phase * span, span)
 		rock.pos = stream_origin + vector * walk + rock.offset
+		rock.vel = vector * (span / period)
+
+
+func _stream_vector(spec: Dictionary) -> Vector2:
+	if bool(spec.get("local", false)):
+		# Cross the bow. +Y is behind the berth eye, so the rain runs toward -Y.
+		return Vector2(0.08, 0.99).normalized()
+	return Vector2.from_angle(float(spec.get("vector", 0.0)))
 
 
 func _roman(index: int) -> String:

@@ -147,15 +147,80 @@
         "ruins": "Hull names scraped at inspection.",
         "legal": "Compact seized property."
       }
+    },
+    {
+      "id": "cinder_reach",
+      "name": "Cinder Reach",
+      "kind": "belt",
+      "anchor": "aegis_prime",
+      "angle": 0.9,
+      "distance": 1500,
+      "radius": 90,
+      "legal_title": "Compact lease, limited harvest",
+      "heat": "lease",
+      "resource": {
+        "id": "raw_mass",
+        "name": "Raw mass",
+        "amount": 8
+      },
+      "layers": {
+        "orbit": "A flank field of nickel cinder off the Helion pad. The rocks are loose.",
+        "atmosphere": "None. Open vacuum between the stones.",
+        "surface": "Pitted nickel and bright ore seams.",
+        "crust": "No crust. The seam is the rock itself.",
+        "biosign": "None. Cold metal.",
+        "ruins": "Lease paint on a few cut faces.",
+        "legal": "Compact lease, limited harvest."
+      }
+    },
+    {
+      "id": "lease_gravel",
+      "name": "Lease Gravel",
+      "kind": "gravel",
+      "anchor": "aegis_prime",
+      "angle": -0.6,
+      "distance": 1400,
+      "radius": 70,
+      "legal_title": "Compact lease, limited harvest",
+      "heat": "lease",
+      "origin": "Gravel shaken off the ice lease. It crosses the pad flank on a timer.",
+      "resource": {
+        "id": "raw_mass",
+        "name": "Raw mass",
+        "amount": 5
+      },
+      "layers": {
+        "orbit": "A timed gravel stream on the pad's other flank.",
+        "atmosphere": "None. The chips are in vacuum.",
+        "surface": "Hot faces, cold backs, ore still in the stone.",
+        "crust": "No crust. Moving mass.",
+        "biosign": "None.",
+        "ruins": "None. The stream replaces itself.",
+        "legal": "Compact lease, limited harvest."
+      }
     }
   ],
   "belt": {
-    "id": "none",
-    "name": "",
-    "radius": 1,
-    "width": 0,
-    "count": 0,
-    "composition": "no belt at the dock"
+    "id": "cinder_reach",
+    "name": "Cinder Reach",
+    "local": true,
+    "anchor": "aegis_prime",
+    "radius": 460,
+    "width": 150,
+    "count": 14,
+    "composition": "nickel cinder and lease spall cut from the Aegis ring and parked off the pad"
+  },
+  "stream": {
+    "id": "lease_gravel",
+    "name": "Lease Gravel",
+    "local": true,
+    "anchor": "aegis_prime",
+    "distance": 200,
+    "vector": 0.4,
+    "period": 12,
+    "span": 110,
+    "speed": 14,
+    "origin": "Gravel shaken off the ice lease. It crosses the pad flank on a timer."
   },
   "trash": {
     "id": "seized_hold",

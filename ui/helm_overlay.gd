@@ -435,15 +435,20 @@ func _marks(cam: Camera3D, stage, sim) -> Array:
 		var spot := _project(cam, stage, place.pos, reach, 28.0, 240.0)
 		if spot.is_empty():
 			continue
+		var res: Dictionary = place.get("resource", {})
+		var ore := str(res.get("id", "")) == "raw_mass" or str(place.get("kind", "")) == "belt" or str(place.get("kind", "")) == "stream"
 		marks.append({
 			"id": str(place.id),
 			"name": str(place.name),
-			"kind": "node",
+			"kind": "ore" if ore else "node",
 			"pos": place.pos,
 			"range": reach,
 			"at": spot.at,
 			"rad": spot.rad,
 		})
+	_mark_bits(marks, cam, stage, sim, sim.asteroids, "rock", 8, 26.0)
+	_mark_bits(marks, cam, stage, sim, sim.trash, "debris", 6, 34.0)
+	_mark_bits(marks, cam, stage, sim, sim.meteors, "meteor", 6, 22.0)
 	if sim.beacon_pos != Vector2.ZERO:
 		var spot := _project(cam, stage, sim.beacon_pos, 40.0, 28.0, 80.0)
 		if not spot.is_empty():
@@ -510,6 +515,16 @@ func _open_strike(hit: Dictionary, at: Vector2) -> void:
 	elif kind == "gate":
 		_strike_button("Approach", _strike_approach.bind(hit))
 		_strike_button("Take the lane", _strike_lane.bind(str(hit.id)))
+	elif kind == "ore":
+		_strike_button("Approach", _strike_approach.bind(hit))
+		_strike_button("Scan", _strike_scan.bind(str(hit.id)))
+		_strike_button("Harvest", _strike_harvest.bind(str(hit.id)))
+	elif kind == "rock" or kind == "meteor" or kind == "debris":
+		_strike_button("Approach", _strike_approach.bind(hit))
+		var seam := _ore_near(hit.pos)
+		if seam != "":
+			_strike_button("Scan", _strike_scan.bind(seam))
+			_strike_button("Harvest", _strike_harvest.bind(seam))
 	else:
 		_strike_button("Approach", _strike_approach.bind(hit))
 	var rows := strike_list.get_child_count()
@@ -603,6 +618,99 @@ func _strike_wing(id: String) -> void:
 		return
 	Game.tap("lock", id)
 	var message := CraftOrders.wing_strike(Game.sim, id)
+	if message != "":
+		Game.sim.say(message)
+
+
+func _mark_bits(marks: Array, cam: Camera3D, stage, sim, rows: Array, kind: String, cap: int, world_r: float) -> void:
+	var near: Array = []
+	var origin: Vector2 = sim.player.pos
+	for row in rows:
+		var item: Dictionary = row
+		var at: Vector2 = item.pos
+		var dist: float = origin.distance_to(at)
+		if dist > 900.0:
+			continue
+		near.append({"d": dist, "row": item})
+	near.sort_custom(func(a, b): return float(a.d) < float(b.d))
+	var added := 0
+	for entry in near:
+		if added >= cap:
+			break
+		var bit: Dictionary = entry.row
+		var reach := maxf(world_r, float(bit.get("size", world_r)))
+		var spot := _project(cam, stage, bit.pos, reach, 22.0, 90.0)
+		if spot.is_empty():
+			continue
+		var label := kind.capitalize()
+		if kind == "rock":
+			label = "Asteroid"
+		elif kind == "meteor":
+			label = "Meteor"
+		elif kind == "debris":
+			label = "Debris"
+		marks.append({
+			"id": "%s%d" % [kind, added],
+			"name": label,
+			"kind": kind,
+			"pos": bit.pos,
+			"range": reach,
+			"at": spot.at,
+			"rad": spot.rad,
+		})
+		added += 1
+
+
+func _ore_near(at: Vector2) -> String:
+	if Game.sim == null:
+		return ""
+	var best := ""
+	var best_d := 220.0
+	for place in Game.sim.nodes:
+		var row: Dictionary = place
+		var res: Dictionary = row.get("resource", {})
+		var kind_name := str(row.get("kind", ""))
+		var ore := str(res.get("id", "")) == "raw_mass" or kind_name == "belt" or kind_name == "stream"
+		if not ore:
+			continue
+		var dist: float = at.distance_to(row.pos)
+		if dist < best_d:
+			best_d = dist
+			best = str(row.id)
+	return best
+
+
+func _craft_uid(def_id: String) -> String:
+	if Game.sim == null:
+		return ""
+	for item in Game.sim.craft:
+		if str(item.def_id) == def_id and str(item.state) != "lost":
+			return str(item.uid)
+	return ""
+
+
+func _strike_scan(node_id: String) -> void:
+	_close_strike()
+	if Game.sim == null:
+		return
+	var uid := _craft_uid("survey_probe")
+	if uid == "":
+		Game.sim.say("No survey probe on the rack.")
+		return
+	var message := CraftOrders.order(Game.sim, uid, "scan", node_id)
+	if message != "":
+		Game.sim.say(message)
+
+
+func _strike_harvest(node_id: String) -> void:
+	_close_strike()
+	if Game.sim == null:
+		return
+	var uid := _craft_uid("harvest_drone")
+	if uid == "":
+		Game.sim.say("No harvest drone on this keel. Scan still maps the seam. A Needle or a Barn carries a drone.")
+		return
+	var message := CraftOrders.order(Game.sim, uid, "launch", node_id)
 	if message != "":
 		Game.sim.say(message)
 
