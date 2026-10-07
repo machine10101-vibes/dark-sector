@@ -526,6 +526,106 @@
       "cap_regen": 3
     }
   },
+  "turn_thrusters": {
+    "id": "turn_thrusters",
+    "name": "Turn Radius Thrusters",
+    "family": "hull",
+    "size": "S",
+    "slot": "S",
+    "favored": "",
+    "mass": 4,
+    "power": 6,
+    "crew": 0,
+    "attach": {
+      "x": 0,
+      "y": 0
+    },
+    "footprint": {
+      "w": 14,
+      "h": 8
+    },
+    "shape": "jets",
+    "blurb": "Vernier bells at the bow and the stern. They yaw the keel harder and hold the nose through a fast turn.",
+    "layer": [
+      [
+        [
+          18,
+          4.4
+        ],
+        [
+          24,
+          4.4
+        ],
+        [
+          24,
+          7.4
+        ],
+        [
+          18,
+          7.4
+        ]
+      ],
+      [
+        [
+          18,
+          -4.4
+        ],
+        [
+          24,
+          -4.4
+        ],
+        [
+          24,
+          -7.4
+        ],
+        [
+          18,
+          -7.4
+        ]
+      ],
+      [
+        [
+          -26,
+          2.8
+        ],
+        [
+          -20,
+          2.8
+        ],
+        [
+          -20,
+          5.8
+        ],
+        [
+          -26,
+          5.8
+        ]
+      ],
+      [
+        [
+          -26,
+          -2.8
+        ],
+        [
+          -20,
+          -2.8
+        ],
+        [
+          -20,
+          -5.8
+        ],
+        [
+          -26,
+          -5.8
+        ]
+      ]
+    ],
+    "effects": {
+      "radius": 1,
+      "turn": 1.05,
+      "turn_grip": 0.75
+    }
+  },
   "heavy_turret": {
     "id": "heavy_turret",
     "name": "Heavy Turret",

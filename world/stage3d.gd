@@ -2512,6 +2512,7 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 		holder.scale = Vector3(6.0, 6.0, 6.0) if int(sim.layer) == ScaleFrame.CHART else Vector3.ONE
 		_banked(holder, ship.pos, float(ship.rot), 2.0, ship)
 	_pulse_lamps(holder)
+	_light_turn_jets(holder, ship)
 	_place_plumes(holder, ship)
 	_place_wake(holder, ship)
 	_place_jet_light(holder, ship)
@@ -3192,7 +3193,7 @@ func _station_x(class_id: String, shape: String) -> float:
 
 
 func _gear_kind(class_id: String, shape: String) -> String:
-	if shape == "belt" or shape == "ring":
+	if shape == "belt" or shape == "ring" or shape == "jets":
 		return "wrap"
 	if shape == "cage":
 		return "belly"
@@ -3370,6 +3371,8 @@ func _build_gear(root: Node3D, class_id: String, shape: String, height: float, k
 			_gear_pack(root, class_id, kind)
 		"belt":
 			_gear_belt(root, class_id, height)
+		"jets":
+			_gear_jets(root, class_id, height)
 		"fans":
 			_gear_fans(root, class_id, kind)
 		"keel":
@@ -3418,6 +3421,138 @@ func _build_gear(root: Node3D, class_id: String, shape: String, height: float, k
 			_gear_stakes(root, class_id, kind)
 		_:
 			_gear_locker(root, class_id, kind)
+
+
+func _gear_jets(root: Node3D, class_id: String, height: float) -> void:
+	var deck := _deck_top(height)
+	var fit := _fit_scale(class_id)
+	var stations: Array = []
+	if class_id == "anvil":
+		# Inboard of the deck edge (the deck is inset to 0.78 of the hull).
+		stations = [
+			{"x": 8.0, "y": deck - 0.55, "z_k": 0.5, "aim_x": -0.12, "scale": 2.7, "deck": true},
+			{"x": -16.0, "y": deck - 0.55, "z_k": 0.46, "aim_x": -0.18, "scale": 2.7, "deck": true},
+		]
+	elif class_id == "kestrel":
+		stations = [
+			{"x": 6.0, "y": deck - 0.4, "z_k": 0.34, "aim_x": -0.38, "scale": 1.65, "deck": true},
+			{"x": -16.0, "y": deck - 0.4, "z_k": 0.42, "aim_x": -0.48, "scale": 1.75, "deck": true},
+		]
+	elif class_id == "lumen":
+		stations = [
+			{"x": 36.0, "y": height * 0.3, "z_k": 0.7, "aim_x": 0.0, "scale": 0.95, "deck": false},
+			{"x": -28.0, "y": height * 0.28, "z_k": 0.68, "aim_x": 0.06, "scale": 0.95, "deck": false},
+		]
+	elif class_id == "casque":
+		stations = [
+			{"x": 2.0, "y": height * 0.32, "z_k": 0.62, "aim_x": -0.1, "scale": 1.85, "deck": false},
+			{"x": -18.0, "y": height * 0.28, "z_k": 0.55, "aim_x": -0.16, "scale": 1.75, "deck": false},
+		]
+	elif class_id == "alidade":
+		stations = [
+			{"x": 10.0, "y": deck - 0.35, "z_k": 0.28, "aim_x": -0.22, "scale": 1.45, "deck": true},
+			{"x": -24.0, "y": deck - 0.35, "z_k": 0.4, "aim_x": -0.42, "scale": 1.6, "deck": true},
+		]
+	else:
+		stations = [
+			{"x": 20.0, "y": height * 0.32, "z_k": 0.7, "aim_x": 0.0, "scale": 1.15, "deck": false},
+			{"x": -22.0, "y": height * 0.3, "z_k": 0.68, "aim_x": 0.08, "scale": 1.15, "deck": false},
+		]
+	var n := 0
+	for raw in stations:
+		var spec: Dictionary = raw
+		var along := float(spec.x)
+		var skin := _skin_z(class_id, along)
+		var y := float(spec.y)
+		var z_k := float(spec.z_k)
+		var sc := float(spec.scale)
+		var aim_x := float(spec.aim_x)
+		var on_deck := bool(spec.deck)
+		for raw_side in [1.0, -1.0]:
+			var side := float(raw_side)
+			var outward := Vector3(aim_x, 0.04, side).normalized()
+			var seat_z := side * maxf(skin * z_k, 1.6)
+			_jet_pod(root, "J%d" % n, Vector3(along, y, seat_z), outward, sc, on_deck, side)
+			n += 1
+	var chest_y := deck - 0.16 if class_id == "anvil" or class_id == "kestrel" or class_id == "alidade" else height * 0.16
+	_kit(root, "ValveChest", Vector3(2.4 * fit, 0.72 * fit, 1.15 * fit), Vector3(-2.0, chest_y, 0.0), Color("2c3238"))
+	_kit(root, "Stripe", Vector3(2.15 * fit, 0.08, 1.2 * fit), Vector3(-2.0, chest_y + 0.4 * fit, 0.0), Color("e0b33a"))
+	_stud(root, Vector3(-2.8, chest_y + 0.42 * fit, 0.32 * fit), 0.1)
+	_stud(root, Vector3(-1.2, chest_y + 0.42 * fit, -0.32 * fit), 0.1)
+
+
+func _jet_pod(root: Node3D, tag: String, at: Vector3, aim: Vector3, fit: float, on_deck: bool, side: float) -> void:
+	var out := aim.normalized()
+	var body := at - out * (0.55 * fit)
+	_kit(root, "Manifold%s" % tag, Vector3(1.4 * fit, 0.78 * fit, 0.95 * fit), body, Color("4e5862"))
+	_kit(root, "Band%s" % tag, Vector3(1.46 * fit, 0.1, 1.0 * fit), body + Vector3(0.0, 0.28 * fit, 0.0), Color("e0b33a"))
+	var tangent := out.cross(Vector3.UP)
+	if tangent.length_squared() < 0.01:
+		tangent = Vector3.RIGHT
+	tangent = tangent.normalized()
+	for raw_i in [-1.0, 1.0]:
+		var shift := float(raw_i)
+		var mouth := at + tangent * shift * 0.42 * fit
+		var which := 0 if shift < 0.0 else 1
+		_bell_nozzle(root, "Bell%s%d" % [tag, which], mouth, out, 0.28 * fit, 0.95 * fit)
+	var pipe_len := minf(maxf(absf(at.z) * 0.45, 1.2), 7.5)
+	var pipe_at := Vector3(body.x, body.y, body.z - side * pipe_len * 0.45)
+	_cyl(root, "Feed%s" % tag, 0.08 * fit + 0.05, pipe_len, pipe_at, "z", Color("14161a"))
+	if on_deck:
+		var shoe_h := 0.9 * fit
+		_kit(root, "Shoe%s" % tag, Vector3(1.05 * fit, shoe_h, 0.7 * fit), body + Vector3(0.0, -shoe_h * 0.45, 0.0), Color("3a342c"))
+		_stud(root, body + Vector3(-0.4 * fit, 0.42 * fit, 0.2 * fit), 0.12)
+		_stud(root, body + Vector3(0.4 * fit, 0.42 * fit, -0.2 * fit), 0.12)
+	else:
+		_kit(root, "Tongue%s" % tag, Vector3(0.7 * fit, 0.42 * fit, 1.6 * fit), body - out * (0.9 * fit), Color("3a342c"))
+		_stud(root, body - out * (0.35 * fit) + Vector3(0.0, 0.32 * fit, 0.0), 0.11, -out)
+		_stud(root, body - out * (0.35 * fit) + Vector3(0.28 * fit, -0.08, 0.0), 0.1, -out)
+
+
+func _bell_nozzle(parent: Node3D, part_name: String, at: Vector3, aim: Vector3, mouth: float, length: float) -> void:
+	var out := aim.normalized()
+	var node := MeshInstance3D.new()
+	node.name = part_name
+	var bell := CylinderMesh.new()
+	bell.top_radius = mouth
+	bell.bottom_radius = mouth * 0.34
+	bell.height = length
+	bell.radial_segments = 12
+	node.mesh = bell
+	node.position = at + out * (length * 0.32)
+	if out.dot(Vector3.UP) < 0.92:
+		node.basis = Basis(Quaternion(Vector3.UP, out))
+	node.material_override = _metal(Color("242a30"))
+	parent.add_child(node)
+	var throat := MeshInstance3D.new()
+	throat.name = "Throat"
+	var core := CylinderMesh.new()
+	core.top_radius = mouth * 0.28
+	core.bottom_radius = mouth * 0.14
+	core.height = length * 0.5
+	core.radial_segments = 10
+	throat.mesh = core
+	throat.position = Vector3(0.0, length * 0.06, 0.0)
+	var hot := StandardMaterial3D.new()
+	hot.albedo_color = Color("6a2e18")
+	hot.metallic = 0.15
+	hot.roughness = 0.4
+	hot.emission_enabled = true
+	hot.emission = Color("e07030")
+	hot.emission_energy_multiplier = 0.35
+	throat.material_override = hot
+	node.add_child(throat)
+	var lip := MeshInstance3D.new()
+	lip.name = "Lip"
+	var ring := TorusMesh.new()
+	ring.inner_radius = mouth * 0.78
+	ring.outer_radius = mouth * 1.08
+	ring.rings = 6
+	ring.ring_segments = 12
+	lip.mesh = ring
+	lip.position = Vector3(0.0, length * 0.38, 0.0)
+	lip.material_override = _metal(Color("8d969c"))
+	node.add_child(lip)
 
 
 func _gear_pack(root: Node3D, class_id: String, kind: String) -> void:
@@ -4958,6 +5093,23 @@ func _side_plume(holder: Node3D, plume_name: String, at: Vector3, idle: bool, ha
 		var tint := Color(0.7, 0.88, 1.0, 0.8) if boosting else Color(1.0, 0.58, 0.2, 0.75)
 		mat.set_shader_parameter("albedo", tint)
 	return jet
+
+
+func _light_turn_jets(holder: Node3D, ship: Dictionary) -> void:
+	var gear := holder.get_node_or_null("Gearjets0")
+	if gear == null:
+		return
+	var hot := clampf(absf(float(ship.get("yaw_hold", 0.0))), 0.0, 1.0)
+	_light_throats(gear, hot)
+
+
+func _light_throats(node: Node, hot: float) -> void:
+	if str(node.name) == "Throat" and node is MeshInstance3D:
+		var mat: Material = (node as MeshInstance3D).material_override
+		if mat is StandardMaterial3D:
+			(mat as StandardMaterial3D).emission_energy_multiplier = lerpf(0.35, 2.6, hot)
+	for child in node.get_children():
+		_light_throats(child, hot)
 
 
 func _place_jet_light(holder: Node3D, ship: Dictionary) -> void:

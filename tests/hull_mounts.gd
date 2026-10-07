@@ -99,6 +99,22 @@ func _run() -> void:
 	check(int(sim.player.rounds.splinter) >= 18, "Ram carries a missile magazine")
 	sim.new_game("lumen")
 	check(str(sim.player.class_id) == "lumen", "Wick can cast off")
+	for class_id in ["vesper", "anvil", "kestrel", "lumen", "casque", "alidade"]:
+		var jets := Node3D.new()
+		stage.call("_fill_ship", jets, class_id, ["jets"], [])
+		var gear := jets.get_node_or_null("Gearjets0")
+		check(gear != null, "%s wears turn thrusters" % class_id)
+		check(gear != null and _named(gear, "Bell"), "%s thrusters have bells" % class_id)
+		check(gear != null and _named(gear, "Manifold"), "%s thrusters are bolted on" % class_id)
+
+
+func _named(node: Node, prefix: String) -> bool:
+	if str(node.name).begins_with(prefix):
+		return true
+	for child in node.get_children():
+		if _named(child, prefix):
+			return true
+	return false
 
 
 func holder_part(stage: Node, class_id: String, part_name: String) -> bool:

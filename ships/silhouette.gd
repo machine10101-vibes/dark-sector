@@ -627,6 +627,33 @@ static func _mark(ci: CanvasItem, xf: Transform2D, scale: float, at: Vector2, ra
 	ci.draw_arc(xf * (at * scale), radius * scale, 0.0, TAU, 12, color.darkened(0.45), maxf(1.0, 0.4 * scale), true)
 
 
+static func _paint_jets(ci: CanvasItem, xf: Transform2D, scale: float, class_id: String) -> void:
+	var pairs: Array = []
+	if class_id == "anvil" or class_id == "casque":
+		pairs = [Vector2(8.0, 0.76), Vector2(-16.0, 0.7)]
+	elif class_id == "kestrel" or class_id == "alidade":
+		pairs = [Vector2(6.0, 0.48), Vector2(-18.0, 0.6)]
+	elif class_id == "lumen":
+		pairs = [Vector2(36.0, 0.88), Vector2(-28.0, 0.84)]
+	else:
+		pairs = [Vector2(20.0, 0.9), Vector2(-22.0, 0.88)]
+	for raw in pairs:
+		var pair: Vector2 = raw
+		var beam := _half_beam(class_id, pair.x)
+		if beam < 0.8:
+			continue
+		var seat := beam * pair.y
+		for raw_side in [1.0, -1.0]:
+			var side := float(raw_side)
+			var yy := side * seat
+			var tip := side * (seat + 1.7)
+			_quad(ci, xf, scale, Vector2(pair.x, yy), Vector2(1.7, 0.7), 0.0, Color("4e5862"))
+			ci.draw_line(xf * (Vector2(pair.x, yy) * scale), xf * (Vector2(pair.x, tip) * scale), Color("242a30"), maxf(1.4, 0.9 * scale), true)
+			_mark(ci, xf, scale, Vector2(pair.x - 0.45, tip), 0.32, Color("e07030"))
+			_mark(ci, xf, scale, Vector2(pair.x + 0.45, tip), 0.32, Color("e07030"))
+			ci.draw_line(xf * (Vector2(pair.x, yy) * scale), xf * (Vector2(pair.x, side * seat * 0.35) * scale), Color("14161a"), maxf(1.0, 0.45 * scale), true)
+
+
 static func _paint_shape(ci: CanvasItem, xf: Transform2D, scale: float, class_id: String, shape: String, index: int, _accent: Color) -> void:
 	var along := _fit_x(class_id, shape) + float(index) * 4.0
 	var skin := _half_beam(class_id, along)
@@ -696,6 +723,8 @@ static func _paint_shape(ci: CanvasItem, xf: Transform2D, scale: float, class_id
 				_quad(ci, xf, scale, Vector2(x, -(beam - bite)), Vector2(4.4, 1.5 if class_id != "anvil" else 2.4), -edge, tone)
 				_mark(ci, xf, scale, Vector2(x, beam - bite * 0.2), 0.28, Color("c6b48a"))
 				_mark(ci, xf, scale, Vector2(x, -(beam - bite * 0.2)), 0.28, Color("c6b48a"))
+		"jets":
+			_paint_jets(ci, xf, scale, class_id)
 		"pack":
 			var cells := 6 if class_id == "vesper" else 4
 			var span := 2.0 if class_id == "vesper" else 1.6

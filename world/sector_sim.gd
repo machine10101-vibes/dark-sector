@@ -981,6 +981,7 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 				quest_flags.moor_latch = maxf(next, 0.0)
 		if not leaving:
 			var held = Fit.stats(defs, unit)
+			unit.yaw_hold = float(cmd.get("rot", 0.0))
 			unit.rot += float(cmd.get("rot", 0.0)) * float(held.turn) * dt
 			unit.vel = Vector2.ZERO
 			unit.thrusting = false
@@ -998,9 +999,13 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 	var spd_before := float(unit.vel.length())
 	var yaw_rate := float(stats.turn)
 	# Full turn at rest (the slice yaw check). At cruise the nose still answers,
-	# but it stops pirouetting while the keel is already moving.
+	# but it stops pirouetting while the keel is already moving. Turn thrusters
+	# raise that floor so a fast keel can still cut a tight radius.
 	if spd_before > 140.0:
-		yaw_rate *= clampf(140.0 / spd_before, 0.55, 1.0)
+		var grip := clampf(float(stats.get("turn_grip", 0.0)), 0.0, 1.0)
+		var floor_rate := lerpf(0.55, 0.92, grip)
+		yaw_rate *= clampf(140.0 / spd_before, floor_rate, 1.0)
+	unit.yaw_hold = float(cmd.get("rot", 0.0))
 	unit.rot += float(cmd.get("rot", 0.0)) * yaw_rate * dt
 	var forward = Vector2.from_angle(unit.rot)
 	var thrust = float(cmd.get("thrust", 0.0))
