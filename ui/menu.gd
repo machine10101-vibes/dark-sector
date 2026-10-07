@@ -80,7 +80,7 @@ func _ready() -> void:
 	title_plate.sky = sky
 	title_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(title_plate)
-	new_button = ThemeKit.button("New keel")
+	new_button = ThemeKit.button("New ship")
 	new_button.pressed.connect(func(): _show_select("offline"))
 	var host := ThemeKit.button("Host the dock")
 	host.pressed.connect(func(): _show_select("host"))
@@ -139,7 +139,7 @@ func _ready() -> void:
 	select_box.offset_right = -8
 	select_box.offset_bottom = -8
 	select_glass.add_child(select_box)
-	prompt_line = ThemeKit.label("Choose the keel. The other two stay in someone else's yard.", 16, Color("cbb892"))
+	prompt_line = ThemeKit.label("Choose the ship. The other two stay in someone else's yard.", 16, Color("cbb892"))
 	prompt_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	select_box.add_child(prompt_line)
 	yard_line = ThemeKit.label("Needle is in the yard.", 14, Color("9eecf5"))
@@ -195,7 +195,7 @@ func _fit() -> void:
 			if action is Button:
 				action.add_theme_font_size_override("font_size", 13 if two else 14)
 	if prompt_line != null:
-		prompt_line.text = "Choose the keel." if phone else "Choose the keel. The other two stay in someone else's yard."
+		prompt_line.text = "Choose the ship." if phone else "Choose the ship. The other two stay in someone else's yard."
 		prompt_line.add_theme_font_size_override("font_size", 14 if phone else 16)
 		prompt_line.autowrap_mode = TextServer.AUTOWRAP_OFF
 		prompt_line.clip_text = phone
@@ -381,7 +381,7 @@ func _show_root() -> void:
 	var has := Game.has_save()
 	continue_button.disabled = not has
 	continue_button.text = "Continue log" if has else "No log on the slate"
-	# A log on the slate is the way back in. With an empty slate, New keel is the way in.
+	# A log on the slate is the way back in. With an empty slate, New ship is the way in.
 	_paint_depart(new_button, not has)
 	_paint_depart(continue_button, has)
 	_shown_keel = ""
@@ -851,7 +851,7 @@ class Backdrop extends Control:
 class TitlePlate extends Control:
 	var sky := "HELION DOCK"
 	var title := "DARK SECTOR"
-	var tagline := "One keel. The dock is a place, not a menu."
+	var tagline := "One ship. The dock is a place, not a menu."
 
 	func _draw() -> void:
 		if size.x < 8.0 or size.y < 8.0:
