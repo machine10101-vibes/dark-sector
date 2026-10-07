@@ -14,6 +14,7 @@ func _init() -> void:
 		"quests": Serde.load_json("res://data/quests.json"),
 	}
 	_racks()
+	_fleet_orders()
 	_escort_spread()
 	_buy_wing()
 	_scan_harvest_heat()
@@ -71,6 +72,29 @@ func _racks() -> void:
 	check(CraftOrders.launch(kestrel, "fighter") == "", "the fighter launches onto the wing")
 	check(str(_craft(kestrel, "fighter_1").state) == "escort", "the fighter takes escort")
 	check(not bool(vesper.defs.system.pocket.plantable), "the pocket stays closed")
+
+
+func _fleet_orders() -> void:
+	var kestrel := make("kestrel")
+	var probe = _craft(kestrel, "survey_probe_1")
+	var fighter = _craft(kestrel, "fighter_1")
+	check(str(probe.state) == "docked", "the probe starts on the rack")
+	check(CraftOrders.fleet(kestrel, "form") == "", "the wing forms")
+	check(str(fighter.state) == "escort", "form puts the fighter on escort")
+	check(str(fighter.order) == "escort", "form is an escort order")
+	check(str(probe.state) == "docked", "forming the wing leaves the probe on the rack")
+	check(CraftOrders.fleet(kestrel, "attack") == "", "the wing attacks")
+	check(str(fighter.order) == "attack", "attack marks the wing")
+	check(str(probe.state) == "docked", "attack leaves the probe on the rack")
+	check(CraftOrders.order(kestrel, str(probe.uid), "orbit", "aegis_prime") == "", "a racked probe takes an orbit order")
+	var flying: bool = str(probe.state) == "outbound" or str(probe.state) == "orbiting"
+	check(flying, "the probe leaves the rack")
+	check(CraftOrders.fleet(kestrel, "recall") == "", "recall brings the wing home")
+	check(str(fighter.state) == "returning", "the fighter turns for the keel")
+	check(str(probe.state) == "returning", "the probe turns for the keel")
+	var vesper := make("vesper")
+	check(CraftOrders.fleet(vesper, "form") == "No fighter is on the keel.", "a rack with no fighter has no wing")
+	check(CraftOrders.fleet(vesper, "recall") == "Nothing is out to recall.", "nothing is out to recall")
 
 
 func _escort_spread() -> void:

@@ -129,6 +129,51 @@ static func recall(sim, uid: String) -> void:
 		sim.say(message)
 
 
+static func fleet(sim, verb: String) -> String:
+	if verb == "recall":
+		return _fleet_recall(sim)
+	if verb != "form" and verb != "attack":
+		return "That order is not on the board."
+	var wing: String = "attack" if verb == "attack" else "escort"
+	var sent := 0
+	var first := ""
+	for craft in sim.craft:
+		if str(craft.def_id) != "fighter":
+			continue
+		if str(craft.state) == "lost":
+			if first == "":
+				first = "%s is lost. Rebuild it from returned mass." % craft.name
+			continue
+		var message := order(sim, str(craft.uid), wing, "")
+		if message == "":
+			sent += 1
+		elif first == "":
+			first = message
+	if sent > 0:
+		return ""
+	if first != "":
+		return first
+	return "No fighter is on the keel."
+
+
+static func _fleet_recall(sim) -> String:
+	var sent := 0
+	var first := ""
+	for craft in sim.craft:
+		if str(craft.state) == "docked" or str(craft.state) == "lost":
+			continue
+		var message := order(sim, str(craft.uid), "return", "")
+		if message == "":
+			sent += 1
+		elif first == "":
+			first = message
+	if sent > 0:
+		return ""
+	if first != "":
+		return first
+	return "Nothing is out to recall."
+
+
 static func step(sim, craft, dt: float) -> void:
 	if str(craft.state) == "docked" or str(craft.state) == "lost":
 		return

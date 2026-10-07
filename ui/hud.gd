@@ -14,6 +14,7 @@ var panel_scroll: ScrollContainer
 var panel_title: Label
 var panel_body: Label
 var hangar_box: VBoxContainer
+var fleet_box: VBoxContainer
 var bay_box: VBoxContainer
 var dossier_box: VBoxContainer
 var pause_box: PanelContainer
@@ -23,6 +24,9 @@ var hangar_rows: Dictionary = {}
 var hangar_node := "aegis_prime"
 var hangar_target: Label
 var hangar_sig := ""
+var fleet_rows: Dictionary = {}
+var fleet_target: Label
+var fleet_sig := ""
 var bay_preview: Control
 var bay_detail: Label
 var bay_buttons: Dictionary = {}
@@ -346,6 +350,8 @@ func _process(_delta: float) -> void:
 		dead_box.hide()
 	if panel_kind == "hangar":
 		_refresh_hangar()
+	elif panel_kind == "fleet":
+		_refresh_fleet()
 	elif panel_kind == "dossier":
 		dossier_timer -= _delta
 		if dossier_timer <= 0.0:
@@ -576,6 +582,9 @@ func _build_panel() -> void:
 	hangar_box = VBoxContainer.new()
 	hangar_box.visible = false
 	inner.add_child(hangar_box)
+	fleet_box = VBoxContainer.new()
+	fleet_box.visible = false
+	inner.add_child(fleet_box)
 	dossier_box = VBoxContainer.new()
 	dossier_box.visible = false
 	inner.add_child(dossier_box)
@@ -685,6 +694,7 @@ func _build_actions() -> void:
 	_action("Stop", func() -> void: Game.tap("order", {"kind": "stop"}))
 	_group("SHIP")
 	_action("Ship", func() -> void: _toggle("bay"))
+	_action("Fleet", func() -> void: _toggle("fleet"))
 	_action("Weld", _repair)
 	_action("Hangar", func() -> void: _toggle("hangar"))
 	_action("Harvest", func() -> void: _launch("harvest_drone"))
@@ -914,6 +924,7 @@ func _toggle(kind: String) -> void:
 	panel_body.visible = kind in ["heat", "quest", "claim"]
 	bay_box.visible = kind == "bay"
 	hangar_box.visible = kind == "hangar"
+	fleet_box.visible = kind == "fleet"
 	dossier_box.visible = kind == "dossier"
 	board_box.visible = kind == "board"
 	if market_box != null:
@@ -925,6 +936,9 @@ func _toggle(kind: String) -> void:
 		"hangar":
 			panel_title.text = "Hangar"
 			_build_hangar()
+		"fleet":
+			panel_title.text = "Fleet"
+			_build_fleet()
 		"dossier":
 			panel_title.text = "Scan dossier"
 			_fill_dossier()
@@ -1057,8 +1071,23 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 		panel.size = Vector2(screen.x - 16.0, screen.y * 0.5)
 	else:
 		panel.custom_minimum_size = Vector2(420, 400)
-		panel.position = Vector2(screen.x - side - 16.0, 16)
-		panel.size = Vector2(side, screen.y - 150.0)
+		var right := screen.x - 16.0
+		if hold_button != null and hold_button.visible:
+			right = minf(right, hold_button.position.x - 8.0)
+		if stick_button != null and stick_button.visible:
+			right = minf(right, stick_button.position.x - 8.0)
+		var left_limit := 360.0
+		if status_card != null and status_card.size.x > 40.0:
+			left_limit = status_card.position.x + status_card.size.x + 12.0
+		var room := right - left_limit
+		var width := side
+		if room < side:
+			width = maxf(280.0, room)
+		if room < 280.0:
+			width = maxf(200.0, right - 16.0)
+		var bottom := primary_y - 120.0
+		panel.position = Vector2(right - width, 16)
+		panel.size = Vector2(width, maxf(280.0, bottom - 16.0))
 
 
 func _place_board_button(_is_compact: bool) -> void:
@@ -1709,39 +1738,144 @@ func _build_hangar() -> void:
 		block.add_child(ThemeKit.label(str(spec.job), 13, Color("8d826c")))
 		var state := ThemeKit.label("", 14, Color("d7e6c8"))
 		block.add_child(state)
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		var uid := str(item.uid)
-		var parked := str(item.def_id) == "salvage_tender"
-		var lost := str(item.state) == "lost"
-		if lost:
-			var rebuild := ThemeKit.button("Rebuild")
-			rebuild.pressed.connect(_order_uid.bind(uid, "rebuild"))
-			row.add_child(rebuild)
-			block.add_child(ThemeKit.label("Loss is permanent until rebuild spends 1 raw mass.", 13, Color("c4512c")))
-		elif str(item.def_id) == "fighter":
-			row.add_child(_order_button("Launch", uid, "launch"))
-			row.add_child(_order_button("Attack", uid, "attack"))
-			row.add_child(_order_button("Return", uid, "return"))
-		elif parked:
-			block.add_child(ThemeKit.label("Parked. It stays in the rack this slice.", 13, Color("8d826c")))
-		elif str(item.def_id) == "survey_probe":
-			row.add_child(_order_button("Launch", uid, "launch"))
-			row.add_child(_order_button("Orbit", uid, "orbit"))
-			row.add_child(_order_button("Scan", uid, "scan"))
-			row.add_child(_order_button("Return", uid, "return"))
-		elif str(item.def_id) == "harvest_drone":
-			row.add_child(_order_button("Launch", uid, "launch"))
-			row.add_child(_order_button("Return", uid, "return"))
-		else:
-			row.add_child(_order_button("Launch", uid, "launch"))
-			row.add_child(_order_button("Return", uid, "return"))
-		if row.get_child_count() > 0:
-			block.add_child(row)
+		_append_craft_orders(block, item)
 		hangar_box.add_child(block)
-		hangar_rows[uid] = state
+		hangar_rows[str(item.uid)] = state
 	hangar_sig = _craft_sig()
 	_refresh_hangar()
+
+
+func _append_craft_orders(block: VBoxContainer, item) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var uid := str(item.uid)
+	var parked := str(item.def_id) == "salvage_tender"
+	var lost := str(item.state) == "lost"
+	if lost:
+		var rebuild := ThemeKit.button("Rebuild")
+		rebuild.pressed.connect(_order_uid.bind(uid, "rebuild"))
+		row.add_child(rebuild)
+		block.add_child(ThemeKit.label("Loss is permanent until rebuild spends 1 raw mass.", 13, Color("c4512c")))
+	elif str(item.def_id) == "fighter":
+		row.add_child(_order_button("Launch", uid, "launch"))
+		row.add_child(_order_button("Attack", uid, "attack"))
+		row.add_child(_order_button("Return", uid, "return"))
+	elif parked:
+		block.add_child(ThemeKit.label("Parked. It stays in the rack this slice.", 13, Color("8d826c")))
+	elif str(item.def_id) == "survey_probe":
+		row.add_child(_order_button("Launch", uid, "launch"))
+		row.add_child(_order_button("Orbit", uid, "orbit"))
+		row.add_child(_order_button("Scan", uid, "scan"))
+		row.add_child(_order_button("Return", uid, "return"))
+	elif str(item.def_id) == "harvest_drone":
+		row.add_child(_order_button("Launch", uid, "launch"))
+		row.add_child(_order_button("Return", uid, "return"))
+	else:
+		row.add_child(_order_button("Launch", uid, "launch"))
+		row.add_child(_order_button("Return", uid, "return"))
+	if row.get_child_count() > 0:
+		block.add_child(row)
+
+
+func _build_fleet() -> void:
+	for child in fleet_box.get_children():
+		child.queue_free()
+	fleet_rows = {}
+	var sim = Game.sim
+	fleet_box.add_child(ThemeKit.label("Wing orders cover every fighter. Ships already outside and drones still on the rack take orders here too.", 13, Color("8d826c")))
+	var wing := HBoxContainer.new()
+	wing.add_theme_constant_override("separation", 8)
+	var form := ThemeKit.button("Form")
+	form.pressed.connect(_fleet_order.bind("form"))
+	wing.add_child(form)
+	var attack := ThemeKit.button("Attack")
+	attack.pressed.connect(_fleet_order.bind("attack"))
+	wing.add_child(attack)
+	var recall := ThemeKit.button("Recall")
+	recall.pressed.connect(_fleet_order.bind("recall"))
+	wing.add_child(recall)
+	fleet_box.add_child(wing)
+	fleet_target = ThemeKit.label("", 14, Color("d7e6c8"))
+	fleet_box.add_child(fleet_target)
+	var picks := HBoxContainer.new()
+	picks.add_theme_constant_override("separation", 8)
+	for place in sim.nodes:
+		var pick := ThemeKit.button(str(place.name))
+		pick.pressed.connect(_pick_node.bind(str(place.id)))
+		picks.add_child(pick)
+	fleet_box.add_child(picks)
+	if sim.craft.is_empty():
+		fleet_box.add_child(ThemeKit.label("This keel has an empty rack.", 14, Color("8d826c")))
+		fleet_sig = _craft_sig()
+		_refresh_fleet()
+		return
+	var outside: Array = []
+	var rack: Array = []
+	for item in sim.craft:
+		if str(item.state) != "docked" and str(item.state) != "lost":
+			outside.append(item)
+		else:
+			rack.append(item)
+	fleet_box.add_child(ThemeKit.label("OUTSIDE", 15, Color("e6d7bf")))
+	if outside.is_empty():
+		fleet_box.add_child(ThemeKit.label("Nothing is flying. Launch from the rack.", 13, Color("8d826c")))
+	else:
+		for item in outside:
+			_fleet_card(item)
+	fleet_box.add_child(ThemeKit.label("ON THE RACK", 15, Color("e6d7bf")))
+	if rack.is_empty():
+		fleet_box.add_child(ThemeKit.label("The rack is clear.", 13, Color("8d826c")))
+	else:
+		for item in rack:
+			_fleet_card(item)
+	fleet_sig = _craft_sig()
+	_refresh_fleet()
+
+
+func _fleet_card(item) -> void:
+	var spec: Dictionary = Game.sim.defs.craft[item.def_id]
+	var block := VBoxContainer.new()
+	block.add_child(ThemeKit.label("%s" % item.name, 16))
+	block.add_child(ThemeKit.label(str(spec.job), 13, Color("8d826c")))
+	var state := ThemeKit.label("", 14, Color("d7e6c8"))
+	block.add_child(state)
+	_append_craft_orders(block, item)
+	fleet_box.add_child(block)
+	fleet_rows[str(item.uid)] = state
+
+
+func _fleet_order(verb: String) -> void:
+	if Game.sim == null:
+		return
+	var message := CraftOrders.fleet(Game.sim, verb)
+	if message != "":
+		Game.sim.say(message)
+	if panel_kind == "fleet":
+		_build_fleet()
+
+
+func _refresh_fleet() -> void:
+	var sim = Game.sim
+	if sim == null:
+		return
+	var sig := _craft_sig()
+	if sig != fleet_sig:
+		_build_fleet()
+		return
+	if fleet_target != null:
+		var place = sim.survey_node(hangar_node)
+		var name := hangar_node if place == null else str(place.name)
+		fleet_target.text = "Orders use %s." % name
+	for item in sim.craft:
+		var state: Label = fleet_rows.get(str(item.uid))
+		if state == null:
+			continue
+		var hp := int(item.hp)
+		var bat := int(item.battery)
+		var extra := ""
+		if str(item.order) != "":
+			extra = "    %s" % str(item.order)
+		state.text = "%s%s    hp %d    battery %d" % [item.state, extra, hp, bat]
 
 
 func _craft_sig() -> String:
@@ -1763,6 +1897,8 @@ func _pick_node(node_id: String) -> void:
 	hangar_node = node_id
 	if panel_kind == "hangar":
 		_build_hangar()
+	elif panel_kind == "fleet":
+		_build_fleet()
 
 
 func _order_uid(uid: String, verb: String) -> void:
@@ -1773,6 +1909,8 @@ func _order_uid(uid: String, verb: String) -> void:
 		Game.sim.say(message)
 	if panel_kind == "hangar":
 		_build_hangar()
+	elif panel_kind == "fleet":
+		_build_fleet()
 
 
 func _refresh_hangar() -> void:
