@@ -1,0 +1,9 @@
+---
+description: Locked visual example for Dark Sector start-menu improvements
+globs: ui/menu.gd,ui/menu_stage.gd
+alwaysApply: false
+---
+
+Before changing the start menu, open `design/start-menu/LOCKED-EXAMPLE.jpg` and follow `design/start-menu/LOCK.md`.
+
+That image is locked. Do not replace it. Match its composition: full-bleed limb and a large ship on the right, the title centered in the open sky, and a short quiet action stack at the bottom center. Keep Dark Sector's own title, Helion Dock, and keel names. Do not copy the example's wordmark, expansion name, login fields, or artwork into the game.

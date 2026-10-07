@@ -108,23 +108,25 @@ func _aim(hero: bool) -> void:
 		# a cropped slice covered the window above the cards.
 		if narrow and landscape:
 			# Cards take the right side. Shift the frustum so the whole keel
-			# sits in the open glass on the left.
-			cam.fov = 32.0
-			cam.h_offset = 150.0
-			cam.position = Vector3(-400.0 + swing * 0.35, 300.0 + lift, 460.0)
-			cam.look_at(Vector3(-36.0, 28.0, 0.0), Vector3.UP)
+			# sits in the open glass on the left, close enough to read.
+			cam.fov = 28.0
+			cam.h_offset = 110.0
+			cam.position = Vector3(-280.0 + swing * 0.3, 210.0 + lift, 340.0)
+			cam.look_at(Vector3(-16.0, 22.0, 0.0), Vector3.UP)
 		elif narrow:
-			cam.fov = 40.0
-			cam.position = Vector3(-420.0 + swing * 0.3, 280.0 + lift, 560.0)
-			cam.look_at(Vector3(6.0, -40.0, 0.0), Vector3.UP)
-		elif portrait:
 			cam.fov = 38.0
-			cam.position = Vector3(-340.0 + swing * 0.25, 230.0 + lift, 400.0)
-			cam.look_at(Vector3(6.0, -16.0, 0.0), Vector3.UP)
+			cam.position = Vector3(-380.0 + swing * 0.3, 250.0 + lift, 520.0)
+			cam.look_at(Vector3(6.0, -8.0, 0.0), Vector3.UP)
+		elif portrait:
+			cam.fov = 32.0
+			cam.position = Vector3(-220.0 + swing * 0.2, 170.0 + lift, 300.0)
+			cam.look_at(Vector3(6.0, 24.0, 0.0), Vector3.UP)
 		else:
-			cam.fov = 34.0
-			cam.position = Vector3(-240.0 + swing * 0.4, 168.0 + lift, 540.0)
-			cam.look_at(Vector3(6.0, -70.0, 0.0), Vector3.UP)
+			# The cards cover the lower glass. Aim near the hull so it sits
+			# large in the open band, not cropped on the top edge.
+			cam.fov = 26.0
+			cam.position = Vector3(-210.0 + swing * 0.25, 150.0 + lift, 500.0)
+			cam.look_at(Vector3(6.0, 18.0, 0.0), Vector3.UP)
 	else:
 		# Title shot. The keel sits in the open glass: right of a wide slate,
 		# under a tall one. Aegis is a limb beside that keel, not a texture wall.

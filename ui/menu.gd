@@ -30,6 +30,9 @@ var _fit_warmup := 0
 var slate_glass: Control
 var slate_scroll: ScrollContainer
 var select_glass: Control
+var new_button: Button
+var dedicated_button: Button
+var _shown_keel := ""
 
 
 func _ready() -> void:
@@ -81,12 +84,13 @@ func _ready() -> void:
 	tagline = ThemeKit.label("One keel. The dock is a place, not a menu.", 14, Color("b7ab96"))
 	tagline.autowrap_mode = TextServer.AUTOWRAP_OFF
 	root_box.add_child(tagline)
-	var new_game := ThemeKit.button("New keel")
-	new_game.pressed.connect(func(): _show_select("offline"))
+	new_button = ThemeKit.button("New keel")
+	new_button.pressed.connect(func(): _show_select("offline"))
 	var host := ThemeKit.button("Host the dock")
 	host.pressed.connect(func(): _show_select("host"))
-	var dedicated := ThemeKit.button("Dedicated host")
-	dedicated.pressed.connect(func():
+	dedicated_button = ThemeKit.button("Dedicated host")
+	dedicated_button.add_theme_color_override("font_color", Color("8aa0a6"))
+	dedicated_button.pressed.connect(func():
 		if OS.has_feature("web"):
 			back_to_slate(ListenLink.JOIN_LINE)
 			return
@@ -94,9 +98,10 @@ func _ready() -> void:
 		_show_select("host")
 	)
 	address_line = LineEdit.new()
-	address_line.placeholder_text = "IP or code, 127.0.0.1:24565"
+	address_line.placeholder_text = "Dock address, 127.0.0.1:24565"
 	address_line.text = "127.0.0.1:24565"
-	address_line.custom_minimum_size = Vector2(480, 32)
+	address_line.custom_minimum_size = Vector2(480, 44)
+	_style_field(address_line)
 	var join := ThemeKit.button("Join a dock")
 	join.pressed.connect(func(): _show_select("join"))
 	continue_button = ThemeKit.button("Continue log")
@@ -108,12 +113,12 @@ func _ready() -> void:
 	slate_actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slate_actions.add_theme_constant_override("h_separation", 8)
 	slate_actions.add_theme_constant_override("v_separation", 6)
-	slate_actions.add_child(new_game)
-	slate_actions.add_child(host)
-	slate_actions.add_child(dedicated)
-	slate_actions.add_child(address_line)
-	slate_actions.add_child(join)
+	slate_actions.add_child(new_button)
 	slate_actions.add_child(continue_button)
+	slate_actions.add_child(host)
+	slate_actions.add_child(join)
+	slate_actions.add_child(address_line)
+	slate_actions.add_child(dedicated_button)
 	if not OS.has_feature("web"):
 		slate_actions.add_child(quit)
 	root_box.add_child(slate_actions)
@@ -190,6 +195,9 @@ func _fit() -> void:
 		sky_label.add_theme_font_size_override("font_size", 13 if two or tight else 16)
 	if tagline != null:
 		tagline.visible = not two and not tight
+	if dedicated_button != null:
+		# A headless-host note does not earn a seat on a short landscape slate.
+		dedicated_button.visible = not two
 	if root_box != null:
 		root_box.add_theme_constant_override("separation", 4 if two or tight else 8)
 	if slate_actions != null:
@@ -236,11 +244,14 @@ func _fit() -> void:
 			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if phone else Control.SIZE_EXPAND_FILL
 			card.custom_minimum_size = Vector2(card_w, 0)
-			var box := card.get_child(0) as VBoxContainer
-			if box != null and box.get_child_count() > 0 and box.get_child(0) is Label:
-				(box.get_child(0) as Label).add_theme_font_size_override("font_size", 16 if phone else 22)
-			if box != null and box.get_child_count() > 1 and box.get_child(1) is Label:
-				var class_line := box.get_child(1) as Label
+			var callsign := card.find_child("Callsign", true, false) as Label
+			if callsign != null:
+				callsign.add_theme_font_size_override("font_size", 16 if phone else 22)
+			var class_line := card.find_child("ClassLine", true, false) as Label
+			if class_line != null:
+				var role := str(class_line.get_meta("role", ""))
+				var klass := str(class_line.get_meta("klass", class_line.text))
+				class_line.text = role if two else "%s · %s" % [role, klass]
 				class_line.add_theme_font_size_override("font_size", 11 if two else 13)
 				class_line.clip_text = two
 			for part in card.find_children("*", "Button", true, false):
@@ -250,11 +261,19 @@ func _fit() -> void:
 					take.clip_text = two
 					if two:
 						_tighten_button(take)
-			for part_name in ["Previews", "Blurb", "Stats", "Rack"]:
+			for part_name in ["Previews", "Blurb", "Stats", "StatsLine", "Rack"]:
 				var part := card.find_child(part_name, true, false)
 				if part == null:
 					continue
-				part.visible = show_art if part_name == "Previews" else show_detail
+				if part_name == "Previews":
+					part.visible = show_art
+				elif part_name == "Stats":
+					part.visible = show_detail
+				elif part_name == "StatsLine":
+					# One line on a tall phone. The two-line columns belong on a desk.
+					part.visible = stacked
+				else:
+					part.visible = show_detail
 		if phone and not two:
 			var sample: Control = keel_row.get_child(0)
 			var one := sample.get_combined_minimum_size().y
@@ -344,6 +363,10 @@ func _show_root() -> void:
 	var has := Game.has_save()
 	continue_button.disabled = not has
 	continue_button.text = "Continue log" if has else "No log on the slate"
+	# A log on the slate is the way back in. With an empty slate, New keel is the way in.
+	_paint_depart(new_button, not has)
+	_paint_depart(continue_button, has)
+	_shown_keel = ""
 
 
 func _show_select(next: String) -> void:
@@ -423,6 +446,10 @@ func _process(_delta: float) -> void:
 		elif klass == "kestrel":
 			fit = " Wing guns."
 		yard_line.text = "%s is in the yard.%s" % [str(hull.callsign), fit]
+	if hero:
+		_mark_focus(klass)
+	else:
+		_shown_keel = ""
 
 
 func _focused_keel() -> String:
@@ -495,45 +522,71 @@ func _card(class_id: String) -> PanelContainer:
 	card.mouse_exited.connect(_unpin_keel.bind(class_id))
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", _card_style(class_id, false))
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", 3)
 	card.add_child(box)
+	var stripe := ColorRect.new()
+	stripe.name = "Stripe"
+	stripe.color = Color(str(hull.accent))
+	stripe.custom_minimum_size = Vector2(0, 3)
+	stripe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(stripe)
 	var callsign := ThemeKit.label(str(hull.callsign), 22)
+	callsign.name = "Callsign"
 	callsign.autowrap_mode = TextServer.AUTOWRAP_OFF
 	box.add_child(callsign)
-	var class_line := ThemeKit.label(str(hull.class_name), 13, Color("8a7344"))
+	var role := _role_word(str(hull.role))
+	var class_line := ThemeKit.label("%s · %s" % [role, str(hull.class_name)], 13, Color("8a7344"))
+	class_line.name = "ClassLine"
+	class_line.set_meta("role", role)
+	class_line.set_meta("klass", str(hull.class_name))
 	class_line.autowrap_mode = TextServer.AUTOWRAP_OFF
 	box.add_child(class_line)
 	var previews := HBoxContainer.new()
 	previews.name = "Previews"
-	previews.add_theme_constant_override("separation", 4)
+	previews.add_theme_constant_override("separation", 8)
 	previews.add_child(_preview(class_id, [], "As launched"))
 	var yard: Array = hull.yard
 	if not yard.is_empty():
-		previews.add_child(_preview(class_id, [str(yard[0])], "Bolted"))
+		previews.add_child(_preview(class_id, [str(yard[0])], _bolt_name(class_id)))
 	box.add_child(previews)
-	var blurb := ThemeKit.label(str(hull.select_blurb), 13, Color("d9d0c2"))
+	_share_plan_frame(previews)
+	var blurb_text := str(hull.select_blurb)
+	var stop := blurb_text.find(". ")
+	if stop > 0:
+		blurb_text = blurb_text.substr(0, stop + 1)
+	var blurb := ThemeKit.label(blurb_text, 13, Color("d9d0c2"))
 	blurb.name = "Blurb"
-	blurb.custom_minimum_size = Vector2(220, 0)
+	blurb.custom_minimum_size = Vector2(180, 0)
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	blurb.max_lines_visible = 2
 	box.add_child(blurb)
 	var stats := Fit.stats(Game.defs, {"class_id": class_id, "modules": []})
+	var gun := int(hull.gun.damage)
+	var sig := str(stats.signature_word).capitalize()
+	box.add_child(_stat_row(float(stats.yaw_deg), int(stats.cargo_cap), gun, sig))
 	var stats_line := ThemeKit.label(
-		"Yaw %.0f°/s. Mass %.0f. Hold %d. Signature %s." % [stats.yaw_deg, stats.mass, stats.cargo_cap, stats.signature_word],
+		"%.0f°/s turn  ·  Hold %d  ·  Gun %d  ·  %s" % [stats.yaw_deg, stats.cargo_cap, gun, sig],
 		13,
 		Color("cbb892")
 	)
-	stats_line.name = "Stats"
+	stats_line.name = "StatsLine"
 	stats_line.autowrap_mode = TextServer.AUTOWRAP_OFF
 	box.add_child(stats_line)
 	var craft_bits: Array = []
 	for entry in hull.starting_craft:
-		craft_bits.append("%d %s" % [int(entry.count), str(Game.defs.craft[entry.id].name)])
-	var rack := ThemeKit.label("Rack: " + ", ".join(craft_bits), 13, Color("9fd0c8"))
+		var count := int(entry.count)
+		var word := _craft_word(str(entry.id))
+		if count != 1:
+			word += "s"
+		craft_bits.append("%d %s" % [count, word])
+	var rack := ThemeKit.label("Rack: " + " · ".join(craft_bits), 13, Color("9fd0c8"))
 	rack.name = "Rack"
 	rack.autowrap_mode = TextServer.AUTOWRAP_OFF
 	box.add_child(rack)
 	var choose := ThemeKit.button("Take the %s" % hull.callsign)
+	choose.name = "Take"
 	choose.pressed.connect(_choose.bind(class_id))
 	box.add_child(choose)
 	return card
@@ -541,17 +594,208 @@ func _card(class_id: String) -> PanelContainer:
 
 func _preview(class_id: String, modules: Array, caption: String) -> VBoxContainer:
 	var col := VBoxContainer.new()
-	var preview := KeelPortrait.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var preview := KeelPlan.new()
 	preview.class_id = class_id
 	preview.modules = modules
-	preview.custom_minimum_size = Vector2(140, 110)
+	preview.custom_minimum_size = Vector2(120, 56)
 	preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(preview)
 	var caption_line := ThemeKit.label(caption, 12, Color("8a7344"))
+	caption_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	caption_line.autowrap_mode = TextServer.AUTOWRAP_OFF
 	col.add_child(caption_line)
 	return col
+
+
+func _role_word(role: String) -> String:
+	match role:
+		"scout":
+			return "Scout"
+		"hauler":
+			return "Hauler"
+		"corvette":
+			return "Corvette"
+		_:
+			return role.capitalize()
+
+
+func _card_style(class_id: String, on: bool) -> StyleBoxFlat:
+	var box := ThemeKit.glass(on)
+	var accent := Color("8a7344")
+	if Game.defs.has("ships") and Game.defs.ships.has(class_id):
+		accent = Color(str(Game.defs.ships[class_id].accent))
+	box.content_margin_left = 8
+	box.content_margin_right = 8
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
+	if on:
+		# A dark glass with a hint of the hull color. A translucent accent
+		# let the ice show through the words.
+		var tint := Color(0.025, 0.04, 0.05, 1.0).lerp(accent, 0.08)
+		tint.a = 0.94
+		box.bg_color = tint
+		box.border_color = accent
+		box.set_border_width_all(2)
+		box.shadow_color = Color(accent.r, accent.g, accent.b, 0.28)
+		box.shadow_size = 12
+	else:
+		box.border_color = Color(0.4, 0.55, 0.6, 0.28)
+		box.bg_color = Color(0.018, 0.03, 0.04, 0.9)
+		box.set_border_width_all(1)
+		box.shadow_size = 6
+	return box
+
+
+func _mark_focus(klass: String) -> void:
+	if keel_row == null or klass == _shown_keel:
+		return
+	_shown_keel = klass
+	var screen := get_viewport().get_visible_rect().size
+	var two := (screen.x < 900.0 or screen.y < 560.0 or screen.y > screen.x) and screen.x > screen.y
+	for card in keel_row.get_children():
+		var id := str(card.get_meta("class_id", ""))
+		var on := id == klass
+		var panel := card as PanelContainer
+		if panel != null:
+			panel.add_theme_stylebox_override("panel", _card_style(id, on))
+		var stripe := card.find_child("Stripe", true, false) as ColorRect
+		var accent := Color("8a7344")
+		if Game.defs.ships.has(id):
+			accent = Color(str(Game.defs.ships[id].accent))
+		if stripe != null:
+			stripe.color = accent
+			stripe.color.a = 1.0 if on else 0.45
+			stripe.custom_minimum_size = Vector2(0, 4 if on else 3)
+		var callsign := card.find_child("Callsign", true, false) as Label
+		if callsign != null:
+			callsign.add_theme_color_override("font_color", Color("f7f1e4") if on else Color("e7f3f6"))
+		var take := card.find_child("Take", true, false) as Button
+		if take != null:
+			ThemeKit.paint(take, on)
+			if two:
+				take.add_theme_font_size_override("font_size", 12)
+				_tighten_button(take)
+
+
+func _paint_depart(button: Button, primary: bool) -> void:
+	if not primary:
+		ThemeKit.paint(button, false)
+		return
+	# Gold for the way in. The dock actions stay on the cyan glass.
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color(0.14, 0.11, 0.05, 0.94)
+	normal.border_color = Color(0.86, 0.72, 0.4, 0.95)
+	normal.set_border_width_all(1)
+	normal.set_corner_radius_all(8)
+	normal.content_margin_left = 12
+	normal.content_margin_right = 12
+	normal.content_margin_top = 8
+	normal.content_margin_bottom = 8
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = Color(0.22, 0.17, 0.08, 0.96)
+	hover.border_color = Color(0.95, 0.84, 0.55, 1.0)
+	var pressed := normal.duplicate() as StyleBoxFlat
+	pressed.bg_color = Color(0.28, 0.21, 0.1, 0.98)
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", hover)
+	button.add_theme_stylebox_override("pressed", pressed)
+	button.add_theme_stylebox_override("disabled", ThemeKit._quiet_box())
+	button.add_theme_color_override("font_color", Color("f6edd8"))
+	button.add_theme_color_override("font_hover_color", Color("fff8ea"))
+	button.add_theme_font_size_override("font_size", 16)
+
+
+func _bolt_name(class_id: String) -> String:
+	if class_id == "vesper":
+		return "Spine mast"
+	if class_id == "anvil":
+		return "Wide bay"
+	if class_id == "kestrel":
+		return "Wing guns"
+	return "Bolted"
+
+
+func _craft_word(craft_id: String) -> String:
+	match craft_id:
+		"survey_probe":
+			return "probe"
+		"harvest_drone":
+			return "drone"
+		"salvage_tender":
+			return "tender"
+		"livestock_lighter":
+			return "lighter"
+		"fighter":
+			return "fighter"
+		_:
+			return craft_id
+
+
+func _stat_row(turn: float, hold: int, gun: int, signature: String) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.name = "Stats"
+	row.add_theme_constant_override("separation", 6)
+	row.add_child(_stat_bit("%.0f°/s" % turn))
+	row.add_child(_stat_bit("Hold %d" % hold))
+	row.add_child(_stat_bit("Gun %d" % gun))
+	row.add_child(_stat_bit(signature))
+	return row
+
+
+func _stat_bit(value: String) -> Label:
+	var bit := ThemeKit.label(value, 13, Color("e8f2f4"))
+	bit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bit.autowrap_mode = TextServer.AUTOWRAP_OFF
+	return bit
+
+
+func _share_plan_frame(previews: HBoxContainer) -> void:
+	var plans: Array = []
+	var union := Rect2()
+	var started := false
+	for col in previews.get_children():
+		if col.get_child_count() < 1:
+			continue
+		var plan := col.get_child(0) as KeelPlan
+		if plan == null:
+			continue
+		plans.append(plan)
+		var bounds := plan.measured_bounds()
+		if bounds.size == Vector2.ZERO:
+			continue
+		if started:
+			union = union.merge(bounds)
+		else:
+			union = bounds
+			started = true
+	if started == false:
+		return
+	union = union.grow(3.0)
+	for plan in plans:
+		(plan as KeelPlan).frame = union
+
+
+func _style_field(line: LineEdit) -> void:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.012, 0.025, 0.034, 0.94)
+	box.border_color = Color(0.45, 0.68, 0.76, 0.5)
+	box.set_border_width_all(1)
+	box.set_corner_radius_all(8)
+	box.content_margin_left = 10
+	box.content_margin_right = 10
+	box.content_margin_top = 6
+	box.content_margin_bottom = 6
+	var focus := box.duplicate() as StyleBoxFlat
+	focus.border_color = Color(0.62, 0.92, 0.96, 0.92)
+	line.add_theme_stylebox_override("normal", box)
+	line.add_theme_stylebox_override("focus", focus)
+	line.add_theme_color_override("font_color", Color("d7eef2"))
+	line.add_theme_color_override("font_placeholder_color", Color("7a8e96"))
+	line.add_theme_color_override("caret_color", Color("9eecf5"))
+	line.add_theme_font_size_override("font_size", 14)
 
 
 class Backdrop extends Control:
@@ -572,99 +816,75 @@ class Backdrop extends Control:
 			draw_rect(Rect2(0, 0, minf(340.0, size.x * 0.48), size.y), Color(0.015, 0.02, 0.03, 0.26), true)
 
 
-class KeelPortrait extends SubViewportContainer:
+## Plan view of a keel, the same silhouette the yard bolts onto.
+## A 140px spinning mesh read as texture. The plan reads as a ship.
+class KeelPlan extends Control:
 	var class_id := "vesper"
 	var modules: Array = []
-	var _vp: SubViewport
-	var _cam: Camera3D
-	var _stage: Node3D
-	var _holder: Node3D
-	var _yaw := 0.0
+	# Shared with the other plan on the card, so the bolt is the only change.
+	var frame := Rect2()
 
 	func _ready() -> void:
-		stretch = true
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
 
-	func _process(delta: float) -> void:
-		if is_visible_in_tree() == false:
-			if _vp != null:
-				_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
-			return
-		if _stage == null:
-			_boot()
-		if _holder == null and _stage != null and Game.defs.is_empty() == false and _stage.has_method("pose_portrait"):
-			_holder = _stage.pose_portrait(class_id, modules)
-		if _holder == null or Game.defs.is_empty():
-			return
-		_yaw += delta
-		_holder.rotation = Vector3(0.42, -0.62 + sin(_yaw * 0.45) * 0.28, 0.08)
-		_frame_hull()
-		if _vp.render_target_update_mode != SubViewport.UPDATE_ALWAYS:
-			_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	func measured_bounds() -> Rect2:
+		if Game.defs.is_empty() or Game.defs.ships.has(class_id) == false:
+			return Rect2()
+		var shapes: Array = Silhouette.shapes_of(Game.defs, modules)
+		var layers: Array = Silhouette.layers_of(Game.defs, modules)
+		return _bounds(Silhouette.parts(class_id, shapes, layers))
 
-	func _boot() -> void:
-		_vp = SubViewport.new()
-		_vp.name = "PortraitView"
-		_vp.own_world_3d = true
-		_vp.world_3d = World3D.new()
-		_vp.transparent_bg = true
-		_vp.handle_input_locally = false
-		_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
-		_vp.size = Vector2i(140, 110)
-		var env := WorldEnvironment.new()
-		var world := Environment.new()
-		world.background_mode = Environment.BG_COLOR
-		world.background_color = Color(0.02, 0.035, 0.05, 0.0)
-		world.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-		world.ambient_light_color = Color(0.62, 0.7, 0.82)
-		world.ambient_light_energy = 0.72
-		world.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-		env.environment = world
-		_vp.add_child(env)
-		_cam = Camera3D.new()
-		_cam.name = "PortraitEye"
-		_cam.current = true
-		_cam.fov = 28.0
-		_cam.near = 0.2
-		_cam.far = 4000.0
-		_vp.add_child(_cam)
-		_stage = preload("res://world/stage3d.gd").new()
-		_stage.name = "PortraitStage"
-		_stage.set("portrait_mode", true)
-		_stage.process_mode = Node.PROCESS_MODE_DISABLED
-		_vp.add_child(_stage)
-		add_child(_vp)
-		if Game.defs.is_empty() == false and _stage.has_method("pose_portrait"):
-			_holder = _stage.pose_portrait(class_id, modules)
+	func _draw() -> void:
+		if size.x < 8.0 or size.y < 8.0 or Game.defs.is_empty():
+			return
+		var hull: Dictionary = Game.defs.ships.get(class_id, {})
+		if hull.is_empty():
+			return
+		var accent := Color(str(hull.get("accent", "#d7e6c8")))
+		var body := Color(str(hull.get("color", "#1f6f73")))
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.012, 0.02, 0.028, 0.85))
+		var shapes: Array = Silhouette.shapes_of(Game.defs, modules)
+		var layers: Array = Silhouette.layers_of(Game.defs, modules)
+		var geom := Silhouette.parts(class_id, shapes, layers)
+		var bounds := frame if frame.size.x > 1.0 else _bounds(geom)
+		if bounds.size.x < 1.0 or bounds.size.y < 1.0:
+			return
+		# A wide hull (the Barn) stood on end so the beam uses the card width.
+		# A long hull stays nose-right, so the mast reads as extra length.
+		var margin := 6.0
+		var rot := 0.0
+		var span_x := bounds.size.x
+		var span_y := bounds.size.y
+		if bounds.size.y > bounds.size.x:
+			rot = -PI * 0.5
+			span_x = bounds.size.y
+			span_y = bounds.size.x
+		var fit_x := (size.x - margin * 2.0) / span_x
+		var fit_y := (size.y - margin * 2.0) / span_y
+		var plan_scale := minf(fit_x, fit_y)
+		var mid := bounds.position + bounds.size * 0.5
+		var origin := size * 0.5 - mid.rotated(rot) * plan_scale
+		Silhouette.draw(self, origin, rot, class_id, shapes, plan_scale, body, accent, 1.0, false, layers)
 
-	func _frame_hull() -> void:
-		if _cam == null or _holder == null:
-			return
-		var bounds := AABB()
-		var started := false
-		for child in _holder.get_children():
-			var mesh := child as VisualInstance3D
-			if mesh == null:
-				continue
-			var box: AABB = mesh.global_transform * mesh.get_aabb()
-			if started:
-				bounds = bounds.merge(box)
-			else:
-				bounds = box
-				started = true
-		if started == false:
-			return
-		var center := bounds.get_center()
-		var extent := bounds.size
-		var aspect := 1.35
-		if _vp != null and _vp.size.y > 0:
-			aspect = float(_vp.size.x) / float(_vp.size.y)
-		var v_half := tan(deg_to_rad(_cam.fov * 0.5))
-		var h_half := v_half * maxf(aspect, 0.4)
-		var dist_v := (extent.y * 0.72) / maxf(v_half, 0.05)
-		var dist_h := (maxf(extent.x, extent.z) * 0.46) / maxf(h_half, 0.05)
-		var dist := maxf(maxf(dist_v, dist_h), 18.0) * 1.05
-		# A three-quarter view, so the card shows the hull instead of a flat plan.
-		var eye := center + Vector3(0.35, 0.48, 1.0).normalized() * dist
-		_cam.position = eye
-		_cam.look_at(center, Vector3.UP)
+	func _bounds(geom: Dictionary) -> Rect2:
+		var lo := Vector2(1.0e9, 1.0e9)
+		var hi := Vector2(-1.0e9, -1.0e9)
+		var lists: Array = [geom.hull]
+		lists.append_array(geom.extras)
+		for poly in lists:
+			for point in poly:
+				lo.x = minf(lo.x, point.x)
+				lo.y = minf(lo.y, point.y)
+				hi.x = maxf(hi.x, point.x)
+				hi.y = maxf(hi.y, point.y)
+		for circle in geom.circles:
+			var center := Vector2(float(circle.x), float(circle.y))
+			var rad := float(circle.r)
+			lo.x = minf(lo.x, center.x - rad)
+			lo.y = minf(lo.y, center.y - rad)
+			hi.x = maxf(hi.x, center.x + rad)
+			hi.y = maxf(hi.y, center.y + rad)
+		if hi.x < lo.x:
+			return Rect2()
+		return Rect2(lo, hi - lo)
