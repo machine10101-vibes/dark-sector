@@ -715,6 +715,7 @@ func _build_actions() -> void:
 	action_scroll.add_child(action_row)
 	_group("COMBAT")
 	_action("Lock", func() -> void: Game.tap("lock_cycle", 1))
+	_action("Engage", _hud_engage)
 	_action("Stop", func() -> void: Game.tap("order", {"kind": "stop"}))
 	_group("SHIP")
 	_action("Ship", func() -> void: _toggle("bay"))
@@ -2029,6 +2030,22 @@ func _fit_stock_pane() -> void:
 		return
 	stock_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stock_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+
+func _hud_engage() -> void:
+	if overlay != null and overlay.has_method("_engage_lock"):
+		overlay.call("_engage_lock")
+		return
+	if Game.sim == null:
+		return
+	var lock := str(Game.sim.player.get("lock_id", ""))
+	if lock == "":
+		Game.sim.say("Lock a ship first.")
+		return
+	var socket := str(Game.sim.player.get("engage", ""))
+	if socket == "":
+		socket = "nose"
+	Game.tap("engage", {"socket": socket, "lock": lock, "name": "Main gun"})
 
 
 func _fleet_order(verb: String) -> void:

@@ -4,6 +4,8 @@ extends Control
 ## overview, the target card, and the objective tracker. It reads the sim and
 ## sends lock and order verbs; the host decides what they do.
 
+const Steer = preload("res://world/helm_steer.gd")
+
 const SHIELD_C := Color("6fc8ff")
 const ARMOR_C := Color("e8b36a")
 const HULL_C := Color("f07a6a")
@@ -28,6 +30,7 @@ var _keep_pick := 0
 var _font: Font
 var strike_box: PanelContainer
 var strike_list: VBoxContainer
+var _lmb: Dictionary = {}
 
 
 func _ready() -> void:
@@ -51,7 +54,7 @@ func _ready() -> void:
 	order_row.add_theme_constant_override("separation", 6)
 	order_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(order_row)
-	for spec in [["approach", "Approach"], ["orbit", "Orbit"], ["keep", "Keep"], ["stop", "Stop"], ["unlock", "✕"]]:
+	for spec in [["approach", "Approach"], ["orbit", "Orbit"], ["keep", "Keep"], ["engage", "Engage"], ["stop", "Stop"], ["unlock", "✕"]]:
 		var button := ThemeKit.button(str(spec[1]), false)
 		button.custom_minimum_size = Vector2(0, 30)
 		button.add_theme_font_size_override("font_size", 12)
@@ -316,24 +319,44 @@ func _unhandled_input(event: InputEvent) -> void:
 			_press_order(order)
 			get_viewport().set_input_as_handled()
 		return
-	if event is InputEventMouseButton and event.pressed:
-		var press := event as InputEventMouseButton
-		if press.button_index != MOUSE_BUTTON_LEFT and press.button_index != MOUSE_BUTTON_RIGHT:
-			return
-		var at := press.position
-		var hit := _hit(at)
-		if press.button_index == MOUSE_BUTTON_RIGHT:
-			if hit.is_empty():
-				_close_strike()
-				return
-			_open_strike(hit, at)
+	if event is InputEventMouseMotion and bool(_lmb.get("on", false)):
+		var motion := event as InputEventMouseMotion
+		if bool(_lmb.get("drag", false)) or Steer.is_drag(_lmb.at, motion.position):
+			_lmb.drag = true
+			Game.look_cam(motion.relative.x, motion.relative.y)
 			get_viewport().set_input_as_handled()
-			return
-		_close_strike()
-		if hit.is_empty():
-			return
-		_use_hit(hit, press.double_click)
+		return
+	if not (event is InputEventMouseButton):
+		return
+	var press := event as InputEventMouseButton
+	if press.button_index == MOUSE_BUTTON_LEFT:
+		if press.pressed:
+			_lmb = {
+				"on": true,
+				"at": press.position,
+				"hit": _hit(press.position),
+				"double": press.double_click,
+				"drag": false,
+			}
+		else:
+			_finish_left(press.position)
 		get_viewport().set_input_as_handled()
+		return
+	if press.button_index != MOUSE_BUTTON_RIGHT or not press.pressed:
+		return
+	var at := press.position
+	var hit := _hit(at)
+	var act := Steer.gesture(at, at, press.double_click, hit.is_empty(), true)
+	if act == "engage":
+		_engage_hit(hit)
+		get_viewport().set_input_as_handled()
+		return
+	if act == "command":
+		_open_command(at)
+		get_viewport().set_input_as_handled()
+		return
+	_open_strike(hit, at)
+	get_viewport().set_input_as_handled()
 
 
 func _overview_input(event: InputEvent) -> void:
@@ -479,12 +502,50 @@ func _project(cam: Camera3D, stage, world_pos: Vector2, world_r: float, lo: floa
 	return {"at": sp, "rad": rad}
 
 
+func _finish_left(at: Vector2) -> void:
+	var started: Dictionary = _lmb.duplicate()
+	_lmb = {}
+	if started.is_empty() or bool(started.get("drag", false)):
+		return
+	var hit: Dictionary = started.get("hit", {})
+	if typeof(hit) != TYPE_DICTIONARY:
+		hit = {}
+	var act := Steer.gesture(started.at, at, bool(started.get("double", false)), hit.is_empty(), false)
+	if act == "look":
+		return
+	_close_strike()
+	if act == "clear":
+		if Game.sim != null and str(Game.sim.player.get("lock_id", "")) != "":
+			Game.tap("lock", "")
+		return
+	if act == "fly":
+		_fly_screen(started.at)
+		return
+	_use_hit(hit, act == "approach" or bool(started.get("double", false)))
+
+
 func _use_hit(hit: Dictionary, double: bool) -> void:
 	var kind := str(hit.get("kind", ""))
 	if kind == "ship" or kind == "wreck":
 		_pick(str(hit.id), kind == "wreck", double)
 		return
 	_approach_hit(hit)
+
+
+func _fly_screen(at: Vector2) -> void:
+	var eye := _eye()
+	if eye.is_empty():
+		return
+	var pos: Vector2 = Steer.plane_point(eye.cam, at)
+	if pos == Vector2.INF:
+		return
+	Game.tap("order", {
+		"kind": "approach",
+		"x": pos.x,
+		"y": pos.y,
+		"range": 48.0,
+		"label": "that heading",
+	})
 
 
 func _approach_hit(hit: Dictionary) -> void:
@@ -505,16 +566,22 @@ func _open_strike(hit: Dictionary, at: Vector2) -> void:
 	if kind == "ship" or kind == "wreck":
 		_strike_button("Target", _strike_target.bind(str(hit.id), kind == "wreck"))
 		if kind == "ship":
+			_strike_button("Engage", _engage_hit.bind(hit))
+			_strike_button("Approach", _strike_helm.bind(str(hit.id), "approach"))
+			_strike_button("Orbit", _strike_helm.bind(str(hit.id), "orbit"))
+			_strike_button("Keep at range", _strike_helm.bind(str(hit.id), "keep"))
 			_strike_label("WEAPONS")
 			for gun in _weapon_rows():
 				_strike_button("Attack · %s" % str(gun.name), _strike_gun.bind(str(hit.id), str(gun.socket), str(gun.name)))
 			var wing: Array = _fighter_rows()
+			_strike_label("FLEET")
 			if not wing.is_empty():
-				_strike_label("FLEET")
 				for craft in wing:
 					_strike_button("Attack · %s" % str(craft.name), _strike_craft.bind(str(hit.id), str(craft.uid)))
 				if wing.size() > 1:
 					_strike_button("Attack · the wing", _strike_wing.bind(str(hit.id)))
+			_strike_button("Form on me", _fleet_verb.bind("form"))
+			_strike_button("Recall the wing", _fleet_verb.bind("recall"))
 	elif kind == "gate":
 		_strike_button("Approach", _strike_approach.bind(hit))
 		_strike_button("Take the lane", _strike_lane.bind(str(hit.id)))
@@ -530,6 +597,31 @@ func _open_strike(hit: Dictionary, at: Vector2) -> void:
 			_strike_button("Harvest", _strike_harvest.bind(seam))
 	else:
 		_strike_button("Approach", _strike_approach.bind(hit))
+	_place_strike(at)
+
+
+func _open_command(at: Vector2) -> void:
+	_close_strike()
+	var lock := ""
+	if Game.sim != null:
+		lock = str(Game.sim.player.get("lock_id", ""))
+	_strike_title("Command")
+	_strike_label("HELM")
+	_strike_button("All stop", _press_order.bind("stop"))
+	if lock != "":
+		_strike_button("Approach the lock", _press_order.bind("approach"))
+		_strike_button("Orbit the lock", _press_order.bind("orbit"))
+		_strike_button("Keep at range", _press_order.bind("keep"))
+		_strike_button("Engage", _engage_lock)
+	_strike_label("FLEET")
+	_strike_button("Form on me", _fleet_verb.bind("form"))
+	if lock != "":
+		_strike_button("Attack with the wing", _strike_wing.bind(lock))
+	_strike_button("Recall the wing", _fleet_verb.bind("recall"))
+	_place_strike(at)
+
+
+func _place_strike(at: Vector2) -> void:
 	var rows := strike_list.get_child_count()
 	var height := 16.0 + float(rows) * 40.0
 	var box := Vector2(248.0, height)
@@ -744,9 +836,22 @@ func _pick(id: String, wreck: bool, double: bool) -> void:
 
 
 func _press_order(kind: String) -> void:
+	_close_strike()
 	if Game.sim == null:
 		return
 	var target := str(Game.sim.player.get("lock_id", ""))
+	_issue_order(kind, target)
+
+
+func _strike_helm(id: String, kind: String) -> void:
+	_close_strike()
+	Game.tap("lock", id)
+	_issue_order(kind, id)
+
+
+func _issue_order(kind: String, target: String) -> void:
+	if Game.sim == null:
+		return
 	match kind:
 		"unlock":
 			Game.tap("lock", "")
@@ -765,6 +870,54 @@ func _press_order(kind: String) -> void:
 		"approach":
 			if target != "":
 				Game.tap("order", {"kind": "approach", "target": target})
+		"engage":
+			_engage_id(target)
+
+
+func _engage_lock() -> void:
+	_close_strike()
+	if Game.sim == null:
+		return
+	_engage_id(str(Game.sim.player.get("lock_id", "")))
+
+
+func _engage_hit(hit: Dictionary) -> void:
+	_close_strike()
+	if str(hit.get("kind", "")) != "ship":
+		return
+	_engage_id(str(hit.id))
+
+
+func _engage_id(id: String) -> void:
+	if id == "":
+		if Game.sim != null:
+			Game.sim.say("Lock a ship first.")
+		return
+	var rows := _weapon_rows()
+	var socket := "nose"
+	var gun_name := "Main gun"
+	if not rows.is_empty():
+		socket = str(rows[0].socket)
+		gun_name = str(rows[0].name)
+	var armed := ""
+	if Game.sim != null:
+		armed = str(Game.sim.player.get("engage", ""))
+	if armed != "":
+		socket = armed
+		for gun in rows:
+			var row: Dictionary = gun
+			if str(row.socket) == armed:
+				gun_name = str(row.name)
+	Game.tap("engage", {"socket": socket, "lock": id, "name": gun_name})
+
+
+func _fleet_verb(verb: String) -> void:
+	_close_strike()
+	if Game.sim == null:
+		return
+	var message := CraftOrders.fleet(Game.sim, verb)
+	if message != "":
+		Game.sim.say(message)
 
 
 # Brackets -----------------------------------------------------------------
@@ -1117,6 +1270,8 @@ func _draw_card(pane: Control) -> void:
 	for kind in order_buttons.keys():
 		var button: Button = order_buttons[kind]
 		var on: bool = str(order.get("kind", "")) == str(kind)
+		if kind == "engage":
+			on = str(p.get("engage", "")) != ""
 		button.add_theme_color_override("font_color", Color("9be7d0") if on else Color("c5d6dc"))
 	(order_buttons["orbit"] as Button).text = "Orbit %d" % int(ORBIT_RANGES[_orbit_pick])
 	(order_buttons["keep"] as Button).text = "Keep %d" % int(KEEP_RANGES[_keep_pick])

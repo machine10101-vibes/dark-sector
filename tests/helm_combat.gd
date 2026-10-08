@@ -1,5 +1,7 @@
 extends SceneTree
 
+const Steer = preload("res://world/helm_steer.gd")
+
 var defs: Dictionary = {}
 var fails := 0
 var reached := 0
@@ -210,6 +212,18 @@ func _click_orders() -> void:
 	var buoy := HelmCombat.pick_mark(Vector2(120, 0), [behind, ring])
 	check(str(buoy.get("id", "")) == "helion_lane", "a click on a lane buoy selects the ring")
 	check(HelmCombat.pick_mark(Vector2(500, 0), [behind, ship]).is_empty(), "empty sky stays empty")
+	check(not Steer.is_drag(Vector2.ZERO, Vector2(3, 2)), "a short tap stays a click")
+	check(Steer.is_drag(Vector2.ZERO, Vector2(8, 1)), "a pull past seven pixels is a drag")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, false, false) == "lock", "left click on a mark locks")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), true, false, false) == "approach", "double click on a mark approaches")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, true, false) == "clear", "empty left click clears the lock")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), true, true, false) == "fly", "empty double click flies the heading")
+	check(Steer.gesture(Vector2.ZERO, Vector2(20, 0), false, true, false) == "look", "left drag looks")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, false, true) == "strike", "right click opens strike")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, true, true) == "command", "empty right click opens command")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), true, false, true) == "engage", "double right click engages")
+	var look: Dictionary = Steer.apply_look(0.0, 0.74, 20.0, 0.0)
+	check(float(look.yaw) < 0.0 and str(look.mode) == "orbit", "look drag turns the eye into orbit")
 	var sim := make("kestrel")
 	_free(sim)
 	var quarry := _actor(sim, "red_keel")

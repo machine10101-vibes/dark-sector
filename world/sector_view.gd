@@ -4,6 +4,9 @@ var cam: Camera2D
 var font: Font
 var snapped := false
 var helm_yaw := 0.0
+var helm_thrust := 0.0
+var helm_retro := 0.0
+var helm_strafe := 0.0
 
 
 func _ready() -> void:
@@ -97,11 +100,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if Game.mode != "sector" or Game.map_open:
 		return
 	if event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_MIDDLE) != 0:
-		if Game.cam_mode == "tactical":
-			Game.cam_mode = "orbit"
-		Game.cam_mode = "orbit" if Game.cam_mode == "chase" else Game.cam_mode
-		Game.cam_yaw = wrapf(Game.cam_yaw - event.relative.x * 0.006, -PI, PI)
-		Game.cam_pitch = clampf(Game.cam_pitch + event.relative.y * 0.005, 0.2, 1.48)
+		Game.look_cam(event.relative.x, event.relative.y)
 		return
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -127,11 +126,17 @@ func _zoom(direction: float) -> void:
 func _cmd(delta: float) -> Dictionary:
 	if not Game.sim.player.alive:
 		helm_yaw = 0.0
+		helm_thrust = 0.0
+		helm_retro = 0.0
+		helm_strafe = 0.0
 		return {}
 	# A corp field, the chat line, or the sector chart owns the keys.
 	# A stick that is still deflected must not keep thrusting while that lasts.
 	if Game.text_entry or Game.map_open:
-		helm_yaw = move_toward(helm_yaw, 0.0, 24.0 * delta)
+		helm_yaw = move_toward(helm_yaw, 0.0, 28.0 * delta)
+		helm_thrust = move_toward(helm_thrust, 0.0, 22.0 * delta)
+		helm_retro = move_toward(helm_retro, 0.0, 22.0 * delta)
+		helm_strafe = move_toward(helm_strafe, 0.0, 22.0 * delta)
 		Game.cast_pulse = 0.0
 		var quiet := {
 			"thrust": 0.0,
@@ -156,27 +161,30 @@ func _cmd(delta: float) -> Dictionary:
 		rot -= 1.0
 	if rot == 0.0:
 		rot = -float(stick.get("rot", 0.0))
-	helm_yaw = move_toward(helm_yaw, rot, 24.0 * delta)
+	helm_yaw = move_toward(helm_yaw, rot, 28.0 * delta)
 	rot = helm_yaw
-	var strafe := 0.0
+	var want_strafe := 0.0
 	# orthogonal() is clockwise, so negative strafe is left of the nose.
 	# Q and Port stay on that side. E and Stbd stay on the right.
 	if Game.flight_down(KEY_Q):
-		strafe -= 1.0
+		want_strafe -= 1.0
 	if Game.flight_down(KEY_E):
-		strafe += 1.0
-	if strafe == 0.0:
-		strafe = float(stick.get("strafe", 0.0))
+		want_strafe += 1.0
+	if want_strafe == 0.0:
+		want_strafe = float(stick.get("strafe", 0.0))
+	helm_strafe = move_toward(helm_strafe, want_strafe, 26.0 * delta)
 	var pulsed := Game.cast_pulse > 0.0
 	if pulsed:
 		Game.cast_pulse = maxf(0.0, Game.cast_pulse - delta)
-	var thrust := 1.0 if (Game.flight_down(KEY_W) or Game.flight_down(KEY_UP) or pulsed) else float(stick.get("thrust", 0.0))
-	var retro := 1.0 if (Game.flight_down(KEY_S) or Game.flight_down(KEY_DOWN)) else float(stick.get("retro", 0.0))
+	var want_thrust := 1.0 if (Game.flight_down(KEY_W) or Game.flight_down(KEY_UP) or pulsed) else float(stick.get("thrust", 0.0))
+	var want_retro := 1.0 if (Game.flight_down(KEY_S) or Game.flight_down(KEY_DOWN)) else float(stick.get("retro", 0.0))
+	helm_thrust = move_toward(helm_thrust, want_thrust, 20.0 * delta)
+	helm_retro = move_toward(helm_retro, want_retro, 20.0 * delta)
 	var cmd := {
-		"thrust": thrust,
-		"retro": retro,
+		"thrust": helm_thrust,
+		"retro": helm_retro,
 		"rot": rot,
-		"strafe": strafe,
+		"strafe": helm_strafe,
 		"fire": Game.flight_down(KEY_SPACE) or bool(stick.get("fire", false)),
 		"boost": Game.flight_down(KEY_SHIFT) or bool(stick.get("boost", false)),
 	}
