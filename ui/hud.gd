@@ -14,6 +14,9 @@ var panel_scroll: ScrollContainer
 var panel_title: Label
 var panel_body: Label
 var hangar_box: VBoxContainer
+var fleet_box: VBoxContainer
+var stock_box: VBoxContainer
+var stock_sig := ""
 var bay_box: VBoxContainer
 var dossier_box: VBoxContainer
 var pause_box: PanelContainer
@@ -23,6 +26,9 @@ var hangar_rows: Dictionary = {}
 var hangar_node := "aegis_prime"
 var hangar_target: Label
 var hangar_sig := ""
+var fleet_rows: Dictionary = {}
+var fleet_target: Label
+var fleet_sig := ""
 var bay_preview: Control
 var bay_detail: Label
 var bay_buttons: Dictionary = {}
@@ -209,7 +215,7 @@ func _layout_chrome(screen: Vector2) -> void:
 		if show_tag and screen.y < 430.0:
 			helm_flight.add_theme_font_size_override("font_size", 14)
 		else:
-			helm_flight.add_theme_font_size_override("font_size", 18)
+			helm_flight.add_theme_font_size_override("font_size", 16)
 	if helm_zone != null:
 		helm_zone.visible = not short
 	if helm_cargo != null:
@@ -217,17 +223,25 @@ func _layout_chrome(screen: Vector2) -> void:
 	if helm_craft != null:
 		helm_craft.visible = not compact
 	if haul_cue != null:
-		haul_cue.add_theme_font_size_override("font_size", 15 if short else 20)
-	var corner := 84.0
+		haul_cue.add_theme_font_size_override("font_size", 14 if short else 15)
+	var stacked_corners := screen.x < 820.0
+	var corner := 84.0 if stacked_corners else 76.0
+	var cluster := corner if stacked_corners else corner * 2.0 + 6.0
 	if hold_button != null:
-		hold_button.position = Vector2(screen.x - corner - 8.0, 8.0)
+		if stacked_corners:
+			hold_button.position = Vector2(screen.x - corner - 8.0, 8.0)
+		else:
+			hold_button.position = Vector2(screen.x - cluster - 8.0, 8.0)
 		hold_button.size = Vector2(corner, 40.0)
 	if stick_button != null:
-		stick_button.position = Vector2(screen.x - corner - 8.0, 52.0)
+		if stacked_corners:
+			stick_button.position = Vector2(screen.x - corner - 8.0, 52.0)
+		else:
+			stick_button.position = Vector2(screen.x - corner - 8.0, 8.0)
 		stick_button.size = Vector2(corner, 40.0)
-	var helm_w := screen.x - margin - corner - 16.0
+	var helm_w := screen.x - margin - cluster - 16.0
 	if not compact:
-		helm_w = minf(520.0, screen.x - 220.0)
+		helm_w = minf(348.0, screen.x - cluster - 24.0)
 		if panel != null and panel.visible:
 			helm_w = minf(helm_w, screen.x - 500.0)
 	helm_w = clampf(helm_w, 148.0, screen.x - margin * 2.0)
@@ -249,14 +263,14 @@ func _layout_chrome(screen: Vector2) -> void:
 		right = left + need
 	var bar_room := right - left
 	_size_primary(bar_room < 520.0)
-	var primary_h := 72.0
+	var primary_h := 50.0
 	if primary_bar != null:
-		primary_h = maxf(primary_bar.get_combined_minimum_size().y, 60.0)
-	var secondary_h := 48.0
-	var pad_top := screen.y - 8.0
+		primary_h = maxf(primary_bar.get_combined_minimum_size().y, 46.0)
+	var secondary_h := 38.0
+	var pad_top := screen.y - 6.0
 	if touch_on and pad != null and pad.has_method("band_top"):
 		pad_top = pad.band_top(screen, short)
-	var gap := 8.0
+	var gap := 4.0
 	var secondary_y := pad_top - secondary_h - gap
 	var primary_y := secondary_y - primary_h - gap
 	primary_y = maxf(primary_y, 72.0 if short else 96.0)
@@ -272,8 +286,12 @@ func _layout_chrome(screen: Vector2) -> void:
 		primary_bar.position = Vector2(left, primary_y)
 		primary_bar.size = Vector2(maxf(primary_w, 120.0), primary_h)
 	if action_scroll != null:
+		var action_w := right - left
+		if not land_panel:
+			var cap := 720.0 if not compact else action_w
+			action_w = minf(action_w, _action_span(cap))
 		action_scroll.position = Vector2(left, secondary_y)
-		action_scroll.size = Vector2(maxf(right - left, 120.0), secondary_h)
+		action_scroll.size = Vector2(maxf(action_w, 120.0), secondary_h)
 	var status_top := 8.0
 	var room_bottom := primary_y - 8.0
 	if stat_hull != null:
@@ -286,7 +304,7 @@ func _layout_chrome(screen: Vector2) -> void:
 		status_card.position = Vector2(margin, status_top)
 		var want := 72.0
 		if helm_box != null:
-			want = helm_box.get_combined_minimum_size().y + 16.0
+			want = helm_box.get_combined_minimum_size().y + 8.0
 		var cap := maxf(72.0, room_bottom - status_top - 8.0)
 		status_card.size = Vector2(helm_w, minf(want, cap))
 		status_card.clip_contents = true
@@ -296,17 +314,17 @@ func _layout_chrome(screen: Vector2) -> void:
 	if banner != null:
 		var banner_y := status_bottom + 4.0
 		banner.position = Vector2(margin, banner_y)
-		banner.size = Vector2(helm_w, 28.0 if short else 32.0)
+		banner.size = Vector2(helm_w, 22.0 if short else 24.0)
 		banner.visible = banner.text != "" and banner_y + banner.size.y < room_bottom - 36.0
 	if log_card != null:
 		var log_y := status_bottom + 6.0
 		if banner != null and banner.visible:
 			log_y = banner.position.y + banner.size.y + 4.0
-		var log_cap := 44.0 if short else (64.0 if compact else 72.0)
+		var log_cap := 36.0 if short else (40.0 if compact else 44.0)
 		var log_room := room_bottom - 30.0 - log_y
 		var log_h := minf(log_cap, log_room)
 		log_card.position = Vector2(margin, log_y)
-		log_card.size = Vector2(helm_w if compact or short else minf(620.0, screen.x - margin * 2.0), maxf(log_h, 0.0))
+		log_card.size = Vector2(helm_w, maxf(log_h, 0.0))
 		if log_label != null and log_label.text == "":
 			log_card.visible = false
 		elif log_h < 28.0:
@@ -346,6 +364,10 @@ func _process(_delta: float) -> void:
 		dead_box.hide()
 	if panel_kind == "hangar":
 		_refresh_hangar()
+	elif panel_kind == "fleet":
+		_refresh_fleet()
+	elif panel_kind == "stock":
+		_refresh_stock()
 	elif panel_kind == "dossier":
 		dossier_timer -= _delta
 		if dossier_timer <= 0.0:
@@ -459,16 +481,16 @@ func _build_helm() -> void:
 	var status_panel := Panel.new()
 	status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	status_panel.add_theme_stylebox_override("panel", ThemeKit.glass(true))
+	status_panel.add_theme_stylebox_override("panel", ThemeKit.rail(true))
 	status_card.add_child(status_panel)
 	helm_box = VBoxContainer.new()
 	helm_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	helm_box.add_theme_constant_override("separation", 4)
 	helm_box.set_anchors_preset(Control.PRESET_FULL_RECT)
-	helm_box.offset_left = 12
-	helm_box.offset_top = 8
-	helm_box.offset_right = -12
-	helm_box.offset_bottom = -8
+	helm_box.offset_left = 10
+	helm_box.offset_top = 5
+	helm_box.offset_right = -8
+	helm_box.offset_bottom = -4
 	status_card.add_child(helm_box)
 	var box := helm_box
 	helm_name = ThemeKit.label("DARK SECTOR", 12, Color("7ed0dc"))
@@ -480,8 +502,8 @@ func _build_helm() -> void:
 	stats_grid = GridContainer.new()
 	stats_grid.columns = 4
 	stats_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stats_grid.add_theme_constant_override("h_separation", 8)
-	stats_grid.add_theme_constant_override("v_separation", 6)
+	stats_grid.add_theme_constant_override("h_separation", 4)
+	stats_grid.add_theme_constant_override("v_separation", 2)
 	box.add_child(helm_name)
 	box.add_child(helm_flight)
 	box.add_child(stats_grid)
@@ -505,7 +527,7 @@ func _build_helm() -> void:
 	root.add_child(banner)
 	log_card = PanelContainer.new()
 	log_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	log_card.add_theme_stylebox_override("panel", ThemeKit.glass(false))
+	log_card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
 	root.add_child(log_card)
 	log_label = ThemeKit.label("", 13, Color("d5e4e8"))
 	log_label.clip_text = true
@@ -517,8 +539,8 @@ func _chip(text: String, strong: bool) -> Label:
 	var chip := PanelContainer.new()
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chip.add_theme_stylebox_override("panel", ThemeKit.chip_box(strong))
-	var lab := ThemeKit.label(text, 16 if strong else 13, Color("f4fcff") if strong else Color("c5d6dc"))
+	chip.add_theme_stylebox_override("panel", ThemeKit.slim_chip(strong))
+	var lab := ThemeKit.label(text, 13 if strong else 12, Color("f4fcff") if strong else Color("c5d6dc"))
 	lab.autowrap_mode = TextServer.AUTOWRAP_OFF
 	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	chip.add_child(lab)
@@ -531,6 +553,7 @@ func _build_panel() -> void:
 	panel.visible = false
 	panel.clip_contents = true
 	panel.custom_minimum_size = Vector2(420, 400)
+	panel.add_theme_stylebox_override("panel", ThemeKit.rail(true))
 	root.add_child(panel)
 	var margin := MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -576,6 +599,13 @@ func _build_panel() -> void:
 	hangar_box = VBoxContainer.new()
 	hangar_box.visible = false
 	inner.add_child(hangar_box)
+	fleet_box = VBoxContainer.new()
+	fleet_box.visible = false
+	inner.add_child(fleet_box)
+	stock_box = VBoxContainer.new()
+	stock_box.visible = false
+	stock_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.add_child(stock_box)
 	dossier_box = VBoxContainer.new()
 	dossier_box.visible = false
 	inner.add_child(dossier_box)
@@ -642,7 +672,7 @@ func _size_primary(is_compact: bool) -> void:
 func _mount_primary() -> void:
 	primary_bar = PanelContainer.new()
 	primary_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	primary_bar.add_theme_stylebox_override("panel", ThemeKit.glass(true))
+	primary_bar.add_theme_stylebox_override("panel", ThemeKit.rail(true))
 	root.add_child(primary_bar)
 	primary_row = HBoxContainer.new()
 	primary_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -661,6 +691,9 @@ func _mount_primary() -> void:
 	probe_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	probe_button.pressed.connect(func() -> void: _launch("survey_probe"))
 	primary_row.add_child(probe_button)
+	for node in primary_row.get_children():
+		if node is Button:
+			_sharpen(node)
 
 
 func _reparent(node: Control) -> void:
@@ -682,9 +715,12 @@ func _build_actions() -> void:
 	action_scroll.add_child(action_row)
 	_group("COMBAT")
 	_action("Lock", func() -> void: Game.tap("lock_cycle", 1))
+	_action("Engage", _hud_engage)
 	_action("Stop", func() -> void: Game.tap("order", {"kind": "stop"}))
 	_group("SHIP")
 	_action("Ship", func() -> void: _toggle("bay"))
+	_action("Fleet", func() -> void: _toggle("fleet"))
+	_action("Stock", func() -> void: _toggle("stock"))
 	_action("Weld", _repair)
 	_action("Hangar", func() -> void: _toggle("hangar"))
 	_action("Harvest", func() -> void: _launch("harvest_drone"))
@@ -737,10 +773,39 @@ func _group(text: String) -> void:
 	action_row.add_child(tag)
 
 
+func _action_span(limit: float) -> float:
+	if action_row == null:
+		return limit
+	var x := 0.0
+	var last := 80.0
+	var gap := float(action_row.get_theme_constant("separation"))
+	for child in action_row.get_children():
+		var node := child as Control
+		var w := node.get_combined_minimum_size().x
+		if x + w > limit and last > 120.0:
+			return last
+		x += w
+		last = x
+		x += gap
+	return minf(last, limit)
+
+
+func _sharpen(node: Button) -> void:
+	for state in ["normal", "hover", "pressed"]:
+		var box := node.get_theme_stylebox(state, "Button") as StyleBoxFlat
+		if box == null:
+			continue
+		var copy := box.duplicate() as StyleBoxFlat
+		copy.set_corner_radius_all(2)
+		copy.content_margin_left = 10
+		copy.content_margin_right = 10
+		copy.content_margin_top = 4
+		copy.content_margin_bottom = 4
+		node.add_theme_stylebox_override(state, copy)
+
+
 func _action(text: String, call: Callable) -> void:
-	var node := ThemeKit.button(text, false)
-	node.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	node.custom_minimum_size = Vector2(84, 44)
+	var node := ThemeKit.slim_button(text)
 	node.pressed.connect(call)
 	action_row.add_child(node)
 
@@ -860,7 +925,7 @@ func _refresh_helm() -> void:
 	var bits: Array = []
 	for line in sim.lines:
 		bits.append(str(line.text))
-	var keep := 2 if compact else 3
+	var keep := 2
 	if bits.size() > keep:
 		bits = bits.slice(0, keep)
 	log_label.text = "\n".join(bits)
@@ -914,6 +979,9 @@ func _toggle(kind: String) -> void:
 	panel_body.visible = kind in ["heat", "quest", "claim"]
 	bay_box.visible = kind == "bay"
 	hangar_box.visible = kind == "hangar"
+	fleet_box.visible = kind == "fleet"
+	if stock_box != null:
+		stock_box.visible = kind == "stock"
 	dossier_box.visible = kind == "dossier"
 	board_box.visible = kind == "board"
 	if market_box != null:
@@ -925,6 +993,12 @@ func _toggle(kind: String) -> void:
 		"hangar":
 			panel_title.text = "Hangar"
 			_build_hangar()
+		"fleet":
+			panel_title.text = "Fleet"
+			_build_fleet()
+		"stock":
+			panel_title.text = "Inventory"
+			_build_stock()
 		"dossier":
 			panel_title.text = "Scan dossier"
 			_fill_dossier()
@@ -965,11 +1039,11 @@ func _place_minimap(screen: Vector2, primary_y: float, short: bool) -> void:
 		return
 	var top := stick_button.position.y + stick_button.size.y + 6.0
 	var room := primary_y - 8.0 - top
-	var want := 156.0
+	var want := 118.0
 	if compact:
-		want = 104.0
+		want = 96.0
 	if short:
-		want = 88.0
+		want = 80.0
 	var side := minf(want, room)
 	var right := screen.x - 8.0
 	var left_limit := 8.0
@@ -1028,7 +1102,7 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 	if panel_scroll != null:
 		panel_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 		panel_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	if panel_kind == "bay" and not compact:
+	if (panel_kind == "bay" or panel_kind == "stock") and not compact:
 		# Fitting glass sits in the open helm: right of the status card, above
 		# the tank capsule, and clear of Hold and Stick.
 		var left := 360.0
@@ -1041,24 +1115,45 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 			right = minf(right, stick_button.position.x - 8.0)
 		var top := 16.0
 		var bottom := screen.y - 160.0
-		if overlay != null:
+		if panel_kind == "bay" and overlay != null:
 			var cap: Control = overlay.get("capsule")
 			if cap != null and cap.visible:
 				bottom = minf(bottom, cap.position.y - 8.0)
 		panel.custom_minimum_size = Vector2(0, 0)
 		panel.position = Vector2(left, top)
-		panel.size = Vector2(maxf(480.0, right - left), maxf(280.0, bottom - top))
-		_fit_ship_pane()
+		var tall := 280.0
+		if panel_kind == "stock":
+			tall = 420.0
+		panel.size = Vector2(maxf(480.0, right - left), maxf(tall, bottom - top))
+		if panel_kind == "bay":
+			_fit_ship_pane()
+		else:
+			_fit_stock_pane()
 		return
-	var side := 460.0
+	var side := 400.0
 	if compact:
 		panel.custom_minimum_size = Vector2(0, 0)
 		panel.position = Vector2(8, screen.y * 0.22)
 		panel.size = Vector2(screen.x - 16.0, screen.y * 0.5)
 	else:
 		panel.custom_minimum_size = Vector2(420, 400)
-		panel.position = Vector2(screen.x - side - 16.0, 16)
-		panel.size = Vector2(side, screen.y - 150.0)
+		var right := screen.x - 16.0
+		if hold_button != null and hold_button.visible:
+			right = minf(right, hold_button.position.x - 8.0)
+		if stick_button != null and stick_button.visible:
+			right = minf(right, stick_button.position.x - 8.0)
+		var left_limit := 360.0
+		if status_card != null and status_card.size.x > 40.0:
+			left_limit = status_card.position.x + status_card.size.x + 12.0
+		var room := right - left_limit
+		var width := side
+		if room < side:
+			width = maxf(280.0, room)
+		if room < 280.0:
+			width = maxf(200.0, right - 16.0)
+		var bottom := primary_y - 120.0
+		panel.position = Vector2(right - width, 16)
+		panel.size = Vector2(width, maxf(280.0, bottom - 16.0))
 
 
 func _place_board_button(_is_compact: bool) -> void:
@@ -1137,6 +1232,11 @@ func _fill_market() -> void:
 	var sell := ThemeKit.button("Sell glasswheat")
 	sell.pressed.connect(_sell_good)
 	market_box.add_child(sell)
+	var wing := DockBoard.fighter_count(sim)
+	var buy_fighter := ThemeKit.button("Fighter  %d" % DockBoard.FIGHTER_PRICE)
+	buy_fighter.pressed.connect(_buy_fighter)
+	market_box.add_child(buy_fighter)
+	market_box.add_child(_flat("Wing %d/%d. They form up, follow, and attack." % [wing, DockBoard.FIGHTER_WING], 13, Color("8d826c")))
 	market_box.add_child(_flat("Yard. One mount is a first slip.", 14, Color("cbb892")))
 	for kit_id in ["gun_sponson", "laser_bank", "missile_rack", "iron_belt", "splinter_pack"]:
 		var kit: Dictionary = DockBoard.KIT[kit_id]
@@ -1632,6 +1732,16 @@ func _on_bolt(module_id: String) -> void:
 		bay_preview.queue_redraw()
 
 
+func _buy_fighter() -> void:
+	if Game.sim == null:
+		return
+	var message := DockBoard.buy_fighter(Game.sim)
+	if message != "":
+		Game.sim.say(message)
+	market_sig = ""
+	_fill_market()
+
+
 func _buy_kit(kit_id: String) -> void:
 	if Game.sim == null:
 		return
@@ -1694,35 +1804,282 @@ func _build_hangar() -> void:
 		block.add_child(ThemeKit.label(str(spec.job), 13, Color("8d826c")))
 		var state := ThemeKit.label("", 14, Color("d7e6c8"))
 		block.add_child(state)
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		var uid := str(item.uid)
-		var parked := str(item.def_id) in ["fighter", "salvage_tender"]
-		var lost := str(item.state) == "lost"
-		if lost:
-			var rebuild := ThemeKit.button("Rebuild")
-			rebuild.pressed.connect(_order_uid.bind(uid, "rebuild"))
-			row.add_child(rebuild)
-			block.add_child(ThemeKit.label("Loss is permanent until rebuild spends 1 raw mass.", 13, Color("c4512c")))
-		elif parked:
-			block.add_child(ThemeKit.label("Parked. It stays in the rack this slice.", 13, Color("8d826c")))
-		elif str(item.def_id) == "survey_probe":
-			row.add_child(_order_button("Launch", uid, "launch"))
-			row.add_child(_order_button("Orbit", uid, "orbit"))
-			row.add_child(_order_button("Scan", uid, "scan"))
-			row.add_child(_order_button("Return", uid, "return"))
-		elif str(item.def_id) == "harvest_drone":
-			row.add_child(_order_button("Launch", uid, "launch"))
-			row.add_child(_order_button("Return", uid, "return"))
-		else:
-			row.add_child(_order_button("Launch", uid, "launch"))
-			row.add_child(_order_button("Return", uid, "return"))
-		if row.get_child_count() > 0:
-			block.add_child(row)
+		_append_craft_orders(block, item)
 		hangar_box.add_child(block)
-		hangar_rows[uid] = state
+		hangar_rows[str(item.uid)] = state
 	hangar_sig = _craft_sig()
 	_refresh_hangar()
+
+
+func _append_craft_orders(block: VBoxContainer, item) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var uid := str(item.uid)
+	var parked := str(item.def_id) == "salvage_tender"
+	var lost := str(item.state) == "lost"
+	if lost:
+		var rebuild := ThemeKit.button("Rebuild")
+		rebuild.pressed.connect(_order_uid.bind(uid, "rebuild"))
+		row.add_child(rebuild)
+		block.add_child(ThemeKit.label("Loss is permanent until rebuild spends 1 raw mass.", 13, Color("c4512c")))
+	elif str(item.def_id) == "fighter":
+		row.add_child(_order_button("Launch", uid, "launch"))
+		row.add_child(_order_button("Attack", uid, "attack"))
+		row.add_child(_order_button("Return", uid, "return"))
+	elif parked:
+		block.add_child(ThemeKit.label("Parked. It stays in the rack this slice.", 13, Color("8d826c")))
+	elif str(item.def_id) == "survey_probe":
+		row.add_child(_order_button("Launch", uid, "launch"))
+		row.add_child(_order_button("Orbit", uid, "orbit"))
+		row.add_child(_order_button("Scan", uid, "scan"))
+		row.add_child(_order_button("Return", uid, "return"))
+	elif str(item.def_id) == "harvest_drone":
+		row.add_child(_order_button("Launch", uid, "launch"))
+		row.add_child(_order_button("Return", uid, "return"))
+	else:
+		row.add_child(_order_button("Launch", uid, "launch"))
+		row.add_child(_order_button("Return", uid, "return"))
+	if row.get_child_count() > 0:
+		block.add_child(row)
+
+
+func _build_fleet() -> void:
+	for child in fleet_box.get_children():
+		child.queue_free()
+	fleet_rows = {}
+	var sim = Game.sim
+	fleet_box.add_child(ThemeKit.label("Wing orders cover every fighter. Ships already outside and drones still on the rack take orders here too.", 13, Color("8d826c")))
+	var wing := HBoxContainer.new()
+	wing.add_theme_constant_override("separation", 8)
+	var form := ThemeKit.button("Form")
+	form.pressed.connect(_fleet_order.bind("form"))
+	wing.add_child(form)
+	var attack := ThemeKit.button("Attack")
+	attack.pressed.connect(_fleet_order.bind("attack"))
+	wing.add_child(attack)
+	var recall := ThemeKit.button("Recall")
+	recall.pressed.connect(_fleet_order.bind("recall"))
+	wing.add_child(recall)
+	fleet_box.add_child(wing)
+	fleet_target = ThemeKit.label("", 14, Color("d7e6c8"))
+	fleet_box.add_child(fleet_target)
+	var picks := HBoxContainer.new()
+	picks.add_theme_constant_override("separation", 8)
+	for place in sim.nodes:
+		var pick := ThemeKit.button(str(place.name))
+		pick.pressed.connect(_pick_node.bind(str(place.id)))
+		picks.add_child(pick)
+	fleet_box.add_child(picks)
+	if sim.craft.is_empty():
+		fleet_box.add_child(ThemeKit.label("This keel has an empty rack.", 14, Color("8d826c")))
+		fleet_sig = _craft_sig()
+		_refresh_fleet()
+		return
+	var outside: Array = []
+	var rack: Array = []
+	for item in sim.craft:
+		if str(item.state) != "docked" and str(item.state) != "lost":
+			outside.append(item)
+		else:
+			rack.append(item)
+	fleet_box.add_child(ThemeKit.label("OUTSIDE", 15, Color("e6d7bf")))
+	if outside.is_empty():
+		fleet_box.add_child(ThemeKit.label("Nothing is flying. Launch from the rack.", 13, Color("8d826c")))
+	else:
+		for item in outside:
+			_fleet_card(item)
+	fleet_box.add_child(ThemeKit.label("ON THE RACK", 15, Color("e6d7bf")))
+	if rack.is_empty():
+		fleet_box.add_child(ThemeKit.label("The rack is clear.", 13, Color("8d826c")))
+	else:
+		for item in rack:
+			_fleet_card(item)
+	fleet_sig = _craft_sig()
+	_refresh_fleet()
+
+
+func _fleet_card(item) -> void:
+	var spec: Dictionary = Game.sim.defs.craft[item.def_id]
+	var block := VBoxContainer.new()
+	block.add_child(ThemeKit.label("%s" % item.name, 16))
+	block.add_child(ThemeKit.label(str(spec.job), 13, Color("8d826c")))
+	var state := ThemeKit.label("", 14, Color("d7e6c8"))
+	block.add_child(state)
+	_append_craft_orders(block, item)
+	fleet_box.add_child(block)
+	fleet_rows[str(item.uid)] = state
+
+
+func _build_stock() -> void:
+	if stock_box == null:
+		return
+	for child in stock_box.get_children():
+		stock_box.remove_child(child)
+		child.queue_free()
+	stock_sig = _cargo_sig()
+	var sim = Game.sim
+	if sim == null:
+		stock_box.add_child(ThemeKit.label("No hold to read.", 14, Color("8d826c")))
+		return
+	var stats: Dictionary = Fit.stats(sim.defs, sim.player)
+	var used := Fit.cargo_used(sim.player)
+	var cap := int(stats.cargo_cap)
+	var head := ThemeKit.label("The hold.  %d/%d" % [used, cap], 16, Color("e6d7bf"))
+	head.autowrap_mode = TextServer.AUTOWRAP_OFF
+	stock_box.add_child(head)
+	stock_box.add_child(ThemeKit.label("Raw stock sits as it does in the sky.", 13, Color("8d826c")))
+	var cargo: Dictionary = sim.player.cargo
+	var ids: Array = []
+	for key in cargo.keys():
+		if int(cargo[key]) > 0:
+			ids.append(str(key))
+	ids.sort()
+	var raws: Array = []
+	var other: Array = []
+	for key in ids:
+		var id := str(key)
+		if _is_raw_stock(id):
+			raws.append(id)
+		else:
+			other.append(id)
+	if raws.is_empty():
+		stock_box.add_child(ThemeKit.label("No raw stock in the hold yet. Harvest a seam.", 13, Color("8d826c")))
+	else:
+		var grid := GridContainer.new()
+		var cols := 1
+		if not compact:
+			cols = 3
+		grid.columns = cols
+		grid.add_theme_constant_override("h_separation", 8)
+		grid.add_theme_constant_override("v_separation", 8)
+		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		stock_box.add_child(grid)
+		for id in raws:
+			grid.add_child(_stock_card(str(id), int(cargo[id])))
+	if not other.is_empty():
+		stock_box.add_child(ThemeKit.label("ALSO ABOARD", 15, Color("e6d7bf")))
+		for id in other:
+			stock_box.add_child(_stock_line(str(id), int(cargo[id])))
+	_fit_stock_pane()
+
+
+func _stock_card(id: String, count: int) -> Control:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(168, 0)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(box)
+	var glass := StockGlass.new()
+	glass.stock_id = id
+	glass.custom_minimum_size = Vector2(140, 124)
+	glass.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(glass)
+	glass.call_deferred("show_stock", id)
+	var sim = Game.sim
+	var name := id
+	if sim != null:
+		name = sim.resource_name(id)
+	var title := ThemeKit.label("%s    ×%d" % [name, count], 14, Color("e6d7bf"))
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	box.add_child(title)
+	return card
+
+
+func _stock_line(id: String, count: int) -> Control:
+	var sim = Game.sim
+	var name := id
+	if sim != null:
+		name = sim.resource_name(id)
+	var row := ThemeKit.label("%s    ×%d" % [name, count], 14, Color("cbb892"))
+	row.autowrap_mode = TextServer.AUTOWRAP_OFF
+	return row
+
+
+func _is_raw_stock(id: String) -> bool:
+	if Game.sim == null:
+		return false
+	var book: Dictionary = Game.sim._material_book()
+	return book.has(id)
+
+
+func _cargo_sig() -> String:
+	if Game.sim == null:
+		return ""
+	var bits: PackedStringArray = PackedStringArray()
+	var cargo: Dictionary = Game.sim.player.cargo
+	var keys: Array = cargo.keys()
+	keys.sort()
+	for key in keys:
+		bits.append("%s:%d" % [str(key), int(cargo[key])])
+	return "|".join(bits)
+
+
+func _refresh_stock() -> void:
+	if Game.sim == null or stock_box == null:
+		return
+	if _cargo_sig() != stock_sig:
+		_build_stock()
+
+
+func _fit_stock_pane() -> void:
+	if panel_kind != "stock" or stock_box == null or panel == null:
+		return
+	stock_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stock_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+
+func _hud_engage() -> void:
+	if overlay != null and overlay.has_method("_engage_lock"):
+		overlay.call("_engage_lock")
+		return
+	if Game.sim == null:
+		return
+	var lock := str(Game.sim.player.get("lock_id", ""))
+	if lock == "":
+		Game.sim.say("Lock a ship first.")
+		return
+	var socket := str(Game.sim.player.get("engage", ""))
+	if socket == "":
+		socket = "nose"
+	Game.tap("engage", {"socket": socket, "lock": lock, "name": "Main gun"})
+
+
+func _fleet_order(verb: String) -> void:
+	if Game.sim == null:
+		return
+	var message := CraftOrders.fleet(Game.sim, verb)
+	if message != "":
+		Game.sim.say(message)
+	if panel_kind == "fleet":
+		_build_fleet()
+
+
+func _refresh_fleet() -> void:
+	var sim = Game.sim
+	if sim == null:
+		return
+	var sig := _craft_sig()
+	if sig != fleet_sig:
+		_build_fleet()
+		return
+	if fleet_target != null:
+		var place = sim.survey_node(hangar_node)
+		var name := hangar_node if place == null else str(place.name)
+		fleet_target.text = "Orders use %s." % name
+	for item in sim.craft:
+		var state: Label = fleet_rows.get(str(item.uid))
+		if state == null:
+			continue
+		var hp := int(item.hp)
+		var bat := int(item.battery)
+		var extra := ""
+		if str(item.order) != "":
+			extra = "    %s" % str(item.order)
+		state.text = "%s%s    hp %d    battery %d" % [item.state, extra, hp, bat]
 
 
 func _craft_sig() -> String:
@@ -1744,6 +2101,8 @@ func _pick_node(node_id: String) -> void:
 	hangar_node = node_id
 	if panel_kind == "hangar":
 		_build_hangar()
+	elif panel_kind == "fleet":
+		_build_fleet()
 
 
 func _order_uid(uid: String, verb: String) -> void:
@@ -1754,6 +2113,8 @@ func _order_uid(uid: String, verb: String) -> void:
 		Game.sim.say(message)
 	if panel_kind == "hangar":
 		_build_hangar()
+	elif panel_kind == "fleet":
+		_build_fleet()
 
 
 func _refresh_hangar() -> void:
@@ -1935,23 +2296,196 @@ func _menu() -> void:
 
 
 class ShipGlass extends Control:
+	var _view: SubViewportContainer
+	var _vp: SubViewport
+	var _cam: Camera3D
+	var _stage: Node3D
+	var _pivot: Node3D
+	var _holder: Node3D
+	var _chrome: Control
+	var _mesh_key := ""
+	var _extent := Vector3(40, 16, 16)
+
+	class _GlassChrome extends Control:
+		func _draw() -> void:
+			var host := get_parent()
+			if host != null and host.has_method("_paint_chrome"):
+				host.call("_paint_chrome", self)
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_view = SubViewportContainer.new()
+		_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_view.stretch = true
+		var mask := Shader.new()
+		mask.code = "shader_type canvas_item;\nvoid fragment() {\n\tCOLOR = texture(TEXTURE, UV);\n\tvec2 p = UV - vec2(0.5);\n\tif (dot(p, p) > 0.25) {\n\t\tCOLOR.a = 0.0;\n\t}\n}\n"
+		var plate := ShaderMaterial.new()
+		plate.shader = mask
+		_view.material = plate
+		add_child(_view)
+		_vp = SubViewport.new()
+		_vp.name = "HullView"
+		_vp.own_world_3d = true
+		_vp.world_3d = World3D.new()
+		_vp.transparent_bg = false
+		_vp.handle_input_locally = false
+		_vp.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+		_vp.size = Vector2i(360, 360)
+		_view.add_child(_vp)
+		var env := WorldEnvironment.new()
+		var world := Environment.new()
+		world.background_mode = Environment.BG_COLOR
+		world.background_color = Color(0.012, 0.02, 0.03)
+		world.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		world.ambient_light_color = Color(0.62, 0.68, 0.78)
+		world.ambient_light_energy = 0.55
+		world.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		world.glow_enabled = true
+		world.glow_intensity = 0.35
+		world.glow_strength = 0.65
+		world.glow_bloom = 0.1
+		env.environment = world
+		_vp.add_child(env)
+		var sun := DirectionalLight3D.new()
+		sun.light_color = Color("fff0d4")
+		sun.light_energy = 2.4
+		sun.shadow_enabled = false
+		sun.rotation_degrees = Vector3(-48.0, -32.0, 0.0)
+		_vp.add_child(sun)
+		var fill := DirectionalLight3D.new()
+		fill.light_color = Color(0.7, 0.78, 0.92)
+		fill.light_energy = 0.9
+		fill.shadow_enabled = false
+		fill.rotation_degrees = Vector3(18.0, 148.0, 0.0)
+		_vp.add_child(fill)
+		_cam = Camera3D.new()
+		_cam.name = "HullEye"
+		_cam.current = true
+		_cam.fov = 28.0
+		_cam.near = 0.2
+		_cam.far = 4000.0
+		_vp.add_child(_cam)
+		_stage = preload("res://world/stage3d.gd").new()
+		_stage.name = "HullStage"
+		_stage.set("portrait_mode", true)
+		_vp.add_child(_stage)
+		_stage.set_process(false)
+		_pivot = Node3D.new()
+		_pivot.name = "Turn"
+		_stage.add_child(_pivot)
+		_holder = Node3D.new()
+		_holder.name = "Hull"
+		_pivot.add_child(_holder)
+		_chrome = _GlassChrome.new()
+		_chrome.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_chrome.set_anchors_preset(Control.PRESET_FULL_RECT)
+		add_child(_chrome)
+		resized.connect(_place_view)
+
 	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.008, 0.016, 0.022, 0.72))
+
+	func _process(_delta: float) -> void:
+		if not is_visible_in_tree() or Game.sim == null:
+			return
+		if size.x > 8.0 and _view != null and _view.size.x < 8.0:
+			_place_view()
+		_sync_hull()
+		if _pivot != null:
+			_pivot.rotation.y = 0.62 + sin(Time.get_ticks_msec() * 0.0004) * 0.16
+		if _stage != null and _holder != null and _stage.has_method("_pulse_lamps"):
+			_stage.call("_pulse_lamps", _holder)
+
+	func _place_view() -> void:
+		var radius := minf(size.x, size.y) * 0.34
+		var center := size * 0.5 + Vector2(0, 8)
+		var span := maxf(radius * 2.0, 8.0)
+		_view.position = center - Vector2(span, span) * 0.5
+		_view.size = Vector2(span, span)
+		_frame_camera()
+
+	func _sync_hull() -> void:
+		if _stage == null or Game.sim == null:
+			return
+		var ship: Dictionary = Game.sim.player
+		var class_id := str(ship.get("class_id", "vesper"))
+		var modules: Array = ship.get("modules", [])
+		var key := class_id
+		for module_id in modules:
+			key += "|" + str(module_id)
+		if key == _mesh_key and _holder.get_child_count() > 0:
+			return
+		_mesh_key = key
+		var shapes: Array = Silhouette.shapes_of(Game.sim.defs, modules)
+		var layers: Array = Silhouette.layers_of(Game.sim.defs, modules)
+		var sockets: Array = _stage.call("_weapon_sockets", modules)
+		_stage.call("_fill_ship", _holder, class_id, shapes, layers, sockets)
+		if Game.sim.defs.ships.has(class_id):
+			var hull: Dictionary = Game.sim.defs.ships[class_id]
+			var body := Color(str(hull.get("color", "#888888")))
+			var accent := Color(str(hull.get("accent", "#d7e6c8")))
+			for child in _holder.get_children():
+				var part := str(child.name)
+				if not bool(_stage.call("_hull_part", part)):
+					continue
+				var tone := body
+				if part == "Deck":
+					tone = body.lightened(0.16)
+				elif part.begins_with("Trim"):
+					tone = accent
+				_stage.call("_paint_hull", child, tone, accent)
+		var bounds := _local_bounds(_holder)
+		_extent = bounds.size
+		_holder.position = -bounds.get_center()
+		_frame_camera()
+		if _chrome != null:
+			_chrome.queue_redraw()
+
+	func _frame_camera() -> void:
+		if _cam == null:
+			return
+		var frame := _view.size if _view != null and _view.size.x > 8.0 else Vector2(360, 360)
+		var aspect := maxf(frame.x / maxf(frame.y, 1.0), 0.4)
+		var v_fov := deg_to_rad(_cam.fov)
+		var h_fov := 2.0 * atan(tan(v_fov * 0.5) * aspect)
+		var half_w := maxf(_extent.x, _extent.z) * 0.42
+		var half_h := maxf(_extent.y, 8.0) * 0.48
+		var dist := maxf(half_w / maxf(tan(h_fov * 0.5), 0.05), half_h / maxf(tan(v_fov * 0.5), 0.05))
+		dist *= 1.2
+		var eye := Vector3(-0.42, 0.36, 0.95).normalized() * dist
+		_cam.position = eye
+		_cam.look_at(Vector3.ZERO, Vector3.UP)
+
+	func _local_bounds(holder: Node3D) -> AABB:
+		var acc := AABB()
+		var any := false
+		var into := holder.global_transform.affine_inverse()
+		for node in holder.find_children("*", "MeshInstance3D", true, false):
+			var mesh_node := node as MeshInstance3D
+			if mesh_node.mesh == null:
+				continue
+			var part := str(mesh_node.name)
+			if part.begins_with("Exhaust") or part == "Wake":
+				continue
+			var box: AABB = into * mesh_node.global_transform * mesh_node.get_aabb()
+			if any:
+				acc = acc.merge(box)
+			else:
+				acc = box
+				any = true
+		if not any:
+			return AABB(Vector3(-20, -8, -8), Vector3(40, 16, 16))
+		return acc
+
+	func _paint_chrome(ci: CanvasItem) -> void:
 		if Game.sim == null or size.x < 8.0 or size.y < 8.0:
 			return
 		var ship: Dictionary = Game.sim.player
 		var hull: Dictionary = Game.sim.defs.ships[str(ship.class_id)]
 		var accent := Color(str(hull.accent))
-		var body := Color(str(hull.color))
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.008, 0.016, 0.022, 0.72))
 		var center := size * 0.5 + Vector2(0, 8)
 		var radius := minf(size.x, size.y) * 0.34
-		_corner_brackets(accent)
-		draw_circle(center, radius * 1.05, Color(0.03, 0.07, 0.09, 0.45))
-		var grid := Color(0.45, 0.72, 0.84, 0.1)
-		var step := radius * 0.28
-		for i in range(-4, 5):
-			_grid_chord(center, radius * 0.92, true, float(i) * step, grid)
-			_grid_chord(center, radius * 0.92, false, float(i) * step, grid)
+		_corner_brackets(ci, accent)
 		var tick := Color(0.62, 0.78, 0.84, 0.55)
 		var tick_long := Color(0.86, 0.78, 0.52, 0.9)
 		for i in 72:
@@ -1959,42 +2493,23 @@ class ShipGlass extends Control:
 			var dir := Vector2(cos(ang), sin(ang))
 			var major := i % 6 == 0
 			var inner := radius - (9.0 if major else 4.0)
-			draw_line(center + dir * inner, center + dir * radius, tick_long if major else tick, 1.4 if major else 1.0)
-		draw_arc(center, radius, 0.0, TAU, 96, Color(0.72, 0.86, 0.92, 0.85), 1.6, true)
-		draw_arc(center, radius * 0.78, 0.0, TAU, 80, Color(0.45, 0.64, 0.72, 0.35), 1.0, true)
-		draw_arc(center, radius * 0.46, 0.0, TAU, 64, Color(0.45, 0.64, 0.72, 0.22), 1.0, true)
-		var gap := radius * 0.16
-		var arm := radius * 0.42
-		var hair := Color(0.7, 0.84, 0.9, 0.28)
-		draw_line(center + Vector2(gap, 0), center + Vector2(arm, 0), hair, 1.0)
-		draw_line(center + Vector2(-arm, 0), center + Vector2(-gap, 0), hair, 1.0)
-		draw_line(center + Vector2(0, gap), center + Vector2(0, arm), hair, 1.0)
-		draw_line(center + Vector2(0, -arm), center + Vector2(0, -gap), hair, 1.0)
-		var shapes: Array = Silhouette.shapes_of(Game.sim.defs, ship.modules)
-		var layers: Array = Silhouette.layers_of(Game.sim.defs, ship.modules)
-		var geom := Silhouette.parts(str(ship.class_id), shapes, layers)
-		var bounds := _hull_bounds(geom)
-		var span := maxf(bounds.size.x, bounds.size.y)
-		var plan_scale := (radius * 1.35) / maxf(span, 1.0)
-		var mid := bounds.position + bounds.size * 0.5
-		var rot := -PI * 0.5
-		var origin := center - mid.rotated(rot) * plan_scale
-		var hp := clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0)
-		Silhouette.draw(self, origin, rot, str(ship.class_id), shapes, plan_scale, body, accent, hp, false, layers)
-		_draw_marks(center, radius * 1.12, hull, ship, accent)
+			ci.draw_line(center + dir * inner, center + dir * radius, tick_long if major else tick, 1.4 if major else 1.0)
+		ci.draw_arc(center, radius, 0.0, TAU, 96, Color(0.72, 0.86, 0.92, 0.85), 1.6, true)
+		ci.draw_arc(center, radius * 0.78, 0.0, TAU, 80, Color(0.45, 0.64, 0.72, 0.35), 1.0, true)
+		_draw_marks(ci, center, radius * 1.12, hull, ship, accent)
 		var font := ThemeDB.fallback_font
 		if font == null:
 			return
 		var title := str(hull.callsign)
 		var title_size := 18
 		var title_w := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size).x
-		draw_string(font, Vector2(center.x - title_w * 0.5, 22.0), title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size, Color("f4ecdf"))
+		ci.draw_string(font, Vector2(center.x - title_w * 0.5, 22.0), title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size, Color("f4ecdf"))
 		var rule := minf(title_w, size.x * 0.36)
-		draw_line(Vector2(center.x - rule * 0.5, 28.0), Vector2(center.x + rule * 0.5, 28.0), Color(accent.r, accent.g, accent.b, 0.9), 1.2)
+		ci.draw_line(Vector2(center.x - rule * 0.5, 28.0), Vector2(center.x + rule * 0.5, 28.0), Color(accent.r, accent.g, accent.b, 0.9), 1.2)
 		var klass := str(hull.get("class_name", ""))
 		var class_size := 12
 		var class_w := font.get_string_size(klass, HORIZONTAL_ALIGNMENT_LEFT, -1, class_size).x
-		draw_string(font, Vector2(center.x - class_w * 0.5, 44.0), klass, HORIZONTAL_ALIGNMENT_LEFT, -1, class_size, Color("c4a46a"))
+		ci.draw_string(font, Vector2(center.x - class_w * 0.5, 44.0), klass, HORIZONTAL_ALIGNMENT_LEFT, -1, class_size, Color("c4a46a"))
 		var mounts := Fit.mounts(Game.sim.defs, ship)
 		var words: PackedStringArray = PackedStringArray()
 		for mount in mounts:
@@ -2005,9 +2520,9 @@ class ShipGlass extends Control:
 		if fit_w > size.x - 16.0 and words.size() > 1:
 			fit_line = "%d mounts fitted" % words.size()
 			fit_w = font.get_string_size(fit_line, HORIZONTAL_ALIGNMENT_LEFT, -1, fit_size).x
-		draw_string(font, Vector2(center.x - fit_w * 0.5, size.y - 14.0), fit_line, HORIZONTAL_ALIGNMENT_LEFT, -1, fit_size, Color("d7e6ea"))
+		ci.draw_string(font, Vector2(center.x - fit_w * 0.5, size.y - 14.0), fit_line, HORIZONTAL_ALIGNMENT_LEFT, -1, fit_size, Color("d7e6ea"))
 
-	func _corner_brackets(accent: Color) -> void:
+	func _corner_brackets(ci: CanvasItem, accent: Color) -> void:
 		var col := Color(accent.r, accent.g, accent.b, 0.85)
 		var arm := 14.0
 		var inset := 8.0
@@ -2021,20 +2536,10 @@ class ShipGlass extends Control:
 		for i in corners.size():
 			var at: Vector2 = corners[i]
 			var sign: Vector2 = signs[i]
-			draw_line(at, at + Vector2(sign.x * arm, 0), col, 1.3)
-			draw_line(at, at + Vector2(0, sign.y * arm), col, 1.3)
+			ci.draw_line(at, at + Vector2(sign.x * arm, 0), col, 1.3)
+			ci.draw_line(at, at + Vector2(0, sign.y * arm), col, 1.3)
 
-	func _grid_chord(center: Vector2, radius: float, horizontal: bool, offset: float, color: Color) -> void:
-		var reach_sq := radius * radius - offset * offset
-		if reach_sq <= 1.0:
-			return
-		var reach := sqrt(reach_sq)
-		if horizontal:
-			draw_line(center + Vector2(-reach, offset), center + Vector2(reach, offset), color, 1.0)
-		else:
-			draw_line(center + Vector2(offset, -reach), center + Vector2(offset, reach), color, 1.0)
-
-	func _draw_marks(center: Vector2, radius: float, hull: Dictionary, ship: Dictionary, accent: Color) -> void:
+	func _draw_marks(ci: CanvasItem, center: Vector2, radius: float, hull: Dictionary, ship: Dictionary, accent: Color) -> void:
 		var marks: Array = []
 		var used: Dictionary = {}
 		for module_id in ship.modules:
@@ -2052,9 +2557,9 @@ class ShipGlass extends Control:
 			var ang := -PI * 0.5 + TAU * (float(i) + 0.5) / float(count)
 			var at := center + Vector2(cos(ang), sin(ang)) * radius
 			var mod: Dictionary = marks[i]
-			_mark_glyph(at, not mod.is_empty(), str(mod.get("family", "")), accent)
+			_mark_glyph(ci, at, not mod.is_empty(), str(mod.get("family", "")), accent)
 
-	func _mark_glyph(at: Vector2, fitted: bool, family: String, accent: Color) -> void:
+	func _mark_glyph(ci: CanvasItem, at: Vector2, fitted: bool, family: String, accent: Color) -> void:
 		var s := 5.5
 		if not fitted:
 			var open := PackedVector2Array([
@@ -2064,51 +2569,146 @@ class ShipGlass extends Control:
 				at + Vector2(-s, 0),
 				at + Vector2(0, -s),
 			])
-			draw_polyline(open, Color(0.62, 0.8, 0.88, 0.8), 1.2, true)
+			ci.draw_polyline(open, Color(0.62, 0.8, 0.88, 0.8), 1.2, true)
 			return
 		var ink := accent
 		ink.a = 0.95
 		match family:
 			"offense":
-				draw_colored_polygon(PackedVector2Array([
+				ci.draw_colored_polygon(PackedVector2Array([
 					at + Vector2(0, -s),
 					at + Vector2(s * 0.85, s * 0.7),
 					at + Vector2(-s * 0.85, s * 0.7),
 				]), ink)
 			"hangar":
-				draw_arc(at, s * 0.75, 0.0, TAU, 16, ink, 1.6, true)
-				draw_circle(at, 1.6, ink)
+				ci.draw_arc(at, s * 0.75, 0.0, TAU, 16, ink, 1.6, true)
+				ci.draw_circle(at, 1.6, ink)
 			"farm":
-				draw_line(at + Vector2(-s, 0), at + Vector2(s, 0), ink, 1.6)
-				draw_line(at + Vector2(0, -s), at + Vector2(0, s), ink, 1.6)
+				ci.draw_line(at + Vector2(-s, 0), at + Vector2(s, 0), ink, 1.6)
+				ci.draw_line(at + Vector2(0, -s), at + Vector2(0, s), ink, 1.6)
 			"claim":
-				draw_rect(Rect2(at - Vector2(s * 0.55, s * 0.55), Vector2(s * 1.1, s * 1.1)), ink, false, 1.5)
+				ci.draw_rect(Rect2(at - Vector2(s * 0.55, s * 0.55), Vector2(s * 1.1, s * 1.1)), ink, false, 1.5)
 			_:
-				draw_colored_polygon(PackedVector2Array([
+				ci.draw_colored_polygon(PackedVector2Array([
 					at + Vector2(0, -s),
 					at + Vector2(s, 0),
 					at + Vector2(0, s),
 					at + Vector2(-s, 0),
 				]), ink)
 
-	func _hull_bounds(geom: Dictionary) -> Rect2:
-		var lo := Vector2(1.0e9, 1.0e9)
-		var hi := Vector2(-1.0e9, -1.0e9)
-		var lists: Array = [geom.hull]
-		lists.append_array(geom.extras)
-		for poly in lists:
-			for point in poly:
-				lo.x = minf(lo.x, point.x)
-				lo.y = minf(lo.y, point.y)
-				hi.x = maxf(hi.x, point.x)
-				hi.y = maxf(hi.y, point.y)
-		for circle in geom.circles:
-			var c := Vector2(float(circle.x), float(circle.y))
-			var rad := float(circle.r)
-			lo.x = minf(lo.x, c.x - rad)
-			lo.y = minf(lo.y, c.y - rad)
-			hi.x = maxf(hi.x, c.x + rad)
-			hi.y = maxf(hi.y, c.y + rad)
-		if hi.x < lo.x:
-			return Rect2(Vector2.ZERO, Vector2(40, 16))
-		return Rect2(lo, hi - lo)
+
+class StockGlass extends Control:
+	var stock_id := ""
+	var _view: SubViewportContainer
+	var _vp: SubViewport
+	var _cam: Camera3D
+	var _stage: Node3D
+	var _pivot: Node3D
+	var _chunk: MeshInstance3D
+	var _extent := 20.0
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clip_contents = true
+		_view = SubViewportContainer.new()
+		_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_view.stretch = true
+		add_child(_view)
+		_vp = SubViewport.new()
+		_vp.name = "StockView"
+		_vp.own_world_3d = true
+		_vp.world_3d = World3D.new()
+		_vp.transparent_bg = false
+		_vp.handle_input_locally = false
+		_vp.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+		_vp.size = Vector2i(180, 180)
+		_view.add_child(_vp)
+		var env := WorldEnvironment.new()
+		var world := Environment.new()
+		world.background_mode = Environment.BG_COLOR
+		world.background_color = Color(0.035, 0.05, 0.062)
+		world.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		world.ambient_light_color = Color(0.72, 0.78, 0.88)
+		world.ambient_light_energy = 0.95
+		world.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		env.environment = world
+		_vp.add_child(env)
+		_cam = Camera3D.new()
+		_cam.name = "StockEye"
+		_cam.current = true
+		_cam.fov = 32.0
+		_cam.near = 0.2
+		_cam.far = 800.0
+		_vp.add_child(_cam)
+		_stage = preload("res://world/stage3d.gd").new()
+		_stage.name = "StockStage"
+		_stage.set("portrait_mode", true)
+		_vp.add_child(_stage)
+		_stage.set_process(false)
+		_stage.call("ensure_stock_shaders")
+		var kick := DirectionalLight3D.new()
+		kick.light_color = Color(0.85, 0.92, 1.0)
+		kick.light_energy = 0.7
+		kick.shadow_enabled = false
+		kick.rotation_degrees = Vector3(22.0, 128.0, 0.0)
+		_vp.add_child(kick)
+		_pivot = Node3D.new()
+		_pivot.name = "Turn"
+		_stage.add_child(_pivot)
+		_chunk = MeshInstance3D.new()
+		_chunk.name = "Stock"
+		_pivot.add_child(_chunk)
+		resized.connect(_place_view)
+		if stock_id != "":
+			_sync_chunk()
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.008, 0.016, 0.022, 0.88))
+
+	func _process(_delta: float) -> void:
+		if not is_visible_in_tree():
+			return
+		if size.x > 8.0 and _view != null and _view.size.x < 8.0:
+			_place_view()
+		if _pivot != null:
+			_pivot.rotation.y = 0.4 + float(Time.get_ticks_msec()) * 0.00055
+			_pivot.rotation.x = 0.18
+
+	func _place_view() -> void:
+		if _view == null:
+			return
+		_view.position = Vector2.ZERO
+		_view.size = size
+		_frame_camera()
+
+	func show_stock(id: String) -> void:
+		stock_id = id
+		_sync_chunk()
+
+	func _sync_chunk() -> void:
+		if _stage == null or _chunk == null or stock_id == "":
+			return
+		var tint := Color("8a6238")
+		var vein := Color("f0a04a")
+		if Game.sim != null:
+			var book: Dictionary = Game.sim._material_book()
+			if book.has(stock_id):
+				var row: Dictionary = book[stock_id]
+				tint = Color(str(row.get("tint", "#8a6238")))
+				vein = Color(str(row.get("vein", "#f0a04a")))
+		var seed: int = absi(stock_id.hash()) % 80 + 3
+		_stage.call("dress_stock", _chunk, stock_id, tint, vein, seed)
+		var box := AABB(Vector3(-10, -10, -10), Vector3(20, 20, 20))
+		if _chunk.mesh != null:
+			box = _chunk.get_aabb()
+		_chunk.position = -box.get_center()
+		_extent = maxf(box.size.x, maxf(box.size.y, box.size.z))
+		_frame_camera()
+
+	func _frame_camera() -> void:
+		if _cam == null:
+			return
+		var dist := maxf(_extent * 1.55, 36.0)
+		_cam.position = Vector3(-0.62, 0.48, 0.78).normalized() * dist
+		if _cam.is_inside_tree():
+			_cam.look_at(Vector3.ZERO, Vector3.UP)

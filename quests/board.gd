@@ -186,7 +186,11 @@ static func _from_world(sim) -> Dictionary:
 		if str(sim.defs.system.id) == "HC-V1-R5-S1" and not bool(sim.quest_flags.get("did_defend", false)):
 			return _contract("defend", "homestead", "Hold the hollow", "Stay in the claim pocket through a raid timer.", ["HC-V1-R5-S1", "quiet_hollow"], "quiet_hollow", float(sim.claim.get("x", sim.pocket_pos.x)), float(sim.claim.get("y", sim.pocket_pos.y)), "HC-V1-R5-S1")
 	if _living_pirates(sim) > 0 and not bool(sim.quest_flags.get("did_cull", false)):
-		return _contract("cull", "helion_compact", "Cull or drive off the pack", "Kill a Red Keel skiff or leave them behind.", ["HC-V1-R1-S1", "red_keel"], "red_keel", sim.pack_pos.x, sim.pack_pos.y, str(sim.defs.system.id))
+		var pack := "the pack"
+		var named := str(sim.gang_name)
+		if named != "":
+			pack = named
+		return _contract("cull", "helion_compact", "Cull or drive off %s" % pack, "Kill a %s skiff or leave them behind." % pack, ["HC-V1-R1-S1", "red_keel"], "red_keel", sim.pack_pos.x, sim.pack_pos.y, str(sim.defs.system.id))
 	var unknown := _unknown_body(sim)
 	if unknown != "" and not bool(sim.quest_flags.get("did_survey", false)):
 		var node = sim.survey_node(unknown)

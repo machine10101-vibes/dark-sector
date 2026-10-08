@@ -1,5 +1,7 @@
 extends Node
 
+const Steer = preload("res://world/helm_steer.gd")
+
 var defs: Dictionary = {}
 var sim: SectorSim
 var link: ListenLink
@@ -23,8 +25,9 @@ var text_entry := false
 var map_open := false
 ## Seconds of thrust after the Cast off control, so one click leaves the pad.
 var cast_pulse := 0.0
-## Local-space eye: "orbit" (external, middle-drag turns it), "chase", or
-## "tactical" (the old near-vertical board). The berth always frames the collar.
+## Local-space eye: "orbit" (external, left-drag or middle-drag turns it),
+## "chase", or "tactical" (the old near-vertical board). The berth always
+## frames the collar.
 var cam_mode := "orbit"
 var cam_yaw := PI
 var cam_pitch := 0.74
@@ -35,6 +38,13 @@ func cycle_camera() -> String:
 	var at := CAM_MODES.find(cam_mode)
 	cam_mode = str(CAM_MODES[(at + 1) % CAM_MODES.size()])
 	return cam_mode
+
+
+func look_cam(dx: float, dy: float) -> void:
+	var next: Dictionary = Steer.apply_look(cam_yaw, cam_pitch, dx, dy)
+	cam_yaw = float(next.yaw)
+	cam_pitch = float(next.pitch)
+	cam_mode = str(next.mode)
 
 
 func _ready() -> void:

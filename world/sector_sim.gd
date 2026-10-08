@@ -7,9 +7,15 @@ const BODY_SCALE := 3.4
 const PLANET_SCALE := 6.0
 const ROCK_SCALE := 4.2
 const DOCK_GAP := 320.0
-## Helion berth, pinned in world meters. It used to be radius+430, which
-## walked the pad out of the green disc whenever Aegis grew.
-const BERTH_OFFSET := Vector2(821.0, -160.0)
+## Helion berth, pinned in world meters on the old pad heading. A radius-plus
+## offset walked the pad out of the green disc whenever Aegis grew. The pin
+## used to land ~150 m off the crust, inside the ice ring. This length keeps
+## the station in open sky past the ring, still inside the green lane.
+const BERTH_OFFSET := Vector2(1473.0, -287.0)
+## Other docks sit at least this far above the crust. A large world pushes
+## the pad out farther so it does not ride the limb.
+const DOCK_ALT := 640.0
+const DOCK_SKY := 700.0
 const DOCK_BUOY_ANGLE := -0.7
 const DOCK_BUOY_OUT := 700.0
 const DOCK_HALO_KM := 9000.0
@@ -31,6 +37,14 @@ var nodes: Array = []
 var asteroids: Array = []
 var trash: Array = []
 var meteors: Array = []
+var belt_pos := Vector2.ZERO
+var belt_span := 0.0
+var ice_pos := Vector2.ZERO
+var copper_pos := Vector2.ZERO
+var plate_pos := Vector2.ZERO
+var gang_id := ""
+var gang_name := ""
+var gang_salt := 0
 var visited: Array = []
 var stream_origin := Vector2.ZERO
 var stars: Array = []
@@ -71,6 +85,7 @@ var banner_t = 0.0
 var pdo_alert = false
 var hailed = false
 var sfx_queue: Array = []
+var muzzles: Array = []
 var hold_npc = false
 var layer := 2
 var body_id := ""
@@ -96,6 +111,7 @@ func new_game(class_id: String) -> void:
 	wrecks = []
 	projectiles = []
 	beams = []
+	muzzles = []
 	impacts = []
 	heat_log = []
 	lines = []
@@ -136,6 +152,8 @@ func new_game(class_id: String) -> void:
 	player.dock_x = player.pos.x
 	player.dock_y = player.pos.y
 	HelmCombat.ensure_rounds(player)
+	if hull.has("magazine"):
+		player.rounds = (hull.magazine as Dictionary).duplicate(true)
 	captains = []
 	commands = {}
 	law_target = ""
@@ -179,9 +197,13 @@ func new_game(class_id: String) -> void:
 	say("%s. %s is the city-orbital. The ice ring is lit. %s holds confiscated hulls. %s is marked and not a homestead." % [defs.system.name, planet(str(defs.system.pdo.home)).name, defs.system.trash.name, pocket.name])
 	say("A Claim Core is in the hold. The Homestead Road buoy is off the green. L takes the lane.")
 	say("Green spine buoys leave for Brass Lantern and Writ. From First Soil the amber road reaches Perimeter, and the hatch reaches Gyre.")
-	say("The corner map is the local sky. Tap it, or press F10, for the whole chart. Tab locks the nearest contact.")
+	say("The corner map is the local sky. Tap it, or press F10, for the whole 3D chart. Tab locks the nearest contact.")
 	say("Shakedown is on the log. J reads it. Y marks the next place.")
+	if str(defs.system.get("belt", {}).get("name", "")) != "":
+		say("%s yields nickel cinder. Ice spall sits on the Homestead bearing. Copper slag sits toward The Unlet. Hull plate rides with the seized hold. Scan a rock, then Harvest." % str(defs.system.belt.name))
 	say("Moored at the Helion Dock pad. W casts off. The keel is in clear space, not in the city.")
+	if gang_name != "":
+		say("%s is the gang in the amber. %s" % [gang_name, _gang_line()])
 	_bind_band()
 
 
@@ -323,6 +345,7 @@ func try_extract(node_id: String) -> String:
 	say("%s aboard from %s. %d left in the seam." % [res.name, row.name, int(deposits[node_id])])
 	sfx("extract")
 	_heat_for_cut(row, held)
+	_reseat_after_cut(node_id, row)
 	return "ok"
 
 
@@ -392,6 +415,7 @@ func try_field_salvage(node_id: String) -> String:
 	sfx("extract")
 	if str(row.get("heat", "")) == "pdo":
 		_heat_for_cut(row, 0)
+	_reseat_after_cut(node_id, row)
 	return "ok"
 
 
@@ -410,6 +434,9 @@ func _fill_market() -> void:
 
 
 func resource_name(id: String) -> String:
+	var book := _material_book()
+	if book.has(id):
+		return str(book[id].get("name", id))
 	if id == "raw_mass":
 		return "raw mass"
 	if id == "salvage_parts":
@@ -503,6 +530,7 @@ func try_fire(unit: Dictionary, gun: Dictionary) -> bool:
 		var speed := float(live.get("speed", 700.0))
 		projectiles.append({
 			"family": family if family != "" else "bullet",
+			"socket": key,
 			"load": str(live.get("load", "")),
 			"drop": float(live.get("drop", 0.0)),
 			"turret": bool(aimed.turret),
@@ -514,7 +542,8 @@ func try_fire(unit: Dictionary, gun: Dictionary) -> bool:
 			"ttl": float(live.get("ttl", 1.1)),
 			"agent_id": unit.agent_id,
 		})
-	sfx("gun")
+	_note_muzzle(unit.pos + dir * float(unit.get("muzzle", 28.0)), dir, family if family != "" else "bullet", key, str(live.get("load", "")))
+	sfx(_gun_sfx(family, key))
 	if str(unit.get("controller", "")) == "human":
 		unit.fight_cd = 2.4
 		if str(unit.agent_id) == str(player.agent_id) and not Law.muzzle_clean(self, unit):
@@ -651,6 +680,9 @@ func _laser_strike(unit: Dictionary, gun: Dictionary, aimed: Dictionary) -> void
 		"age": 0.0,
 		"team": str(unit.team),
 		"hot": hit != null,
+		"family": "laser",
+		"load": str(gun.get("load", "standard")),
+		"socket": "laser_bank",
 	})
 	while beams.size() > 8:
 		beams.pop_front()
@@ -664,6 +696,7 @@ func _launch_missile(unit: Dictionary, gun: Dictionary, aimed: Dictionary) -> vo
 	var span := float(gun.get("range", 700.0)) / maxf(40.0, speed)
 	projectiles.append({
 		"family": "missile",
+		"socket": "missile_rack",
 		"load": str(gun.get("load", "splinter")),
 		"blast": float(gun.get("blast", 40.0)),
 		"steer": float(gun.get("steer", 1.0)),
@@ -748,6 +781,55 @@ func sfx(name: String) -> void:
 		sfx_queue.pop_front()
 
 
+func _note_muzzle(at: Vector2, dir: Vector2, family: String, socket: String, load: String) -> void:
+	var aim := dir
+	if aim.length() > 1.0:
+		aim = aim.normalized()
+	var seat := at
+	if socket == "gun_sponson" or socket == "stake_gun":
+		seat += Vector2(-aim.y, aim.x) * 12.0
+	elif socket == "heavy_turret":
+		seat += Vector2(-aim.y, aim.x) * 5.0
+	elif socket == "missile_rack":
+		seat -= aim * 10.0
+	elif socket == "point_defense":
+		seat -= aim * 8.0
+	muzzles.append({
+		"pos": seat,
+		"dir": aim,
+		"family": family,
+		"socket": socket,
+		"load": load,
+		"age": 0.0,
+	})
+	while muzzles.size() > 10:
+		muzzles.pop_front()
+
+
+func _age_muzzles(dt: float) -> void:
+	var kept: Array = []
+	for row in muzzles:
+		var flash: Dictionary = row
+		flash.age = float(flash.age) + dt
+		if float(flash.age) < 0.26:
+			kept.append(flash)
+	muzzles = kept
+
+
+func _gun_sfx(family: String, socket: String) -> String:
+	if family == "laser":
+		return "laser"
+	if family == "missile":
+		return "missile"
+	if family == "pd":
+		return "pd"
+	if socket == "heavy_turret":
+		return "heavy"
+	if socket == "stake_gun":
+		return "stake"
+	return "gun"
+
+
 func to_dict() -> Dictionary:
 	var actor_rows: Array = []
 	for actor in actors:
@@ -791,6 +873,9 @@ func to_dict() -> Dictionary:
 		"chat": chat.duplicate(true),
 		"lines": lines.duplicate(true),
 		"banner": banner,
+		"gang_id": gang_id,
+		"gang_name": gang_name,
+		"gang_salt": gang_salt,
 		"pdo_alert": pdo_alert,
 		"hailed": hailed,
 		"fined": fined,
@@ -863,6 +948,9 @@ func from_dict(data: Dictionary) -> void:
 		player.player_id = "captain-host"
 	lines = data.get("lines", []).duplicate(true)
 	banner = str(data.get("banner", ""))
+	gang_id = str(data.get("gang_id", ""))
+	gang_name = str(data.get("gang_name", ""))
+	gang_salt = int(data.get("gang_salt", 0))
 	banner_t = 0.0
 	pdo_alert = bool(data.get("pdo_alert", false))
 	hailed = bool(data.get("hailed", false))
@@ -979,6 +1067,7 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 				quest_flags.moor_latch = maxf(next, 0.0)
 		if not leaving:
 			var held = Fit.stats(defs, unit)
+			unit.yaw_hold = float(cmd.get("rot", 0.0))
 			unit.rot += float(cmd.get("rot", 0.0)) * float(held.turn) * dt
 			unit.vel = Vector2.ZERO
 			unit.thrusting = false
@@ -996,9 +1085,13 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 	var spd_before := float(unit.vel.length())
 	var yaw_rate := float(stats.turn)
 	# Full turn at rest (the slice yaw check). At cruise the nose still answers,
-	# but it stops pirouetting while the keel is already moving.
+	# but it stops pirouetting while the keel is already moving. Turn thrusters
+	# raise that floor so a fast keel can still cut a tight radius.
 	if spd_before > 140.0:
-		yaw_rate *= clampf(140.0 / spd_before, 0.55, 1.0)
+		var grip := clampf(float(stats.get("turn_grip", 0.0)), 0.0, 1.0)
+		var floor_rate := lerpf(0.55, 0.92, grip)
+		yaw_rate *= clampf(140.0 / spd_before, floor_rate, 1.0)
+	unit.yaw_hold = float(cmd.get("rot", 0.0))
 	unit.rot += float(cmd.get("rot", 0.0)) * yaw_rate * dt
 	var forward = Vector2.from_angle(unit.rot)
 	var thrust = float(cmd.get("thrust", 0.0))
@@ -1057,7 +1150,23 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 		try_fire(unit, stats.gun)
 		for mount in Fit.mounts(defs, unit):
 			try_fire(unit, mount)
+	var armed := str(unit.get("engage", ""))
+	if armed != "":
+		if str(unit.get("lock_id", "")) == "":
+			unit.engage = ""
+		else:
+			_fire_socket(unit, stats, armed)
 	_arm_grace(unit, dt)
+
+
+func _fire_socket(unit: Dictionary, stats: Dictionary, socket: String) -> void:
+	if socket == "nose":
+		try_fire(unit, stats.gun)
+		return
+	for mount in Fit.mounts(defs, unit):
+		if str(mount.get("socket", "")) == socket or str(mount.get("id", "")) == socket:
+			try_fire(unit, mount)
+			return
 
 
 func _step_npc(actor: Dictionary, dt: float) -> void:
@@ -1182,6 +1291,7 @@ func _step_projectiles(dt: float) -> void:
 		kept.append(shot)
 	projectiles = kept
 	_age_beams(dt)
+	_age_muzzles(dt)
 
 
 func _steer_missile(shot: Dictionary, dt: float) -> void:
@@ -1227,6 +1337,23 @@ func _flak_missile(shot: Dictionary) -> bool:
 			continue
 		HelmCombat.spend_shot(self, unit, pd)
 		_set_mount_cd(unit, "point_defense", float(pd.get("cooldown", 0.22)))
+		beams.append({
+			"from": unit.pos,
+			"to": Vector2(shot.pos),
+			"age": 0.0,
+			"team": str(unit.team),
+			"hot": true,
+			"family": "pd",
+			"load": "flak",
+			"socket": "point_defense",
+		})
+		sfx("pd")
+		var aim: Vector2 = Vector2(shot.pos) - unit.pos
+		if aim.length() > 1.0:
+			aim = aim.normalized()
+		else:
+			aim = Vector2.RIGHT
+		_note_muzzle(unit.pos, aim, "pd", "point_defense", "flak")
 		return true
 	return false
 
@@ -1664,7 +1791,10 @@ func _kill(unit: Dictionary, attacker: String) -> void:
 		for actor in actors:
 			if str(actor.team) == "red_keel" and bool(actor.alive):
 				actor.ai.enraged = true
-		say("Red Keel will remember %s." % unit.name)
+		var pack := "Red Keel"
+		if gang_name != "":
+			pack = gang_name
+		say("%s will remember %s." % [pack, unit.name])
 	elif str(unit.team) == _pdo_id():
 		Ownership.add_heat(self, _pdo_id(), 36.0, "killed_patrol", attacker)
 		pdo_alert = true
@@ -1726,10 +1856,65 @@ func _hub_pad(dock, nudge: float) -> Vector2:
 		return Vector2.ZERO
 	if beacon_pos != Vector2.ZERO and absf(nudge) < 0.5:
 		return beacon_pos
+	var offset := _dock_offset(dock)
+	if absf(nudge) > 0.5 and offset.length_squared() > 1.0:
+		var heading := offset.normalized()
+		var side := Vector2(-heading.y, heading.x)
+		offset += side * nudge
+	return dock.pos + offset
+
+
+func _dock_offset(dock: Dictionary) -> Vector2:
 	if _is_helion_pad(dock):
-		return dock.pos + BERTH_OFFSET + Vector2(0.0, nudge)
-	var outward := Vector2(float(dock.radius) + 430.0, -160.0 + nudge)
-	return dock.pos + outward
+		return BERTH_OFFSET
+	var radius := float(dock.radius)
+	var alt := maxf(DOCK_ALT, radius * 1.15)
+	var reach := _fit_green_lane(dock, radius + alt)
+	var heading := Vector2(BERTH_OFFSET.x, BERTH_OFFSET.y).normalized()
+	return heading * reach
+
+
+## A green-law pad has to stay inside the orbit disc. Grow that disc out
+## to the pad when a lane buoy and an outside pocket still leave room.
+func _fit_green_lane(dock: Dictionary, reach: float) -> float:
+	if str(defs.system.get("law_color", "")) != "green":
+		return reach
+	var zones: Dictionary = defs.system.get("zones", {})
+	var green: Dictionary = zones.get("green", {})
+	var authored := float(green.get("radius", 0.0))
+	if authored < 80.0:
+		return reach
+	if str(green.get("anchor", "")) != str(dock.get("id", "")):
+		return reach
+	var radius := float(dock.radius)
+	var legacy := Vector2(radius + 430.0, -160.0).length()
+	var room := _green_room(dock, authored)
+	var grown := maxf(authored, minf(reach + 90.0, room))
+	if grown > authored + 1.0:
+		green.radius = grown
+	var fitted := reach
+	if fitted > grown - 40.0:
+		fitted = grown - 40.0
+	if fitted < legacy and legacy <= grown - 20.0:
+		fitted = legacy
+	return maxf(fitted, radius + 280.0)
+
+
+func _green_room(dock: Dictionary, authored: float) -> float:
+	var room := 20000.0
+	var home := str(dock.get("id", ""))
+	for source in defs.system.get("gates", []):
+		var gate: Dictionary = source
+		var anchor := str(gate.get("anchor", ""))
+		if anchor != "" and anchor != home:
+			continue
+		room = minf(room, float(gate.get("distance", 9000.0)) - 50.0)
+	var pocket: Dictionary = defs.system.get("pocket", {})
+	if str(pocket.get("anchor", "")) == home:
+		var pocket_d := float(pocket.get("distance", 9000.0))
+		if pocket_d > authored + 10.0:
+			room = minf(room, pocket_d - 30.0)
+	return maxf(room, authored)
 
 
 func _release_mooring(unit: Dictionary) -> void:
@@ -1796,9 +1981,9 @@ func _scale_sky() -> void:
 		var room := float(row.distance) - star_radius - 160.0
 		cap = minf(cap, maxf(authored, room))
 		# Patrols and haulers are lifted outside the new crust. The Helion
-		# pad is pinned, so Aegis can grow until the keel still has open sky.
+		# pad is pinned, so Aegis stops short of it and the station keeps sky.
 		if bid == green_anchor and green_reach > 80.0 and str(defs.system.id) == "HC-V1-R1-S1":
-			cap = minf(cap, maxf(authored, berth_len - 140.0))
+			cap = minf(cap, maxf(authored, berth_len - DOCK_SKY))
 		elif bid == green_anchor and green_reach > 80.0:
 			cap = minf(cap, maxf(authored, green_reach - DOCK_GAP - 90.0))
 		if haul_limit.has(bid):
@@ -1859,42 +2044,31 @@ func _build_static() -> void:
 	if int(field.get("count", 0)) > 0:
 		var anchor_body = planet(str(field.get("anchor", "")))
 		var origin := Vector2.ZERO
+		var pad := Vector2.ZERO
 		if anchor_body != null:
 			var dist := _outside_crust(anchor_body, float(field.distance), float(field.get("spread", 120.0)))
-			origin = anchor_body.pos + Vector2.from_angle(float(field.angle)) * dist
+			origin = Vector2(anchor_body.pos) + Vector2.from_angle(float(field.angle)) * dist
+			pad = Vector2(anchor_body.pos) + _dock_offset(anchor_body)
 		trash_pos = origin
-		var spread := float(field.get("spread", 120.0))
-		for i in int(field.count):
-			var jitter := Vector2(rng.randf_range(-spread, spread), rng.randf_range(-spread * 0.55, spread * 0.55))
-			trash.append({
-				"pos": origin + jitter,
-				"rot": rng.randf() * TAU,
-				"kind": i % 3,
-				"scale": rng.randf_range(0.85, 1.55),
-				"origin": str(field.get("origin", "")),
-			})
-	var belt: Dictionary = defs.system.belt
-	var composition := str(belt.get("composition", ""))
-	var tint := _belt_tint(composition)
-	for i in int(belt.count):
-		var ang = rng.randf() * TAU
-		var rad = float(belt.radius) + rng.randf_range(-float(belt.width), float(belt.width))
-		var center = Vector2.from_angle(ang) * rad
-		var size = (rng.randf_range(7.0, 16.0) + float(i % 5) * 1.4) * ROCK_SCALE
-		var rot = rng.randf() * TAU
-		var verts = PackedVector2Array()
-		var sides = 5 + (i + composition.length()) % 4
-		for s in sides:
-			var a = rot + float(s) / float(sides) * TAU
-			var rr = size * rng.randf_range(0.55, 1.25)
-			verts.append(center + Vector2.from_angle(a) * rr)
-		asteroids.append({
-			"pos": center,
-			"verts": verts,
-			"size": size,
-			"composition": composition,
-			"tint": tint,
-		})
+		var hubs: Array = []
+		if origin != Vector2.ZERO:
+			hubs.append(origin)
+		_plant_trash_group(rng, origin, 4, 40.0, str(field.get("origin", "")))
+		var extra := maxi(int(field.count) - 4, 4)
+		var packs := 1
+		if extra > 4:
+			packs = 2
+		for p in packs:
+			var seat := _random_reach_seat(rng, anchor_body, pad, hubs, 520.0, 1400.0)
+			hubs.append(seat)
+			var n := 4
+			if p == packs - 1:
+				n = mini(extra - p * 4, 4)
+			if n < 3:
+				n = 3
+			_plant_trash_group(rng, seat, n, 40.0, str(field.get("origin", "")))
+	_spawn_belt(rng)
+	_scatter_flank_scrap(rng)
 	_build_meteors(rng)
 	stars = []
 	for _i in 420:
@@ -1908,10 +2082,7 @@ func _build_static() -> void:
 	var dock = planet(str(defs.system.pdo.get("home", "")))
 	beacon_pos = Vector2.ZERO
 	if dock != null:
-		if _is_helion_pad(dock):
-			beacon_pos = dock.pos + BERTH_OFFSET
-		else:
-			beacon_pos = dock.pos + Vector2(float(dock.radius) + 430.0, -160.0)
+		beacon_pos = dock.pos + _dock_offset(dock)
 	var green_body = planet(str(defs.system.zones.green.anchor))
 	var pirates: Dictionary = defs.system.get("pirates", {})
 	var stand := float(pirates.get("standoff", 620.0))
@@ -2006,6 +2177,7 @@ func _arrive(system_id: String, gate_id: String) -> void:
 	seed_value = int(defs.system.seed)
 	projectiles = []
 	beams = []
+	muzzles = []
 	impacts = []
 	wrecks = []
 	actors = []
@@ -2086,9 +2258,8 @@ func _build_nodes() -> void:
 			var ang := float(row.get("angle", 0.15))
 			var band := float(row.get("band", 43.0))
 			var orbit := float(anchor_body.radius) + band
-			# radius+band now sits beside the pad. Park the drop on open
-			# sky just above the crust, off the berth bearing, so the haul
-			# is still a run and the pad nose still points away from it.
+			# Park the drop just above the crust, off the berth bearing, so the
+			# haul is still a run and the pad nose still points away from it.
 			if _is_helion_pad(anchor_body) and beacon_pos != Vector2.ZERO:
 				var berth := Vector2(beacon_pos) - Vector2(anchor_body.pos)
 				var berth_ang: float = berth.angle()
@@ -2110,6 +2281,7 @@ func _build_nodes() -> void:
 			row.solid = false
 		nodes.append(row)
 		deposits[str(row.id)] = int(row.resource.amount)
+	_pin_local_marks()
 
 
 func _clear_orbit(body, authored: float, pad: float) -> float:
@@ -2141,7 +2313,7 @@ func _lift_buried_orbits() -> void:
 			var floor := float(row.radius) + 80.0
 			if float(ai.radius) >= floor:
 				continue
-			var pad := 120.0 if str(actor.get("team", "")) == _pdo_id() else 210.0
+			var pad := 300.0 if str(actor.get("team", "")) == _pdo_id() else 210.0
 			var need := float(row.radius) + pad
 			ai.radius = need
 			actor.ai = ai
@@ -2156,7 +2328,9 @@ func _spawn_factions() -> void:
 	var home := Vector2.ZERO
 	if home_body != null:
 		home = home_body.pos
-	var patrol := _clear_orbit(home_body, float(defs.system.pdo.get("radius", 620.0)), 120.0)
+	# Clear of the survey shell (crust + 72). A pad of 120 put the cutter
+	# on the probe's orbit once the dock sat farther out.
+	var patrol := _clear_orbit(home_body, float(defs.system.pdo.get("radius", 620.0)), 300.0)
 	for i in int(defs.system.pdo.count):
 		var actor = _blank_ship("cutter", "%s Cutter %d" % [_pdo_name(), i + 1], "agent:%s:%d" % [faction_id, i], "npc", faction_id)
 		var ang = float(i) * PI
@@ -2187,26 +2361,39 @@ func _spawn_factions() -> void:
 		hauler.ai = {"phase": phase, "radius": orbit, "enraged": false}
 		actors.append(hauler)
 	var pack_count := int(defs.system.pirates.count)
+	var gang := _pick_gang()
 	var roles := ["interceptor", "kite", "raider"]
 	var bolted := ["gun_sponson", "sensor_mast", "cargo_blister"]
+	var names: Array = gang.get("ships", [])
+	var paint := str(gang.get("color", "#6e2420"))
+	var accent := str(gang.get("accent", "#e0a090"))
 	for i in pack_count:
-		var actor = _blank_ship("skiff", "Red Keel %d" % (i + 1), "agent:red_keel:%d" % i, "npc", "red_keel")
+		var ship_name := "Red Keel %d" % (i + 1)
+		if i < names.size():
+			ship_name = str(names[i])
+		elif gang_name != "":
+			ship_name = "%s %d" % [gang_name, i + 1]
+		var actor = _blank_ship("skiff", ship_name, "agent:red_keel:%d" % i, "npc", "red_keel")
 		var ang = float(i) / float(maxi(pack_count, 1)) * TAU
 		var part: String = bolted[i % bolted.size()]
 		actor.home = pack_pos
-		actor.pos = pack_pos + Vector2.from_angle(ang) * 90.0
+		actor.pos = pack_pos + Vector2.from_angle(ang) * (110.0 + float(i) * 36.0)
 		actor.rot = ang
 		actor.modules = [part]
 		actor.module_hp = {part: 22.0}
+		actor.paint = paint
+		actor.accent = accent
+		actor.gang = gang_id
+		actor.corp_tag = gang_name
 		actor.ai = {
 			"phase": ang,
-			"radius": 140.0,
+			"radius": 140.0 + float(i) * 28.0,
 			"enraged": false,
 			"role": roles[i % roles.size()],
 			"chase": 0.0,
 			"fired_on_captain": false,
 		}
-		actor.cargo = {"scrap": 1}
+		actor.cargo = {"scrap": 1, "hull_plate": 1}
 		actors.append(actor)
 
 
@@ -2426,6 +2613,19 @@ func _apply_verbs(unit: Dictionary, cmd: Dictionary) -> void:
 		HelmCombat.cycle_lock(self, unit, int(cmd.lock_cycle))
 	if cmd.has("order"):
 		HelmCombat.set_order(self, unit, cmd.order)
+	if cmd.has("engage"):
+		var spec: Dictionary = cmd.engage if typeof(cmd.engage) == TYPE_DICTIONARY else {}
+		var mark := str(spec.get("lock", ""))
+		if mark != "":
+			HelmCombat.set_lock(self, unit, mark)
+		unit.engage = str(spec.get("socket", ""))
+		if str(unit.get("agent_id", "")) == str(player.get("agent_id", "")):
+			if str(unit.engage) == "":
+				say("Weapons hold.")
+			else:
+				var who = HelmCombat.find_unit(self, mark)
+				var called := str(who.get("name", "the target")) if who != null else "the target"
+				say("%s on %s." % [str(spec.get("name", "The gun")), called])
 
 
 func _clear_oneshots() -> void:
@@ -2439,6 +2639,7 @@ func _clear_oneshots() -> void:
 		row.erase("lock")
 		row.erase("lock_cycle")
 		row.erase("order")
+		row.erase("engage")
 		commands[key] = row
 
 
@@ -2746,6 +2947,569 @@ func _craft_in(row: Dictionary) -> Dictionary:
 	return item
 
 
+func _spawn_belt(rng: RandomNumberGenerator) -> void:
+	asteroids = []
+	belt_pos = Vector2.ZERO
+	belt_span = 0.0
+	ice_pos = Vector2.ZERO
+	copper_pos = Vector2.ZERO
+	var belt: Dictionary = defs.system.get("belt", {})
+	var count := int(belt.get("count", 0))
+	if count <= 0:
+		_seed_reach_stock(rng)
+		return
+	var composition := str(belt.get("composition", ""))
+	var tint := _belt_tint(composition)
+	var local := bool(belt.get("local", false))
+	if local:
+		tint = "#c4a06a"
+	var origin := Vector2.ZERO
+	var span := float(belt.get("width", 40.0))
+	var pad := Vector2.ZERO
+	if local:
+		var anchor = planet(str(belt.get("anchor", "")))
+		if anchor == null:
+			return
+		pad = anchor.pos + _dock_offset(anchor)
+		var away: Vector2 = pad - anchor.pos
+		if away.length() < 1.0:
+			away = Vector2.RIGHT
+		away = away.normalized()
+		# The berth eye sits on +Y and looks toward -Y. A flank offset lands
+		# behind that eye. Park the field between the pad and the crust.
+		var reach := float(belt.get("radius", 460.0))
+		origin = pad - away * reach
+		var crust := float(anchor.radius) * 1.34 + 80.0
+		if origin.distance_to(anchor.pos) < crust:
+			origin = anchor.pos + (origin - anchor.pos).normalized() * (crust + 40.0)
+		belt_pos = origin
+		belt_span = span
+	if local and belt_pos != Vector2.ZERO:
+		_plant_cluster(rng, belt_pos, 5, 46.0, tint, "#f6c36a", "nickel_cinder", 18.0, composition)
+		_spawn_loners(rng, pad, composition, tint)
+		_spawn_seams(rng, pad, belt_pos)
+	else:
+		var stock: Dictionary = _reach_mineral(0)
+		var material := str(stock.get("id", "nickel_cinder"))
+		var vein := str(stock.get("vein", "#f0a04a"))
+		tint = str(stock.get("tint", tint))
+		var sites := clampi(int(round(float(count) * 0.5)), 2, 6)
+		for i in sites:
+			var ang := rng.randf() * TAU
+			var rad := float(belt.get("radius", 800.0)) + rng.randf_range(-span, span)
+			var center := Vector2.from_angle(ang) * rad
+			var pair := 1
+			if rng.randf() > 0.45:
+				pair = 2
+			_plant_cluster(rng, center, pair, 26.0, tint, vein, material, 14.0, composition)
+		_seed_reach_stock(rng)
+
+
+func _spawn_loners(rng: RandomNumberGenerator, pad: Vector2, composition: String, tint: String) -> void:
+	var belt: Dictionary = defs.system.get("belt", {})
+	var anchor = planet(str(belt.get("anchor", "")))
+	var hubs := _stock_hubs()
+	for i in 5:
+		var at := _random_reach_seat(rng, anchor, pad, hubs, 420.0, 1100.0)
+		hubs.append(at)
+		var pair := 1
+		if rng.randf() > 0.42:
+			pair = 2
+		var size := 24.0 + float(i) * 4.0
+		_plant_cluster(rng, at, pair, 28.0, tint, "#f6c36a", "nickel_cinder", size, composition)
+
+
+func _spawn_seams(rng: RandomNumberGenerator, pad: Vector2, _origin: Vector2) -> void:
+	var belt: Dictionary = defs.system.get("belt", {})
+	var anchor = planet(str(belt.get("anchor", "")))
+	var avoid := _stock_hubs()
+	ice_pos = _random_reach_seat(rng, anchor, pad, avoid, 720.0, 1400.0)
+	avoid.append(ice_pos)
+	copper_pos = _random_reach_seat(rng, anchor, pad, avoid, 720.0, 1400.0)
+	if ice_pos.distance_to(copper_pos) < 1200.0:
+		var push: Vector2 = copper_pos - ice_pos
+		if push.length() < 1.0:
+			push = Vector2.from_angle(rng.randf() * TAU)
+		copper_pos = _clear_sky(ice_pos + push.normalized() * 1600.0, pad, anchor, 720.0)
+	_plant_vein(rng, anchor, pad, ice_pos, 2, 4, "#d5e6f0", "#f4fbff", "ice_spall", 20.0)
+	_plant_vein(rng, anchor, pad, copper_pos, 2, 4, "#6e8f58", "#d6ee8a", "copper_slag", 22.0)
+
+
+func _clear_pad(at: Vector2, pad: Vector2, keep: float) -> Vector2:
+	if at.distance_to(pad) >= keep:
+		return at
+	var push: Vector2 = at - pad
+	if push.length() < 1.0:
+		push = Vector2(0.0, -1.0)
+	return pad + push.normalized() * keep
+
+
+func _clear_sky(at: Vector2, pad: Vector2, anchor, keep: float) -> Vector2:
+	var placed := _clear_pad(at, pad, keep)
+	if anchor == null:
+		return placed
+	var crust := float(anchor.radius) * 1.34 + 80.0
+	if placed.distance_to(anchor.pos) < crust:
+		placed = anchor.pos + (placed - anchor.pos).normalized() * (crust + 40.0)
+		placed = _clear_pad(placed, pad, keep)
+	return placed
+
+
+func _orbit_seat(anchor, angle: float, dist: float, pad: Vector2, keep: float) -> Vector2:
+	if anchor == null:
+		return _clear_pad(Vector2.from_angle(angle) * dist, pad, keep)
+	var reach := maxf(dist, float(anchor.radius) * 1.34 + 120.0)
+	var at: Vector2 = Vector2(anchor.pos) + Vector2.from_angle(angle) * reach
+	return _clear_sky(at, pad, anchor, keep)
+
+
+func _stock_anchor():
+	var belt: Dictionary = defs.system.get("belt", {})
+	var home = planet(str(belt.get("anchor", "")))
+	if home == null:
+		home = planet(str(defs.system.get("pdo", {}).get("home", "")))
+	if home == null and planets.size() > 0:
+		home = planets[0]
+	return home
+
+
+func _stock_pad(home) -> Vector2:
+	if beacon_pos != Vector2.ZERO:
+		return Vector2(beacon_pos)
+	if home == null:
+		return Vector2.ZERO
+	return Vector2(home.pos) + _dock_offset(home)
+
+
+func _stock_hubs() -> Array:
+	var hubs: Array = []
+	if belt_pos != Vector2.ZERO:
+		hubs.append(belt_pos)
+	if ice_pos != Vector2.ZERO:
+		hubs.append(ice_pos)
+	if copper_pos != Vector2.ZERO:
+		hubs.append(copper_pos)
+	if plate_pos != Vector2.ZERO:
+		hubs.append(plate_pos)
+	if trash_pos != Vector2.ZERO:
+		hubs.append(trash_pos)
+	if stream_origin != Vector2.ZERO:
+		hubs.append(stream_origin)
+	if beacon_pos != Vector2.ZERO:
+		hubs.append(Vector2(beacon_pos))
+	if pocket_pos != Vector2.ZERO:
+		hubs.append(Vector2(pocket_pos))
+	return hubs
+
+
+func _stock_taken() -> Array:
+	var taken := _stock_hubs()
+	for rock in asteroids:
+		var row: Dictionary = rock
+		taken.append(Vector2(row.pos))
+	for hull in trash:
+		var scrap: Dictionary = hull
+		taken.append(Vector2(scrap.pos))
+	return taken
+
+
+func _random_reach_seat(rng: RandomNumberGenerator, home, pad: Vector2, avoid: Array, keep: float, sep: float) -> Vector2:
+	var at := Vector2.ZERO
+	if home == null:
+		var ang0 := rng.randf() * TAU
+		at = Vector2.from_angle(ang0) * rng.randf_range(1400.0, 5200.0)
+		return _clear_pad(at, pad, keep)
+	var crust := float(home.radius) * 1.34 + 220.0
+	var near := maxf(crust, 1100.0)
+	var far := maxf(near + 2200.0, 6200.0)
+	var guard := 0
+	while guard < 48:
+		var body = home
+		if planets.size() > 1 and rng.randf() < 0.34:
+			body = planets[rng.randi_range(0, planets.size() - 1)]
+		var ang := rng.randf() * TAU
+		var dist := rng.randf_range(near, far)
+		if body != home:
+			dist = rng.randf_range(float(body.radius) * 1.8 + 240.0, float(body.radius) * 4.2 + 1800.0)
+			at = Vector2(body.pos) + Vector2.from_angle(ang) * dist
+		else:
+			at = Vector2(home.pos) + Vector2.from_angle(ang) * dist
+		at = _clear_sky(at, pad, home, keep)
+		if at.length() < 420.0:
+			at = at.normalized() * 480.0
+			if at.length() < 1.0:
+				at = Vector2(480.0, 0.0)
+		var clear := true
+		for other in avoid:
+			var mark: Vector2 = other
+			if at.distance_to(mark) < sep:
+				clear = false
+				break
+		if clear:
+			return at
+		guard += 1
+	return _clear_sky(at, pad, home, keep)
+
+
+func _append_ore(rng: RandomNumberGenerator, at: Vector2, size: float, composition: String, tint: String, vein: String, material: String, sides: int) -> void:
+	var rot := rng.randf() * TAU
+	var verts := PackedVector2Array()
+	var n := maxi(sides, 5)
+	for s in n:
+		var a := rot + float(s) / float(n) * TAU
+		var rr := size * rng.randf_range(0.55, 1.25)
+		verts.append(at + Vector2.from_angle(a) * rr)
+	asteroids.append({
+		"pos": at,
+		"verts": verts,
+		"size": size,
+		"composition": composition,
+		"tint": tint,
+		"ore": true,
+		"material": material,
+		"vein": vein,
+	})
+
+
+func _plant_cluster(rng: RandomNumberGenerator, center: Vector2, count: int, radius: float, tint: String, vein: String, material: String, size0: float, composition: String = "") -> void:
+	var mix := composition
+	if mix == "":
+		mix = material
+	var n := maxi(count, 1)
+	for i in n:
+		var at := center
+		if i > 0 and n > 1:
+			var ang := rng.randf() * TAU
+			var rad := rng.randf_range(radius * 0.22, radius)
+			at = center + Vector2.from_angle(ang) * rad
+		var size := size0 + float(i) * 2.4 + rng.randf_range(0.0, 3.5)
+		_append_ore(rng, at, size, mix, tint, vein, material, 5 + (i % 3))
+
+
+func _plant_vein(rng: RandomNumberGenerator, home, pad: Vector2, first_at: Vector2, groups: int, per_group: int, tint: String, vein: String, material: String, size0: float) -> void:
+	var hubs := _stock_hubs()
+	if first_at != Vector2.ZERO:
+		hubs.append(first_at)
+	for g in groups:
+		var at := first_at
+		if g > 0 or first_at == Vector2.ZERO:
+			at = _random_reach_seat(rng, home, pad, hubs, 720.0, 1400.0)
+		hubs.append(at)
+		_plant_cluster(rng, at, per_group, 48.0, tint, vein, material, size0, material)
+
+
+func _plant_trash_group(rng: RandomNumberGenerator, center: Vector2, count: int, radius: float, origin: String) -> void:
+	var n := maxi(count, 1)
+	for i in n:
+		var at := center
+		if i > 0 and n > 1:
+			var ang := rng.randf() * TAU
+			var rad := rng.randf_range(radius * 0.2, radius)
+			at = center + Vector2.from_angle(ang) * rad
+		trash.append({
+			"pos": at,
+			"rot": rng.randf() * TAU,
+			"kind": i % 3,
+			"scale": rng.randf_range(0.9, 1.7),
+			"origin": origin,
+		})
+
+
+func _slide_ore(rock: Dictionary, to: Vector2) -> void:
+	var from: Vector2 = rock.pos
+	var delta: Vector2 = to - from
+	rock.pos = to
+	var verts: PackedVector2Array = rock.verts
+	var next := PackedVector2Array()
+	for point in verts:
+		var tip: Vector2 = point
+		next.append(tip + delta)
+	rock.verts = next
+
+
+func _slide_nearest_ore(material: String, near: Vector2, to: Vector2) -> void:
+	var best = null
+	var best_d := 1.0e12
+	for rock in asteroids:
+		var row: Dictionary = rock
+		if str(row.get("material", "")) != material:
+			continue
+		var dist: float = Vector2(row.pos).distance_to(near)
+		if dist < best_d:
+			best = row
+			best_d = dist
+	if best != null:
+		_slide_ore(best, to)
+
+
+func _slide_group(material: String, near: Vector2, to: Vector2, radius: float) -> void:
+	var delta: Vector2 = to - near
+	var moved := 0
+	for rock in asteroids:
+		var row: Dictionary = rock
+		if str(row.get("material", "")) != material:
+			continue
+		if Vector2(row.pos).distance_to(near) > radius:
+			continue
+		_slide_ore(row, Vector2(row.pos) + delta)
+		moved += 1
+	if moved == 0:
+		_slide_nearest_ore(material, near, to)
+
+
+func _slide_nearest_trash(near: Vector2, to: Vector2) -> void:
+	var best = null
+	var best_d := 1.0e12
+	for hull in trash:
+		var row: Dictionary = hull
+		var dist: float = Vector2(row.pos).distance_to(near)
+		if dist < best_d:
+			best = row
+			best_d = dist
+	if best != null:
+		best.pos = to
+
+
+func _slide_trash_group(near: Vector2, to: Vector2, radius: float) -> void:
+	var delta: Vector2 = to - near
+	var moved := 0
+	for hull in trash:
+		var row: Dictionary = hull
+		if Vector2(row.pos).distance_to(near) > radius:
+			continue
+		row.pos = Vector2(row.pos) + delta
+		moved += 1
+	if moved == 0:
+		_slide_nearest_trash(near, to)
+
+
+func _set_node_pos(nid: String, at: Vector2) -> void:
+	var row = survey_node(nid)
+	if row != null:
+		row.pos = at
+
+
+func _reseat_after_cut(node_id: String, row: Dictionary) -> void:
+	var res: Dictionary = row.resource
+	var res_id := str(res.get("id", ""))
+	var kind := str(row.get("kind", ""))
+	if kind == "planet" or kind == "ring":
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(seed_value) + absi(node_id.hash()) + int(deposits.get(node_id, 0)) * 131 + 17
+	var home = _stock_anchor()
+	var pad := _stock_pad(home)
+	var avoid := _stock_hubs()
+	var old := Vector2(row.pos)
+	avoid.append(old)
+	var at := _random_reach_seat(rng, home, pad, avoid, 720.0, 1400.0)
+	if res_id == "nickel_cinder" or kind == "belt":
+		_slide_group("nickel_cinder", old, at, 80.0)
+		belt_pos = at
+	elif res_id == "ice_spall":
+		if kind == "gravel" or node_id == "lease_gravel":
+			stream_origin = at
+			for chip in meteors:
+				var met: Dictionary = chip
+				var off := Vector2.ZERO
+				if met.has("offset"):
+					off = met.offset
+				met.pos = stream_origin + off
+		else:
+			_slide_group("ice_spall", old, at, 80.0)
+			ice_pos = at
+	elif res_id == "copper_slag":
+		_slide_group("copper_slag", old, at, 80.0)
+		copper_pos = at
+	elif res_id == "hull_plate":
+		_slide_trash_group(old, at, 80.0)
+		plate_pos = at
+	elif kind == "trash":
+		_slide_trash_group(old, at, 80.0)
+		trash_pos = at
+	else:
+		return
+	_set_node_pos(node_id, at)
+	if int(deposits.get(node_id, 0)) <= 0:
+		var amount := int(res.get("amount", 4))
+		if amount <= 0:
+			amount = 4
+		deposits[node_id] = amount
+
+
+func _reach_mineral(index: int) -> Dictionary:
+	var book := [
+		{"id": "nickel_cinder", "tint": "#c4a06a", "vein": "#f6c36a", "name": "Nickel cinder"},
+		{"id": "ice_spall", "tint": "#d5e6f0", "vein": "#f4fbff", "name": "Ice spall"},
+		{"id": "copper_slag", "tint": "#6e8f58", "vein": "#d6ee8a", "name": "Copper slag"},
+	]
+	var mix := absi(str(defs.system.id).hash()) + index
+	var row: Dictionary = book[mix % book.size()]
+	return row
+
+
+func _seed_reach_stock(rng: RandomNumberGenerator) -> void:
+	var home = planet(str(defs.system.get("pdo", {}).get("home", "")))
+	if home == null and planets.size() > 0:
+		home = planets[0]
+	if home == null:
+		return
+	var pad: Vector2 = Vector2(home.pos) + _dock_offset(home)
+	var avoid := _stock_hubs()
+	if ice_pos == Vector2.ZERO:
+		ice_pos = _random_reach_seat(rng, home, pad, avoid, 720.0, 1400.0)
+		avoid.append(ice_pos)
+		var ice: Dictionary = _reach_mineral(1)
+		_plant_vein(rng, home, pad, ice_pos, 2, 4, str(ice.tint), str(ice.vein), "ice_spall", 18.0)
+	if copper_pos == Vector2.ZERO:
+		copper_pos = _random_reach_seat(rng, home, pad, avoid, 720.0, 1400.0)
+		avoid.append(copper_pos)
+		var slag: Dictionary = _reach_mineral(2)
+		_plant_vein(rng, home, pad, copper_pos, 2, 4, str(slag.tint), str(slag.vein), "copper_slag", 18.0)
+	if plate_pos == Vector2.ZERO:
+		if trash_pos != Vector2.ZERO:
+			plate_pos = trash_pos
+		else:
+			plate_pos = _random_reach_seat(rng, home, pad, avoid, 260.0, 220.0)
+
+
+func _scatter_flank_scrap(rng: RandomNumberGenerator) -> void:
+	plate_pos = Vector2.ZERO
+	if belt_pos == Vector2.ZERO:
+		return
+	var belt: Dictionary = defs.system.get("belt", {})
+	var anchor = planet(str(belt.get("anchor", "")))
+	if anchor == null:
+		return
+	var pad: Vector2 = anchor.pos + _dock_offset(anchor)
+	# Three chips stay in the pad sky. The harvestable plate rides with the hold.
+	var spots: Array[Vector2] = [
+		pad + Vector2(-40.0, 150.0),
+		pad + Vector2(-190.0, 40.0),
+		pad + Vector2(-70.0, 60.0),
+	]
+	for i in spots.size():
+		var at: Vector2 = spots[i]
+		if at.distance_to(pad) < 210.0:
+			var push: Vector2 = at - pad
+			if push.length() < 1.0:
+				push = Vector2(0.0, -1.0)
+			at = pad + push.normalized() * 240.0
+		var crust := float(anchor.radius) * 1.34 + 80.0
+		if at.distance_to(anchor.pos) < crust:
+			at = anchor.pos + (at - anchor.pos).normalized() * (crust + 30.0)
+		trash.append({
+			"pos": at,
+			"rot": rng.randf() * TAU,
+			"kind": i % 3,
+			"scale": rng.randf_range(1.45, 2.35),
+			"origin": str(belt.get("composition", "")),
+		})
+	if trash_pos != Vector2.ZERO:
+		plate_pos = trash_pos
+	else:
+		plate_pos = _orbit_seat(anchor, 2.2, 1100.0, pad, 280.0)
+
+
+func _pin_local_marks() -> void:
+	var belt: Dictionary = defs.system.get("belt", {})
+	var rain: Dictionary = defs.system.get("stream", {})
+	for row in nodes:
+		if belt_pos != Vector2.ZERO and str(row.get("id", "")) == str(belt.get("id", "")):
+			row.pos = belt_pos
+			row.radius = maxf(110.0, belt_span)
+		if stream_origin != Vector2.ZERO and str(row.get("id", "")) == str(rain.get("id", "")):
+			row.pos = stream_origin
+			row.radius = 64.0
+		if ice_pos != Vector2.ZERO and str(row.get("id", "")) == "ice_spall":
+			row.pos = ice_pos
+			row.radius = 80.0
+		if copper_pos != Vector2.ZERO and str(row.get("id", "")) == "copper_slag":
+			row.pos = copper_pos
+			row.radius = 76.0
+		if plate_pos != Vector2.ZERO and str(row.get("id", "")) == "hull_plate":
+			row.pos = plate_pos
+			row.radius = 90.0
+	_ensure_stock_node("ice_spall", "Ice Spall", ice_pos, "ice_spall", "Ice spall", 5)
+	_ensure_stock_node("copper_slag", "Copper Slag", copper_pos, "copper_slag", "Copper slag", 5)
+	_ensure_stock_node("hull_plate", "Hull Plate", plate_pos, "hull_plate", "Hull plate", 4)
+
+
+func _ensure_stock_node(nid: String, title: String, at: Vector2, res_id: String, res_name: String, amount: int) -> void:
+	if at == Vector2.ZERO:
+		return
+	for row in nodes:
+		var mark: Dictionary = row
+		if str(mark.get("id", "")) == nid:
+			return
+	nodes.append({
+		"id": nid,
+		"name": title,
+		"kind": "seam",
+		"pos": at,
+		"radius": 80.0,
+		"heat": "lease",
+		"resource": {
+			"id": res_id,
+			"name": res_name,
+			"amount": amount,
+		},
+	})
+	deposits[nid] = amount
+
+
+func _gang_book() -> Dictionary:
+	if defs.has("gangs") and defs.gangs is Dictionary and not (defs.gangs as Dictionary).is_empty():
+		return defs.gangs
+	var book: Dictionary = Serde.load_json("res://data/gangs.json")
+	defs.gangs = book
+	return book
+
+
+func _material_book() -> Dictionary:
+	if defs.has("materials") and defs.materials is Dictionary and not (defs.materials as Dictionary).is_empty():
+		return defs.materials
+	var book: Dictionary = Serde.load_json("res://data/materials.json")
+	defs.materials = book
+	return book
+
+
+func _pick_gang() -> Dictionary:
+	var book := _gang_book()
+	var keys: Array = book.keys()
+	if keys.is_empty():
+		gang_id = "red_keel"
+		gang_name = "Red Keel"
+		return {}
+	if gang_salt == 0:
+		gang_salt = int(Time.get_ticks_msec() % 900) + 11
+	var mix := absi(gang_salt + str(defs.system.id).hash())
+	var picked: Dictionary = book[str(keys[mix % keys.size()])]
+	gang_id = str(picked.get("id", keys[0]))
+	gang_name = str(picked.get("name", "Red Keel"))
+	return picked
+
+
+func _gang_line() -> String:
+	var book := _gang_book()
+	if book.has(gang_id):
+		return str(book[gang_id].get("line", ""))
+	return "They hunt the amber."
+
+
+func yields_material(row: Dictionary) -> bool:
+	var kind_name := str(row.get("kind", ""))
+	if kind_name == "planet":
+		return false
+	var res: Dictionary = row.get("resource", {})
+	var id := str(res.get("id", ""))
+	if id == "":
+		return false
+	if id == "raw_mass" or kind_name == "belt" or kind_name == "stream" or kind_name == "seam" or kind_name == "gravel":
+		return true
+	return _material_book().has(id)
+
+
 func _belt_tint(composition: String) -> String:
 	if composition == "":
 		return "#3a342c"
@@ -2761,16 +3525,46 @@ func _build_meteors(rng: RandomNumberGenerator) -> void:
 		return
 	var anchor = planet(str(spec.get("anchor", "")))
 	var origin := Vector2.ZERO
+	var vector := _stream_vector(spec)
+	var pad := Vector2.ZERO
+	if bool(spec.get("local", false)) and anchor != null:
+		pad = Vector2(anchor.pos) + _dock_offset(anchor)
+		var reach := rng.randf_range(220.0, 380.0)
+		var bearing := Vector2(-0.94, 0.34)
+		origin = pad + bearing.normalized() * reach
+		origin = _clear_sky(origin, pad, anchor, 180.0)
+		vector = _stream_vector(spec)
+	elif anchor != null:
+		origin = Vector2(anchor.pos) + Vector2.from_angle(float(spec.get("angle", 0.0))) * float(spec.get("distance", 0.0))
+	stream_origin = origin
+	var local_rain := bool(spec.get("local", false))
+	var period := maxf(float(spec.get("period", 12.0)), 0.1)
+	var span := float(spec.get("span", float(spec.get("speed", 70.0)) * period))
+	if local_rain:
+		span = maxf(span, 180.0)
+	var speed := span / period
+	var site_near := origin
+	if local_rain and pad != Vector2.ZERO:
+		site_near = pad + Vector2(rng.randf_range(-60.0, 60.0), rng.randf_range(-48.0, 48.0))
+	var site_far := origin
 	if anchor != null:
-		origin = anchor.pos
-	stream_origin = origin + Vector2.from_angle(float(spec.get("angle", 0.0))) * float(spec.get("distance", 0.0))
-	var count := 7
-	for i in count:
+		site_far = _random_reach_seat(rng, anchor, pad, _stock_hubs(), 720.0, 1600.0)
+	var sites: Array = [site_near, site_far]
+	for i in 4:
+		var site: Vector2 = sites[i / 2]
+		var phase := float(i) / 4.0
+		var walk := phase * span
+		var mate := Vector2.ZERO
+		if i % 2 == 1:
+			mate = Vector2(rng.randf_range(-22.0, 22.0), rng.randf_range(-18.0, 18.0))
+		var offset: Vector2 = site + mate - (stream_origin + vector * walk)
+		var size := rng.randf_range(8.0, 14.0) if local_rain else rng.randf_range(4.0, 9.0)
 		meteors.append({
-			"phase": float(i) / float(count),
-			"offset": Vector2(rng.randf_range(-40.0, 40.0), rng.randf_range(-28.0, 28.0)),
-			"size": rng.randf_range(3.0, 8.0),
-			"pos": stream_origin,
+			"phase": phase,
+			"offset": offset,
+			"size": size,
+			"pos": stream_origin + vector * walk + offset,
+			"vel": vector * speed,
 		})
 
 
@@ -2781,7 +3575,7 @@ func _step_stream(dt: float) -> void:
 	var period := maxf(float(spec.get("period", 12.0)), 0.1)
 	var span := float(spec.get("span", float(spec.get("speed", 70.0)) * period))
 	var along := fmod(time, period) / period * span
-	var vector := Vector2.from_angle(float(spec.get("vector", 0.0)))
+	var vector := _stream_vector(spec)
 	var node = survey_node(str(spec.id))
 	if node != null:
 		node.pos = stream_origin + vector * along
@@ -2789,6 +3583,14 @@ func _step_stream(dt: float) -> void:
 		var phase := float(rock.phase)
 		var walk := fmod(along + phase * span, span)
 		rock.pos = stream_origin + vector * walk + rock.offset
+		rock.vel = vector * (span / period)
+
+
+func _stream_vector(spec: Dictionary) -> Vector2:
+	if bool(spec.get("local", false)):
+		# Cross the bow. +Y is behind the berth eye, so the rain runs toward -Y.
+		return Vector2(0.08, 0.99).normalized()
+	return Vector2.from_angle(float(spec.get("vector", 0.0)))
 
 
 func _roman(index: int) -> String:

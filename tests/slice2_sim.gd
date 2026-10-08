@@ -14,6 +14,9 @@ func _init() -> void:
 		"quests": Serde.load_json("res://data/quests.json"),
 	}
 	_racks()
+	_fleet_orders()
+	_escort_spread()
+	_buy_wing()
 	_scan_harvest_heat()
 	_loss_and_save()
 	_helm()
@@ -66,13 +69,102 @@ func _racks() -> void:
 	var kestrel := make("kestrel")
 	check(_count(kestrel, "survey_probe") == 1, "Kestrel racks one survey probe")
 	check(_count(kestrel, "fighter") == 1, "Kestrel racks one fighter")
-	check("parked" in CraftOrders.launch(kestrel, "fighter").to_lower(), "the fighter stays parked")
+	check(CraftOrders.launch(kestrel, "fighter") == "", "the fighter launches onto the wing")
+	check(str(_craft(kestrel, "fighter_1").state) == "escort", "the fighter takes escort")
 	check(not bool(vesper.defs.system.pocket.plantable), "the pocket stays closed")
+
+
+func _fleet_orders() -> void:
+	var kestrel := make("kestrel")
+	var probe = _craft(kestrel, "survey_probe_1")
+	var fighter = _craft(kestrel, "fighter_1")
+	check(str(probe.state) == "docked", "the probe starts on the rack")
+	check(CraftOrders.fleet(kestrel, "form") == "", "the wing forms")
+	check(str(fighter.state) == "escort", "form puts the fighter on escort")
+	check(str(fighter.order) == "escort", "form is an escort order")
+	check(str(probe.state) == "docked", "forming the wing leaves the probe on the rack")
+	check(CraftOrders.fleet(kestrel, "attack") == "", "the wing attacks")
+	check(str(fighter.order) == "attack", "attack marks the wing")
+	check(str(probe.state) == "docked", "attack leaves the probe on the rack")
+	check(CraftOrders.order(kestrel, str(probe.uid), "orbit", "aegis_prime") == "", "a racked probe takes an orbit order")
+	var flying: bool = str(probe.state) == "outbound" or str(probe.state) == "orbiting"
+	check(flying, "the probe leaves the rack")
+	check(CraftOrders.fleet(kestrel, "recall") == "", "recall brings the wing home")
+	check(str(fighter.state) == "returning", "the fighter turns for the keel")
+	check(str(probe.state) == "returning", "the probe turns for the keel")
+	var vesper := make("vesper")
+	check(CraftOrders.fleet(vesper, "form") == "No fighter is on the keel.", "a rack with no fighter has no wing")
+	check(CraftOrders.fleet(vesper, "recall") == "Nothing is out to recall.", "nothing is out to recall")
+
+
+func _escort_spread() -> void:
+	var sim := make("kestrel")
+	sim.time = 12.0
+	var reach := float(Fit.stats(sim.defs, sim.player).hit_radius)
+	var floor_dist := maxf(reach * 9.0, 280.0) * 1.8
+	var seen: Array = []
+	var index := 0
+	for item in sim.craft:
+		var pose: Dictionary = CraftOrders.escort_pose(sim, item, index)
+		var at := Vector2(pose.pos)
+		var dist := at.distance_to(sim.player.pos)
+		check(dist > floor_dist, "%s keeps clear of the keel (%.0f)" % [item.name, dist])
+		check(absf(wrapf(float(pose.rot) - sim.player.rot, -PI, PI)) > 0.15, "%s flies its own heading" % item.name)
+		for other in seen:
+			check(at.distance_to(other) > 120.0, "%s does not share a station" % item.name)
+		seen.append(at)
+		index += 1
+	sim.time = 20.0
+	var later: Dictionary = CraftOrders.escort_pose(sim, sim.craft[0], 0)
+	check(Vector2(later.pos).distance_to(seen[0]) > 40.0, "an escort station moves on its own pattern")
+
+
+func _buy_wing() -> void:
+	var sim := make("vesper")
+	sim.player.pos = sim.beacon_pos
+	sim.player.moored = true
+	sim.quest_flags.purse = DockBoard.FIGHTER_PRICE
+	check(DockBoard.buy_fighter(sim) == "", "the pad sells a fighter")
+	check(DockBoard.purse(sim) == 0, "a fighter spends the purse")
+	check(_count(sim, "fighter") == 1, "Vesper racks the bought fighter")
+	check(DockBoard.buy_fighter(sim) != "", "an empty purse cannot buy a second fighter")
+	sim.quest_flags.purse = DockBoard.FIGHTER_PRICE * 3
+	check(DockBoard.buy_fighter(sim) == "", "the pad sells a second fighter")
+	check(CraftOrders.launch(sim, "fighter") == "", "the first fighter launches")
+	var second = _craft(sim, "fighter_2")
+	check(CraftOrders.order(sim, str(second.uid), "launch", "") == "", "the second fighter launches")
+	for _i in 30:
+		sim.tick(0.05, {})
+	var lead = _craft(sim, "fighter_1")
+	var wing = _craft(sim, "fighter_2")
+	check(str(lead.state) == "escort" and str(wing.state) == "escort", "both fighters stay on escort")
+	check(lead.pos.distance_to(wing.pos) > 80.0, "the wing flies two stations")
+	check(lead.pos.distance_to(sim.player.pos) > 70.0, "a fighter follows off the hull")
+	sim.player.pos += Vector2(0, 2200)
+	sim.player.vel = Vector2.ZERO
+	lead.pos = sim.player.pos + Vector2(-120, 180)
+	wing.pos = sim.player.pos + Vector2(140, 220)
+	var skiff: Dictionary = sim._blank_ship("skiff", "Red Keel", "agent:red_keel:test", "npc", "red_keel")
+	skiff.pos = sim.player.pos + Vector2(0, 460)
+	skiff.alive = true
+	sim.actors.append(skiff)
+	sim.player.lock_id = str(skiff.agent_id)
+	sim.player.lock_ok = true
+	check(CraftOrders.order(sim, str(lead.uid), "attack", "") == "", "the fighter takes the lock")
+	check(str(lead.target) == str(skiff.agent_id), "the attack order marks the skiff")
+	var fired := false
+	for _i in 80:
+		sim.tick(0.05, {})
+		if sim.projectiles.size() > 0 or float(skiff.hp) < float(skiff.max_hp):
+			fired = true
+			break
+	check(fired, "the fighter fires on the target")
 
 
 func _scan_harvest_heat() -> void:
 	var sim := make("vesper")
-	check(sim.nodes.size() == 3, "Helion Dock has three scan nodes")
+	check(sim.survey_node("aegis_prime") != null and sim.survey_node("aegis_ring") != null and sim.survey_node("seized_hold") != null, "the dock still has planet, ring, and seized hold")
+	check(sim.survey_node("cinder_reach") != null and sim.survey_node("lease_gravel") != null, "the ore field and the gravel stream are scan nodes")
 	var probe = _craft(sim, "survey_probe_1")
 	check(CraftOrders.order(sim, str(probe.uid), "orbit", "aegis_prime") == "", "probe accepts an orbit order")
 	for _i in 50:

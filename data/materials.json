@@ -1,0 +1,44 @@
+{
+  "raw_mass": {
+    "id": "raw_mass",
+    "name": "Raw mass",
+    "tint": "#8a6238",
+    "vein": "#f0a04a",
+    "line": "Returned mass. A dock can rebuild a lost craft from it."
+  },
+  "nickel_cinder": {
+    "id": "nickel_cinder",
+    "name": "Nickel cinder",
+    "tint": "#c4a06a",
+    "vein": "#f6c36a",
+    "line": "Cut from Cinder Reach. Bright seams in dark stone."
+  },
+  "ice_spall": {
+    "id": "ice_spall",
+    "name": "Ice spall",
+    "tint": "#d5e6f0",
+    "vein": "#f4fbff",
+    "line": "Chips off the Aegis ice. Cold, pale, and leased."
+  },
+  "copper_slag": {
+    "id": "copper_slag",
+    "name": "Copper slag",
+    "tint": "#6e8f58",
+    "vein": "#d6ee8a",
+    "line": "Green slag with a copper heart. A short seam beside the belt."
+  },
+  "hull_plate": {
+    "id": "hull_plate",
+    "name": "Hull plate",
+    "tint": "#c4a882",
+    "vein": "#e7d2b0",
+    "line": "Torn plate from a broken hull. Still stock."
+  },
+  "salvage_parts": {
+    "id": "salvage_parts",
+    "name": "Keel salvage",
+    "tint": "#a08070",
+    "vein": "#e4c8a4",
+    "line": "Stripped fittings. The tender brings these home."
+  }
+}

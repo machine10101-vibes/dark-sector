@@ -34,6 +34,76 @@ func check(cond: bool, message: String) -> void:
 		print("FAIL: %s" % message)
 
 
+func _material_span(sim: SectorSim, material: String) -> float:
+	var spots: Array = []
+	for rock in sim.asteroids:
+		var chip: Dictionary = rock
+		if str(chip.get("material", "")) == material:
+			spots.append(Vector2(chip.pos))
+	var span := 0.0
+	for i in spots.size():
+		var a: Vector2 = spots[i]
+		for j in range(i + 1, spots.size()):
+			var b: Vector2 = spots[j]
+			var dist: float = a.distance_to(b)
+			if dist > span:
+				span = dist
+	return span
+
+
+func _cluster_count(sim: SectorSim, material: String, center: Vector2, radius: float) -> int:
+	var n := 0
+	for rock in sim.asteroids:
+		var chip: Dictionary = rock
+		if str(chip.get("material", "")) != material:
+			continue
+		if Vector2(chip.pos).distance_to(center) <= radius:
+			n += 1
+	return n
+
+
+func _loners_small(sim: SectorSim, material: String, hub: Vector2, hub_r: float) -> bool:
+	var loners: Array = []
+	for rock in sim.asteroids:
+		var chip: Dictionary = rock
+		if str(chip.get("material", "")) != material:
+			continue
+		if Vector2(chip.pos).distance_to(hub) <= hub_r:
+			continue
+		loners.append(Vector2(chip.pos))
+	if loners.is_empty():
+		return true
+	for i in loners.size():
+		var a: Vector2 = loners[i]
+		var mates := 0
+		for j in loners.size():
+			if i == j:
+				continue
+			var b: Vector2 = loners[j]
+			if a.distance_to(b) < 70.0:
+				mates += 1
+		if mates > 1:
+			return false
+	return true
+
+
+func _comets_small(sim: SectorSim) -> bool:
+	if sim.meteors.size() < 2:
+		return false
+	for i in sim.meteors.size():
+		var a: Dictionary = sim.meteors[i]
+		var mates := 0
+		for j in sim.meteors.size():
+			if i == j:
+				continue
+			var b: Dictionary = sim.meteors[j]
+			if Vector2(a.pos).distance_to(Vector2(b.pos)) < 70.0:
+				mates += 1
+		if mates > 1:
+			return false
+	return true
+
+
 func make(class_id: String) -> SectorSim:
 	var sim := SectorSim.new(defs)
 	sim.new_game(class_id)
@@ -59,10 +129,108 @@ func _dock() -> void:
 	check(str(sim.defs.system.star.name) == "Helion", "the star is Helion")
 	var aegis = sim.planet("aegis_prime")
 	check(aegis != null and bool(aegis.ring) and str(aegis.ring_kind) == "ice", "Aegis Prime wears an ice ring")
+	var pad_gap: float = sim.beacon_pos.distance_to(aegis.pos) - float(aegis.radius)
+	var ring_reach := float(aegis.radius) * (1.0 + 0.085 * 3.35)
+	check(pad_gap > 700.0, "the Helion pad sits clear of Aegis")
+	check(sim.beacon_pos.distance_to(aegis.pos) > ring_reach + 400.0, "the Helion pad sits outside the ice ring")
+	check(sim.beacon_pos.distance_to(aegis.pos) < float(sim.defs.system.zones.green.radius), "the pad stays inside the green disc")
+	check(sim.pocket_pos.distance_to(aegis.pos) > float(sim.defs.system.zones.green.radius), "The Unlet stays outside the green disc")
 	check("Helion Compact Guard" in str(aegis.layers.legal), "Aegis Prime has a legal title")
 	check(sim.trash.size() >= 8, "confiscated hulls are in the hold field")
 	check("confiscated" in str(sim.defs.system.trash.origin).to_lower(), "trash names its origin")
-	check(sim.asteroids.is_empty(), "no clone rock belt")
+	check(sim.asteroids.size() >= 8, "Cinder Reach is a field of rocks")
+	check(str(sim.defs.system.belt.name) == "Cinder Reach", "the ore field is named")
+	check("nickel cinder" in str(sim.defs.system.belt.composition), "the ore names its mix")
+	check(sim.belt_pos.distance_to(sim.beacon_pos) > 180.0, "the ore field stands off the pad")
+	check(sim.belt_pos.distance_to(aegis.pos) > float(aegis.radius) * 1.3, "the ore field sits outside the ice")
+	var toward: Vector2 = aegis.pos - sim.beacon_pos
+	check((sim.belt_pos - sim.beacon_pos).dot(toward) > 0.0, "the ore field sits between the pad and Aegis")
+	check(sim.meteors.size() >= 4, "lease gravel is in the sky")
+	var gravel_near := false
+	for rock in sim.meteors:
+		var chip: Dictionary = rock
+		if sim.beacon_pos.distance_to(chip.pos) < 520.0:
+			gravel_near = true
+	check(gravel_near, "lease gravel crosses the pad sky")
+	var scrap_near := 0
+	for hull in sim.trash:
+		var piece: Dictionary = hull
+		if sim.beacon_pos.distance_to(piece.pos) < 520.0:
+			scrap_near += 1
+	check(scrap_near >= 3, "hull scrap hangs in the pad sky")
+	check(sim.survey_node("cinder_reach") != null and int(sim.deposits.get("cinder_reach", 0)) > 0, "the ore field holds a deposit")
+	var nickel = sim.survey_node("cinder_reach")
+	var ice = sim.survey_node("lease_gravel")
+	var copper = sim.survey_node("copper_slag")
+	var plate = sim.survey_node("hull_plate")
+	check(nickel != null and str(nickel.resource.id) == "nickel_cinder", "Cinder Reach yields nickel cinder")
+	check(ice != null and str(ice.resource.id) == "ice_spall", "Lease Gravel yields ice spall")
+	check(copper != null and str(copper.resource.id) == "copper_slag" and int(sim.deposits.get("copper_slag", 0)) > 0, "copper slag is a seam")
+	check(plate != null and str(plate.resource.id) == "hull_plate" and int(sim.deposits.get("hull_plate", 0)) > 0, "hull plate is a seam")
+	var ring = sim.survey_node("aegis_ring")
+	var hold = sim.survey_node("seized_hold")
+	check(ring != null and str(ring.resource.id) == "raw_mass", "the ice ring still yields raw mass")
+	check(hold != null and str(hold.resource.id) == "raw_mass", "the seized hold still yields raw mass")
+	check(sim.ice_pos.distance_to(sim.beacon_pos) > 500.0, "ice spall stands off the pad")
+	check(sim.copper_pos.distance_to(sim.beacon_pos) > 500.0, "copper slag stands off the pad")
+	check(sim.ice_pos.distance_to(sim.belt_pos) > 80.0, "ice spall stands off the belt")
+	check(sim.copper_pos.distance_to(sim.belt_pos) > 80.0, "copper slag stands off the belt")
+	check(sim.ice_pos.distance_to(sim.copper_pos) > 800.0, "ice and copper sit in different sky")
+	check(sim.plate_pos.distance_to(sim.beacon_pos) > 400.0, "hull plate sits with the seized hold")
+	check(sim.ice_pos.distance_to(sim.plate_pos) > 200.0, "ice and plate sit in different sky")
+	var saw_ice := false
+	var saw_copper := false
+	var saw_nickel := false
+	for rock in sim.asteroids:
+		var chip: Dictionary = rock
+		var mat := str(chip.get("material", ""))
+		if mat == "ice_spall":
+			saw_ice = true
+		elif mat == "copper_slag":
+			saw_copper = true
+		elif mat == "nickel_cinder":
+			saw_nickel = true
+	check(saw_ice and saw_copper and saw_nickel, "the sky holds nickel, ice, and copper")
+	check(_material_span(sim, "ice_spall") > 800.0, "ice groups sit in different sky")
+	check(_material_span(sim, "copper_slag") > 800.0, "copper groups sit in different sky")
+	check(_material_span(sim, "nickel_cinder") > 800.0, "nickel seats sit in different sky")
+	check(_cluster_count(sim, "ice_spall", sim.ice_pos, 90.0) >= 3, "ice is a group")
+	check(_cluster_count(sim, "copper_slag", sim.copper_pos, 90.0) >= 3, "copper is a group")
+	check(_cluster_count(sim, "nickel_cinder", sim.belt_pos, 90.0) >= 3, "nickel ore is a group")
+	check(_loners_small(sim, "nickel_cinder", sim.belt_pos, 90.0), "loose asteroids sit as one or two")
+	check(_comets_small(sim), "comets sit as one or two")
+	var ice_mark := Vector2(sim.ice_pos)
+	check(sim.try_extract("ice_spall") == "ok", "ice spall can be cut")
+	check(sim.ice_pos.distance_to(ice_mark) > 280.0, "cut ice reseats in other sky")
+	var ice_node = sim.survey_node("ice_spall")
+	check(ice_node != null and Vector2(ice_node.pos).distance_to(sim.ice_pos) < 4.0, "the ice mark follows the new seam")
+	var copper_mark := Vector2(sim.copper_pos)
+	check(sim.try_extract("copper_slag") == "ok", "copper slag can be cut")
+	check(sim.copper_pos.distance_to(copper_mark) > 280.0, "cut copper reseats in other sky")
+	var nickel_mark := Vector2(sim.belt_pos)
+	check(sim.try_extract("cinder_reach") == "ok", "nickel cinder can be cut")
+	check(sim.belt_pos.distance_to(nickel_mark) > 280.0, "cut nickel reseats in other sky")
+	sim.deposits["ice_spall"] = 1
+	check(sim.try_extract("ice_spall") == "ok", "the last ice cut still lands")
+	check(int(sim.deposits.get("ice_spall", 0)) > 0, "a worked-out ice seam lights elsewhere")
+	check(sim.gang_name != "" and sim.gang_id != "", "a pirate gang holds the amber")
+	var roster: Array = []
+	if sim.defs.has("gangs") and sim.defs.gangs.has(sim.gang_id):
+		var listed: Variant = sim.defs.gangs[sim.gang_id].get("ships", [])
+		if listed is Array:
+			roster = listed
+	check(roster.size() >= 3, "the gang lists its ships")
+	var pack := 0
+	var painted := true
+	for actor in sim.actors:
+		if str(actor.team) != "red_keel":
+			continue
+		if str(actor.gang) != str(sim.gang_id) or str(actor.paint) == "":
+			painted = false
+		if pack < roster.size() and str(actor.name) != str(roster[pack]):
+			painted = false
+		pack += 1
+	check(painted and pack >= 2 and pack <= 4, "the pack flies the gang's ships in one paint")
 	check(str(sim.defs.system.pocket.name) == "The Unlet", "claim pocket is marked")
 	check(not bool(sim.defs.system.pocket.plantable), "pocket is not plantable")
 	check(not bool(sim.claim.plantable), "new game keeps the pocket closed")
@@ -149,6 +317,7 @@ func _save() -> void:
 	check(str(copy.player.class_id) == "vesper", "reload keeps the Needle")
 	check(copy.player.pos.distance_to(Vector2(1234.0, -567.0)) < 1.0, "reload keeps the position")
 	check(str(copy.defs.system.id) == "HC-V1-R1-S1", "reload is still Helion Dock")
+	check(str(copy.gang_id) == str(sim.gang_id) and str(copy.gang_name) == str(sim.gang_name), "reload keeps the gang")
 	var barn := make("anvil")
 	check(str(barn.player.class_id) == "anvil", "Barn is a different hull")
 	var beak := make("kestrel")

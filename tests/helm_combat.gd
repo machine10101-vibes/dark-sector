@@ -1,5 +1,7 @@
 extends SceneTree
 
+const Steer = preload("res://world/helm_steer.gd")
+
 var defs: Dictionary = {}
 var fails := 0
 var reached := 0
@@ -19,8 +21,9 @@ func _init() -> void:
 	_locks()
 	_turrets()
 	_orders()
+	_click_orders()
 	_kill_the_cutter()
-	check(reached == 6, "every section ran to the end (%d of 6)" % reached)
+	check(reached == 7, "every section ran to the end (%d of 7)" % reached)
 	if fails == 0:
 		print("HELM COMBAT PASS")
 	else:
@@ -197,6 +200,51 @@ func _orders() -> void:
 	sim.tick(0.05, {"order": {"kind": "approach", "target": str(skiff.agent_id)}})
 	sim.tick(0.05, {"thrust": 1.0})
 	check(sim.player.order.is_empty(), "manual thrust takes the helm back")
+	reached += 1
+
+
+func _click_orders() -> void:
+	var behind := {"at": Vector2(0, 0), "rad": 80.0, "id": "aegis"}
+	var ship := {"at": Vector2(12, 0), "rad": 20.0, "id": "skiff"}
+	var picked := HelmCombat.pick_mark(Vector2(8, 0), [behind, ship])
+	check(str(picked.get("id", "")) == "skiff", "a click on a ship beats the world behind it")
+	var ring := {"at": Vector2(140, 0), "rad": 36.0, "id": "helion_lane"}
+	var buoy := HelmCombat.pick_mark(Vector2(120, 0), [behind, ring])
+	check(str(buoy.get("id", "")) == "helion_lane", "a click on a lane buoy selects the ring")
+	check(HelmCombat.pick_mark(Vector2(500, 0), [behind, ship]).is_empty(), "empty sky stays empty")
+	check(not Steer.is_drag(Vector2.ZERO, Vector2(3, 2)), "a short tap stays a click")
+	check(Steer.is_drag(Vector2.ZERO, Vector2(8, 1)), "a pull past seven pixels is a drag")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, false, false) == "lock", "left click on a mark locks")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), true, false, false) == "approach", "double click on a mark approaches")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, true, false) == "clear", "empty left click clears the lock")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), true, true, false) == "fly", "empty double click flies the heading")
+	check(Steer.gesture(Vector2.ZERO, Vector2(20, 0), false, true, false) == "look", "left drag looks")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, false, true) == "strike", "right click opens strike")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, true, true) == "command", "empty right click opens command")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), true, false, true) == "engage", "double right click engages")
+	var look: Dictionary = Steer.apply_look(0.0, 0.74, 20.0, 0.0)
+	check(float(look.yaw) < 0.0 and str(look.mode) == "orbit", "look drag turns the eye into orbit")
+	var sim := make("kestrel")
+	_free(sim)
+	var quarry := _actor(sim, "red_keel")
+	_park(sim, quarry, Vector2(280, 40))
+	sim.tick(0.05, {"engage": {"socket": "nose", "lock": str(quarry.agent_id), "name": "Main turret"}})
+	check(str(sim.player.lock_id) == str(quarry.agent_id), "attack locks the clicked ship")
+	check(str(sim.player.engage) == "nose", "attack arms the chosen gun")
+	sim.player.lock_ok = true
+	sim.player.fire_cd = 0.0
+	var before := sim.projectiles.size()
+	sim.tick(0.05, {})
+	check(sim.projectiles.size() > before, "the armed gun fires on the target")
+	sim.tick(0.05, {"order": {"kind": "stop"}})
+	check(str(sim.player.get("engage", "")) == "", "all stop holds the guns")
+	var fighter = null
+	for item in sim.craft:
+		if str(item.def_id) == "fighter":
+			fighter = item
+	check(fighter != null and CraftOrders.strike(sim, str(fighter.uid), str(quarry.agent_id)) == "", "a fighter takes the clicked ship")
+	check(str(fighter.target) == str(quarry.agent_id) and str(fighter.order) == "attack", "the fighter's attack is that ship")
+	check(CraftOrders.wing_strike(sim, "") == "Pick a ship first.", "a wing needs a ship")
 	reached += 1
 
 

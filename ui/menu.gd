@@ -139,7 +139,7 @@ func _ready() -> void:
 	select_box.offset_right = -8
 	select_box.offset_bottom = -8
 	select_glass.add_child(select_box)
-	prompt_line = ThemeKit.label("Choose the ship. The other two stay in someone else's yard.", 16, Color("cbb892"))
+	prompt_line = ThemeKit.label("Choose the ship. The others stay in someone else's yard.", 16, Color("cbb892"))
 	prompt_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	select_box.add_child(prompt_line)
 	yard_line = ThemeKit.label("Needle is in the yard.", 14, Color("9eecf5"))
@@ -156,7 +156,7 @@ func _ready() -> void:
 	keel_row.add_theme_constant_override("v_separation", 12)
 	keel_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	keel_scroll.add_child(keel_row)
-	for class_id in ["vesper", "anvil", "kestrel"]:
+	for class_id in ["vesper", "anvil", "kestrel", "lumen", "casque", "alidade"]:
 		keel_row.add_child(_card(class_id))
 	var back := ThemeKit.button("Back")
 	back.pressed.connect(func(): _show_root())
@@ -195,7 +195,7 @@ func _fit() -> void:
 			if action is Button:
 				action.add_theme_font_size_override("font_size", 13 if two else 14)
 	if prompt_line != null:
-		prompt_line.text = "Choose the ship." if phone else "Choose the ship. The other two stay in someone else's yard."
+		prompt_line.text = "Choose the ship." if phone else "Choose the ship. The others stay in someone else's yard."
 		prompt_line.add_theme_font_size_override("font_size", 14 if phone else 16)
 		prompt_line.autowrap_mode = TextServer.AUTOWRAP_OFF
 		prompt_line.clip_text = phone
@@ -218,7 +218,17 @@ func _fit() -> void:
 		select_size = Vector2(screen.x - select_pos.x - margin, screen.y - margin * 2.0)
 	if keel_row != null:
 		var stacked := phone and not two
-		keel_row.columns = 1 if stacked else 3
+		var cards := keel_row.get_child_count()
+		if two:
+			keel_row.columns = 3
+		elif stacked and cards > 3 and screen.x < 720.0:
+			keel_row.columns = 2
+		elif stacked:
+			keel_row.columns = 1
+		else:
+			keel_row.columns = 3
+		var grid_rows := int(ceil(float(maxi(cards, 1)) / float(maxi(keel_row.columns, 1))))
+		var compact := grid_rows > 1 and not phone
 		keel_row.add_theme_constant_override("h_separation", 6 if phone else 12)
 		keel_row.add_theme_constant_override("v_separation", 6 if phone else 12)
 		var show_detail := not phone
@@ -227,21 +237,23 @@ func _fit() -> void:
 		if two:
 			card_w = maxf(96.0, (select_size.x - 36.0) / 3.0)
 		elif phone:
-			card_w = maxf(120.0, screen.x - margin * 2.0 - 36.0)
+			var cols_w := float(maxi(keel_row.columns, 1))
+			card_w = maxf(96.0, (screen.x - margin * 2.0 - 36.0) / cols_w)
 		for card in keel_row.get_children():
 			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if phone else Control.SIZE_EXPAND_FILL
+			card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if phone or compact else Control.SIZE_EXPAND_FILL
 			card.custom_minimum_size = Vector2(card_w, 0)
 			var callsign := card.find_child("Callsign", true, false) as Label
 			if callsign != null:
-				callsign.add_theme_font_size_override("font_size", 16 if phone else 22)
+				callsign.add_theme_font_size_override("font_size", 16 if phone else (18 if compact else 22))
 			var class_line := card.find_child("ClassLine", true, false) as Label
 			if class_line != null:
 				var role := str(class_line.get_meta("role", ""))
 				var klass := str(class_line.get_meta("klass", class_line.text))
-				class_line.text = role if two else "%s · %s" % [role, klass]
+				var short_class := two or (phone and keel_row.columns > 1)
+				class_line.text = role if short_class else "%s · %s" % [role, klass]
 				class_line.add_theme_font_size_override("font_size", 11 if two else 13)
-				class_line.clip_text = two
+				class_line.clip_text = short_class
 			for part in card.find_children("*", "Button", true, false):
 				if part is Button:
 					var take := part as Button
@@ -255,26 +267,38 @@ func _fit() -> void:
 					continue
 				if part_name == "Previews":
 					part.visible = show_art
+					if show_art:
+						for art in part.find_children("*", "SubViewportContainer", true, false):
+							art.custom_minimum_size = Vector2(220, 96) if compact else Vector2(280, 140)
 				elif part_name == "Stats":
-					part.visible = show_detail
+					part.visible = show_detail and not compact
 				elif part_name == "StatsLine":
-					# One line on a tall phone. The two-line columns belong on a desk.
-					part.visible = stacked
+					# One line on a tall single column. Two columns stay on the callsign.
+					part.visible = stacked and keel_row.columns == 1
+				elif part_name == "Blurb":
+					part.visible = show_detail and not compact
+					var blurb := part as Label
+					if blurb != null:
+						blurb.max_lines_visible = 2
+				elif part_name == "Rack":
+					part.visible = show_detail and not compact
 				else:
 					part.visible = show_detail
 		if phone and not two:
 			var sample: Control = keel_row.get_child(0)
 			var one := sample.get_combined_minimum_size().y
-			var rows := float(keel_row.get_child_count())
-			var cards_h := one * rows + 8.0 * maxf(rows - 1.0, 0.0)
-			var band := cards_h + 132.0
-			band = minf(band, screen.y * 0.62)
+			var cols: int = maxi(keel_row.columns, 1)
+			var row_count: int = int(ceil(float(keel_row.get_child_count()) / float(cols)))
+			var gap := float(keel_row.get_theme_constant("v_separation"))
+			var cards_h: float = one * float(row_count) + gap * float(maxi(row_count - 1, 0))
+			var band: float = cards_h + 132.0
+			band = minf(band, screen.y * 0.72)
 			select_pos = Vector2(margin, screen.y - band - margin)
 			select_size = Vector2(screen.x - margin * 2.0, band)
 		elif not two:
-			var desk: Control = keel_row.get_child(0)
-			var desk_h := desk.get_combined_minimum_size().y
-			var band := clampf(desk_h + 128.0, 280.0, screen.y * 0.62)
+			var stack_h := keel_row.get_combined_minimum_size().y
+			var cap := 0.84 if grid_rows > 1 else 0.62
+			var band := clampf(stack_h + 128.0, 280.0, screen.y * cap)
 			select_pos = Vector2(margin, screen.y - band - margin)
 			select_size = Vector2(screen.x - margin * 2.0, band)
 	if keel_scroll != null:
@@ -459,12 +483,7 @@ func _process(_delta: float) -> void:
 	if yard_line != null and Game.defs.has("ships") and Game.defs.ships.has(klass):
 		var hull: Dictionary = Game.defs.ships[klass]
 		var fit := ""
-		if klass == "vesper":
-			fit = " Spine mast."
-		elif klass == "anvil":
-			fit = " Wide bay."
-		elif klass == "kestrel":
-			fit = " Wing guns."
+		fit = _yard_fit(klass)
 		yard_line.text = "%s is in the yard.%s" % [str(hull.callsign), fit]
 	if hero:
 		_mark_focus(klass)
@@ -574,14 +593,7 @@ func _card(class_id: String) -> PanelContainer:
 	previews.name = "Previews"
 	previews.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# The card shows the hull the yard actually turns: mast, bay, or wing guns.
-	var worn: Array = []
-	if class_id == "vesper":
-		worn = ["sensor_mast"]
-	elif class_id == "anvil":
-		worn = ["cargo_blister"]
-	elif class_id == "kestrel":
-		worn = ["gun_sponson"]
-	previews.add_child(_preview(class_id, worn, _bolt_name(class_id)))
+	previews.add_child(_preview(class_id, _signature_modules(class_id), _bolt_name(class_id)))
 	box.add_child(previews)
 	var blurb_text := str(hull.select_blurb)
 	var stop := blurb_text.find(". ")
@@ -629,7 +641,7 @@ func _preview(class_id: String, modules: Array, caption: String) -> VBoxContaine
 	var preview := ShipPortrait.new()
 	preview.class_id = class_id
 	preview.modules = modules
-	preview.custom_minimum_size = Vector2(280, 140)
+	preview.custom_minimum_size = Vector2(220, 96)
 	preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	preview.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -649,6 +661,12 @@ func _role_word(role: String) -> String:
 			return "Hauler"
 		"corvette":
 			return "Corvette"
+		"pathfinder":
+			return "Pathfinder"
+		"boarder":
+			return "Boarder"
+		"ranger":
+			return "Ranger"
 		_:
 			return role.capitalize()
 
@@ -739,14 +757,49 @@ func _paint_depart(button: Button, primary: bool) -> void:
 	button.add_theme_font_size_override("font_size", 16)
 
 
+func _signature_modules(class_id: String) -> Array:
+	match class_id:
+		"vesper":
+			return ["sensor_mast"]
+		"anvil":
+			return ["cargo_blister"]
+		"kestrel":
+			return ["gun_sponson"]
+		"lumen":
+			return ["sensor_mast", "laser_bank"]
+		"casque":
+			return ["missile_rack"]
+		"alidade":
+			return ["gun_sponson"]
+		_:
+			return []
+
+
+func _yard_fit(class_id: String) -> String:
+	match class_id:
+		"vesper":
+			return " Spine mast."
+		"anvil":
+			return " Wide bay."
+		"kestrel":
+			return " Wing guns."
+		"lumen":
+			return " Lamp crown."
+		"casque":
+			return " Ram prow."
+		"alidade":
+			return " Wing eye."
+		_:
+			return ""
+
+
 func _bolt_name(class_id: String) -> String:
-	if class_id == "vesper":
-		return "Spine mast"
-	if class_id == "anvil":
-		return "Wide bay"
-	if class_id == "kestrel":
-		return "Wing guns"
-	return "Bolted"
+	var line := _yard_fit(class_id).strip_edges()
+	if line.ends_with("."):
+		line = line.substr(0, line.length() - 1)
+	if line == "":
+		return "Bolted"
+	return line
 
 
 func _craft_word(craft_id: String) -> String:
@@ -907,7 +960,8 @@ class ShipPortrait extends SubViewportContainer:
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		stretch = false
+		# Stretch keeps the plate's minimum on the card, not on the viewport pixels.
+		stretch = true
 		resized.connect(_frame_camera)
 		_phase = float(class_id.hash() % 628) * 0.01
 		var vp := SubViewport.new()
@@ -971,7 +1025,8 @@ class ShipPortrait extends SubViewportContainer:
 		_pivot.add_child(_holder)
 		var shapes: Array = Silhouette.shapes_of(Game.defs, modules)
 		var layers: Array = Silhouette.layers_of(Game.defs, modules)
-		_stage.call("_fill_ship", _holder, class_id, shapes, layers)
+		var sockets: Array = _stage.call("_weapon_sockets", modules)
+		_stage.call("_fill_ship", _holder, class_id, shapes, layers, sockets)
 		var hull: Dictionary = Game.defs.ships[class_id]
 		var body := Color(str(hull.get("color", "#1f6f73")))
 		var accent := Color(str(hull.get("accent", "#d7e6c8")))
@@ -995,11 +1050,10 @@ class ShipPortrait extends SubViewportContainer:
 		var vp := get_node_or_null("PortraitView") as SubViewport
 		if cam == null or vp == null or not _built:
 			return
-		if size.x > 8.0 and size.y > 8.0:
-			var next := Vector2i(maxi(int(size.x), 2), maxi(int(size.y), 2))
-			if vp.size != next:
-				vp.size = next
-		var aspect := maxf(float(vp.size.x) / maxf(float(vp.size.y), 1.0), 0.4)
+		var frame := size
+		if frame.x < 8.0 or frame.y < 8.0:
+			frame = Vector2(vp.size)
+		var aspect := maxf(frame.x / maxf(frame.y, 1.0), 0.4)
 		var v_fov := deg_to_rad(cam.fov)
 		var h_fov := 2.0 * atan(tan(v_fov * 0.5) * aspect)
 		var half_w := maxf(_extent.x, _extent.z) * 0.55

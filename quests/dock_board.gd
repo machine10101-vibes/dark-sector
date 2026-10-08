@@ -525,6 +525,8 @@ static func buy_good(sim) -> String:
 
 
 const MOUNT_PRICE := 80
+const FIGHTER_PRICE := 48
+const FIGHTER_WING := 4
 const KIT := {
 	"gun_sponson": {"price": 80, "name": "Cheek Gun"},
 	"laser_bank": {"price": 80, "name": "Beam Bank"},
@@ -537,6 +539,35 @@ const KIT := {
 static func paid_mount(sim, module_id: String) -> bool:
 	var rows: Array = sim.quest_flags.get("paid_mounts", [])
 	return rows.has(module_id)
+
+
+static func fighter_count(sim) -> int:
+	var total := 0
+	for item in sim.craft:
+		if str(item.get("def_id", "")) == "fighter" and str(item.get("state", "")) != "lost":
+			total += 1
+	return total
+
+
+static func buy_fighter(sim) -> String:
+	if not at_pad(sim):
+		return "Buy a fighter at the Helion pad."
+	if fighter_count(sim) >= FIGHTER_WING:
+		return "The wing is full at %d fighters." % FIGHTER_WING
+	if purse(sim) < FIGHTER_PRICE:
+		return "Purse is short of %d for a fighter." % FIGHTER_PRICE
+	var index := 0
+	for item in sim.craft:
+		if str(item.get("def_id", "")) != "fighter":
+			continue
+		var tail := str(item.get("uid", "")).get_slice("_", 1)
+		index = maxi(index, int(tail))
+	var craft: Dictionary = sim._make_craft("fighter", index + 1)
+	craft.pos = sim.player.pos
+	sim.craft.append(craft)
+	sim.quest_flags.purse = purse(sim) - FIGHTER_PRICE
+	sim.say("Bought %s for %d. Purse %d. Launch it from the hangar." % [craft.name, FIGHTER_PRICE, purse(sim)])
+	return ""
 
 
 static func buy_kit(sim, kit_id: String) -> String:

@@ -2,7 +2,6 @@ class_name CraftOrders
 extends RefCounted
 
 const LAYERS = ["orbit", "atmosphere", "surface", "crust", "biosign", "ruins", "legal"]
-const PARKED = ["fighter"]
 
 
 static func launch(sim, def_id: String) -> String:
@@ -12,8 +11,6 @@ static func launch(sim, def_id: String) -> String:
 		return _launch_tender(sim)
 	if def_id == "livestock_lighter":
 		return _launch_lighter(sim)
-	if def_id in PARKED:
-		return "%s stays parked in the rack." % _pretty(def_id)
 	var craft = _first_docked(sim, def_id)
 	if craft == null:
 		var any = _any_of(sim, def_id)
@@ -41,6 +38,8 @@ static func launch(sim, def_id: String) -> String:
 			sim.say("Shuttle away to %s." % sim.defs.system.pocket.name)
 			sim.sfx("launch")
 			return ""
+		"fighter":
+			return order(sim, str(craft.uid), "launch", "")
 	return "That craft has no order on the board."
 
 
@@ -63,14 +62,14 @@ static func order(sim, uid: String, verb: String, node_id: String) -> String:
 		if str(sim.player.get("agent_id", "")) == str(sim.claim.get("agent_id", "")):
 			Homestead.abort_crack(sim, "recall")
 		return ""
-	if str(craft.def_id) in PARKED:
-		return "%s stays parked in the rack." % craft.name
 	if str(craft.def_id) == "salvage_tender":
 		return _order_tender(sim, craft, node_id)
 	if str(craft.def_id) == "livestock_lighter":
 		return _order_lighter(sim, craft)
 	if str(craft.state) == "lost":
 		return "%s is lost. Rebuild it from returned mass." % craft.name
+	if str(craft.def_id) == "fighter":
+		return _order_fighter(sim, craft, verb)
 	var place = sim.survey_node(node_id)
 	if place == null:
 		return "Pick a node first."
@@ -130,6 +129,98 @@ static func recall(sim, uid: String) -> void:
 		sim.say(message)
 
 
+static func strike(sim, uid: String, target_id: String) -> String:
+	var craft = _by_uid(sim, uid)
+	if craft == null:
+		return "That rack slot is empty."
+	if str(craft.def_id) != "fighter":
+		return "%s does not attack." % craft.name
+	if str(craft.state) == "lost":
+		return "%s is lost. Rebuild it from returned mass." % craft.name
+	if target_id == "":
+		return "Pick a ship first."
+	if str(craft.state) == "docked":
+		_depart(sim, craft, target_id)
+	craft.state = "escort"
+	craft.order = "attack"
+	craft.target = target_id
+	sim.say("%s breaks for %s." % [craft.name, _unit_name(sim, target_id)])
+	sim.sfx("launch")
+	return ""
+
+
+static func wing_strike(sim, target_id: String) -> String:
+	if target_id == "":
+		return "Pick a ship first."
+	var sent := 0
+	var first := ""
+	for craft in sim.craft:
+		if str(craft.def_id) != "fighter" or str(craft.state) == "lost":
+			continue
+		var message := strike(sim, str(craft.uid), target_id)
+		if message == "":
+			sent += 1
+		elif first == "":
+			first = message
+	if sent > 0:
+		return ""
+	if first != "":
+		return first
+	return "No fighter is on the keel."
+
+
+static func _unit_name(sim, target_id: String) -> String:
+	var other = HelmCombat.find_unit(sim, target_id)
+	if other != null:
+		return str(other.get("name", "the target"))
+	return "the target"
+
+
+static func fleet(sim, verb: String) -> String:
+	if verb == "recall":
+		return _fleet_recall(sim)
+	if verb != "form" and verb != "attack":
+		return "That order is not on the board."
+	var wing: String = "attack" if verb == "attack" else "escort"
+	var sent := 0
+	var first := ""
+	for craft in sim.craft:
+		if str(craft.def_id) != "fighter":
+			continue
+		if str(craft.state) == "lost":
+			if first == "":
+				first = "%s is lost. Rebuild it from returned mass." % craft.name
+			continue
+		var message := order(sim, str(craft.uid), wing, "")
+		if message == "":
+			sent += 1
+		elif first == "":
+			first = message
+	if sent > 0:
+		return ""
+	if first != "":
+		return first
+	return "No fighter is on the keel."
+
+
+static func _fleet_recall(sim) -> String:
+	var sent := 0
+	var first := ""
+	for craft in sim.craft:
+		if str(craft.state) == "docked" or str(craft.state) == "lost":
+			continue
+		var message := order(sim, str(craft.uid), "return", "")
+		if message == "":
+			sent += 1
+		elif first == "":
+			first = message
+	if sent > 0:
+		return ""
+	if first != "":
+		return first
+	return "Nothing is out to recall."
+
+
 static func step(sim, craft, dt: float) -> void:
 	if str(craft.state) == "docked" or str(craft.state) == "lost":
 		return
@@ -137,7 +228,11 @@ static func step(sim, craft, dt: float) -> void:
 	if str(craft.state) == "lost":
 		return
 	craft.fire_cd = maxf(0.0, float(craft.fire_cd) - dt)
-	craft.battery = maxf(0.0, float(craft.battery) - float(craft.drain) * dt)
+	var drain := float(craft.drain)
+	if str(craft.def_id) == "fighter" and str(craft.state) == "escort":
+		if craft.pos.distance_to(sim.player.pos) < 1100.0:
+			drain = 0.0
+	craft.battery = maxf(0.0, float(craft.battery) - drain * dt)
 	if float(craft.battery) <= 8.0 and str(craft.state) != "returning":
 		craft.state = "returning"
 		craft.order = "return"
@@ -405,18 +500,150 @@ static func _step_shuttle(sim, craft, dt: float) -> void:
 		_return_home(sim, craft, dt)
 
 
+static func escort_pose(sim, craft, index: int) -> Dictionary:
+	var lead: Vector2 = sim.player.pos
+	var now := _escort_offset(sim, craft, index, float(sim.time))
+	var ahead := _escort_offset(sim, craft, index, float(sim.time) + 0.4)
+	var delta: Vector2 = ahead - now
+	var rot := float(sim.player.rot)
+	if delta.length_squared() > 0.25:
+		rot = delta.angle()
+	var lift := 28.0 + float(index) * 12.0 + sin(float(sim.time) * 0.7 + float(index) * 1.3) * 10.0
+	return {"pos": lead + now, "rot": rot, "height": lift}
+
+
+static func _escort_offset(sim, craft, index: int, t: float) -> Vector2:
+	var reach := float(Fit.stats(sim.defs, sim.player).hit_radius)
+	var span := maxf(reach * 9.0, 280.0)
+	var phase := float(absi(str(craft.get("uid", index)).hash()) % 1000) * 0.00628
+	var kind := str(craft.get("def_id", ""))
+	var slot := float(index)
+	var nose := Vector2.from_angle(float(sim.player.rot))
+	var side := Vector2(-nose.y, nose.x)
+	var local := Vector2.RIGHT * span * 2.0
+	if kind == "fighter":
+		var flank := 1.0 if index % 2 == 0 else -1.0
+		var wobble := t * 0.85 + phase
+		var along := span * (0.15 + 0.55 * sin(wobble))
+		var beam := flank * span * (2.05 + slot * 0.35) + sin(wobble * 0.5) * span * 0.22
+		local = nose * along + side * beam
+	elif kind == "survey_probe":
+		var ang := t * (0.33 + slot * 0.05) + phase
+		var ring := span * (2.35 + slot * 0.38)
+		local = Vector2(cos(ang) * ring, sin(ang) * ring * 0.62)
+	elif kind == "harvest_drone":
+		var lap := t * 0.27 + phase + slot * 0.8
+		var along := -span * (2.15 + 0.35 * sin(lap))
+		var beam := sin(lap * 1.7) * span * (1.35 + slot * 0.2)
+		local = nose * along + side * beam
+	else:
+		var ang := -t * (0.22 + slot * 0.04) + phase + slot
+		var ring := span * (2.9 + slot * 0.42)
+		local = Vector2(cos(ang), sin(ang)) * ring
+	var body = sim.planet(str(sim.body_id))
+	if body != null:
+		var sky: Vector2 = sim.player.pos - Vector2(body.pos)
+		if sky.length() > 1.0:
+			sky = sky.normalized()
+			var outward := local.dot(sky)
+			if outward < span * 0.35:
+				local += sky * (span * 0.35 - outward)
+	if local.length() < span * 1.85:
+		if local.length() < 1.0:
+			local = Vector2.RIGHT
+		local = local.normalized() * span * 1.85
+	return local
+
+
+static func _seat(sim, craft) -> int:
+	var index := 0
+	for item in sim.craft:
+		if item == craft:
+			return index
+		index += 1
+	return 0
+
+
+static func _order_fighter(sim, craft, verb: String) -> String:
+	if verb != "launch" and verb != "attack" and verb != "escort":
+		return "That order is not on the board."
+	var mark := ""
+	if verb == "attack":
+		mark = _attack_mark(sim)
+	if str(craft.state) == "docked":
+		_depart(sim, craft, mark)
+	craft.state = "escort"
+	craft.order = "attack" if verb == "attack" else "escort"
+	craft.target = mark
+	if verb == "attack" and mark != "":
+		sim.say("%s breaks formation to attack." % craft.name)
+	elif verb == "attack":
+		sim.say("%s is out. It will hit whatever hunts the keel." % craft.name)
+	else:
+		sim.say("%s takes a station on the wing." % craft.name)
+	sim.sfx("launch")
+	return ""
+
+
+static func _attack_mark(sim) -> String:
+	var locked = HelmCombat.locked_unit(sim, sim.player)
+	if locked != null and bool(locked.get("alive", false)):
+		var team := str(locked.get("team", ""))
+		if team != "captain" and team != "civilian":
+			return str(locked.get("agent_id", ""))
+	var hostile = sim.nearest_hostile(sim.player.pos, 1600.0)
+	if hostile != null:
+		return str(hostile.get("agent_id", ""))
+	return ""
+
+
+static func _fighter_quarry(sim, craft):
+	if str(craft.get("order", "")) == "attack":
+		var marked = HelmCombat.find_unit(sim, str(craft.get("target", "")))
+		if marked != null and bool(marked.get("alive", false)):
+			return marked
+		craft.target = ""
+	var locked = HelmCombat.locked_unit(sim, sim.player)
+	if locked != null and bool(locked.get("alive", false)):
+		var team := str(locked.get("team", ""))
+		if team != "captain" and team != "civilian":
+			return locked
+	return sim.nearest_hostile(craft.pos, 1400.0)
+
+
+static func _attack_slot(seat: int, target: Vector2, lead: Vector2) -> Vector2:
+	var approach: Vector2 = lead - target
+	if approach.length() < 1.0:
+		approach = Vector2.RIGHT
+	approach = approach.normalized()
+	var side := Vector2(-approach.y, approach.x)
+	var flank := 1.0 if seat % 2 == 0 else -1.0
+	var ring := 1 + int(seat / 2)
+	return target + approach * (170.0 + float(ring) * 40.0) + side * flank * (80.0 + float(seat) * 24.0)
+
+
 static func _step_fighter(sim, craft, dt: float) -> void:
 	if str(craft.state) == "returning" or float(craft.battery) <= 8.0:
 		craft.state = "returning"
 		_return_home(sim, craft, dt)
 		return
-	var hostile = sim.nearest_hostile(craft.pos, 1100.0)
+	var seat := _seat(sim, craft)
+	var catch := maxf(float(craft.speed), sim.player.vel.length() + 80.0)
+	var hostile = _fighter_quarry(sim, craft)
 	if hostile == null:
-		var aim = sim.player.pos + Vector2.from_angle(sim.time * 1.15) * 160.0
-		_fly_safe(sim, craft, aim, dt, float(craft.speed))
+		var pose: Dictionary = escort_pose(sim, craft, seat)
+		_fly_safe(sim, craft, pose.pos, dt, catch)
 		return
-	var dist = _fly_safe(sim, craft, hostile.pos, dt, float(craft.speed))
-	if dist < float(craft.gun.range) and _facing(craft, hostile.pos) < 0.45:
+	var slot := _attack_slot(seat, hostile.pos, sim.player.pos)
+	var on_station: bool = craft.pos.distance_to(slot) < 48.0
+	if on_station:
+		var aim: Vector2 = hostile.pos - craft.pos
+		if aim.length() > 1.0:
+			craft.rot = aim.angle()
+		craft.vel *= 0.9
+	else:
+		_fly_safe(sim, craft, slot, dt, float(craft.speed))
+	if craft.pos.distance_to(hostile.pos) < float(craft.gun.range) and _facing(craft, hostile.pos) < 0.5:
 		sim.try_fire(craft, craft.gun)
 
 

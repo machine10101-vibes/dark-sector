@@ -18,6 +18,7 @@ func _init() -> void:
 	_data()
 	_silhouette()
 	_handling()
+	_turn_thrusters()
 	_armor_and_craft()
 	_save()
 	if fails == 0:
@@ -114,6 +115,30 @@ func _handling() -> void:
 	check(absf(again.x - bare.x) < 0.1 and absf(again.y - bare.y) < 0.1, "pulling the parts restores the silhouette")
 	var back_speed := _thrust_speed(sim)
 	check(absf(back_speed - stock_speed) < 2.0, "pulling the parts restores the drift")
+
+
+func _turn_thrusters() -> void:
+	for class_id in ["vesper", "anvil", "kestrel", "lumen", "casque", "alidade"]:
+		var sim := make(class_id)
+		var bare: Dictionary = Fit.stats(defs, sim.player)
+		var bare_rest := _yaw_over(sim, 0.4, 0.0)
+		var bare_fast := _yaw_over(sim, 0.35, 260.0)
+		check(sim.install("turn_thrusters").ok, "%s bolts the turn thrusters" % class_id)
+		var worn: Dictionary = Fit.stats(defs, sim.player)
+		check(float(worn.turn) > float(bare.turn) * 1.15, "%s yaws harder with the thrusters (%.2f vs %.2f)" % [class_id, worn.turn, bare.turn])
+		var worn_rest := _yaw_over(sim, 0.4, 0.0)
+		var worn_fast := _yaw_over(sim, 0.35, 260.0)
+		check(worn_rest > bare_rest * 1.12, "%s turns farther at rest (%.2f vs %.2f)" % [class_id, worn_rest, bare_rest])
+		check(worn_fast > bare_fast * 1.25, "%s holds a sharper turn at speed (%.2f vs %.2f)" % [class_id, worn_fast, bare_fast])
+		check(float(worn.turn_grip) > 0.5, "%s keeps the nose through a fast turn" % class_id)
+
+
+func _yaw_over(sim: SectorSim, dt: float, speed: float) -> float:
+	sim.player.moored = false
+	sim.player.rot = 0.0
+	sim.player.vel = Vector2(speed, 0.0)
+	sim.tick(dt, {"thrust": 0.0, "retro": 0.0, "rot": 1.0, "strafe": 0.0, "fire": false})
+	return absf(sim.player.rot)
 
 
 func _armor_and_craft() -> void:

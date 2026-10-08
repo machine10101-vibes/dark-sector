@@ -1,6 +1,6 @@
 extends Control
 
-## Local sky, north up. The ship stays in the middle. A tap opens the sector chart.
+## Local sky, north up. The ship stays in the middle. A tap opens the 3D chart.
 
 const Atlas = preload("res://ui/chart_atlas.gd")
 const RANGE := 1600.0
@@ -69,6 +69,7 @@ func _draw() -> void:
 	_draw_planets(sim, origin, center, scale, span)
 	_draw_pocket(sim, origin, center, scale, span)
 	_draw_gates(sim, origin, center, scale, span)
+	_draw_field(sim, origin, center, scale, span)
 	_draw_dock(sim, origin, center, scale, span)
 	_draw_contacts(sim, player, origin, center, scale, span)
 	_draw_chevron(center, float(player.get("rot", 0.0)))
@@ -151,6 +152,24 @@ func _draw_gates(sim, origin: Vector2, center: Vector2, scale: float, span: floa
 		draw_arc(at, rad, 0.0, TAU, 12, ink, 1.5)
 
 
+func _draw_field(sim, origin: Vector2, center: Vector2, scale: float, span: float) -> void:
+	for rock in sim.asteroids:
+		var row: Dictionary = rock
+		var plotted: Dictionary = _plot(row.pos, origin, center, scale, span)
+		if bool(plotted.inside):
+			draw_circle(plotted.at, 2.2, Color(str(row.get("tint", "#e0a05a"))))
+	for rock in sim.meteors:
+		var row: Dictionary = rock
+		var plotted: Dictionary = _plot(row.pos, origin, center, scale, span)
+		if bool(plotted.inside):
+			draw_circle(plotted.at, 2.0, Color("d5e6f0"))
+	for hull in sim.trash:
+		var row: Dictionary = hull
+		var plotted: Dictionary = _plot(row.pos, origin, center, scale, span)
+		if bool(plotted.inside):
+			draw_rect(Rect2(plotted.at - Vector2(1.6, 1.6), Vector2(3.2, 3.2)), Color("c4a882"))
+
+
 func _draw_dock(sim, origin: Vector2, center: Vector2, scale: float, span: float) -> void:
 	if sim.beacon_pos == Vector2.ZERO:
 		return
@@ -175,9 +194,15 @@ func _draw_contacts(sim, player: Dictionary, origin: Vector2, center: Vector2, s
 		if bool(ship.get("alive", true)) == false:
 			continue
 		var plotted: Dictionary = _plot(ship.pos, origin, center, scale, span)
-		if bool(plotted.inside) == false:
+		var hostile := str(ship.get("team", "")) == "red_keel"
+		if bool(plotted.inside) == false and not hostile:
 			continue
-		draw_circle(plotted.at, 2.0, Color(0.9, 0.94, 0.95, 0.85))
+		var ink := Color(0.9, 0.94, 0.95, 0.85)
+		if hostile:
+			var paint := str(ship.get("paint", "#ff6a5c"))
+			ink = Color(paint)
+		var rad := 3.4 if hostile else 2.0
+		draw_circle(plotted.at, rad, ink)
 
 
 func _draw_chevron(center: Vector2, rot: float) -> void:

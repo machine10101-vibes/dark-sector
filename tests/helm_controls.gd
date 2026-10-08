@@ -1,5 +1,7 @@
 extends SceneTree
 
+const Steer = preload("res://world/helm_steer.gd")
+
 var fails := 0
 
 
@@ -115,6 +117,14 @@ func _run() -> void:
 	var typed: Dictionary = view._cmd(0.05)
 	check(bool(typed.get("boost", false)) == false, "typing does not boost")
 	game.text_entry = false
+	var yaw0 := float(game.cam_yaw)
+	var pitch0 := float(game.cam_pitch)
+	game.cam_mode = "chase"
+	game.look_cam(24.0, 10.0)
+	check(str(game.cam_mode) == "orbit", "look drag takes orbit")
+	check(float(game.cam_yaw) != yaw0, "look drag turns the yaw")
+	check(float(game.cam_pitch) != pitch0, "look drag tips the pitch")
+	check(Steer.gesture(Vector2.ZERO, Vector2(12, 0), false, true, false) == "look", "a click-drag on empty sky is a look")
 
 	var boat := str(CraftOrders.launch(sim, ""))
 	check(boat.contains("no boat"), "Boat on an empty rack says so")

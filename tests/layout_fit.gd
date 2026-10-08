@@ -134,6 +134,9 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 			_inside(button, screen, tag + " " + button.name)
 			if button.get_global_rect().size.y < 40.0:
 				_bad(tag + " short " + button.name)
+	var stock := _find_button(hud, "Stock")
+	if stock == null:
+		_bad(tag + " missing Stock")
 	if touch:
 		var pad: Node = hud.get("pad")
 		var joy: Control = pad.get("joy")
