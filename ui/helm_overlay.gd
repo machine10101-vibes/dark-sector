@@ -69,7 +69,7 @@ func _ready() -> void:
 	strike_box.add_theme_stylebox_override("panel", ThemeKit.glass(true))
 	add_child(strike_box)
 	strike_list = VBoxContainer.new()
-	strike_list.add_theme_constant_override("separation", 4)
+	strike_list.add_theme_constant_override("separation", 3)
 	strike_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	strike_box.add_child(strike_list)
 
@@ -622,12 +622,21 @@ func _open_command(at: Vector2) -> void:
 
 
 func _place_strike(at: Vector2) -> void:
-	var rows := strike_list.get_child_count()
-	var height := 16.0 + float(rows) * 40.0
-	var box := Vector2(248.0, height)
+	var gap := float(strike_list.get_theme_constant("separation"))
+	var height := 10.0
+	for child in strike_list.get_children():
+		var node := child as Control
+		if node == null:
+			continue
+		height += node.get_combined_minimum_size().y + gap
+	var box := Vector2(236.0, height)
+	var floor_y := size.y - 8.0
+	var primary := _chrome("primary_bar")
+	if primary != null:
+		floor_y = primary.position.y - 8.0
 	var pos := at
 	pos.x = clampf(pos.x, 8.0, maxf(8.0, size.x - box.x - 8.0))
-	pos.y = clampf(pos.y, 8.0, maxf(8.0, size.y - box.y - 8.0))
+	pos.y = clampf(pos.y, 8.0, maxf(8.0, floor_y - box.y))
 	strike_box.position = pos
 	strike_box.size = box
 	strike_box.visible = true
@@ -671,7 +680,7 @@ func _strike_label(text: String) -> void:
 
 func _strike_button(text: String, call: Callable) -> void:
 	var button := ThemeKit.button(text, false)
-	button.custom_minimum_size = Vector2(220, 36)
+	button.custom_minimum_size = Vector2(212, 30)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.add_theme_font_size_override("font_size", 13)
 	button.pressed.connect(call)
