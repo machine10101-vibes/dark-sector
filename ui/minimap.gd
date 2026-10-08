@@ -1,6 +1,6 @@
 extends Control
 
-## Local sky, north up. The ship stays in the middle. A tap opens the sector chart.
+## Local sky, north up. The ship stays in the middle. A tap opens the 3D chart.
 
 const Atlas = preload("res://ui/chart_atlas.gd")
 const RANGE := 1600.0
