@@ -51,6 +51,59 @@ func _material_span(sim: SectorSim, material: String) -> float:
 	return span
 
 
+func _cluster_count(sim: SectorSim, material: String, center: Vector2, radius: float) -> int:
+	var n := 0
+	for rock in sim.asteroids:
+		var chip: Dictionary = rock
+		if str(chip.get("material", "")) != material:
+			continue
+		if Vector2(chip.pos).distance_to(center) <= radius:
+			n += 1
+	return n
+
+
+func _loners_small(sim: SectorSim, material: String, hub: Vector2, hub_r: float) -> bool:
+	var loners: Array = []
+	for rock in sim.asteroids:
+		var chip: Dictionary = rock
+		if str(chip.get("material", "")) != material:
+			continue
+		if Vector2(chip.pos).distance_to(hub) <= hub_r:
+			continue
+		loners.append(Vector2(chip.pos))
+	if loners.is_empty():
+		return true
+	for i in loners.size():
+		var a: Vector2 = loners[i]
+		var mates := 0
+		for j in loners.size():
+			if i == j:
+				continue
+			var b: Vector2 = loners[j]
+			if a.distance_to(b) < 70.0:
+				mates += 1
+		if mates > 1:
+			return false
+	return true
+
+
+func _comets_small(sim: SectorSim) -> bool:
+	if sim.meteors.size() < 2:
+		return false
+	for i in sim.meteors.size():
+		var a: Dictionary = sim.meteors[i]
+		var mates := 0
+		for j in sim.meteors.size():
+			if i == j:
+				continue
+			var b: Dictionary = sim.meteors[j]
+			if Vector2(a.pos).distance_to(Vector2(b.pos)) < 70.0:
+				mates += 1
+		if mates > 1:
+			return false
+	return true
+
+
 func make(class_id: String) -> SectorSim:
 	var sim := SectorSim.new(defs)
 	sim.new_game(class_id)
@@ -122,7 +175,7 @@ func _dock() -> void:
 	check(sim.copper_pos.distance_to(sim.beacon_pos) > 500.0, "copper slag stands off the pad")
 	check(sim.ice_pos.distance_to(sim.belt_pos) > 80.0, "ice spall stands off the belt")
 	check(sim.copper_pos.distance_to(sim.belt_pos) > 80.0, "copper slag stands off the belt")
-	check(sim.ice_pos.distance_to(sim.copper_pos) > 400.0, "ice and copper sit in different sky")
+	check(sim.ice_pos.distance_to(sim.copper_pos) > 800.0, "ice and copper sit in different sky")
 	check(sim.plate_pos.distance_to(sim.beacon_pos) > 400.0, "hull plate sits with the seized hold")
 	check(sim.ice_pos.distance_to(sim.plate_pos) > 200.0, "ice and plate sit in different sky")
 	var saw_ice := false
@@ -138,9 +191,14 @@ func _dock() -> void:
 		elif mat == "nickel_cinder":
 			saw_nickel = true
 	check(saw_ice and saw_copper and saw_nickel, "the sky holds nickel, ice, and copper")
-	check(_material_span(sim, "ice_spall") > 400.0, "ice rocks are not one pile")
-	check(_material_span(sim, "copper_slag") > 400.0, "copper rocks are not one pile")
-	check(_material_span(sim, "nickel_cinder") > 400.0, "nickel rocks are not one pile")
+	check(_material_span(sim, "ice_spall") > 800.0, "ice groups sit in different sky")
+	check(_material_span(sim, "copper_slag") > 800.0, "copper groups sit in different sky")
+	check(_material_span(sim, "nickel_cinder") > 800.0, "nickel seats sit in different sky")
+	check(_cluster_count(sim, "ice_spall", sim.ice_pos, 90.0) >= 3, "ice is a group")
+	check(_cluster_count(sim, "copper_slag", sim.copper_pos, 90.0) >= 3, "copper is a group")
+	check(_cluster_count(sim, "nickel_cinder", sim.belt_pos, 90.0) >= 3, "nickel ore is a group")
+	check(_loners_small(sim, "nickel_cinder", sim.belt_pos, 90.0), "loose asteroids sit as one or two")
+	check(_comets_small(sim), "comets sit as one or two")
 	var ice_mark := Vector2(sim.ice_pos)
 	check(sim.try_extract("ice_spall") == "ok", "ice spall can be cut")
 	check(sim.ice_pos.distance_to(ice_mark) > 280.0, "cut ice reseats in other sky")
