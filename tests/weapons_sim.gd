@@ -293,6 +293,12 @@ func _voices() -> void:
 	check(sim._gun_sfx("bullet", "heavy_turret") == "heavy", "the heavy turret names a boom")
 	check(sim._gun_sfx("bullet", "stake_gun") == "stake", "the stake gun names a snap")
 	check(sim._gun_sfx("bullet", "gun_sponson") == "gun", "the cheek gun keeps the crack")
+	check(sim._hit_sfx("bullet", "gun_sponson") == "hit", "a cheek slug hits with brass")
+	check(sim._hit_sfx("bullet", "heavy_turret") == "hit_heavy", "a heavy shell hits with a crunch")
+	check(sim._hit_sfx("bullet", "stake_gun") == "hit_stake", "a stake rail hits with a spark")
+	check(sim._hit_sfx("laser") == "hit_laser", "a beam hits with a sizzle")
+	check(sim._hit_sfx("missile") == "hit_missile", "a missile hits with a blast")
+	check(sim._hit_sfx("pd") == "hit_pd", "flak hits with a pop")
 	sim.new_game("vesper")
 	sim.hold_npc = true
 	sim.player.moored = false

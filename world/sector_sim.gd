@@ -674,6 +674,7 @@ func _laser_strike(unit: Dictionary, gun: Dictionary, aimed: Dictionary) -> void
 			"signature": HelmCombat.effective_signature(self, hit),
 		})
 		_note_impact(end, "scorch", str(unit.team), dir, "laser")
+		sfx("hit_laser")
 	beams.append({
 		"from": muzzle,
 		"to": end,
@@ -832,6 +833,20 @@ func _gun_sfx(family: String, socket: String, load: String = "") -> String:
 	if socket == "stake_gun":
 		return "stake"
 	return "gun"
+
+
+func _hit_sfx(family: String, socket: String = "") -> String:
+	if family == "laser":
+		return "hit_laser"
+	if family == "missile":
+		return "hit_missile"
+	if family == "pd":
+		return "hit_pd"
+	if socket == "heavy_turret":
+		return "hit_heavy"
+	if socket == "stake_gun":
+		return "hit_stake"
+	return "hit"
 
 
 func to_dict() -> Dictionary:
@@ -1289,7 +1304,7 @@ func _step_projectiles(dt: float) -> void:
 			damage_unit(hit, float(shot.damage), str(shot.agent_id), _shot_profile(shot, hit))
 			if str(shot.get("family", "")) == "missile":
 				_blast_around(shot, hit)
-			sfx("hit")
+			sfx(_hit_sfx(str(shot.get("family", "")), str(shot.get("socket", ""))))
 			_note_impact(shot.pos, "hit", str(shot.get("team", "")), Vector2(shot.vel), str(shot.get("family", "")))
 			continue
 		kept.append(shot)

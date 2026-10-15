@@ -22,9 +22,14 @@ func _ready() -> void:
 		"laser_uv": _laser_hiss_uv(),
 		"missile": _missile_whoosh(),
 		"pd": _pd_chatter(),
+		"hit": _hit_brass(),
+		"hit_heavy": _hit_crunch(),
+		"hit_stake": _hit_spark(),
+		"hit_laser": _hit_sizzle(),
+		"hit_missile": _hit_blast(),
+		"hit_pd": _hit_flak(),
 		"launch": _tone(420.0, 0.12, 0.3, 0.8),
 		"dock": _tone(540.0, 0.1, 0.28, 1.0),
-		"hit": _tone(150.0, 0.09, 0.4, 1.4),
 		"hail": _tone(660.0, 0.22, 0.25, 0.6),
 		"extract": _tone(280.0, 0.16, 0.3, 0.7),
 		"scan_done": _tone(740.0, 0.18, 0.28, 0.5),
@@ -65,6 +70,12 @@ func play(kind: String) -> void:
 		loud = -4.4
 	elif kind == "stake":
 		loud = -3.4
+	elif kind == "hit_missile":
+		loud = -2.0
+	elif kind == "hit_heavy":
+		loud = -2.4
+	elif kind == "hit_laser":
+		loud = -4.2
 	voice.volume_db = loud
 	voice.stream = clips[kind]
 	voice.play()
@@ -195,6 +206,58 @@ func _pd_chatter() -> AudioStreamWAV:
 		var zip: float = sin(TAU * 2200.0 * t) * pulse * 0.18
 		return (tick * 0.58 + ping * 0.44 + body + zip) * env * 0.7
 	, 1.75)
+
+
+func _hit_brass() -> AudioStreamWAV:
+	return _render(0.14, func(t: float, env: float) -> float:
+		var slap: float = _noise(t * 1600.0) * exp(-t * 40.0)
+		var ring: float = sin(TAU * 980.0 * t) * exp(-t * 16.0)
+		var body: float = sin(TAU * 210.0 * t) * exp(-t * 14.0)
+		return (slap * 0.55 + ring * 0.4 + body * 0.45) * env * 0.8
+	, 1.5)
+
+
+func _hit_crunch() -> AudioStreamWAV:
+	return _render(0.22, func(t: float, env: float) -> float:
+		var thud: float = sin(TAU * (70.0 - t * 30.0) * t) * exp(-t * 8.0)
+		var plate: float = _noise(t * 420.0) * exp(-t * 12.0)
+		var ring: float = sin(TAU * 340.0 * t) * exp(-t * 10.0)
+		return (thud * 0.9 + plate * 0.5 + ring * 0.22) * env * 0.86
+	, 1.1)
+
+
+func _hit_spark() -> AudioStreamWAV:
+	return _render(0.12, func(t: float, env: float) -> float:
+		var zip: float = sin(TAU * (2400.0 + t * 800.0) * t) * exp(-t * 22.0)
+		var tick: float = _noise(t * 2800.0) * exp(-t * 36.0)
+		return (zip * 0.55 + tick * 0.5) * env * 0.72
+	, 1.7)
+
+
+func _hit_sizzle() -> AudioStreamWAV:
+	return _render(0.2, func(t: float, env: float) -> float:
+		var hiss: float = _noise(t * 2200.0) * (0.3 + 0.7 * absf(sin(TAU * 40.0 * t)))
+		var pop: float = _noise(t * 900.0) * exp(-t * 18.0)
+		var hum: float = sin(TAU * 90.0 * t) * exp(-t * 8.0)
+		return (hiss * 0.7 + pop * 0.28 + hum * 0.3) * env * 0.58
+	, 0.9)
+
+
+func _hit_blast() -> AudioStreamWAV:
+	return _render(0.3, func(t: float, env: float) -> float:
+		var boom: float = sin(TAU * (42.0 - t * 16.0) * t) * exp(-t * 5.5)
+		var grit: float = _noise(t * 180.0) * exp(-t * 7.0)
+		var room: float = _noise(t * 50.0 + 2.0) * exp(-t * 4.0)
+		return (boom * 1.05 + grit * 0.48 + room * 0.28) * env * 0.84
+	, 0.85)
+
+
+func _hit_flak() -> AudioStreamWAV:
+	return _render(0.1, func(t: float, env: float) -> float:
+		var pop: float = _noise(t * 2100.0) * exp(-t * 30.0)
+		var ping: float = sin(TAU * 1900.0 * t) * exp(-t * 24.0)
+		return (pop * 0.7 + ping * 0.4) * env * 0.7
+	, 1.8)
 
 
 func _noise(seed: float) -> float:

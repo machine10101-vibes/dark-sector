@@ -1343,23 +1343,23 @@ func _sync_shots(sim) -> void:
 			speed = shot_vel.length()
 		var read := _fx_read(sim)
 		var missile := family == "missile"
-		var length := clampf(speed * 0.07, 18.0, 56.0) * read
-		var thick := lerpf(1.8, read, 0.62)
+		var length := 14.0 * read
+		var thick := 1.35 * read
 		if load == "tungsten":
-			length *= 1.18
-			thick *= 0.7
+			length *= 1.12
+			thick *= 0.72
 		elif load == "incendiary":
-			length *= 0.82
-			thick *= 1.22
+			length *= 0.9
+			thick *= 1.18
 		if socket == "heavy_turret":
-			length *= 0.88
-			thick *= 1.75
+			length = 10.5 * read
+			thick = 2.55 * read
 		elif socket == "stake_gun":
-			length *= 1.65
-			thick *= 0.42
-		elif socket == "nose":
-			length *= 1.1
-			thick *= 0.92
+			length = clampf(speed * 0.11, 52.0, 110.0) * read
+			thick = 0.55 * read
+		elif socket == "gun_sponson" or socket == "nose":
+			length = 13.5 * read
+			thick = 1.45 * read
 		if missile:
 			if load == "siege":
 				length = 18.5 * read
@@ -1606,17 +1606,17 @@ func _pose_shot(bolt: MeshInstance3D, length: float, thick: float, tint: Color, 
 			rod_mesh.top_radius = 0.55 * thick
 			rod_mesh.bottom_radius = 0.78 * thick
 		elif socket == "stake_gun":
-			rod_mesh.top_radius = 0.12 * thick
-			rod_mesh.bottom_radius = 0.26 * thick
-			_paint_bolt(bolt, tint, 3.4 * flicker, 1.0)
+			rod_mesh.top_radius = 0.08 * thick
+			rod_mesh.bottom_radius = 0.18 * thick
+			_paint_bolt(bolt, tint, 4.6 * flicker, 1.0)
 		elif socket == "heavy_turret":
-			rod_mesh.top_radius = 0.44 * thick
-			rod_mesh.bottom_radius = 1.08 * thick
-			_paint_bolt(bolt, tint, 2.2 * flicker, 1.0)
+			rod_mesh.top_radius = 0.55 * thick
+			rod_mesh.bottom_radius = 1.15 * thick
+			_paint_bolt(bolt, tint, 1.8 * flicker, 1.0)
 		else:
-			rod_mesh.top_radius = 0.32 * thick
-			rod_mesh.bottom_radius = 0.82 * thick
-			_paint_bolt(bolt, tint, 2.6 * flicker, 1.0)
+			rod_mesh.top_radius = 0.38 * thick
+			rod_mesh.bottom_radius = 0.7 * thick
+			_paint_bolt(bolt, Color("e8b86a"), 2.1 * flicker, 1.0)
 	var head_node := bolt.get_node_or_null("Head") as MeshInstance3D
 	if head_node != null:
 		head_node.position = Vector3(0.0, length * 0.5, 0.0)
@@ -1635,8 +1635,12 @@ func _pose_shot(bolt: MeshInstance3D, length: float, thick: float, tint: Color, 
 		tail_node.position = Vector3(0.0, -length * (0.58 if missile else 0.55), 0.0)
 		if missile:
 			_paint_bolt(tail_node, Color("ff8a3a"), 3.4 * flicker, 0.7)
+		elif socket == "stake_gun":
+			_paint_bolt(tail_node, tint.lightened(0.4), 2.8 * flicker, 0.22)
+		elif socket == "heavy_turret":
+			_paint_bolt(tail_node, Color("ff7a28"), 2.4 * flicker, 0.45)
 		else:
-			_paint_bolt(tail_node, tint, 0.7 * flicker, 0.35)
+			_paint_bolt(tail_node, Color("ff9a3a"), 1.8 * flicker, 0.4)
 	var core_node := bolt.get_node_or_null("Core") as MeshInstance3D
 	if core_node != null:
 		if missile:
@@ -1817,18 +1821,21 @@ func _sync_beams(sim) -> void:
 			scorch.scale = Vector3.ONE * (3.2 if family != "pd" else 1.6) * read * fade
 			_paint_bolt(scorch, core, 3.4 * fade, clampf(fade, 0.04, 0.8))
 		if family != "pd":
-			var corona := _prop("lasecorona%d" % index)
-			if corona.mesh == null or not (corona.mesh is TorusMesh):
-				var halo := TorusMesh.new()
-				halo.rings = 18
-				halo.ring_segments = 8
-				corona.mesh = halo
-			var ring := corona.mesh as TorusMesh
-			var reach := (2.6 if load != "ultraviolet" else 1.8) * read * fade
-			ring.inner_radius = reach * 0.55
-			ring.outer_radius = reach
-			corona.position = chart(a2, 7.4) + along * 8.0 * read
-			_paint_bolt(corona, edge.lightened(0.2), 2.2 * fade * pulse, clampf(fade * 0.45, 0.04, 0.7))
+			for ring_i in 3:
+				var corona := _prop("lasecorona%d_%d" % [index, ring_i])
+				if corona.mesh == null or not (corona.mesh is TorusMesh):
+					var halo := TorusMesh.new()
+					halo.rings = 16
+					halo.ring_segments = 8
+					corona.mesh = halo
+				var ring := corona.mesh as TorusMesh
+				var reach := (2.8 if load != "ultraviolet" else 1.9) * read * fade
+				reach *= 1.0 - float(ring_i) * 0.12
+				ring.inner_radius = reach * 0.5
+				ring.outer_radius = reach
+				var along_t := 10.0 + float(ring_i) * maxf(length * 0.22, 18.0)
+				corona.position = chart(a2, 7.4) + along * along_t
+				_paint_bolt(corona, edge.lightened(0.2), 2.4 * fade * pulse, clampf(fade * 0.5, 0.04, 0.72))
 		else:
 			for spark_i in 4:
 				var flake := _prop("pdflake%d_%d" % [index, spark_i])
@@ -1887,17 +1894,17 @@ func _sync_muzzles(sim) -> void:
 			tint = Color("ff9a4a")
 		elif socket == "stake_gun":
 			tint = Color("e8f2ff")
-		var span := 2.2 * read * (0.4 + fade)
+		var span := 2.8 * read * (0.45 + fade)
 		if socket == "heavy_turret":
-			span *= 1.85
+			span *= 2.15
 		elif socket == "stake_gun":
-			span *= 0.72
+			span *= 0.68
 		elif family == "missile":
-			span *= 1.25
+			span *= 1.45
 		elif family == "laser":
-			span *= 0.95
+			span *= 1.15
 		elif family == "pd":
-			span *= 0.65
+			span *= 0.7
 		var dir: Vector2 = flash.get("dir", Vector2.RIGHT)
 		var along := Vector3(dir.x, 0.0, -dir.y)
 		if along.length() < 0.2:
@@ -5225,13 +5232,13 @@ func _socket_life(sim, ship: Dictionary, socket: String) -> float:
 func _kick_mount(sock: Node3D, socket: String, life: float) -> void:
 	var kick := 0.0
 	if socket == "heavy_turret":
-		kick = 2.25 * life
+		kick = 3.4 * life
 	elif socket == "stake_gun":
-		kick = 1.4 * life
+		kick = 2.1 * life
 	elif socket == "gun_sponson":
-		kick = 0.9 * life
+		kick = 1.45 * life
 	elif socket == "point_defense":
-		kick = 0.42 * life
+		kick = 0.7 * life
 	for name in ["BarrelP", "BarrelS"]:
 		var barrel := sock.get_node_or_null(name) as MeshInstance3D
 		if barrel == null:
