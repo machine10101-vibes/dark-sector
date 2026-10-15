@@ -317,7 +317,7 @@ void fragment() {
 	float hz = plate_h(local_pos + vec3(0.0, 0.0, 0.22));
 	vec3 tangent = abs(n.y) > 0.92 ? vec3(1.0, 0.0, 0.0) : normalize(cross(n, vec3(0.0, 1.0, 0.0)));
 	vec3 bitangent = normalize(cross(n, tangent));
-	vec3 bumped = normalize(n + tangent * (h - hx) * 3.6 + bitangent * (h - hz) * 3.6);
+	vec3 bumped = normalize(n + tangent * (h - hx) * 5.2 + bitangent * (h - hz) * 5.2);
 	vec3 world_n = normalize((MODEL_MATRIX * vec4(bumped, 0.0)).xyz);
 	NORMAL = normalize((VIEW_MATRIX * vec4(world_n, 0.0)).xyz);
 	float seam = clamp(seam_of(local_pos), 0.0, 1.0);
