@@ -6323,6 +6323,8 @@ func _hull_part(part: String) -> bool:
 		return true
 	if part.begins_with("Panel") or part.begins_with("Vane") or part.begins_with("Rib") or part.begins_with("Cheek"):
 		return true
+	if part.begins_with("Armor") or part.begins_with("CombatPlate") or part.begins_with("CargoMod") or part.begins_with("Tank"):
+		return true
 	if part == "Collar" or part == "Frame" or part.begins_with("Skid") or part.begins_with("Chine"):
 		return true
 	if part.begins_with("Trim") and part.trim_prefix("Trim").is_valid_int():
