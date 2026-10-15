@@ -6327,6 +6327,8 @@ func _hull_part(part: String) -> bool:
 		return true
 	if part.begins_with("Beam") or part.begins_with("Hardpoint") or part.begins_with("CheekArmor") or part.begins_with("ArmorBrick"):
 		return true
+	if part.begins_with("BayPlate") or part.begins_with("RibFrame") or part.begins_with("CargoTank") or part == "Gantry":
+		return true
 	if part == "Collar" or part == "Frame" or part.begins_with("Skid") or part.begins_with("Chine"):
 		return true
 	if part.begins_with("Trim") and part.trim_prefix("Trim").is_valid_int():
@@ -7349,6 +7351,7 @@ func _dress_industry(holder: Node3D, class_id: String, height: float) -> void:
 		for i in 3:
 			_tube(holder, "Tank%d" % i, height * 0.15, span * 0.16, Vector3(tail + span * (0.3 + float(i) * 0.15), height * 0.36, 0.0), "x", Color("545c64"))
 	_dress_combat(holder, class_id, height)
+	_dress_hauler(holder, class_id, height)
 
 
 func _dress_combat(holder: Node3D, class_id: String, height: float) -> void:
@@ -7448,6 +7451,83 @@ func _dress_combat(holder: Node3D, class_id: String, height: float) -> void:
 			brick.position = Vector3(tail + span * (0.2 + float(i) * 0.16), height * 0.28, (1.0 if i % 2 == 0 else -1.0) * (chine_z + 2.8))
 			brick.material_override = _hull_mat(Color("2a3238"))
 			holder.add_child(brick)
+
+
+func _dress_hauler(holder: Node3D, class_id: String, height: float) -> void:
+	var nose := float(holder.get_meta("nose", 40.0))
+	var tail := float(holder.get_meta("tail", -16.0))
+	var span := maxf(nose - tail, 12.0)
+	var mid := (nose + tail) * 0.42
+	var chine_z := maxf(height * 0.2, 2.8)
+	var hauler := class_id == "anvil"
+	var hoop := MeshInstance3D.new()
+	hoop.name = "SensorRing"
+	var torus := TorusMesh.new()
+	torus.inner_radius = maxf(height * 0.2, 2.6)
+	torus.outer_radius = maxf(height * 0.28, 3.5)
+	torus.rings = 18
+	torus.ring_segments = 10
+	hoop.mesh = torus
+	hoop.position = Vector3(nose - span * 0.18, height * 0.72, 0.0)
+	hoop.rotation.z = PI * 0.5
+	hoop.material_override = _hull_mat(Color("2a3238"))
+	holder.add_child(hoop)
+	for i in 6:
+		var plate := MeshInstance3D.new()
+		plate.name = "BayPlate%d" % i
+		var wide := span * (0.14 if hauler else 0.1)
+		var deep := 4.8 if hauler else 2.8
+		plate.mesh = _bevel_box(Vector3(wide, height * 0.28, deep), 0.04)
+		plate.position = Vector3(tail + span * (0.16 + float(i) * 0.12), height * 0.38, (1.0 if i % 2 == 0 else -1.0) * (chine_z * 0.15))
+		plate.material_override = _hull_mat(Color("3e464c") if i % 2 == 0 else Color("4a5258"))
+		holder.add_child(plate)
+	for i in 4:
+		var haul := MeshInstance3D.new()
+		haul.name = "HaulBell%d" % i
+		haul.mesh = _bell_mesh(3.4, 0.3, 0.78)
+		var side := 1.0 if i < 2 else -1.0
+		haul.position = Vector3(tail + 0.2, height * 0.16 + float(i % 2) * 1.15, side * (chine_z + 1.1))
+		var iron := _metal(Color("161210"))
+		iron.emission_enabled = true
+		iron.emission = Color("c47a3a")
+		iron.emission_energy_multiplier = 0.1
+		haul.material_override = iron
+		holder.add_child(haul)
+	if not hauler:
+		return
+	for i in 4:
+		var rib := MeshInstance3D.new()
+		rib.name = "RibFrame%d" % i
+		rib.mesh = _bevel_box(Vector3(0.42, height * 0.82, 12.4), 0.035)
+		rib.position = Vector3(tail + span * (0.18 + float(i) * 0.18), height * 0.46, 0.0)
+		rib.material_override = _hull_mat(Color("1e2428"))
+		holder.add_child(rib)
+	for side in [1.0, -1.0]:
+		var tag := "P" if side > 0.0 else "S"
+		var door := MeshInstance3D.new()
+		door.name = "SideHatch%s" % tag
+		door.mesh = _bevel_box(Vector3(span * 0.16, height * 0.42, 0.35), 0.04)
+		door.position = Vector3(mid, height * 0.48, side * (chine_z + 3.4))
+		door.material_override = _hull_mat(Color("1a1e22"))
+		holder.add_child(door)
+		_hardware(holder, "HatchLip%s" % tag, Vector3(span * 0.18, 0.22, 0.55), Vector3(mid, height * 0.28, side * (chine_z + 3.4)), Color("8a8276"))
+		_tube(holder, "CargoTank%s" % tag, height * 0.14, span * 0.38, Vector3(mid, height * 0.22, side * (chine_z + 0.6)), "x", Color("4a5258"))
+	var frame := MeshInstance3D.new()
+	frame.name = "HatchFrame"
+	frame.mesh = _bevel_box(Vector3(span * 0.24, 0.45, 9.4), 0.05)
+	frame.position = Vector3(mid, height * 1.1, 0.0)
+	frame.material_override = _hull_mat(Color("121618"))
+	holder.add_child(frame)
+	_hardware(holder, "HatchRam", Vector3(span * 0.08, 1.15, 1.4), Vector3(mid + span * 0.08, height * 1.22, 0.0), Color("2a2420"))
+	var gantry := MeshInstance3D.new()
+	gantry.name = "Gantry"
+	gantry.mesh = _bevel_box(Vector3(span * 0.42, 0.38, 1.15), 0.04)
+	gantry.position = Vector3(mid, height * 1.28, 0.0)
+	gantry.material_override = _hull_mat(Color("2c3236"))
+	holder.add_child(gantry)
+	for i in 3:
+		_stud(holder, Vector3(tail + span * (0.24 + float(i) * 0.16), height * 1.12, 3.2), 0.14)
+		_stud(holder, Vector3(tail + span * (0.24 + float(i) * 0.16), height * 1.12, -3.2), 0.14)
 
 
 func _dress_lumen(holder: Node3D, height: float) -> void:

@@ -83,6 +83,15 @@ func _run() -> void:
 	check(holder_part(stage, "vesper", "Beam0"), "Needle wears exposed beams")
 	check(holder_part(stage, "vesper", "SensorDome"), "Needle wears a sensor dome")
 	check(holder_part(stage, "anvil", "Hardpoint0"), "Barn wears hardpoints")
+	check(holder_part(stage, "anvil", "SensorRing"), "Barn wears a sensor ring")
+	check(holder_part(stage, "anvil", "BayPlate0"), "Barn wears modular bay plates")
+	check(holder_part(stage, "anvil", "RibFrame0"), "Barn wears structural rib frames")
+	check(holder_part(stage, "anvil", "SideHatchP"), "Barn wears a side loading hatch")
+	check(holder_part(stage, "anvil", "HatchFrame"), "Barn wears a hatch frame")
+	check(holder_part(stage, "anvil", "Gantry"), "Barn wears a cargo gantry")
+	check(holder_part(stage, "anvil", "HaulBell0"), "Barn wears extra haul bells")
+	check(holder_part(stage, "vesper", "SensorRing"), "Needle wears a sensor ring")
+	check(holder_part(stage, "kestrel", "BayPlate0"), "Beak wears modular bay plates")
 
 
 func holder_part(stage: Node, class_id: String, part_name: String) -> bool:
