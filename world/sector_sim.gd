@@ -674,7 +674,7 @@ func _laser_strike(unit: Dictionary, gun: Dictionary, aimed: Dictionary) -> void
 			"signature": HelmCombat.effective_signature(self, hit),
 		})
 		_note_impact(end, "scorch", str(unit.team), dir, "laser")
-		sfx("hit_laser")
+		sfx(_hit_sfx("laser", "", str(gun.get("load", "standard"))))
 	beams.append({
 		"from": muzzle,
 		"to": end,
@@ -825,6 +825,10 @@ func _gun_sfx(family: String, socket: String, load: String = "") -> String:
 			return "laser_uv"
 		return "laser"
 	if family == "missile":
+		if load == "siege":
+			return "missile_siege"
+		if load == "breacher":
+			return "missile_breacher"
 		return "missile"
 	if family == "pd":
 		return "pd"
@@ -832,13 +836,25 @@ func _gun_sfx(family: String, socket: String, load: String = "") -> String:
 		return "heavy"
 	if socket == "stake_gun":
 		return "stake"
+	if load == "incendiary":
+		return "gun_inc"
+	if load == "tungsten":
+		return "gun_tung"
 	return "gun"
 
 
-func _hit_sfx(family: String, socket: String = "") -> String:
+func _hit_sfx(family: String, socket: String = "", load: String = "") -> String:
 	if family == "laser":
+		if load == "infrared":
+			return "hit_laser_ir"
+		if load == "ultraviolet":
+			return "hit_laser_uv"
 		return "hit_laser"
 	if family == "missile":
+		if load == "siege":
+			return "hit_missile_siege"
+		if load == "breacher":
+			return "hit_missile_breach"
 		return "hit_missile"
 	if family == "pd":
 		return "hit_pd"
@@ -1304,7 +1320,7 @@ func _step_projectiles(dt: float) -> void:
 			damage_unit(hit, float(shot.damage), str(shot.agent_id), _shot_profile(shot, hit))
 			if str(shot.get("family", "")) == "missile":
 				_blast_around(shot, hit)
-			sfx(_hit_sfx(str(shot.get("family", "")), str(shot.get("socket", ""))))
+			sfx(_hit_sfx(str(shot.get("family", "")), str(shot.get("socket", "")), str(shot.get("load", ""))))
 			_note_impact(shot.pos, "hit", str(shot.get("team", "")), Vector2(shot.vel), str(shot.get("family", "")))
 			continue
 		kept.append(shot)
