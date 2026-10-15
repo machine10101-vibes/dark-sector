@@ -71,6 +71,10 @@ var beams: Array = []
 ## Visual-only bursts. Not saved, not snapshotted, not part of the gun rules.
 var impacts: Array = []
 var wrecks: Array = []
+## Live sensor pulse. Ephemeral; not saved.
+var sweep: Dictionary = {}
+## Incoming lock stages keyed by agent id. Not saved.
+var lock_watch: Dictionary = {}
 var scans: Dictionary = {}
 var deposits: Dictionary = {}
 var heat: Dictionary = {}
@@ -115,6 +119,8 @@ func new_game(class_id: String) -> void:
 	time = 0.0
 	scans = {}
 	wrecks = []
+	sweep = {}
+	lock_watch = {}
 	projectiles = []
 	beams = []
 	muzzles = []
@@ -203,7 +209,7 @@ func new_game(class_id: String) -> void:
 	say("%s. %s is the city-orbital. The ice ring is lit. %s holds confiscated hulls. %s is marked and not a homestead." % [defs.system.name, planet(str(defs.system.pdo.home)).name, defs.system.trash.name, pocket.name])
 	say("A Claim Core is in the hold. The Homestead Road buoy is off the green. L takes the lane.")
 	say("Green spine buoys leave for Brass Lantern and Writ. From First Soil the amber road reaches Perimeter, and the hatch reaches Gyre.")
-	say("The corner map is the local sky. Tap it, or press F10, for the whole 3D chart. Tab locks the nearest contact.")
+	say("The corner map is the local sky. Tap it, or press F10, for the whole 3D chart. Tab locks the nearest contact. 4 sweeps the local sky. The helm names anyone locking you.")
 	say("Shakedown is on the log. J reads it. Y marks the next place.")
 	if str(defs.system.get("belt", {}).get("name", "")) != "":
 		say("%s yields nickel cinder. Ice spall sits on the Homestead bearing. Copper slag sits toward The Unlet. Hull plate rides with the seized hold. Scan a rock, then Harvest." % str(defs.system.belt.name))
@@ -313,6 +319,25 @@ func wreck_by_id(id: String):
 		if str(wreck.id) == id:
 			return wreck
 	return null
+
+
+func _make_wreck(unit: Dictionary, cargo: Dictionary) -> Dictionary:
+	var wreck := {
+		"id": "wreck_%d" % wrecks.size(),
+		"agent_id": unit.agent_id,
+		"controller": unit.controller,
+		"team": unit.team,
+		"class_id": unit.class_id,
+		"pos": unit.pos,
+		"cargo": cargo,
+		"stripped": false,
+		"name": unit.name,
+		"born": float(time),
+		"insured": str(unit.get("controller", "")) == "human",
+		"rights": str(unit.get("controller", "")) == "human",
+	}
+	wreck.value = HelmCombat.wreck_value(wreck)
+	return wreck
 
 
 func dossier_complete(planet_id: String) -> bool:
@@ -956,6 +981,8 @@ func from_dict(data: Dictionary) -> void:
 	_beams_in(data.get("beams", []))
 	impacts = []
 	wrecks = []
+	sweep = {}
+	lock_watch = {}
 	for row in data.get("wrecks", []):
 		var wreck = row.duplicate(true)
 		wreck.pos = Serde.vec_in(wreck.pos)
@@ -1042,6 +1069,7 @@ func _step(dt: float, cmd: Dictionary) -> void:
 	if not hold_npc:
 		for actor in actors:
 			_step_npc(actor, dt)
+	HelmCombat.watch_locks(self)
 	_step_projectiles(dt)
 	_age_impacts(dt)
 	if player.alive:
@@ -1790,17 +1818,7 @@ func _kill(unit: Dictionary, attacker: String) -> void:
 	_note_impact(unit.pos, "kill", str(unit.get("team", "")))
 	if str(unit.get("controller", "")) == "human":
 		var dropped := _split_cargo(unit)
-		wrecks.append({
-			"id": "wreck_%d" % wrecks.size(),
-			"agent_id": unit.agent_id,
-			"controller": unit.controller,
-			"team": unit.team,
-			"class_id": unit.class_id,
-			"pos": unit.pos,
-			"cargo": dropped,
-			"stripped": false,
-			"name": unit.name,
-		})
+		wrecks.append(_make_wreck(unit, dropped))
 		_respawn_captain(unit)
 		return
 	unit.alive = false
@@ -1809,17 +1827,7 @@ func _kill(unit: Dictionary, attacker: String) -> void:
 	var cargo: Dictionary = {}
 	if unit.has("cargo"):
 		cargo = unit.cargo.duplicate(true)
-	wrecks.append({
-		"id": "wreck_%d" % wrecks.size(),
-		"agent_id": unit.agent_id,
-		"controller": unit.controller,
-		"team": unit.team,
-		"class_id": unit.class_id,
-		"pos": unit.pos,
-		"cargo": cargo,
-		"stripped": false,
-		"name": unit.name,
-	})
+	wrecks.append(_make_wreck(unit, cargo))
 	if str(unit.team) == "red_keel":
 		var provoked := bool(unit.ai.get("fired_on_captain", false))
 		if provoked:
@@ -1884,12 +1892,15 @@ func _respawn_captain(unit: Dictionary) -> void:
 		unit.dock_x = unit.pos.x
 		unit.dock_y = unit.pos.y
 		unit.moored = true
+	var pay := HelmCombat.insurance_payout(defs, unit)
+	if pay > 0:
+		quest_flags.purse = DockBoard.purse(self) + pay
 	if str(unit.agent_id) == str(player.agent_id):
-		banner = "You wake at %s. The wreck still has your name, and some of the hold." % str(defs.system.name)
-		say("The keel broke. Layout kept. You are back on the dock.")
+		banner = "You wake at %s. Insurance paid %d. The wreck still has your name, and some of the hold." % [str(defs.system.name), pay]
+		say("The keel broke. Insurance paid %d. Layout kept. You are back on the dock." % pay)
 	else:
-		banner = "%s wakes at %s. The wreck still has their name, and some of the hold." % [str(unit.name), str(defs.system.name)]
-		say("%s broke. The layout stays. The ship was not deleted." % str(unit.name))
+		banner = "%s wakes at %s. Insurance paid %d. The wreck still has their name, and some of the hold." % [str(unit.name), str(defs.system.name), pay]
+		say("%s broke. Insurance paid %d. The layout stays. The ship was not deleted." % [str(unit.name), pay])
 	banner_t = 0.0
 
 
@@ -2668,6 +2679,10 @@ func _apply_verbs(unit: Dictionary, cmd: Dictionary) -> void:
 				var who = HelmCombat.find_unit(self, mark)
 				var called := str(who.get("name", "the target")) if who != null else "the target"
 				say("%s on %s." % [str(spec.get("name", "The gun")), called])
+	if bool(cmd.get("sweep", false)):
+		var swept := HelmCombat.try_sweep(self, unit)
+		if swept != "":
+			say(swept)
 
 
 func _clear_oneshots() -> void:
@@ -2682,6 +2697,7 @@ func _clear_oneshots() -> void:
 		row.erase("lock_cycle")
 		row.erase("order")
 		row.erase("engage")
+		row.erase("sweep")
 		commands[key] = row
 
 

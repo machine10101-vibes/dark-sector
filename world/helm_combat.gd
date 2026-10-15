@@ -314,6 +314,211 @@ static func locked_unit(sim, unit: Dictionary):
 	return find_unit(sim, str(unit.get("lock_id", "")))
 
 
+## Anyone painting this keel. PVP lives or dies on knowing that before the
+## first volley, not after the overview scrolls.
+static func lockers(sim, unit: Dictionary) -> Array:
+	var rows: Array = []
+	var id := str(unit.get("agent_id", ""))
+	if id == "":
+		return rows
+	var pool: Array = []
+	for actor in sim.actors:
+		pool.append(actor)
+	for mate in sim.captains:
+		pool.append(mate)
+	if str(sim.player.get("agent_id", "")) != id:
+		pool.append(sim.player)
+	for raw in pool:
+		var other: Dictionary = raw
+		if str(other.get("agent_id", "")) == id:
+			continue
+		if not bool(other.get("alive", false)):
+			continue
+		if str(other.get("lock_id", "")) != id:
+			continue
+		var dist: float = unit.pos.distance_to(other.pos)
+		rows.append({
+			"id": str(other.get("agent_id", "")),
+			"name": str(other.get("name", "Contact")),
+			"dist": dist,
+			"unit": other,
+			"lock_ok": bool(other.get("lock_ok", false)),
+			"lock_t": float(other.get("lock_t", 0.0)),
+			"lock_need": float(other.get("lock_need", 0.0)),
+		})
+	rows.sort_custom(func(a, b): return float(a.dist) < float(b.dist))
+	return rows
+
+
+## Speak once when a new keel starts locking the local captain, and again
+## when that lock lands. Combat math is untouched.
+static func watch_locks(sim) -> void:
+	if sim == null or not bool(sim.player.get("alive", false)):
+		return
+	var seen: Dictionary = {}
+	var prev: Dictionary = sim.lock_watch
+	if typeof(prev) != TYPE_DICTIONARY:
+		prev = {}
+	for raw in lockers(sim, sim.player):
+		var row: Dictionary = raw
+		var id := str(row.id)
+		var stage := 2 if bool(row.lock_ok) else 1
+		seen[id] = stage
+		var was := int(prev.get(id, 0))
+		if was >= stage:
+			continue
+		var name := str(row.get("name", "A keel"))
+		if stage == 2:
+			sim.say("%s has lock on you." % name)
+			sim.sfx("lock")
+		else:
+			sim.say("%s is locking you." % name)
+	sim.lock_watch = seen
+
+
+## Who shares this sky: captains, hostiles, and live wrecks. The minimap
+## and the helm read the same count.
+static func presence(sim) -> Dictionary:
+	var captains := 0
+	if bool(sim.player.get("alive", false)) and str(sim.player.get("controller", "")) == "human":
+		captains += 1
+	for raw in sim.captains:
+		var mate: Dictionary = raw
+		if bool(mate.get("alive", false)) and str(mate.get("controller", "")) == "human":
+			captains += 1
+	var hostiles := 0
+	for raw in sim.actors:
+		var actor: Dictionary = raw
+		if not bool(actor.get("alive", false)):
+			continue
+		if str(actor.get("team", "")) == "red_keel":
+			hostiles += 1
+	var wrecks := 0
+	for raw in sim.wrecks:
+		var wreck: Dictionary = raw
+		if not bool(wreck.get("stripped", false)):
+			wrecks += 1
+	return {"captains": captains, "hostiles": hostiles, "wrecks": wrecks}
+
+
+## Sensor, turret optimal, and optimal-plus-falloff from the live fit.
+## Display only — hit_chance still owns the shot.
+static func range_bands(sim, unit: Dictionary) -> Dictionary:
+	var stats := Fit.stats(sim.defs, unit)
+	var gun: Dictionary = stats.gun
+	var optimal := float(gun.get("optimal", 400.0))
+	return {
+		"sensor": float(stats.sensor),
+		"optimal": optimal,
+		"falloff": optimal + float(gun.get("falloff", 200.0)),
+	}
+
+
+static func wreck_value(wreck: Dictionary) -> int:
+	var n := 0
+	var cargo: Dictionary = wreck.get("cargo", {})
+	for key in cargo.keys():
+		n += maxi(0, int(cargo[key]))
+	if str(wreck.get("controller", "")) == "human":
+		n += 2
+	else:
+		n += 1
+	return n
+
+
+static func insurance_payout(defs: Dictionary, unit: Dictionary) -> int:
+	var hull: Dictionary = defs.ships.get(str(unit.get("class_id", "")), {})
+	var hp := float(hull.get("hp", float(unit.get("max_hp", 40.0))))
+	return maxi(8, int(round(hp * 0.4)))
+
+
+## A short sensor pulse. Same reach the overview already uses. Names what
+## is around you without asking the chart to dump.
+static func sweep(sim, unit: Dictionary) -> Dictionary:
+	var stats := Fit.stats(sim.defs, unit)
+	var reach := float(stats.sensor) * 1.6
+	var hostiles := 0
+	var wrecks := 0
+	var ore := 0
+	var contacts := 0
+	var rows: Array = []
+	for raw in targets(sim, unit, reach):
+		var row: Dictionary = raw
+		var other: Dictionary = row.unit
+		contacts += 1
+		var team := str(other.get("team", ""))
+		var hostile := team == "red_keel"
+		if not hostile and team == str(sim._pdo_id()):
+			var stage := str(sim.heat_stage())
+			hostile = stage == "guns" or bool(sim.pdo_alert)
+		if hostile:
+			hostiles += 1
+		rows.append({
+			"kind": "ship",
+			"id": str(row.id),
+			"name": str(other.get("name", "Contact")),
+			"pos": other.pos,
+			"hostile": hostile,
+		})
+	for raw in sim.wrecks:
+		var wreck: Dictionary = raw
+		if bool(wreck.get("stripped", false)):
+			continue
+		var gap: float = unit.pos.distance_to(wreck.pos)
+		if gap > reach:
+			continue
+		wrecks += 1
+		rows.append({
+			"kind": "wreck",
+			"id": str(wreck.get("id", "")),
+			"name": "Wreck · %s" % str(wreck.get("name", "keel")),
+			"pos": wreck.pos,
+			"hostile": false,
+		})
+	for raw in sim.nodes:
+		var place: Dictionary = raw
+		if not sim.yields_material(place):
+			continue
+		var gap: float = unit.pos.distance_to(place.pos)
+		if gap > reach:
+			continue
+		ore += 1
+		rows.append({
+			"kind": "ore",
+			"id": str(place.get("id", "")),
+			"name": str(place.get("name", "seam")),
+			"pos": place.pos,
+			"hostile": false,
+		})
+	return {
+		"t": float(sim.time),
+		"reach": reach,
+		"hostiles": hostiles,
+		"wrecks": wrecks,
+		"ore": ore,
+		"contacts": contacts,
+		"rows": rows,
+	}
+
+
+static func try_sweep(sim, unit: Dictionary) -> String:
+	if int(sim.layer) != ScaleFrame.BAND:
+		return "Sweep is for local space."
+	var last := float(sim.quest_flags.get("sweep_at", -10.0))
+	if float(sim.time) - last < 2.4:
+		return "Sensors still cycling."
+	sim.quest_flags.sweep_at = float(sim.time)
+	var pulse: Dictionary = sweep(sim, unit)
+	sim.sweep = pulse
+	sim.say("Sweep: %d hostiles, %d wrecks, %d ore groups." % [
+		int(pulse.hostiles),
+		int(pulse.wrecks),
+		int(pulse.ore),
+	])
+	sim.sfx("scan_done")
+	return ""
+
+
 # Turrets ------------------------------------------------------------------
 
 ## Probability a turret shot lands, from angular velocity against tracking

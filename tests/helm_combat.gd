@@ -23,7 +23,8 @@ func _init() -> void:
 	_orders()
 	_click_orders()
 	_kill_the_cutter()
-	check(reached == 7, "every section ran to the end (%d of 7)" % reached)
+	_awareness()
+	check(reached == 8, "every section ran to the end (%d of 8)" % reached)
 	if fails == 0:
 		print("HELM COMBAT PASS")
 	else:
@@ -312,4 +313,73 @@ func _kill_the_cutter() -> void:
 	var line: String = sim.try_salvage(str(wreck.id))
 	check(line == "ok" and int(sim.player.cargo.get("salvage_parts", 0)) >= 1, "the wreck is looted into the hold (%s)" % line)
 
+	reached += 1
+
+
+func _awareness() -> void:
+	var sim := make("vesper")
+	_free(sim)
+	var cutter := _actor(sim, "helion_compact")
+	var skiff := _actor(sim, "red_keel")
+	_park(sim, cutter, Vector2(360, 40))
+	_park(sim, skiff, Vector2(280, -80))
+	check(HelmCombat.lockers(sim, sim.player).is_empty(), "a quiet sky has no incoming lock")
+	var room: Dictionary = HelmCombat.presence(sim)
+	check(int(room.captains) == 1, "the local captain counts as presence")
+	check(int(room.hostiles) >= 1, "Red Keel skiffs count as hostiles")
+	HelmCombat.set_lock(sim, cutter, str(sim.player.agent_id))
+	var painted := HelmCombat.lockers(sim, sim.player)
+	check(painted.size() == 1 and str(painted[0].id) == str(cutter.agent_id), "a cutter locking the keel is named")
+	check(not bool(painted[0].lock_ok), "an incoming lock still takes time")
+	HelmCombat.watch_locks(sim)
+	var locking := false
+	for raw in sim.lines:
+		var line: Dictionary = raw
+		if str(line.text).find("is locking you") >= 0:
+			locking = true
+	check(locking, "the helm speaks when someone starts a lock")
+	var before := sim.lines.size()
+	HelmCombat.watch_locks(sim)
+	check(sim.lines.size() == before, "the same incoming lock does not shout twice")
+	cutter.lock_ok = true
+	HelmCombat.watch_locks(sim)
+	var locked := false
+	for raw in sim.lines:
+		var line: Dictionary = raw
+		if str(line.text).find("has lock on you") >= 0:
+			locked = true
+	check(locked, "the helm speaks when that lock lands")
+	var gun: Dictionary = Fit.stats(defs, sim.player).gun
+	var still := {"pos": sim.player.pos + Vector2(300, 0), "vel": Vector2.ZERO}
+	check(HelmCombat.hit_chance(sim.player, still, gun) > 0.99, "awareness does not change a still optimal hit")
+	var bands: Dictionary = HelmCombat.range_bands(sim, sim.player)
+	check(absf(float(bands.optimal) - float(gun.optimal)) < 0.01, "range rings read the live gun")
+	check(absf(float(bands.falloff) - (float(gun.optimal) + float(gun.falloff))) < 0.01, "falloff ring is optimal plus falloff")
+	sim.tick(0.05, {"sweep": true})
+	check(int(sim.sweep.get("contacts", 0)) >= 2, "a sweep names the nearby hulls")
+	var swept := false
+	for raw in sim.lines:
+		var line: Dictionary = raw
+		if str(line.text).begins_with("Sweep:"):
+			swept = true
+	check(swept, "a sweep speaks the count")
+	sim.tick(0.05, {"sweep": true})
+	check(str(sim.lines[0].text).find("cycling") >= 0, "a rushed sweep waits for the sensors")
+	var pay := HelmCombat.insurance_payout(defs, sim.player)
+	check(pay >= 8, "insurance pays a cut of the hull")
+	var purse0 := DockBoard.purse(sim)
+	sim.player.hp = 1.0
+	sim.player.shield = 0.0
+	sim.player.armor_hp = 0.0
+	sim.player.cargo["raw_mass"] = 2
+	sim.damage_unit(sim.player, 80.0, "agent:red_keel:0")
+	check(DockBoard.purse(sim) == purse0 + pay, "a broken keel pays insurance into the purse")
+	var own: Dictionary = {}
+	for raw in sim.wrecks:
+		var wreck: Dictionary = raw
+		if str(wreck.get("agent_id", "")) == str(sim.player.agent_id):
+			own = wreck
+	check(not own.is_empty() and bool(own.get("insured", false)), "the captain wreck is insured")
+	check(int(own.get("value", 0)) == HelmCombat.wreck_value(own), "the wreck posts a salvage value")
+	check(int(sim.player.cargo.get("raw_mass", 0)) == 1, "insurance does not change the hold split")
 	reached += 1

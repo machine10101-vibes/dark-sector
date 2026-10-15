@@ -12,6 +12,10 @@ const HULL_C := Color("f07a6a")
 const CAP_C := Color("ffe28a")
 const HOT_C := Color("ff7a3c")
 const QUEST_C := Color("ffd27a")
+const WARN_C := Color("ff6a5c")
+const RING_SENSOR := Color(0.45, 0.82, 0.9, 0.28)
+const RING_OPT := Color(0.45, 0.92, 0.62, 0.42)
+const RING_FALL := Color(0.95, 0.72, 0.28, 0.36)
 const DIM := Color(0.55, 0.7, 0.76, 0.22)
 const ORBIT_RANGES := [220.0, 320.0, 450.0]
 const KEEP_RANGES := [450.0, 650.0, 900.0]
@@ -21,6 +25,7 @@ var capsule: Control
 var overview: Control
 var card: Control
 var tracker: Control
+var warn: Control
 var order_row: HBoxContainer
 var order_buttons: Dictionary = {}
 var _brackets: Array = []
@@ -43,6 +48,10 @@ func _ready() -> void:
 	tracker = _Pane.new(self, "_draw_tracker")
 	tracker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(tracker)
+	warn = _Pane.new(self, "_draw_warn")
+	warn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	warn.z_index = 8
+	add_child(warn)
 	overview = _Pane.new(self, "_draw_overview")
 	overview.mouse_filter = Control.MOUSE_FILTER_STOP
 	overview.gui_input.connect(_overview_input)
@@ -82,7 +91,7 @@ func _process(_delta: float) -> void:
 		return
 	_place()
 	queue_redraw()
-	for pane in [capsule, overview, card, tracker]:
+	for pane in [capsule, overview, card, tracker, warn]:
 		pane.queue_redraw()
 
 
@@ -189,6 +198,20 @@ func _place() -> void:
 		if panel != null and tracker.position.x + tr_w > panel.position.x:
 			tracker.visible = false
 
+	var threats := HelmCombat.lockers(sim, sim.player)
+	warn.visible = band and not threats.is_empty()
+	if warn.visible:
+		var warn_w := minf(440.0, screen.x - 20.0)
+		warn.size = Vector2(warn_w, 42.0)
+		var warn_y := 8.0
+		if card.visible:
+			warn_y = maxf(warn_y, card.position.y + card.size.y + 6.0)
+		if status != null:
+			warn_y = maxf(warn_y, 8.0)
+		warn.position = Vector2((screen.x - warn_w) * 0.5, warn_y)
+		if minimap != null and warn.position.x + warn_w > minimap.position.x - 8.0:
+			warn.position.x = maxf(10.0, minimap.position.x - warn_w - 8.0)
+
 
 # Data ---------------------------------------------------------------------
 
@@ -217,19 +240,27 @@ func _contacts(sim) -> Array:
 	if int(sim.layer) != ScaleFrame.BAND:
 		return rows
 	var stats := Fit.stats(sim.defs, sim.player)
+	var self_id := str(sim.player.get("agent_id", ""))
 	for row in HelmCombat.targets(sim, sim.player, float(stats.sensor) * 1.6):
 		var unit: Dictionary = row.unit
 		var mark := standing(sim, unit)
 		var hull: Dictionary = sim.defs.ships.get(str(unit.get("class_id", "")), {})
+		var locking := str(unit.get("lock_id", "")) == self_id
+		var word := str(mark.word)
+		if locking and bool(unit.get("lock_ok", false)):
+			word = "has lock"
+		elif locking:
+			word = "locking"
 		rows.append({
 			"id": str(row.id),
 			"name": str(unit.get("name", "Contact")),
 			"kind": str(hull.get("class_name", unit.get("class_id", ""))),
 			"dist": float(row.dist),
-			"color": mark.color,
-			"word": mark.word,
+			"color": WARN_C if locking else mark.color,
+			"word": word,
 			"unit": unit,
 			"wreck": false,
+			"locking": locking,
 		})
 	for wreck in sim.wrecks:
 		if bool(wreck.get("stripped", false)):
@@ -237,15 +268,17 @@ func _contacts(sim) -> Array:
 		var gap: float = sim.player.pos.distance_to(wreck.pos)
 		if gap > float(stats.sensor):
 			continue
+		var yours := bool(wreck.get("rights", false)) or str(wreck.get("agent_id", "")) == self_id
 		rows.append({
 			"id": str(wreck.id),
 			"name": "Wreck · %s" % str(wreck.get("name", "keel")),
 			"kind": "salvage",
 			"dist": gap,
-			"color": Color("a9b4b8"),
-			"word": "wreck",
+			"color": Color("d7c48a") if yours else Color("a9b4b8"),
+			"word": "your wreck" if yours else "wreck",
 			"unit": wreck,
 			"wreck": true,
+			"locking": false,
 		})
 	rows.sort_custom(func(a, b): return float(a.dist) < float(b.dist))
 	return rows
@@ -375,6 +408,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		var key := (event as InputEventKey).keycode
 		if key == KEY_ESCAPE and strike_box != null and strike_box.visible:
 			_close_strike()
+			get_viewport().set_input_as_handled()
+			return
+		if key == KEY_4 or key == KEY_KP_4:
+			Game.tap("sweep", true)
 			get_viewport().set_input_as_handled()
 			return
 		var order := ""
@@ -770,6 +807,8 @@ func _open_command(at: Vector2) -> void:
 	if lock != "":
 		_strike_button("Attack with the wing", _strike_wing.bind(lock))
 	_strike_button("Recall the wing", _fleet_verb.bind("recall"))
+	_strike_label("SCAN")
+	_strike_button("Sensor sweep", _do_sweep)
 	_place_strike(at)
 
 
@@ -1081,12 +1120,19 @@ func _fleet_verb(verb: String) -> void:
 		Game.sim.say(message)
 
 
+func _do_sweep() -> void:
+	_close_strike()
+	Game.tap("sweep", true)
+
+
 # Brackets -----------------------------------------------------------------
 
 func _draw() -> void:
 	_brackets = []
 	var sim = Game.sim
 	if sim == null or int(sim.layer) != ScaleFrame.BAND:
+		return
+	if size.x < 80.0 or size.y < 80.0:
 		return
 	var helm: Node = hud.get_parent().get_node_or_null("Helm") if hud != null and hud.get_parent() != null else null
 	if helm == null:
@@ -1096,6 +1142,9 @@ func _draw() -> void:
 	if cam == null or stage == null:
 		return
 	var lock_id := str(sim.player.get("lock_id", ""))
+	_draw_rings(cam, stage, sim)
+	_draw_sweep(cam, stage, sim)
+	_draw_incoming(cam, stage, sim)
 	var quest_ids := {}
 	for goal in objectives_of(sim):
 		_draw_objective(cam, stage, sim, goal)
@@ -1126,6 +1175,9 @@ func _draw() -> void:
 		_corners(sp, radius, col, weight, 0.36)
 		if quest_ids.has(str(row.id)):
 			_diamond(sp + Vector2(0, -radius - 10.0), 5.0, QUEST_C, 1.6)
+		if bool(row.get("locking", false)):
+			_corners(sp, radius + 16.0, WARN_C, 2.0, 0.22)
+			draw_arc(sp, radius + 18.0, 0.0, TAU, 36, Color(WARN_C, 0.7 if bool(row.unit.get("lock_ok", false)) else 0.4), 1.6, true)
 		if is_lock:
 			var ok := bool(sim.player.get("lock_ok", false))
 			var need := maxf(0.01, float(sim.player.get("lock_need", 1.0)))
@@ -1138,6 +1190,100 @@ func _draw() -> void:
 		_text(Vector2(sp.x - radius, tank_y + 20.0), "%s · %s" % [_dist_word(row.dist), row.word], 10, Color(col.lerp(Color.WHITE, 0.35), 0.85))
 	_draw_own(cam, stage, sim)
 	_draw_box()
+
+
+func _draw_rings(cam: Camera3D, stage, sim) -> void:
+	var threats := HelmCombat.lockers(sim, sim.player)
+	var armed := str(sim.player.get("lock_id", "")) != "" or str(sim.player.get("engage", "")) != ""
+	if threats.is_empty() and not armed:
+		return
+	var bands: Dictionary = HelmCombat.range_bands(sim, sim.player)
+	_world_ring(cam, stage, sim.player.pos, float(bands.sensor), RING_SENSOR, 1.2)
+	_world_ring(cam, stage, sim.player.pos, float(bands.optimal), RING_OPT, 1.6)
+	_world_ring(cam, stage, sim.player.pos, float(bands.falloff), RING_FALL, 1.3)
+
+
+func _draw_sweep(cam: Camera3D, stage, sim) -> void:
+	var pulse: Dictionary = sim.sweep
+	if pulse.is_empty():
+		return
+	if float(sim.time) - float(pulse.get("t", -20.0)) > 6.0:
+		return
+	var fade := clampf(1.0 - (float(sim.time) - float(pulse.get("t", 0.0))) / 6.0, 0.15, 1.0)
+	_world_ring(cam, stage, sim.player.pos, float(pulse.get("reach", 0.0)), Color(0.62, 0.94, 1.0, 0.22 * fade), 1.1)
+	for raw in pulse.get("rows", []):
+		var row: Dictionary = raw
+		var at3: Vector3 = stage.chart(row.pos, 2.0)
+		if cam.is_position_behind(at3):
+			continue
+		var sp := cam.unproject_position(at3)
+		if sp.x < -20.0 or sp.y < -20.0 or sp.x > size.x + 20.0 or sp.y > size.y + 20.0:
+			continue
+		var kind := str(row.get("kind", ""))
+		if kind == "ore":
+			_diamond(sp, 7.0, Color(0.72, 0.9, 0.55, 0.85 * fade), 1.4)
+		elif kind == "wreck":
+			_diamond(sp, 8.0, Color(0.85, 0.78, 0.55, 0.9 * fade), 1.5)
+		elif bool(row.get("hostile", false)):
+			_corners(sp, 14.0, Color(WARN_C, 0.85 * fade), 1.8, 0.3)
+		else:
+			_corners(sp, 12.0, Color(0.7, 0.86, 0.9, 0.7 * fade), 1.2, 0.28)
+
+
+func _draw_incoming(cam: Camera3D, stage, sim) -> void:
+	var box := Rect2(Vector2(28, 28), size - Vector2(56, 56))
+	var center := size * 0.5
+	for raw in HelmCombat.lockers(sim, sim.player):
+		var row: Dictionary = raw
+		var unit: Dictionary = row.unit
+		var at3: Vector3 = stage.chart(unit.pos, 2.0)
+		var on_screen := not cam.is_position_behind(at3)
+		var sp := cam.unproject_position(at3) if on_screen else Vector2(-1, -1)
+		if on_screen and box.has_point(sp):
+			continue
+		var dir := (sp - center) if on_screen else Vector2.ZERO
+		if dir.length() < 1.0:
+			var heading: Vector2 = unit.pos - sim.player.pos
+			var probe3: Vector3 = stage.chart(sim.player.pos + heading.normalized() * 50.0, 2.0)
+			var self3: Vector3 = stage.chart(sim.player.pos, 2.0)
+			dir = cam.unproject_position(probe3) - cam.unproject_position(self3)
+			if dir.length() < 0.01:
+				continue
+		dir = dir.normalized()
+		var reach := minf(absf((box.size.x * 0.5) / maxf(absf(dir.x), 0.001)), absf((box.size.y * 0.5) / maxf(absf(dir.y), 0.001)))
+		var tip := center + dir * reach
+		var side := dir.orthogonal()
+		draw_colored_polygon(PackedVector2Array([tip + dir * 10.0, tip - dir * 6.0 + side * 8.0, tip - dir * 6.0 - side * 8.0]), Color(WARN_C, 0.92))
+		var label := "%s  %s" % [str(row.name), _dist_word(float(row.dist))]
+		var width := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+		var spot := tip - dir * 22.0 - Vector2(width * 0.5, -4.0)
+		spot.x = clampf(spot.x, 8.0, size.x - width - 8.0)
+		_text(spot, label, 11, WARN_C)
+
+
+func _world_ring(cam: Camera3D, stage, origin: Vector2, radius: float, col: Color, width: float) -> void:
+	if radius < 8.0:
+		return
+	var pts: PackedVector2Array = PackedVector2Array()
+	var steps := 56
+	for i in steps + 1:
+		var ang := TAU * float(i) / float(steps)
+		var world: Vector2 = origin + Vector2.from_angle(ang) * radius
+		var at3: Vector3 = stage.chart(world, 2.0)
+		if cam.is_position_behind(at3):
+			if pts.size() >= 2:
+				draw_polyline(pts, col, width, true)
+			pts = PackedVector2Array()
+			continue
+		var sp := cam.unproject_position(at3)
+		if sp.x < -140.0 or sp.y < -140.0 or sp.x > size.x + 140.0 or sp.y > size.y + 140.0:
+			if pts.size() >= 2:
+				draw_polyline(pts, col, width, true)
+			pts = PackedVector2Array()
+			continue
+		pts.append(sp)
+	if pts.size() >= 2:
+		draw_polyline(pts, col, width, true)
 
 
 func _draw_own(cam: Camera3D, stage, sim) -> void:
@@ -1339,7 +1485,11 @@ func _draw_capsule(pane: Control) -> void:
 	var heat_col := Color("ffb15c").lerp(HOT_C, clampf((therm - 50.0) / 50.0, 0.0, 1.0))
 	pane.draw_rect(Rect2(Vector2(heat_x, 42), Vector2(heat_w * clampf(therm / 100.0, 0.0, 1.0), 5)), heat_col)
 	var sig := HelmCombat.effective_signature(sim, p)
-	_text(Vector2(10, 68), "SIG %.2f  %s" % [sig, Fit.signature_word(sig)], 10, Color("8aa8b0"), pane)
+	var sig_line := "SIG %.2f  %s" % [sig, Fit.signature_word(sig)]
+	var threat_n := HelmCombat.lockers(sim, p).size()
+	if threat_n > 0:
+		sig_line += "  ·  %d locking" % threat_n
+	_text(Vector2(10, 68), sig_line, 10, WARN_C if threat_n > 0 else Color("8aa8b0"), pane)
 	var gun: Dictionary = Fit.stats(sim.defs, p).gun
 	var mounts := Fit.mounts(sim.defs, p)
 	var gun_word := "GUN READY"
@@ -1472,6 +1622,31 @@ func _draw_card(pane: Control) -> void:
 		button.add_theme_color_override("font_color", Color("9be7d0") if on else Color("c5d6dc"))
 	(order_buttons["orbit"] as Button).text = "Orbit %d" % int(ORBIT_RANGES[_orbit_pick])
 	(order_buttons["keep"] as Button).text = "Keep %d" % int(KEEP_RANGES[_keep_pick])
+
+
+# Incoming lock ------------------------------------------------------------
+
+func _draw_warn(pane: Control) -> void:
+	var sim = Game.sim
+	var threats := HelmCombat.lockers(sim, sim.player)
+	if threats.is_empty():
+		return
+	_plate(pane, true)
+	var row: Dictionary = threats[0]
+	var ok := bool(row.lock_ok)
+	var pulse := 0.55 + 0.45 * absf(sin(float(sim.time) * (8.0 if ok else 5.0)))
+	var col := Color(WARN_C, pulse)
+	pane.draw_rect(Rect2(Vector2(0, 0), Vector2(4, pane.size.y)), col)
+	var head := "HAS LOCK" if ok else "LOCKING YOU"
+	if threats.size() > 1:
+		head = "%s  ·  %d" % [head, threats.size()]
+	_text(Vector2(12, 14), head, 11, col, pane)
+	_text_right(pane, pane.size.x - 10.0, 14.0, _dist_word(float(row.dist)), 12, Color("f4fcff"))
+	_clip_text(pane, Vector2(12, 28), pane.size.x - 20.0, str(row.name), 12, Color("f4fcff"))
+	var need := maxf(0.01, float(row.lock_need))
+	var frac := 1.0 if ok else clampf(float(row.lock_t) / need, 0.0, 1.0)
+	pane.draw_rect(Rect2(Vector2(12, 34), Vector2(pane.size.x - 24.0, 3)), DIM)
+	pane.draw_rect(Rect2(Vector2(12, 34), Vector2((pane.size.x - 24.0) * frac, 3)), col)
 
 
 # Tracker ------------------------------------------------------------------

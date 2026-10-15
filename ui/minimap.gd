@@ -71,10 +71,14 @@ func _draw() -> void:
 	_draw_gates(sim, origin, center, scale, span)
 	_draw_field(sim, origin, center, scale, span)
 	_draw_dock(sim, origin, center, scale, span)
+	_draw_bands(sim, player, center, scale)
 	_draw_contacts(sim, player, origin, center, scale, span)
 	_draw_chevron(center, float(player.get("rot", 0.0)))
 	if font != null:
-		var caption := str(sim.defs.system.get("name", ""))
+		var room: Dictionary = HelmCombat.presence(sim)
+		var caption := "%s  ·  %d cap" % [str(sim.defs.system.get("name", "")), int(room.captains)]
+		if int(room.hostiles) > 0:
+			caption += "  %d host" % int(room.hostiles)
 		draw_string(font, Vector2(8, size.y - 8), caption, HORIZONTAL_ALIGNMENT_LEFT, size.x - 16, 11, Color("9eecf5"))
 
 
@@ -185,24 +189,72 @@ func _draw_dock(sim, origin: Vector2, center: Vector2, scale: float, span: float
 	draw_colored_polygon(diamond, Color("9eecf5"))
 
 
+func _draw_bands(sim, player: Dictionary, center: Vector2, scale: float) -> void:
+	var bands: Dictionary = HelmCombat.range_bands(sim, player)
+	draw_arc(center, float(bands.sensor) * scale, 0.0, TAU, 40, Color(0.45, 0.82, 0.9, 0.32), 1.0)
+	var threats := HelmCombat.lockers(sim, player)
+	var armed := str(player.get("lock_id", "")) != "" or str(player.get("engage", "")) != ""
+	if threats.is_empty() and not armed:
+		return
+	draw_arc(center, float(bands.optimal) * scale, 0.0, TAU, 32, Color(0.45, 0.92, 0.62, 0.45), 1.1)
+	draw_arc(center, float(bands.falloff) * scale, 0.0, TAU, 32, Color(0.95, 0.72, 0.28, 0.38), 1.0)
+
+
 func _draw_contacts(sim, player: Dictionary, origin: Vector2, center: Vector2, scale: float, span: float) -> void:
-	var self_id := str(player.get("id", ""))
+	var self_id := str(player.get("agent_id", player.get("id", "")))
+	var lock_id := str(player.get("lock_id", ""))
+	for raw in sim.captains:
+		var mate: Dictionary = raw
+		if str(mate.get("agent_id", "")) == self_id:
+			continue
+		if not bool(mate.get("alive", false)):
+			continue
+		var plotted: Dictionary = _plot(mate.pos, origin, center, scale, span)
+		if bool(plotted.inside):
+			draw_circle(plotted.at, 3.0, Color("8fc7ff"))
+	for item in sim.craft:
+		var row: Dictionary = item
+		if str(row.get("state", "")) == "lost" or str(row.get("state", "")) == "docked":
+			continue
+		var plotted: Dictionary = _plot(row.pos, origin, center, scale, span)
+		if bool(plotted.inside):
+			draw_circle(plotted.at, 2.0, Color("7ed0dc"))
+	for wreck in sim.wrecks:
+		var hull: Dictionary = wreck
+		if bool(hull.get("stripped", false)):
+			continue
+		var plotted: Dictionary = _plot(hull.pos, origin, center, scale, span)
+		if not bool(plotted.inside):
+			continue
+		var at: Vector2 = plotted.at
+		var arm := 3.2
+		draw_colored_polygon(PackedVector2Array([
+			at + Vector2(0, -arm),
+			at + Vector2(arm, 0),
+			at + Vector2(0, arm),
+			at + Vector2(-arm, 0),
+		]), Color("c4b48a"))
 	for actor in sim.actors:
 		var ship: Dictionary = actor
-		if str(ship.get("id", "")) == self_id:
+		if str(ship.get("agent_id", ship.get("id", ""))) == self_id:
 			continue
 		if bool(ship.get("alive", true)) == false:
 			continue
 		var plotted: Dictionary = _plot(ship.pos, origin, center, scale, span)
 		var hostile := str(ship.get("team", "")) == "red_keel"
-		if bool(plotted.inside) == false and not hostile:
+		var locking := str(ship.get("lock_id", "")) == self_id
+		if bool(plotted.inside) == false and not hostile and not locking:
 			continue
 		var ink := Color(0.9, 0.94, 0.95, 0.85)
 		if hostile:
 			var paint := str(ship.get("paint", "#ff6a5c"))
 			ink = Color(paint)
-		var rad := 3.4 if hostile else 2.0
+		elif locking:
+			ink = Color("ff6a5c")
+		var rad := 3.4 if hostile or locking else 2.0
 		draw_circle(plotted.at, rad, ink)
+		if locking or str(ship.get("agent_id", "")) == lock_id:
+			draw_arc(plotted.at, rad + 3.0, 0.0, TAU, 16, ink, 1.2)
 
 
 func _draw_chevron(center: Vector2, rot: float) -> void:

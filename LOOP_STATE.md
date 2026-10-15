@@ -1,7 +1,7 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Ring haul cue
+Slice just completed: Helm lock warning, range rings, sweep, insurance
 Player-visible what works now:
 - A fresh keel moors on a berth ring beside Aegis, in clear space. The pad is not a planet-sized disc, and the hull is not inside the city or the ice. The title-yard Needle stays in its own world, so Take does not leave a second, larger keel sitting on the pad.
 - Phone portrait and landscape keep Speed, Purse, the bars, the stick, the gun, and the scale in separate bands. The scale sits above the bars on a tall phone and beside the stick on a short one.
@@ -21,10 +21,11 @@ Player-visible what works now:
 - Aegis traffic is civic, cargo, and PDO shells, plus the yard. Belts and meteor streams are volumes. A probe scan is a flight you can watch, and the time scales with altitude and body size. A lost craft keeps kilometer coordinates.
 - The save and the listen snapshot share system id, body id, layer, a rebasing local origin in kilometers, and a local pos. Law and patrol guns stay on distance inside the band.
 - The older loop still resolves: lanes, claims, scans, harvest, heat, modules, quests, and the host log.
+- The helm names anyone locking you, and the glass draws a lock-warning chip with range. Optimal, falloff, and sensor rings sit on the sky and the corner map when you have a lock or someone has you. 4, or empty-space Command → Sensor sweep, pulses the same reach the overview already uses and speaks hostiles, wrecks, and ore groups. The map caption reads captains and hostiles in this system. A broken keel pays insurance into the purse; the wreck keeps the old hold split and posts as yours.
 What is next (ordered):
-1. Live-Ops 2 — player count per system, insurance/wreck tuning, more HC-V1 authored hooks, art loop Gate 2+ on three starters
+1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
-- Nothing in this repo blocks Live-Ops 2. Do not add a pillar, a second veil, or a new region pass.
+- Nothing in this repo blocks the authored-hook pass. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):
 - Planets stay on fixed positions until a later pass adds orbits.
 - The Unlet stays unplantable. Helion Dock and green capitals refuse a Claim Core.
@@ -32,28 +33,10 @@ Open design decisions (max 5):
 - The farm cassette carries a hold-kine. It does not grow a crop. Crops grow on a claim plot.
 - A pocket takes a core only when claim_slots.json names it. The red box on First Soil keeps the Perimeter atlas id.
 Files touched:
-- tests/slice1_sim.gd
-- world/sector_view.gd
-- quests/dock_board.gd
-- scripts/main.gd
-- data/craft.json
-- data/first_soil.json
-- data/ships.json
-- data/system.json
-- craft/orders.gd
-- tests/scale_sim.gd
-- ui/hud.gd
-- world/overhead.gd
-- world/scale.gd
+- world/helm_combat.gd
 - world/sector_sim.gd
-- world/sector_view.gd
-- world/stage3d.gd
-- world/overhead.gd
-- quests/dock_board.gd
-- scripts/web_moor_proof.gd
-- tests/dock_board_sim.gd
-- tests/dock_market.gd
-- tests/layout_fit.gd
-- PLAYTEST.md
+- ui/helm_overlay.gd
+- ui/minimap.gd
+- ui/hud.gd
+- tests/helm_combat.gd
 - LOOP_STATE.md
-- README.md

@@ -438,6 +438,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_launch("harvest_drone")
 		KEY_3, KEY_KP_3:
 			_launch(_boat_id())
+		KEY_4, KEY_KP_4:
+			Game.tap("sweep", true)
 		KEY_R:
 			_repair()
 		KEY_L:
@@ -640,7 +642,7 @@ func _build_pause() -> void:
 func _build_dead() -> void:
 	dead_box = _center_card("The ship is a wreck")
 	dead_box.visible = false
-	var note := ThemeKit.label("The wreck keeps your name and some of the hold. The layout stays. You wake at the dock.", 14)
+	var note := ThemeKit.label("Insurance pays a cut of the hull. The wreck keeps your name and some of the hold. The layout stays. You wake at the dock.", 14)
 	note.custom_minimum_size = Vector2(360, 0)
 	var load := ThemeKit.button("Read the log")
 	load.pressed.connect(_load)
