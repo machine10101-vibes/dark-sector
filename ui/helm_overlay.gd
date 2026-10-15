@@ -321,9 +321,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseMotion and bool(_lmb.get("on", false)):
 		var motion := event as InputEventMouseMotion
+		_lmb.now = motion.position
 		if bool(_lmb.get("drag", false)) or Steer.is_drag(_lmb.at, motion.position):
 			_lmb.drag = true
-			Game.look_cam(motion.relative.x, motion.relative.y)
+			queue_redraw()
 			get_viewport().set_input_as_handled()
 		return
 	if not (event is InputEventMouseButton):
@@ -472,6 +473,10 @@ func _marks(cam: Camera3D, stage, sim) -> Array:
 			"at": spot.at,
 			"rad": spot.rad,
 		})
+	for own in _own_marks(cam, stage, sim):
+		if str(own.get("id", "")) == str(sim.player.get("agent_id", "")):
+			continue
+		marks.append(own)
 	_mark_bits(marks, cam, stage, sim, sim.asteroids, "rock", 8, 26.0)
 	_mark_bits(marks, cam, stage, sim, sim.trash, "debris", 6, 34.0)
 	_mark_bits(marks, cam, stage, sim, sim.meteors, "meteor", 6, 22.0)
@@ -505,31 +510,85 @@ func _project(cam: Camera3D, stage, world_pos: Vector2, world_r: float, lo: floa
 func _finish_left(at: Vector2) -> void:
 	var started: Dictionary = _lmb.duplicate()
 	_lmb = {}
-	if started.is_empty() or bool(started.get("drag", false)):
+	if started.is_empty():
+		return
+	if bool(started.get("drag", false)):
+		_box_pick(started.at, at)
 		return
 	var hit: Dictionary = started.get("hit", {})
 	if typeof(hit) != TYPE_DICTIONARY:
 		hit = {}
 	var act := Steer.gesture(started.at, at, bool(started.get("double", false)), hit.is_empty(), false)
-	if act == "look":
-		return
 	_close_strike()
-	if act == "clear":
-		if Game.sim != null and str(Game.sim.player.get("lock_id", "")) != "":
-			Game.tap("lock", "")
+	if act == "box":
+		_box_pick(started.at, at)
 		return
 	if act == "fly":
-		_fly_screen(started.at)
+		_fly_screen(at)
+		return
+	if str(hit.get("kind", "")) == "own":
+		Game.picked = [str(hit.id)]
 		return
 	_use_hit(hit, act == "approach" or bool(started.get("double", false)))
 
 
 func _use_hit(hit: Dictionary, double: bool) -> void:
 	var kind := str(hit.get("kind", ""))
+	if kind == "own":
+		Game.picked = [str(hit.id)]
+		return
 	if kind == "ship" or kind == "wreck":
 		_pick(str(hit.id), kind == "wreck", double)
 		return
 	_approach_hit(hit)
+
+
+func _own_marks(cam: Camera3D, stage, sim) -> Array:
+	var marks: Array = []
+	if cam == null or stage == null or sim == null:
+		return marks
+	var keel_r := float(Fit.stats(sim.defs, sim.player).hit_radius)
+	var keel := _project(cam, stage, sim.player.pos, keel_r, 22.0, 90.0)
+	if not keel.is_empty():
+		marks.append({
+			"id": str(sim.player.get("agent_id", "keel")),
+			"name": str(sim.player.get("name", "Keel")),
+			"kind": "own",
+			"at": keel.at,
+			"rad": keel.rad,
+		})
+	for item in sim.craft:
+		if str(item.get("state", "")) == "docked" or str(item.get("state", "")) == "lost":
+			continue
+		var body_r := maxf(float(item.get("radius", 8.0)), 8.0)
+		var spot := _project(cam, stage, item.pos, body_r, 16.0, 56.0)
+		if spot.is_empty():
+			continue
+		marks.append({
+			"id": str(item.get("uid", "")),
+			"name": str(item.get("name", "Craft")),
+			"kind": "own",
+			"at": spot.at,
+			"rad": spot.rad,
+		})
+	return marks
+
+
+func _box_pick(start: Vector2, now: Vector2) -> void:
+	var eye := _eye()
+	if eye.is_empty() or Game.sim == null:
+		return
+	var box := Steer.box_of(start, now)
+	var hits := Steer.box_hits(box, _own_marks(eye.cam, eye.stage, Game.sim))
+	var ids: Array = []
+	for raw in hits:
+		var row: Dictionary = raw
+		var id := str(row.get("id", ""))
+		if id != "" and not ids.has(id):
+			ids.append(id)
+	Game.picked = ids
+	if ids.size() > 1 and Game.sim != null:
+		Game.sim.say("Picked %d." % ids.size())
 
 
 func _fly_screen(at: Vector2) -> void:
@@ -539,13 +598,25 @@ func _fly_screen(at: Vector2) -> void:
 	var pos: Vector2 = Steer.plane_point(eye.cam, at)
 	if pos == Vector2.INF:
 		return
-	Game.tap("order", {
-		"kind": "approach",
-		"x": pos.x,
-		"y": pos.y,
-		"range": 48.0,
-		"label": "that heading",
-	})
+	var ids: Array = Game.picked
+	var move_keel := ids.is_empty()
+	var craft_ids: Array = []
+	for raw in ids:
+		var id := str(raw)
+		if id == str(Game.sim.player.get("agent_id", "")):
+			move_keel = true
+		else:
+			craft_ids.append(id)
+	if move_keel:
+		Game.tap("order", {
+			"kind": "approach",
+			"x": pos.x,
+			"y": pos.y,
+			"range": 48.0,
+			"label": "that heading",
+		})
+	if not craft_ids.is_empty():
+		CraftOrders.hold_picked(Game.sim, craft_ids, pos)
 
 
 func _approach_hit(hit: Dictionary) -> void:
@@ -984,6 +1055,34 @@ func _draw() -> void:
 		var tank_y := sp.y + radius + 6.0
 		_tank_strip(Vector2(sp.x - radius, tank_y), radius * 2.0, unit)
 		_text(Vector2(sp.x - radius, tank_y + 20.0), "%s · %s" % [_dist_word(row.dist), row.word], 10, Color(col.lerp(Color.WHITE, 0.35), 0.85))
+	_draw_own(cam, stage, sim)
+	_draw_box()
+
+
+func _draw_own(cam: Camera3D, stage, sim) -> void:
+	var picked: Array = Game.picked
+	for mark in _own_marks(cam, stage, sim):
+		var id := str(mark.get("id", ""))
+		var on := picked.has(id)
+		if not on and id == str(sim.player.get("agent_id", "")):
+			continue
+		var at: Vector2 = mark.at
+		var rad := float(mark.get("rad", 16.0))
+		var col := Color("7ed0dc")
+		_corners(at, rad, col, 2.4 if on else 1.3, 0.34)
+		if on:
+			draw_arc(at, rad + 6.0, 0.0, TAU, 36, Color(col, 0.85), 1.6, true)
+			_text(at + Vector2(rad + 6.0, -4.0), str(mark.get("name", "")), 11, Color(col, 0.9))
+
+
+func _draw_box() -> void:
+	if not bool(_lmb.get("drag", false)):
+		return
+	var start: Vector2 = _lmb.get("at", Vector2.ZERO)
+	var now: Vector2 = _lmb.get("now", start)
+	var box := Steer.box_of(start, now)
+	draw_rect(box, Color(0.45, 0.88, 1.0, 0.12), true)
+	draw_rect(box, Color(0.62, 0.94, 1.0, 0.9), false, 1.6)
 
 
 func _draw_objective(cam: Camera3D, stage, sim, goal: Dictionary) -> void:

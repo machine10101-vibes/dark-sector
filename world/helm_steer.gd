@@ -1,8 +1,9 @@
 class_name HelmSteer
 extends RefCounted
 
-## Pointer grammar for the helm. Click locks, drag looks, right-click opens
-## strike or fleet command, double-right engages. Combat math stays elsewhere.
+## Pointer grammar for the helm. Click locks a mark or flies a heading,
+## drag boxes own units, right-click opens strike or fleet command,
+## double-right engages. Middle-drag looks. Combat math stays elsewhere.
 
 const DRAG_PX := 7.0
 const LOOK_YAW := 0.0075
@@ -15,10 +16,10 @@ static func is_drag(start: Vector2, now: Vector2) -> bool:
 	return start.distance_to(now) >= DRAG_PX
 
 
-## What a press-release means. A short tap is a click. A pull is a look.
+## What a press-release means. A short tap is a click. A pull is a box pick.
 static func gesture(start: Vector2, now: Vector2, double_click: bool, empty: bool, right: bool) -> String:
 	if is_drag(start, now) and not right:
-		return "look"
+		return "box"
 	if right:
 		if double_click and not empty:
 			return "engage"
@@ -26,12 +27,28 @@ static func gesture(start: Vector2, now: Vector2, double_click: bool, empty: boo
 			return "command"
 		return "strike"
 	if empty:
-		if double_click:
-			return "fly"
-		return "clear"
+		return "fly"
 	if double_click:
 		return "approach"
 	return "lock"
+
+
+static func box_of(start: Vector2, now: Vector2) -> Rect2:
+	return Rect2(start, now - start).abs()
+
+
+static func box_hits(box: Rect2, marks: Array) -> Array:
+	var hits: Array = []
+	for raw in marks:
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var row: Dictionary = raw
+		var at: Vector2 = row.get("at", Vector2.ZERO)
+		var rad := float(row.get("rad", 16.0))
+		var disc := Rect2(at - Vector2(rad, rad), Vector2(rad * 2.0, rad * 2.0))
+		if box.intersects(disc):
+			hits.append(row)
+	return hits
 
 
 static func apply_look(yaw: float, pitch: float, dx: float, dy: float) -> Dictionary:

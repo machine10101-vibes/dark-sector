@@ -216,9 +216,16 @@ func _click_orders() -> void:
 	check(Steer.is_drag(Vector2.ZERO, Vector2(8, 1)), "a pull past seven pixels is a drag")
 	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, false, false) == "lock", "left click on a mark locks")
 	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), true, false, false) == "approach", "double click on a mark approaches")
-	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, true, false) == "clear", "empty left click clears the lock")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, true, false) == "fly", "empty left click flies the heading")
 	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), true, true, false) == "fly", "empty double click flies the heading")
-	check(Steer.gesture(Vector2.ZERO, Vector2(20, 0), false, true, false) == "look", "left drag looks")
+	check(Steer.gesture(Vector2.ZERO, Vector2(20, 0), false, true, false) == "box", "left drag boxes own units")
+	var box := Steer.box_of(Vector2(0, 0), Vector2(24, 16))
+	check(box.has_point(Vector2(10, 8)), "a drag box covers the pulled rectangle")
+	var boxed := Steer.box_hits(box, [
+		{"id": "wing", "at": Vector2(8, 6), "rad": 6.0},
+		{"id": "far", "at": Vector2(80, 80), "rad": 6.0},
+	])
+	check(boxed.size() == 1 and str(boxed[0].id) == "wing", "a drag box picks the units inside it")
 	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, false, true) == "strike", "right click opens strike")
 	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, true, true) == "command", "empty right click opens command")
 	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), true, false, true) == "engage", "double right click engages")
@@ -244,6 +251,13 @@ func _click_orders() -> void:
 			fighter = item
 	check(fighter != null and CraftOrders.strike(sim, str(fighter.uid), str(quarry.agent_id)) == "", "a fighter takes the clicked ship")
 	check(str(fighter.target) == str(quarry.agent_id) and str(fighter.order) == "attack", "the fighter's attack is that ship")
+	var hold: Vector2 = Vector2(sim.player.pos) + Vector2(420.0, 0.0)
+	check(CraftOrders.hold_at(sim, str(fighter.uid), hold) == "", "a fighter takes a click-move")
+	check(str(fighter.order) == "hold", "the fighter holds the clicked point")
+	var start: Vector2 = Vector2(fighter.pos)
+	for i in 80:
+		CraftOrders.step(sim, fighter, 0.05)
+	check(Vector2(fighter.pos).distance_to(hold) < start.distance_to(hold), "the fighter flies the click-move")
 	check(CraftOrders.wing_strike(sim, "") == "Pick a ship first.", "a wing needs a ship")
 	reached += 1
 

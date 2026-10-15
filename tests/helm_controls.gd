@@ -124,7 +124,11 @@ func _run() -> void:
 	check(str(game.cam_mode) == "orbit", "look drag takes orbit")
 	check(float(game.cam_yaw) != yaw0, "look drag turns the yaw")
 	check(float(game.cam_pitch) != pitch0, "look drag tips the pitch")
-	check(Steer.gesture(Vector2.ZERO, Vector2(12, 0), false, true, false) == "look", "a click-drag on empty sky is a look")
+	check(Steer.gesture(Vector2.ZERO, Vector2(12, 0), false, true, false) == "box", "a click-drag on empty sky is a box pick")
+	check(Steer.box_hits(Steer.box_of(Vector2(0, 0), Vector2(30, 20)), [
+		{"id": "a", "at": Vector2(12, 8), "rad": 8.0},
+		{"id": "b", "at": Vector2(90, 90), "rad": 8.0},
+	]).size() == 1, "a box pick takes the units inside")
 
 	var boat := str(CraftOrders.launch(sim, ""))
 	check(boat.contains("no boat"), "Boat on an empty rack says so")

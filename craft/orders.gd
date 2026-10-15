@@ -149,6 +149,31 @@ static func strike(sim, uid: String, target_id: String) -> String:
 	return ""
 
 
+static func hold_at(sim, uid: String, pos: Vector2) -> String:
+	var craft = _by_uid(sim, uid)
+	if craft == null:
+		return "That rack slot is empty."
+	if str(craft.state) == "lost":
+		return "%s is lost. Rebuild it from returned mass." % craft.name
+	if str(craft.state) == "docked":
+		_depart(sim, craft, "")
+		if str(craft.def_id) == "fighter":
+			craft.state = "escort"
+	craft.order = "hold"
+	craft.hold = pos
+	craft.target = ""
+	return ""
+
+
+static func hold_picked(sim, ids: Array, pos: Vector2) -> int:
+	var sent := 0
+	for raw in ids:
+		var message := hold_at(sim, str(raw), pos)
+		if message == "":
+			sent += 1
+	return sent
+
+
 static func wing_strike(sim, target_id: String) -> String:
 	if target_id == "":
 		return "Pick a ship first."
@@ -237,19 +262,22 @@ static func step(sim, craft, dt: float) -> void:
 		craft.state = "returning"
 		craft.order = "return"
 		sim.say("%s is short on battery and turning for the keel." % craft.name)
-	match str(craft.def_id):
-		"survey_probe":
-			_step_probe(sim, craft, dt)
-		"harvest_drone":
-			_step_harvest(sim, craft, dt)
-		"salvage_tender":
-			_step_tender(sim, craft, dt)
-		"livestock_lighter":
-			_step_lighter(sim, craft, dt)
-		"away_shuttle":
-			_step_shuttle(sim, craft, dt)
-		"fighter":
-			_step_fighter(sim, craft, dt)
+	if str(craft.get("order", "")) == "hold":
+		_step_hold(sim, craft, dt)
+	else:
+		match str(craft.def_id):
+			"survey_probe":
+				_step_probe(sim, craft, dt)
+			"harvest_drone":
+				_step_harvest(sim, craft, dt)
+			"salvage_tender":
+				_step_tender(sim, craft, dt)
+			"livestock_lighter":
+				_step_lighter(sim, craft, dt)
+			"away_shuttle":
+				_step_shuttle(sim, craft, dt)
+			"fighter":
+				_step_fighter(sim, craft, dt)
 	if str(craft.state) != "lost":
 		_hazards(sim, craft)
 	if float(craft.hp) <= 0.0 and str(craft.state) != "lost":
@@ -620,6 +648,16 @@ static func _attack_slot(seat: int, target: Vector2, lead: Vector2) -> Vector2:
 	var flank := 1.0 if seat % 2 == 0 else -1.0
 	var ring := 1 + int(seat / 2)
 	return target + approach * (170.0 + float(ring) * 40.0) + side * flank * (80.0 + float(seat) * 24.0)
+
+
+static func _step_hold(sim, craft, dt: float) -> void:
+	var dest: Vector2 = craft.get("hold", sim.player.pos)
+	if typeof(dest) != TYPE_VECTOR2:
+		dest = sim.player.pos
+	var catch := maxf(float(craft.get("speed", 80.0)), 40.0)
+	var dist := _fly_safe(sim, craft, dest, dt, catch)
+	if dist < 36.0:
+		craft.vel *= 0.72
 
 
 static func _step_fighter(sim, craft, dt: float) -> void:
