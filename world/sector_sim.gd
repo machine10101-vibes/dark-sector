@@ -28,6 +28,12 @@ const DOCK_BUTTON := 500.0
 ## While the ring crate is still outbound, band speed stays under a real burn.
 ## The shell catch stops a chart dump. Cast off and W are not braked to a stop.
 const HAUL_BAND_CAP := 220.0
+## Harvest groups sit this far off the pad and this far from each other.
+## Loose asteroids and comets stay as one or two rocks on their own seats.
+const STOCK_KEEP := 1200.0
+const STOCK_SEP := 3600.0
+const STOCK_NEAR := 2200.0
+const STOCK_FAR := 14000.0
 
 var defs: Dictionary = {}
 var seed_value = 0
@@ -2095,7 +2101,7 @@ func _build_static() -> void:
 		if extra > 4:
 			packs = 2
 		for p in packs:
-			var seat := _random_reach_seat(rng, anchor_body, pad, hubs, 520.0, 1400.0)
+			var seat := _stock_seat(rng, anchor_body, pad, hubs)
 			hubs.append(seat)
 			var n := 4
 			if p == packs - 1:
@@ -3030,10 +3036,12 @@ func _spawn_belt(rng: RandomNumberGenerator) -> void:
 		var vein := str(stock.get("vein", "#f0a04a"))
 		tint = str(stock.get("tint", tint))
 		var sites := clampi(int(round(float(count) * 0.5)), 2, 6)
+		var avoid := _stock_hubs()
+		var home = _stock_anchor()
+		pad = _stock_pad(home)
 		for i in sites:
-			var ang := rng.randf() * TAU
-			var rad := float(belt.get("radius", 800.0)) + rng.randf_range(-span, span)
-			var center := Vector2.from_angle(ang) * rad
+			var center := _stock_seat(rng, home, pad, avoid)
+			avoid.append(center)
 			var pair := 1
 			if rng.randf() > 0.45:
 				pair = 2
@@ -3046,7 +3054,7 @@ func _spawn_loners(rng: RandomNumberGenerator, pad: Vector2, composition: String
 	var anchor = planet(str(belt.get("anchor", "")))
 	var hubs := _stock_hubs()
 	for i in 5:
-		var at := _random_reach_seat(rng, anchor, pad, hubs, 420.0, 1100.0)
+		var at := _stock_seat(rng, anchor, pad, hubs)
 		hubs.append(at)
 		var pair := 1
 		if rng.randf() > 0.42:
@@ -3059,14 +3067,14 @@ func _spawn_seams(rng: RandomNumberGenerator, pad: Vector2, _origin: Vector2) ->
 	var belt: Dictionary = defs.system.get("belt", {})
 	var anchor = planet(str(belt.get("anchor", "")))
 	var avoid := _stock_hubs()
-	ice_pos = _random_reach_seat(rng, anchor, pad, avoid, 720.0, 1400.0)
+	ice_pos = _stock_seat(rng, anchor, pad, avoid)
 	avoid.append(ice_pos)
-	copper_pos = _random_reach_seat(rng, anchor, pad, avoid, 720.0, 1400.0)
-	if ice_pos.distance_to(copper_pos) < 1200.0:
+	copper_pos = _stock_seat(rng, anchor, pad, avoid)
+	if ice_pos.distance_to(copper_pos) < STOCK_SEP:
 		var push: Vector2 = copper_pos - ice_pos
 		if push.length() < 1.0:
 			push = Vector2.from_angle(rng.randf() * TAU)
-		copper_pos = _clear_sky(ice_pos + push.normalized() * 1600.0, pad, anchor, 720.0)
+		copper_pos = _clear_sky(ice_pos + push.normalized() * STOCK_SEP, pad, anchor, STOCK_KEEP)
 	_plant_vein(rng, anchor, pad, ice_pos, 2, 4, "#d5e6f0", "#f4fbff", "ice_spall", 20.0)
 	_plant_vein(rng, anchor, pad, copper_pos, 2, 4, "#6e8f58", "#d6ee8a", "copper_slag", 22.0)
 
@@ -3149,24 +3157,28 @@ func _stock_taken() -> Array:
 	return taken
 
 
+func _stock_seat(rng: RandomNumberGenerator, home, pad: Vector2, avoid: Array) -> Vector2:
+	return _random_reach_seat(rng, home, pad, avoid, STOCK_KEEP, STOCK_SEP)
+
+
 func _random_reach_seat(rng: RandomNumberGenerator, home, pad: Vector2, avoid: Array, keep: float, sep: float) -> Vector2:
 	var at := Vector2.ZERO
 	if home == null:
 		var ang0 := rng.randf() * TAU
-		at = Vector2.from_angle(ang0) * rng.randf_range(1400.0, 5200.0)
+		at = Vector2.from_angle(ang0) * rng.randf_range(STOCK_NEAR, STOCK_FAR)
 		return _clear_pad(at, pad, keep)
 	var crust := float(home.radius) * 1.34 + 220.0
-	var near := maxf(crust, 1100.0)
-	var far := maxf(near + 2200.0, 6200.0)
+	var near := maxf(crust, STOCK_NEAR)
+	var far := maxf(near + STOCK_FAR * 0.35, STOCK_FAR)
 	var guard := 0
-	while guard < 48:
+	while guard < 80:
 		var body = home
 		if planets.size() > 1 and rng.randf() < 0.34:
 			body = planets[rng.randi_range(0, planets.size() - 1)]
 		var ang := rng.randf() * TAU
 		var dist := rng.randf_range(near, far)
 		if body != home:
-			dist = rng.randf_range(float(body.radius) * 1.8 + 240.0, float(body.radius) * 4.2 + 1800.0)
+			dist = rng.randf_range(float(body.radius) * 2.4 + 600.0, float(body.radius) * 7.0 + 4200.0)
 			at = Vector2(body.pos) + Vector2.from_angle(ang) * dist
 		else:
 			at = Vector2(home.pos) + Vector2.from_angle(ang) * dist
@@ -3229,7 +3241,7 @@ func _plant_vein(rng: RandomNumberGenerator, home, pad: Vector2, first_at: Vecto
 	for g in groups:
 		var at := first_at
 		if g > 0 or first_at == Vector2.ZERO:
-			at = _random_reach_seat(rng, home, pad, hubs, 720.0, 1400.0)
+			at = _stock_seat(rng, home, pad, hubs)
 		hubs.append(at)
 		_plant_cluster(rng, at, per_group, 48.0, tint, vein, material, size0, material)
 
@@ -3338,7 +3350,7 @@ func _reseat_after_cut(node_id: String, row: Dictionary) -> void:
 	var avoid := _stock_hubs()
 	var old := Vector2(row.pos)
 	avoid.append(old)
-	var at := _random_reach_seat(rng, home, pad, avoid, 720.0, 1400.0)
+	var at := _stock_seat(rng, home, pad, avoid)
 	if res_id == "nickel_cinder" or kind == "belt":
 		_slide_group("nickel_cinder", old, at, 80.0)
 		belt_pos = at
@@ -3393,12 +3405,12 @@ func _seed_reach_stock(rng: RandomNumberGenerator) -> void:
 	var pad: Vector2 = Vector2(home.pos) + _dock_offset(home)
 	var avoid := _stock_hubs()
 	if ice_pos == Vector2.ZERO:
-		ice_pos = _random_reach_seat(rng, home, pad, avoid, 720.0, 1400.0)
+		ice_pos = _stock_seat(rng, home, pad, avoid)
 		avoid.append(ice_pos)
 		var ice: Dictionary = _reach_mineral(1)
 		_plant_vein(rng, home, pad, ice_pos, 2, 4, str(ice.tint), str(ice.vein), "ice_spall", 18.0)
 	if copper_pos == Vector2.ZERO:
-		copper_pos = _random_reach_seat(rng, home, pad, avoid, 720.0, 1400.0)
+		copper_pos = _stock_seat(rng, home, pad, avoid)
 		avoid.append(copper_pos)
 		var slag: Dictionary = _reach_mineral(2)
 		_plant_vein(rng, home, pad, copper_pos, 2, 4, str(slag.tint), str(slag.vein), "copper_slag", 18.0)
@@ -3406,7 +3418,7 @@ func _seed_reach_stock(rng: RandomNumberGenerator) -> void:
 		if trash_pos != Vector2.ZERO:
 			plate_pos = trash_pos
 		else:
-			plate_pos = _random_reach_seat(rng, home, pad, avoid, 260.0, 220.0)
+			plate_pos = _stock_seat(rng, home, pad, avoid)
 
 
 func _scatter_flank_scrap(rng: RandomNumberGenerator) -> void:
@@ -3584,7 +3596,7 @@ func _build_meteors(rng: RandomNumberGenerator) -> void:
 		site_near = pad + Vector2(rng.randf_range(-60.0, 60.0), rng.randf_range(-48.0, 48.0))
 	var site_far := origin
 	if anchor != null:
-		site_far = _random_reach_seat(rng, anchor, pad, _stock_hubs(), 720.0, 1600.0)
+		site_far = _stock_seat(rng, anchor, pad, _stock_hubs())
 	var sites: Array = [site_near, site_far]
 	for i in 4:
 		var site: Vector2 = sites[i / 2]
