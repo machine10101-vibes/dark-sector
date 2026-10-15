@@ -34,7 +34,7 @@ var _lmb: Dictionary = {}
 
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_font = ThemeDB.fallback_font
 	capsule = _Pane.new(self, "_draw_capsule")
@@ -77,6 +77,7 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	var live := Game.mode == "sector" and Game.sim != null and hud != null
 	visible = live
+	mouse_filter = Control.MOUSE_FILTER_STOP if live and not Game.map_open and not Game.paused else Control.MOUSE_FILTER_IGNORE
 	if not live:
 		return
 	_place()
@@ -296,8 +297,79 @@ func _dist_word(meters: float) -> String:
 
 # Input --------------------------------------------------------------------
 
+func _can_steer() -> bool:
+	return Game.mode == "sector" and Game.sim != null and not Game.map_open and not Game.paused
+
+
+func _gui_input(event: InputEvent) -> void:
+	if not _can_steer():
+		return
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			_begin_left(touch.position, false)
+		else:
+			_finish_left(touch.position)
+		accept_event()
+		return
+	if event is InputEventScreenDrag:
+		_drag_to((event as InputEventScreenDrag).position)
+		accept_event()
+		return
+	if event is InputEventMouseMotion and bool(_lmb.get("on", false)):
+		_drag_to((event as InputEventMouseMotion).position)
+		accept_event()
+		return
+	if not (event is InputEventMouseButton):
+		return
+	var press := event as InputEventMouseButton
+	if press.button_index == MOUSE_BUTTON_LEFT:
+		if press.pressed:
+			_begin_left(press.position, press.double_click)
+		else:
+			_finish_left(press.position)
+		accept_event()
+		return
+	if press.button_index != MOUSE_BUTTON_RIGHT or not press.pressed:
+		return
+	var at := press.position
+	var hit := _hit(at)
+	var act := Steer.gesture(at, at, press.double_click, hit.is_empty(), true)
+	if act == "engage":
+		_engage_hit(hit)
+	elif act == "command":
+		_open_command(at)
+	else:
+		_open_strike(hit, at)
+	accept_event()
+
+
+func _input(event: InputEvent) -> void:
+	if not bool(_lmb.get("on", false)):
+		return
+	if event is InputEventMouseMotion:
+		_drag_to((event as InputEventMouseMotion).position)
+		return
+	if event is InputEventScreenDrag:
+		_drag_to((event as InputEventScreenDrag).position)
+		return
+	if event is InputEventMouseButton:
+		var press := event as InputEventMouseButton
+		if press.button_index == MOUSE_BUTTON_LEFT and not press.pressed:
+			_finish_left(press.position)
+			if get_viewport() != null:
+				get_viewport().set_input_as_handled()
+		return
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if not touch.pressed:
+			_finish_left(touch.position)
+			if get_viewport() != null:
+				get_viewport().set_input_as_handled()
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if not visible or Game.sim == null or Game.map_open or Game.paused:
+	if not _can_steer():
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var key := (event as InputEventKey).keycode
@@ -319,45 +391,26 @@ func _unhandled_input(event: InputEvent) -> void:
 			_press_order(order)
 			get_viewport().set_input_as_handled()
 		return
-	if event is InputEventMouseMotion and bool(_lmb.get("on", false)):
-		var motion := event as InputEventMouseMotion
-		_lmb.now = motion.position
-		if bool(_lmb.get("drag", false)) or Steer.is_drag(_lmb.at, motion.position):
-			_lmb.drag = true
-			queue_redraw()
-			get_viewport().set_input_as_handled()
+
+
+func _begin_left(at: Vector2, double_click: bool) -> void:
+	_lmb = {
+		"on": true,
+		"at": at,
+		"now": at,
+		"hit": _hit(at),
+		"double": double_click,
+		"drag": false,
+	}
+
+
+func _drag_to(at: Vector2) -> void:
+	if not bool(_lmb.get("on", false)):
 		return
-	if not (event is InputEventMouseButton):
-		return
-	var press := event as InputEventMouseButton
-	if press.button_index == MOUSE_BUTTON_LEFT:
-		if press.pressed:
-			_lmb = {
-				"on": true,
-				"at": press.position,
-				"hit": _hit(press.position),
-				"double": press.double_click,
-				"drag": false,
-			}
-		else:
-			_finish_left(press.position)
-		get_viewport().set_input_as_handled()
-		return
-	if press.button_index != MOUSE_BUTTON_RIGHT or not press.pressed:
-		return
-	var at := press.position
-	var hit := _hit(at)
-	var act := Steer.gesture(at, at, press.double_click, hit.is_empty(), true)
-	if act == "engage":
-		_engage_hit(hit)
-		get_viewport().set_input_as_handled()
-		return
-	if act == "command":
-		_open_command(at)
-		get_viewport().set_input_as_handled()
-		return
-	_open_strike(hit, at)
-	get_viewport().set_input_as_handled()
+	_lmb.now = at
+	if bool(_lmb.get("drag", false)) or Steer.is_drag(_lmb.at, at):
+		_lmb.drag = true
+		queue_redraw()
 
 
 func _overview_input(event: InputEvent) -> void:
@@ -543,30 +596,56 @@ func _use_hit(hit: Dictionary, double: bool) -> void:
 	_approach_hit(hit)
 
 
+func own_bodies(sim) -> Array:
+	var bodies: Array = []
+	if sim == null:
+		return bodies
+	bodies.append({
+		"id": str(sim.player.get("agent_id", "keel")),
+		"name": str(sim.player.get("name", "Keel")),
+		"kind": "own",
+		"pos": sim.player.pos,
+		"rad": float(Fit.stats(sim.defs, sim.player).hit_radius),
+	})
+	var index := 0
+	for item in sim.craft:
+		var row: Dictionary = item
+		var state := str(row.get("state", ""))
+		if state == "lost":
+			index += 1
+			continue
+		var pos: Vector2 = row.pos
+		if state == "docked":
+			var pose: Dictionary = CraftOrders.escort_pose(sim, row, index)
+			pos = pose.pos
+		bodies.append({
+			"id": str(row.get("uid", "")),
+			"name": str(row.get("name", "Craft")),
+			"kind": "own",
+			"pos": pos,
+			"rad": maxf(float(row.get("radius", 8.0)), 8.0),
+		})
+		index += 1
+	return bodies
+
+
 func _own_marks(cam: Camera3D, stage, sim) -> Array:
 	var marks: Array = []
 	if cam == null or stage == null or sim == null:
 		return marks
-	var keel_r := float(Fit.stats(sim.defs, sim.player).hit_radius)
-	var keel := _project(cam, stage, sim.player.pos, keel_r, 22.0, 90.0)
-	if not keel.is_empty():
-		marks.append({
-			"id": str(sim.player.get("agent_id", "keel")),
-			"name": str(sim.player.get("name", "Keel")),
-			"kind": "own",
-			"at": keel.at,
-			"rad": keel.rad,
-		})
-	for item in sim.craft:
-		if str(item.get("state", "")) == "docked" or str(item.get("state", "")) == "lost":
-			continue
-		var body_r := maxf(float(item.get("radius", 8.0)), 8.0)
-		var spot := _project(cam, stage, item.pos, body_r, 16.0, 56.0)
+	for raw in own_bodies(sim):
+		var row: Dictionary = raw
+		var lo := 16.0
+		var hi := 56.0
+		if str(row.get("id", "")) == str(sim.player.get("agent_id", "")):
+			lo = 22.0
+			hi = 90.0
+		var spot := _project(cam, stage, row.pos, float(row.get("rad", 8.0)), lo, hi)
 		if spot.is_empty():
 			continue
 		marks.append({
-			"id": str(item.get("uid", "")),
-			"name": str(item.get("name", "Craft")),
+			"id": str(row.get("id", "")),
+			"name": str(row.get("name", "Craft")),
 			"kind": "own",
 			"at": spot.at,
 			"rad": spot.rad,
@@ -587,8 +666,10 @@ func _box_pick(start: Vector2, now: Vector2) -> void:
 		if id != "" and not ids.has(id):
 			ids.append(id)
 	Game.picked = ids
-	if ids.size() > 1 and Game.sim != null:
+	if ids.size() > 0:
 		Game.sim.say("Picked %d." % ids.size())
+	else:
+		Game.sim.say("No units in that box.")
 
 
 func _fly_screen(at: Vector2) -> void:
@@ -1007,7 +1088,7 @@ func _draw() -> void:
 	var sim = Game.sim
 	if sim == null or int(sim.layer) != ScaleFrame.BAND:
 		return
-	var helm: Node = hud.get_parent().get_node_or_null("Helm") if hud.get_parent() != null else null
+	var helm: Node = hud.get_parent().get_node_or_null("Helm") if hud != null and hud.get_parent() != null else null
 	if helm == null:
 		return
 	var cam: Camera3D = helm.get("cam3")
@@ -1081,8 +1162,16 @@ func _draw_box() -> void:
 	var start: Vector2 = _lmb.get("at", Vector2.ZERO)
 	var now: Vector2 = _lmb.get("now", start)
 	var box := Steer.box_of(start, now)
-	draw_rect(box, Color(0.45, 0.88, 1.0, 0.12), true)
-	draw_rect(box, Color(0.62, 0.94, 1.0, 0.9), false, 1.6)
+	draw_rect(box, Color(0.45, 0.88, 1.0, 0.16), true)
+	draw_rect(box, Color(0.62, 0.94, 1.0, 0.95), false, 2.0)
+	var eye := _eye()
+	if eye.is_empty() or Game.sim == null:
+		return
+	for raw in Steer.box_hits(box, _own_marks(eye.cam, eye.stage, Game.sim)):
+		var row: Dictionary = raw
+		var at: Vector2 = row.get("at", Vector2.ZERO)
+		var rad := float(row.get("rad", 16.0))
+		draw_arc(at, rad + 4.0, 0.0, TAU, 28, Color(0.62, 0.94, 1.0, 0.9), 2.0, true)
 
 
 func _draw_objective(cam: Camera3D, stage, sim, goal: Dictionary) -> void:
