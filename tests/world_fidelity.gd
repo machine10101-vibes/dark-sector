@@ -75,6 +75,14 @@ func _run() -> void:
 	check(holder_part(stage, "kestrel", "Armor0"), "Beak wears layered armor")
 	check(holder_part(stage, "kestrel", "CombatPlate0"), "Beak wears combat plates")
 	check(holder_part(stage, "casque", "CombatPlate0"), "Ram wears combat plates")
+	check(holder_part(stage, "kestrel", "Beam0"), "Beak wears exposed beams")
+	check(holder_part(stage, "kestrel", "SensorDome"), "Beak wears a sensor dome")
+	check(holder_part(stage, "kestrel", "Hardpoint0"), "Beak wears hardpoints")
+	check(holder_part(stage, "kestrel", "ThrusterShroud"), "Beak wears a thruster shroud")
+	check(holder_part(stage, "kestrel", "CheekArmorP"), "Beak wears angular cheek armor")
+	check(holder_part(stage, "vesper", "Beam0"), "Needle wears exposed beams")
+	check(holder_part(stage, "vesper", "SensorDome"), "Needle wears a sensor dome")
+	check(holder_part(stage, "anvil", "Hardpoint0"), "Barn wears hardpoints")
 
 
 func holder_part(stage: Node, class_id: String, part_name: String) -> bool:
