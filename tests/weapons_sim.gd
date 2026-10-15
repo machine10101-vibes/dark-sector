@@ -83,7 +83,11 @@ func _meshes() -> void:
 	check(slug.get_node_or_null("Head") != null and slug.get_node_or_null("Fin0") == null, "a bullet slug is not a missile")
 	check(rocket.get_node_or_null("Fin0") != null and rocket.get_node_or_null("Fin3") != null, "a missile wears fins")
 	check(rocket.get_node_or_null("Seeker") != null, "a missile wears a seeker")
+	check(rocket.get_node_or_null("Bell") != null, "a missile wears an exhaust bell")
 	check(rocket.material_override != null, "a missile wears hull paint")
+	check(fat.get_node_or_null("Band") != null, "the heavy slug wears a driving band")
+	check(rail.get_node_or_null("Ghost") != null, "the stake rail leaves an afterimage")
+	check(slug.get_node_or_null("Band") == null and slug.get_node_or_null("Ghost") == null, "a cheek slug stays a tracer")
 	var slug_rod := slug.mesh as CylinderMesh
 	var rail_rod := rail.mesh as CylinderMesh
 	var fat_rod := fat.mesh as CylinderMesh
@@ -282,6 +286,8 @@ func _chase(sim: SectorSim, skiff: Dictionary, vel: Vector2, seconds: float) -> 
 func _voices() -> void:
 	var sim := SectorSim.new(defs)
 	check(sim._gun_sfx("laser", "laser_bank") == "laser", "the bank names a laser voice")
+	check(sim._gun_sfx("laser", "laser_bank", "infrared") == "laser_ir", "infrared names a deep hiss")
+	check(sim._gun_sfx("laser", "laser_bank", "ultraviolet") == "laser_uv", "ultraviolet names a thin hiss")
 	check(sim._gun_sfx("missile", "missile_rack") == "missile", "the rack names a missile voice")
 	check(sim._gun_sfx("pd", "point_defense") == "pd", "point defense names its own voice")
 	check(sim._gun_sfx("bullet", "heavy_turret") == "heavy", "the heavy turret names a boom")

@@ -1392,9 +1392,9 @@ func _sync_shots(sim) -> void:
 		elif load == "incendiary":
 			tint = Color("ff7a32")
 		var flicker := 0.85 + 0.15 * sin(float(sim.time) * 48.0 + float(index))
-		_pose_shot(bolt, length, thick, tint, flicker, missile)
+		_pose_shot(bolt, length, thick, tint, flicker, missile, socket)
 		if missile:
-			for puff in 3:
+			for puff in 5:
 				var crumb := _prop("smoke%d_%d" % [index, puff])
 				if str(crumb.get_meta("built", "")) != "yes":
 					var puff_mesh := SphereMesh.new()
@@ -1404,10 +1404,10 @@ func _sync_shots(sim) -> void:
 					puff_mesh.rings = 4
 					crumb.mesh = puff_mesh
 					crumb.set_meta("built", "yes")
-				var back := float(puff + 1) * 8.0 * read
-				crumb.position = bolt.position - along * back
-				crumb.scale = Vector3.ONE * (1.2 + float(puff) * 0.85) * read
-				_paint_bolt(crumb, Color("8a8478"), 0.28, 0.3 - float(puff) * 0.07)
+				var back := float(puff + 1) * 7.2 * read
+				crumb.position = bolt.position - along * back + Vector3(0.0, 0.4 * float(puff), 0.0)
+				crumb.scale = Vector3.ONE * (1.05 + float(puff) * 0.95) * read
+				_paint_bolt(crumb, Color("9a8e7c"), 0.22, 0.34 - float(puff) * 0.055)
 		index += 1
 
 
@@ -1484,6 +1484,28 @@ func _build_bullet_shot(bolt: MeshInstance3D, load: String, socket: String = "")
 	glow.mesh = halo
 	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	bolt.add_child(glow)
+	if heavy:
+		var band := MeshInstance3D.new()
+		band.name = "Band"
+		var ring := CylinderMesh.new()
+		ring.top_radius = 1.28
+		ring.bottom_radius = 1.28
+		ring.height = 1.35
+		ring.radial_segments = 10
+		band.mesh = ring
+		band.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		bolt.add_child(band)
+	if rail:
+		var ghost := MeshInstance3D.new()
+		ghost.name = "Ghost"
+		var after := CylinderMesh.new()
+		after.top_radius = 0.08
+		after.bottom_radius = 0.2
+		after.height = 18.0
+		after.radial_segments = 6
+		ghost.mesh = after
+		ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		bolt.add_child(ghost)
 
 
 func _build_missile_shot(bolt: MeshInstance3D, load: String = "splinter") -> void:
@@ -1563,15 +1585,34 @@ func _build_missile_shot(bolt: MeshInstance3D, load: String = "splinter") -> voi
 	seeker.mesh = lamp
 	seeker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	bolt.add_child(seeker)
+	var bell := MeshInstance3D.new()
+	bell.name = "Bell"
+	var nozzle := CylinderMesh.new()
+	nozzle.top_radius = 1.35
+	nozzle.bottom_radius = 0.7
+	nozzle.height = 1.8
+	nozzle.radial_segments = 10
+	bell.mesh = nozzle
+	bell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_skin_metal(bell, Color("4a4038"))
+	bolt.add_child(bell)
 
 
-func _pose_shot(bolt: MeshInstance3D, length: float, thick: float, tint: Color, flicker: float, missile: bool) -> void:
+func _pose_shot(bolt: MeshInstance3D, length: float, thick: float, tint: Color, flicker: float, missile: bool, socket: String = "") -> void:
 	var rod_mesh := bolt.mesh as CylinderMesh
 	if rod_mesh != null:
 		rod_mesh.height = length
 		if missile:
 			rod_mesh.top_radius = 0.55 * thick
 			rod_mesh.bottom_radius = 0.78 * thick
+		elif socket == "stake_gun":
+			rod_mesh.top_radius = 0.12 * thick
+			rod_mesh.bottom_radius = 0.26 * thick
+			_paint_bolt(bolt, tint, 3.4 * flicker, 1.0)
+		elif socket == "heavy_turret":
+			rod_mesh.top_radius = 0.44 * thick
+			rod_mesh.bottom_radius = 1.08 * thick
+			_paint_bolt(bolt, tint, 2.2 * flicker, 1.0)
 		else:
 			rod_mesh.top_radius = 0.32 * thick
 			rod_mesh.bottom_radius = 0.82 * thick
@@ -1629,6 +1670,24 @@ func _pose_shot(bolt: MeshInstance3D, length: float, thick: float, tint: Color, 
 			seeker.position = Vector3(0.0, length * 0.58, 0.0)
 			seeker.scale = Vector3.ONE * (0.55 + thick * 0.35)
 			_paint_bolt(seeker, Color("7ec8ff"), 2.8 * flicker, 0.95)
+		var bell := bolt.get_node_or_null("Bell") as MeshInstance3D
+		if bell != null:
+			bell.position = Vector3(0.0, -length * 0.48, 0.0)
+			bell.scale = Vector3(thick * 0.85, 1.0, thick * 0.85)
+	var band := bolt.get_node_or_null("Band") as MeshInstance3D
+	if band != null:
+		band.position = Vector3(0.0, length * 0.12, 0.0)
+		band.scale = Vector3(thick * 0.95, 1.0, thick * 0.95)
+		_paint_bolt(band, Color("c48a3a"), 1.6 * flicker, 0.95)
+	var ghost := bolt.get_node_or_null("Ghost") as MeshInstance3D
+	if ghost != null:
+		var ghost_mesh := ghost.mesh as CylinderMesh
+		if ghost_mesh != null:
+			ghost_mesh.height = length * 1.35
+			ghost_mesh.top_radius = 0.08 * thick
+			ghost_mesh.bottom_radius = 0.22 * thick
+		ghost.position = Vector3(0.0, -length * 0.18, 0.0)
+		_paint_bolt(ghost, tint.lightened(0.35), 1.8 * flicker, 0.28)
 
 
 func _sync_beams(sim) -> void:
@@ -1683,13 +1742,30 @@ func _sync_beams(sim) -> void:
 		var age := float(beam.get("age", 0.0))
 		var life := 0.18 if family == "pd" else 0.32
 		var fade := clampf(1.0 - age / life, 0.0, 1.0)
-		var pulse := 0.82 + 0.18 * sin(float(sim.time) * 70.0 + float(index))
+		var pulse_hz := 70.0
+		if load == "infrared":
+			pulse_hz = 22.0
+		elif load == "ultraviolet":
+			pulse_hz = 118.0
+		elif family == "pd":
+			pulse_hz = 160.0
+		var pulse := 0.82 + 0.18 * sin(float(sim.time) * pulse_hz + float(index))
 		var read := _fx_read(sim)
 		if family == "pd":
-			(rod.mesh as CylinderMesh).top_radius = 0.28 * read
-			(rod.mesh as CylinderMesh).bottom_radius = 0.48 * read
-			(sheath_node.mesh as CylinderMesh).top_radius = 0.9 * read
-			(sheath_node.mesh as CylinderMesh).bottom_radius = 1.35 * read
+			(rod.mesh as CylinderMesh).top_radius = 0.22 * read
+			(rod.mesh as CylinderMesh).bottom_radius = 0.4 * read
+			(sheath_node.mesh as CylinderMesh).top_radius = 0.75 * read
+			(sheath_node.mesh as CylinderMesh).bottom_radius = 1.15 * read
+		elif load == "infrared":
+			(rod.mesh as CylinderMesh).top_radius = 0.95 * read
+			(rod.mesh as CylinderMesh).bottom_radius = 1.45 * read
+			(sheath_node.mesh as CylinderMesh).top_radius = 3.1 * read
+			(sheath_node.mesh as CylinderMesh).bottom_radius = 4.4 * read
+		elif load == "ultraviolet":
+			(rod.mesh as CylinderMesh).top_radius = 0.48 * read
+			(rod.mesh as CylinderMesh).bottom_radius = 0.78 * read
+			(sheath_node.mesh as CylinderMesh).top_radius = 1.7 * read
+			(sheath_node.mesh as CylinderMesh).bottom_radius = 2.4 * read
 		else:
 			(rod.mesh as CylinderMesh).top_radius = 0.7 * read
 			(rod.mesh as CylinderMesh).bottom_radius = 1.15 * read
@@ -1740,6 +1816,34 @@ func _sync_beams(sim) -> void:
 			scorch.position = chart(b2, 7.2)
 			scorch.scale = Vector3.ONE * (3.2 if family != "pd" else 1.6) * read * fade
 			_paint_bolt(scorch, core, 3.4 * fade, clampf(fade, 0.04, 0.8))
+		if family != "pd":
+			var corona := _prop("lasecorona%d" % index)
+			if corona.mesh == null or not (corona.mesh is TorusMesh):
+				var halo := TorusMesh.new()
+				halo.rings = 18
+				halo.ring_segments = 8
+				corona.mesh = halo
+			var ring := corona.mesh as TorusMesh
+			var reach := (2.6 if load != "ultraviolet" else 1.8) * read * fade
+			ring.inner_radius = reach * 0.55
+			ring.outer_radius = reach
+			corona.position = chart(a2, 7.4) + along * 8.0 * read
+			_paint_bolt(corona, edge.lightened(0.2), 2.2 * fade * pulse, clampf(fade * 0.45, 0.04, 0.7))
+		else:
+			for spark_i in 4:
+				var flake := _prop("pdflake%d_%d" % [index, spark_i])
+				if flake.mesh == null:
+					var chip := SphereMesh.new()
+					chip.radius = 1.0
+					chip.height = 2.0
+					chip.radial_segments = 6
+					chip.rings = 4
+					flake.mesh = chip
+				var ang := TAU * float(spark_i) / 4.0 + float(sim.time) * 9.0
+				var fly := 3.2 * read * (0.4 + fade)
+				flake.position = chart(b2, 8.0) + Vector3(cos(ang) * fly, 0.6 * float(spark_i % 2), -sin(ang) * fly)
+				flake.scale = Vector3.ONE * (0.7 + fade) * read
+				_paint_bolt(flake, core.lightened(0.3), 3.2 * fade, clampf(fade, 0.05, 0.85))
 		index += 1
 
 
@@ -1754,15 +1858,17 @@ func _sync_muzzles(sim) -> void:
 		var family := str(flash.get("family", "bullet"))
 		var socket := str(flash.get("socket", ""))
 		var load := str(flash.get("load", ""))
-		var life := 0.16
+		var life := 0.18
 		if socket == "heavy_turret":
-			life = 0.24
+			life = 0.3
 		elif family == "missile":
-			life = 0.28
+			life = 0.36
 		elif family == "laser":
-			life = 0.2
+			life = 0.24
 		elif family == "pd":
-			life = 0.12
+			life = 0.14
+		elif socket == "stake_gun":
+			life = 0.2
 		var fade := clampf(1.0 - age / life, 0.0, 1.0)
 		if fade <= 0.02:
 			continue
@@ -1830,6 +1936,78 @@ func _sync_muzzles(sim) -> void:
 		cone.position = chart(flash.pos, 8.2) + along * jet_len * 0.35
 		_aim_rod(cone, along)
 		_paint_bolt(cone, tint, 2.6 * fade, clampf(fade * 0.75, 0.05, 0.8))
+		var side := Vector3(dir.y, 0.0, dir.x)
+		if side.length() < 0.2:
+			side = Vector3.RIGHT
+		side = side.normalized()
+		if socket == "gun_sponson" or socket == "nose":
+			var case := _prop("muzzlecase%d" % index)
+			if case.mesh == null or not (case.mesh is CylinderMesh):
+				var hull := CylinderMesh.new()
+				hull.radial_segments = 8
+				case.mesh = hull
+			var case_mesh := case.mesh as CylinderMesh
+			case_mesh.height = 1.6 * read
+			case_mesh.top_radius = 0.22 * read
+			case_mesh.bottom_radius = 0.28 * read
+			var fly := float(flash.get("age", 0.0))
+			case.position = chart(flash.pos, 8.6) + side * (3.4 + fly * 28.0) * read - along * fly * 10.0 * read + Vector3(0.0, fly * 8.0, 0.0)
+			case.rotation = Vector3(fly * 18.0, fly * 11.0, 0.4)
+			_paint_bolt(case, Color("d4a24a"), 0.8, clampf(fade, 0.12, 0.95))
+		elif socket == "heavy_turret":
+			var smoke := _prop("muzzlesmoke%d" % index)
+			if smoke.mesh == null or not (smoke.mesh is TorusMesh):
+				var puff := TorusMesh.new()
+				puff.rings = 16
+				puff.ring_segments = 8
+				smoke.mesh = puff
+			var ring := smoke.mesh as TorusMesh
+			var grow := (2.4 + (1.0 - fade) * 6.5) * read
+			ring.inner_radius = grow * 0.45
+			ring.outer_radius = grow
+			smoke.position = chart(flash.pos, 8.0) + along * 2.2 * read
+			_paint_bolt(smoke, Color("8a7a68"), 0.35, clampf(fade * 0.45, 0.04, 0.5))
+		elif socket == "stake_gun":
+			for arc_i in 3:
+				var arc := _prop("muzzlearc%d_%d" % [index, arc_i])
+				if arc.mesh == null or not (arc.mesh is CylinderMesh):
+					var sliver := CylinderMesh.new()
+					sliver.radial_segments = 6
+					arc.mesh = sliver
+				var sliver_mesh := arc.mesh as CylinderMesh
+				sliver_mesh.height = span * (2.8 + float(arc_i) * 0.6)
+				sliver_mesh.top_radius = 0.05 * read
+				sliver_mesh.bottom_radius = 0.14 * read
+				var yaw := (float(arc_i) - 1.0) * 0.22
+				var bolt_dir := along.rotated(Vector3.UP, yaw)
+				arc.position = chart(flash.pos, 8.8) + bolt_dir * sliver_mesh.height * 0.4
+				_aim_rod(arc, bolt_dir)
+				_paint_bolt(arc, Color("d8eeff"), 4.2 * fade, clampf(fade, 0.08, 0.9))
+		elif family == "missile":
+			var wake := _prop("muzzlewake%d" % index)
+			if wake.mesh == null:
+				var cloud := SphereMesh.new()
+				cloud.radius = 1.0
+				cloud.height = 2.0
+				cloud.radial_segments = 8
+				cloud.rings = 4
+				wake.mesh = cloud
+			wake.position = chart(flash.pos, 8.0) - along * (2.4 + (1.0 - fade) * 6.0) * read
+			wake.scale = Vector3.ONE * span * (1.4 + (1.0 - fade) * 1.8)
+			_paint_bolt(wake, Color("c4a078"), 0.6, clampf(fade * 0.4, 0.04, 0.45))
+		elif family == "laser":
+			var iris := _prop("muzzleiris%d" % index)
+			if iris.mesh == null or not (iris.mesh is CylinderMesh):
+				var disc := CylinderMesh.new()
+				disc.radial_segments = 14
+				iris.mesh = disc
+			var disc_mesh := iris.mesh as CylinderMesh
+			disc_mesh.height = 0.28 * read
+			disc_mesh.top_radius = span * 1.15
+			disc_mesh.bottom_radius = span * 1.15
+			iris.position = chart(flash.pos, 8.3)
+			_aim_rod(iris, along)
+			_paint_bolt(iris, tint.lightened(0.35), 3.6 * fade, clampf(fade * 0.7, 0.06, 0.85))
 		index += 1
 
 
@@ -1863,10 +2041,15 @@ func _sync_impacts(sim) -> void:
 	for row in sim.impacts:
 		var impact: Dictionary = row
 		var kind := str(impact.get("kind", "hit"))
+		var family := str(impact.get("family", ""))
 		var age := float(impact.get("age", 0.0))
 		var life := 0.34
 		if kind == "kill":
 			life = 0.62
+		elif kind == "flak":
+			life = 0.22
+		elif kind == "scorch":
+			life = 0.28
 		var t := clampf(age / life, 0.0, 1.0)
 		var fade := (1.0 - t) * (1.0 - t)
 		var tint := _shot_tint(str(impact.get("team", "")))
@@ -1874,6 +2057,12 @@ func _sync_impacts(sim) -> void:
 			tint = tint.lerp(Color("fff4e0"), 0.5)
 		elif kind == "fade":
 			tint = tint.darkened(0.25)
+		elif kind == "flak" or family == "pd":
+			tint = Color("c8e8ff")
+		elif kind == "scorch" or family == "laser":
+			tint = Color("ffb070")
+		elif family == "missile":
+			tint = tint.lerp(Color("ff8a3a"), 0.45)
 		var at: Vector2 = impact.pos
 		var read := _fx_read(sim)
 		var reach := lerpf(1.5, 7.0, t)
@@ -1881,6 +2070,12 @@ func _sync_impacts(sim) -> void:
 			reach = lerpf(1.5, 16.0, t)
 		elif kind == "fade":
 			reach = lerpf(0.6, 3.0, t)
+		elif kind == "flak":
+			reach = lerpf(1.1, 5.2, t)
+		elif kind == "scorch":
+			reach = lerpf(1.2, 4.4, t)
+		elif family == "missile":
+			reach = lerpf(2.2, 11.0, t)
 		reach *= read
 		var burst := _prop("burst%d" % index)
 		if burst.mesh == null:

@@ -543,7 +543,7 @@ func try_fire(unit: Dictionary, gun: Dictionary) -> bool:
 			"agent_id": unit.agent_id,
 		})
 	_note_muzzle(unit.pos + dir * float(unit.get("muzzle", 28.0)), dir, family if family != "" else "bullet", key, str(live.get("load", "")))
-	sfx(_gun_sfx(family, key))
+	sfx(_gun_sfx(family, key, str(live.get("load", ""))))
 	if str(unit.get("controller", "")) == "human":
 		unit.fight_cd = 2.4
 		if str(unit.agent_id) == str(player.agent_id) and not Law.muzzle_clean(self, unit):
@@ -673,7 +673,7 @@ func _laser_strike(unit: Dictionary, gun: Dictionary, aimed: Dictionary) -> void
 			"load": str(gun.get("load", "standard")),
 			"signature": HelmCombat.effective_signature(self, hit),
 		})
-		_note_impact(end, "scorch", str(unit.team), dir)
+		_note_impact(end, "scorch", str(unit.team), dir, "laser")
 	beams.append({
 		"from": muzzle,
 		"to": end,
@@ -811,13 +811,17 @@ func _age_muzzles(dt: float) -> void:
 	for row in muzzles:
 		var flash: Dictionary = row
 		flash.age = float(flash.age) + dt
-		if float(flash.age) < 0.26:
+		if float(flash.age) < 0.42:
 			kept.append(flash)
 	muzzles = kept
 
 
-func _gun_sfx(family: String, socket: String) -> String:
+func _gun_sfx(family: String, socket: String, load: String = "") -> String:
 	if family == "laser":
+		if load == "infrared":
+			return "laser_ir"
+		if load == "ultraviolet":
+			return "laser_uv"
 		return "laser"
 	if family == "missile":
 		return "missile"
@@ -1267,11 +1271,11 @@ func _step_projectiles(dt: float) -> void:
 	for shot in projectiles:
 		shot.ttl = float(shot.ttl) - dt
 		if float(shot.ttl) <= 0.0:
-			_note_impact(shot.pos, "fade", str(shot.get("team", "")), Vector2(shot.vel))
+			_note_impact(shot.pos, "fade", str(shot.get("team", "")), Vector2(shot.vel), str(shot.get("family", "")))
 			continue
 		if str(shot.get("family", "")) == "missile":
 			if _flak_missile(shot):
-				_note_impact(shot.pos, "flak", str(shot.get("team", "")), Vector2(shot.vel))
+				_note_impact(shot.pos, "flak", str(shot.get("team", "")), Vector2(shot.vel), "pd")
 				continue
 			_steer_missile(shot, dt)
 		elif float(shot.get("drop", 0.0)) > 0.0:
@@ -1286,7 +1290,7 @@ func _step_projectiles(dt: float) -> void:
 			if str(shot.get("family", "")) == "missile":
 				_blast_around(shot, hit)
 			sfx("hit")
-			_note_impact(shot.pos, "hit", str(shot.get("team", "")), Vector2(shot.vel))
+			_note_impact(shot.pos, "hit", str(shot.get("team", "")), Vector2(shot.vel), str(shot.get("family", "")))
 			continue
 		kept.append(shot)
 	projectiles = kept
@@ -1415,7 +1419,7 @@ func _age_beams(dt: float) -> void:
 	beams = kept
 
 
-func _note_impact(at: Vector2, kind: String, team: String, dir: Vector2 = Vector2.ZERO) -> void:
+func _note_impact(at: Vector2, kind: String, team: String, dir: Vector2 = Vector2.ZERO, family: String = "") -> void:
 	var aim := Vector2.ZERO
 	if dir.length_squared() > 1.0:
 		aim = dir.normalized()
@@ -1425,6 +1429,7 @@ func _note_impact(at: Vector2, kind: String, team: String, dir: Vector2 = Vector
 		"age": 0.0,
 		"team": team,
 		"dir": aim,
+		"family": family,
 	})
 	while impacts.size() > 24:
 		impacts.pop_front()
