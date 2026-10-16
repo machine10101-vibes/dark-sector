@@ -191,6 +191,21 @@ static func slim_button(text: String) -> Button:
 	return node
 
 
+static func slim_toggle(text: String, on: bool) -> Button:
+	var node := slim_button(text)
+	if not on:
+		return node
+	var hot := slim_chip(true)
+	hot.content_margin_left = 10
+	hot.content_margin_right = 10
+	hot.content_margin_top = 4
+	hot.content_margin_bottom = 4
+	node.add_theme_stylebox_override("normal", hot)
+	node.add_theme_stylebox_override("hover", hot)
+	node.add_theme_color_override("font_color", Color("f4fcff"))
+	return node
+
+
 static func button(text: String, primary: bool = false) -> Button:
 	var node := Button.new()
 	node.text = text

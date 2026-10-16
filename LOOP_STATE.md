@@ -26,6 +26,7 @@ Player-visible what works now:
 - Harvest now has two cuts. Harvest, or 2, sends a harvest drone if the keel racks one, or a survey probe if it does not. Plasma, or 5, runs the keel torch on a seam inside 96 m. Both leave a beam and chips on the glass. A Beak with no drone still harvests with its probe. Raw stock sells on the Helion pad for GRT — nickel 6, ice 5, copper 7, plate 8, raw mass 4, salvage 9. The purse chip now reads GRT. Glasswheat buy 12 / sell 8 is unchanged. Combat math is unchanged.
 - The Helion market now holds a stall. A captain lists a crate from the hold at a GRT price they set. The crate leaves the hold until another keel on the pad buys it, or until they pull the slip. The stall keeps ice, nickel, copper, and glasswheat posted. A claim core and a dock crate will not list. Instant pad buyback is still there. Combat math is unchanged.
 - The stall desk now splits STALL / ON THE PAD / YOUR SLIPS, lists a stack at a per-crate ask, lets a buyer take one crate or the slip, and lets the seller Set a new ask without pulling. LAST holds the recent ticks. Instant pad rates sit under PAD RATE. Combat math is unchanged.
+- The Helion market glass now has Board, List, and Yard tabs. Same-ask lists stack on one slip, and Set onto the same ask merges. LIVE shows best ask and depth. Price and qty use ± steppers. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:

@@ -23,6 +23,7 @@ func _init() -> void:
 	_ore()
 	_board()
 	_desk()
+	_stack()
 	_tag()
 	if fails == 0:
 		print("DOCK MARKET PASS")
@@ -219,6 +220,53 @@ func _desk() -> void:
 	var board: Dictionary = HelmMarket.split_board(sim, str(sim.player.agent_id))
 	check(board.stall.size() >= 3, "the desk still splits the stall")
 	check(board.mine.is_empty(), "the sold stack leaves your slips")
+
+
+func _stack() -> void:
+	var sim := make()
+	sim.player.cargo["nickel_cinder"] = 3
+	check(HelmMarket.list_item(sim, sim.player, "nickel_cinder", 5, 2) == "", "the keel lists two nickel")
+	check(HelmMarket.list_item(sim, sim.player, "nickel_cinder", 5, 1) == "", "the same ask stacks")
+	check(int(sim.player.cargo.get("nickel_cinder", 0)) == 0, "both lists empty the hold")
+	var slips := 0
+	var stacked: Dictionary = {}
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if str(row.get("seller", "")) == str(sim.player.agent_id):
+			slips += 1
+			stacked = row
+	check(slips == 1, "one slip holds the stack")
+	check(int(stacked.get("count", 0)) == 3, "the stacked slip has three")
+	check(HelmMarket.best_ask(sim, "nickel_cinder") == 5, "the player ask is the best")
+	check(HelmMarket.best_ask(sim, "nickel_cinder", str(sim.player.agent_id)) == 8, "the stall is the next best")
+	check(HelmMarket.depth(sim, "nickel_cinder") == 4, "depth counts stall and the stack")
+	check("nickel" in HelmMarket.depth_line(sim), "LIVE names the nickel")
+	check(HelmMarket.pull_listing(sim, sim.player, str(stacked.id)) == "", "a pull returns the stack")
+	sim.player.cargo["nickel_cinder"] = 2
+	check(HelmMarket.list_item(sim, sim.player, "nickel_cinder", 5, 1) == "", "the keel lists at five")
+	check(HelmMarket.list_item(sim, sim.player, "nickel_cinder", 8, 1) == "", "the keel lists at eight")
+	var low: Dictionary = {}
+	var high: Dictionary = {}
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if str(row.get("seller", "")) != str(sim.player.agent_id):
+			continue
+		if int(row.get("price", 0)) == 5:
+			low = row
+		if int(row.get("price", 0)) == 8:
+			high = row
+	check(not low.is_empty() and not high.is_empty(), "two asks stay apart")
+	check(HelmMarket.reprice_listing(sim, sim.player, str(high.id), 5) == "", "repricing to the same ask merges")
+	var left := 0
+	var merged: Dictionary = {}
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if str(row.get("seller", "")) == str(sim.player.agent_id):
+			left += 1
+			merged = row
+	check(left == 1, "the merge leaves one slip")
+	check(int(merged.get("count", 0)) == 2, "the merged slip holds both crates")
+	check(int(merged.get("price", 0)) == 5, "the merged ask is five")
 
 
 func _tag() -> void:

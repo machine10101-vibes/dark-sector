@@ -8,6 +8,7 @@ extends RefCounted
 const LIST_CAP := 6
 const PRICE_MIN := 1
 const PRICE_MAX := 99
+const COUNT_MAX := 99
 const TAPE_CAP := 8
 const STALL := "stall"
 const BLOCKED := ["claim_core", "dock_crate"]
@@ -83,13 +84,29 @@ static func list_item(sim, unit: Dictionary, item_id: String, price: int, count:
 	if held <= 0:
 		return "No %s in the hold." % sim.resource_name(item_id)
 	var need := clip_count(count, held)
-	if _owned_count(sim, str(unit.get("agent_id", ""))) >= LIST_CAP:
-		return "The stall holds %d of your slips. Pull one first." % LIST_CAP
 	var ask := clip_price(price)
+	var agent_id := str(unit.get("agent_id", ""))
+	var found: Dictionary = _own_ask(sim, agent_id, item_id, ask)
+	if not found.is_empty():
+		var room := COUNT_MAX - int(found.get("count", 1))
+		if room <= 0:
+			return "That slip is full."
+		need = mini(need, room)
+		if not _take_cargo(unit, item_id, need):
+			return "No %s in the hold." % sim.resource_name(item_id)
+		found.count = int(found.get("count", 1)) + need
+		if need > 1:
+			sim.say("Added %d %s to the %d GRT slip." % [need, sim.resource_name(item_id), ask])
+		else:
+			sim.say("Added %s to the %d GRT slip." % [sim.resource_name(item_id), ask])
+		sim.sfx("install")
+		return ""
+	if _owned_count(sim, agent_id) >= LIST_CAP:
+		return "The stall holds %d of your slips. Pull one first." % LIST_CAP
 	if not _take_cargo(unit, item_id, need):
 		return "No %s in the hold." % sim.resource_name(item_id)
 	var row := _blank(sim, item_id, need, ask)
-	row.seller = str(unit.get("agent_id", ""))
+	row.seller = agent_id
 	row.seller_name = _name_of(unit)
 	row.stall = false
 	sim.listings.append(row)
@@ -137,6 +154,15 @@ static func reprice_listing(sim, unit: Dictionary, listing_id: String, price: in
 		return "That slip is not yours."
 	var ask := clip_price(price)
 	row.price = ask
+	var other: Dictionary = _own_ask(sim, str(unit.get("agent_id", "")), str(row.item), ask, str(row.get("id", "")))
+	if not other.is_empty():
+		var room := COUNT_MAX - int(other.get("count", 1))
+		var move := mini(int(row.get("count", 1)), room)
+		other.count = int(other.get("count", 1)) + move
+		_drop(sim, str(row.get("id", "")))
+		sim.say("Merged %s onto the %d GRT slip." % [sim.resource_name(str(row.item)), ask])
+		sim.sfx("install")
+		return ""
 	sim.say("Reposted %s at %d GRT each." % [sim.resource_name(str(row.item)), ask])
 	sim.sfx("install")
 	return ""
@@ -258,6 +284,87 @@ static func last_tick(sim, item_id: String) -> int:
 	return 0
 
 
+static func best_ask(sim, item_id: String, skip_agent: String = "") -> int:
+	var best := 0
+	if sim == null:
+		return 0
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if str(row.get("item", "")) != item_id:
+			continue
+		if skip_agent != "" and str(row.get("seller", "")) == skip_agent:
+			continue
+		var ask := unit_price(row)
+		if best == 0 or ask < best:
+			best = ask
+	return best
+
+
+static func depth(sim, item_id: String) -> int:
+	var n := 0
+	if sim == null:
+		return 0
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if str(row.get("item", "")) == item_id:
+			n += maxi(1, int(row.get("count", 1)))
+	return n
+
+
+static func default_ask(sim, item_id: String, skip_agent: String = "") -> int:
+	var last := last_tick(sim, item_id)
+	if last > 0:
+		return last
+	var best := best_ask(sim, item_id, skip_agent)
+	if best > 0:
+		return best
+	return ask_price(item_id)
+
+
+static func quote_line(sim, item_id: String, skip_agent: String = "") -> String:
+	var bits: PackedStringArray = PackedStringArray()
+	var best := best_ask(sim, item_id, skip_agent)
+	var last := last_tick(sim, item_id)
+	var n := depth(sim, item_id)
+	if best > 0:
+		bits.append("best %d" % best)
+	if last > 0:
+		bits.append("last %d" % last)
+	if n > 0:
+		bits.append("×%d" % n)
+	return " · ".join(bits)
+
+
+static func depth_line(sim) -> String:
+	if sim == null or sim.listings.is_empty():
+		return "LIVE  —"
+	var seen: Dictionary = {}
+	var ids: Array = []
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		var item_id := str(row.get("item", ""))
+		if item_id == "":
+			continue
+		var have := maxi(1, int(row.get("count", 1)))
+		var ask := unit_price(row)
+		if not seen.has(item_id):
+			ids.append(item_id)
+			seen[item_id] = {"ask": ask, "n": have}
+		else:
+			var slot: Dictionary = seen[item_id]
+			if ask < int(slot.ask):
+				slot.ask = ask
+			slot.n = int(slot.n) + have
+			seen[item_id] = slot
+	ids.sort()
+	var bits: PackedStringArray = PackedStringArray()
+	for raw_id in ids:
+		var item_id := str(raw_id)
+		var slot: Dictionary = seen[item_id]
+		bits.append("%s %d×%d" % [_short(sim, item_id), int(slot.ask), int(slot.n)])
+	return "LIVE  " + " · ".join(bits)
+
+
 static func tape_line(sim) -> String:
 	if sim == null or sim.market_tape.is_empty():
 		return "LAST  —"
@@ -296,6 +403,26 @@ static func board_sig(sim) -> String:
 		])
 	bits.append(tape_line(sim))
 	return "|".join(bits)
+
+
+static func _own_ask(sim, agent_id: String, item_id: String, price: int, skip_id: String = "") -> Dictionary:
+	if sim == null:
+		return {}
+	var want := clip_price(price)
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if bool(row.get("stall", false)):
+			continue
+		if str(row.get("seller", "")) != agent_id:
+			continue
+		if str(row.get("item", "")) != item_id:
+			continue
+		if unit_price(row) != want:
+			continue
+		if skip_id != "" and str(row.get("id", "")) == skip_id:
+			continue
+		return row
+	return {}
 
 
 static func _owned_count(sim, agent_id: String) -> int:
