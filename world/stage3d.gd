@@ -5922,64 +5922,77 @@ func _craft_holder(key: String, kind: String) -> Node3D:
 	var node := Node3D.new()
 	node.name = key
 	node.set_meta("kind", kind)
+	_assemble_craft(node, kind)
+	add_child(node)
+	_craft[key] = node
+	return node
+
+
+func pose_craft(kind: String) -> Node3D:
+	var node := Node3D.new()
+	node.name = "Craft"
+	node.set_meta("kind", kind)
+	_assemble_craft(node, kind)
+	return node
+
+
+func _assemble_craft(node: Node3D, kind: String) -> void:
 	var poly := _craft_poly(kind)
 	var mesh := _prism(poly, 4.4, 0.8)
 	if mesh == null:
 		mesh = _hull_loft(poly, 4.4)
-	if mesh != null:
-		var body := MeshInstance3D.new()
-		body.name = "Plate"
-		body.mesh = mesh
-		body.material_override = _hull_mat(_craft_color(kind))
-		node.add_child(body)
-		var cap_mesh := _prism(_inset_poly(poly, 0.7), 0.55, 0.92)
-		if cap_mesh != null:
-			var cap := MeshInstance3D.new()
-			cap.name = "Deck"
-			cap.mesh = cap_mesh
-			cap.position.y = 3.15
-			cap.material_override = _hull_mat(_craft_color(kind).lightened(0.12))
-			node.add_child(cap)
-		var lamp := MeshInstance3D.new()
-		lamp.name = "LampNose"
-		var bulb := SphereMesh.new()
-		bulb.radius = 0.55
-		bulb.height = 1.1
-		lamp.mesh = bulb
-		lamp.position = Vector3(8.0, 4.2, 0.0)
-		var glow := StandardMaterial3D.new()
-		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		glow.albedo_color = Color("f2e2c4")
-		glow.emission_enabled = true
-		glow.emission = Color("f2e2c4")
-		glow.emission_energy_multiplier = 1.4
-		lamp.material_override = glow
-		node.add_child(lamp)
-		var canopy := MeshInstance3D.new()
-		canopy.name = "Glass"
-		var pane_mesh := BoxMesh.new()
-		pane_mesh.size = Vector3(2.8, 0.9, 1.4)
-		canopy.mesh = pane_mesh
-		canopy.position = Vector3(2.4, 5.2, 0.0)
-		var pane := ShaderMaterial.new()
-		pane.shader = _glass_shader
-		pane.set_shader_parameter("albedo", Color(0.55, 0.82, 0.86, 0.35))
-		canopy.material_override = pane
-		node.add_child(canopy)
-		var nozzle := MeshInstance3D.new()
-		nozzle.name = "Exhaust"
-		nozzle.mesh = _plume_mesh(6.5, 0.7)
-		nozzle.position = Vector3(-7.2, 2.2, 0.0)
-		var burn := ShaderMaterial.new()
-		burn.shader = _plume_shader
-		burn.set_shader_parameter("albedo", Color(0.95, 0.62, 0.28, 0.45))
-		burn.set_shader_parameter("core", 0.35)
-		nozzle.material_override = burn
-		node.add_child(nozzle)
-		_dress_craft(node, kind)
-	add_child(node)
-	_craft[key] = node
-	return node
+	if mesh == null:
+		return
+	var body := MeshInstance3D.new()
+	body.name = "Plate"
+	body.mesh = mesh
+	body.material_override = _hull_mat(_craft_color(kind))
+	node.add_child(body)
+	var cap_mesh := _prism(_inset_poly(poly, 0.7), 0.55, 0.92)
+	if cap_mesh != null:
+		var cap := MeshInstance3D.new()
+		cap.name = "Deck"
+		cap.mesh = cap_mesh
+		cap.position.y = 3.15
+		cap.material_override = _hull_mat(_craft_color(kind).lightened(0.12))
+		node.add_child(cap)
+	var lamp := MeshInstance3D.new()
+	lamp.name = "LampNose"
+	var bulb := SphereMesh.new()
+	bulb.radius = 0.55
+	bulb.height = 1.1
+	lamp.mesh = bulb
+	lamp.position = Vector3(8.0, 4.2, 0.0)
+	var glow := StandardMaterial3D.new()
+	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	glow.albedo_color = Color("f2e2c4")
+	glow.emission_enabled = true
+	glow.emission = Color("f2e2c4")
+	glow.emission_energy_multiplier = 1.4
+	lamp.material_override = glow
+	node.add_child(lamp)
+	var canopy := MeshInstance3D.new()
+	canopy.name = "Glass"
+	var pane_mesh := BoxMesh.new()
+	pane_mesh.size = Vector3(2.8, 0.9, 1.4)
+	canopy.mesh = pane_mesh
+	canopy.position = Vector3(2.4, 5.2, 0.0)
+	var pane := ShaderMaterial.new()
+	pane.shader = _glass_shader
+	pane.set_shader_parameter("albedo", Color(0.55, 0.82, 0.86, 0.35))
+	canopy.material_override = pane
+	node.add_child(canopy)
+	var nozzle := MeshInstance3D.new()
+	nozzle.name = "Exhaust"
+	nozzle.mesh = _plume_mesh(6.5, 0.7)
+	nozzle.position = Vector3(-7.2, 2.2, 0.0)
+	var burn := ShaderMaterial.new()
+	burn.shader = _plume_shader
+	burn.set_shader_parameter("albedo", Color(0.95, 0.62, 0.28, 0.45))
+	burn.set_shader_parameter("core", 0.35)
+	nozzle.material_override = burn
+	node.add_child(nozzle)
+	_dress_craft(node, kind)
 
 
 func _dress_craft(node: Node3D, kind: String) -> void:
@@ -6832,6 +6845,42 @@ func dress_stock(chunk: MeshInstance3D, id: String, tint: Color, vein: Color, se
 	elif id == "raw_mass":
 		chunk.mesh = _rubble_mesh(seed + 5, radius)
 		chunk.material_override = _rubble_mat(tint, float(seed) * 0.13)
+	elif id == "claim_core":
+		chunk.mesh = _crystal_mesh(seed + 19, radius * 0.72)
+		var core := StandardMaterial3D.new()
+		core.albedo_color = Color("4ec8d8")
+		core.metallic = 0.42
+		core.roughness = 0.16
+		core.emission_enabled = true
+		core.emission = Color("3cf0ff")
+		core.emission_energy_multiplier = 1.7
+		chunk.material_override = core
+	elif id == "dock_crate" or id == "food_mass":
+		chunk.mesh = _crate_mesh(seed + 4, radius)
+		var crate_tone := Color("6a8a48") if id == "food_mass" else Color("8a6a3c")
+		chunk.material_override = _plate_mat(crate_tone, float(seed) * 0.19)
+	elif id == "glasswheat" or id == "voidbean" or id == "ember_kale" or id == "ghost_gourd" or id == "fodder":
+		chunk.mesh = _sheaf_mesh(seed + 8, radius)
+		var crop := Color("c4a24a")
+		if id == "voidbean":
+			crop = Color("5a7a48")
+		elif id == "ember_kale":
+			crop = Color("c45a32")
+		elif id == "ghost_gourd":
+			crop = Color("c8c4b0")
+		elif id == "fodder":
+			crop = Color("9a7a3c")
+		var crop_mat := StandardMaterial3D.new()
+		crop_mat.albedo_color = crop
+		crop_mat.roughness = 0.62
+		crop_mat.metallic = 0.04
+		chunk.material_override = crop_mat
+	elif id == "milk_analogue":
+		chunk.mesh = _can_mesh(seed + 2, radius)
+		chunk.material_override = _plate_mat(Color("d8d4c8"), float(seed) * 0.08)
+	elif id == "scrap":
+		chunk.mesh = _wreck_mesh(seed + 22, radius * 0.82)
+		chunk.material_override = _plate_mat(Color("6a6460"), float(seed) * 0.27)
 	else:
 		chunk.mesh = _rock_mesh(seed + 3, radius)
 		var stone := ShaderMaterial.new()
@@ -6851,6 +6900,60 @@ func _plate_mat(color: Color, seed: float) -> ShaderMaterial:
 	mat.set_shader_parameter("albedo", color)
 	mat.set_shader_parameter("seed", seed)
 	return mat
+
+
+func _crate_mesh(seed: int, radius: float) -> ArrayMesh:
+	var key := "crate|%d|%d" % [posmod(seed, 7), int(round(radius))]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_add_box(st, Transform3D.IDENTITY, Vector3(radius * 1.18, radius * 0.74, radius * 0.94))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, radius * 0.42, 0.0)), Vector3(radius * 1.24, radius * 0.12, radius * 1.0))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, 0.0)), Vector3(radius * 1.22, radius * 0.1, radius * 0.98))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(-radius * 0.38, 0.0, 0.0)), Vector3(radius * 0.1, radius * 0.78, radius * 0.98))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(radius * 0.38, 0.0, 0.0)), Vector3(radius * 0.1, radius * 0.78, radius * 0.98))
+	st.generate_normals()
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _sheaf_mesh(seed: int, radius: float) -> ArrayMesh:
+	var key := "sheaf|%d|%d" % [posmod(seed, 9), int(round(radius))]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = absi(seed) + 17
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, -radius * 0.38, 0.0)), Vector3(radius * 0.86, radius * 0.22, radius * 0.86))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, radius * 0.02, 0.0)), Vector3(radius * 0.48, radius * 0.9, radius * 0.48))
+	for i in 11:
+		var lean := rng.randf_range(-0.28, 0.28)
+		var tilt := rng.randf_range(-0.22, 0.22)
+		var basis := Basis.from_euler(Vector3(lean, float(i) * 0.52, tilt))
+		var at := Vector3(rng.randf_range(-0.2, 0.2), radius * 0.12, rng.randf_range(-0.2, 0.2)) * radius
+		_add_box(st, Transform3D(basis, at), Vector3(radius * 0.18, radius * 1.12, radius * 0.18))
+	st.generate_normals()
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _can_mesh(seed: int, radius: float) -> ArrayMesh:
+	var key := "can|%d|%d" % [posmod(seed, 5), int(round(radius))]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_add_box(st, Transform3D.IDENTITY, Vector3(radius * 0.62, radius * 1.05, radius * 0.62))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, radius * 0.56, 0.0)), Vector3(radius * 0.7, radius * 0.08, radius * 0.7))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, -radius * 0.54, 0.0)), Vector3(radius * 0.7, radius * 0.08, radius * 0.7))
+	st.generate_normals()
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
 
 
 func _ice_streak_mesh() -> ArrayMesh:

@@ -22,6 +22,8 @@ func _process(_dt: float) -> bool:
 		sim.player.cargo["hull_plate"] = 1
 		sim.player.cargo["raw_mass"] = 2
 		sim.player.cargo["salvage_parts"] = 1
+		sim.player.cargo["glasswheat"] = 2
+		sim.player.cargo["dock_crate"] = 1
 		hud = load("res://ui/hud.gd").new()
 		root.add_child(hud)
 		return false
@@ -61,10 +63,15 @@ func _run() -> void:
 	check(seen.get("hull_plate", false), "hull plate has a 3D card")
 	check(seen.get("raw_mass", false), "raw mass has a 3D card")
 	check(seen.get("salvage_parts", false), "keel salvage has a 3D card")
-	check(not seen.get("claim_core", false), "the claim core stays on the text list")
+	check(seen.get("claim_core", false), "the claim core has a 3D card")
+	check(seen.get("glasswheat", false), "glasswheat has a 3D card")
+	check(seen.get("dock_crate", false), "the dock crate has a 3D card")
 	var words := _box_text(box)
-	check(words.contains("Claim Core"), "the hold still lists the claim core")
+	check(words.contains("Claim Core"), "the hold still names the claim core")
 	check(words.contains("Nickel cinder") or words.contains("nickel"), "nickel is named in the hold")
+	var grid := _first_grid(box)
+	check(grid != null and int(grid.columns) >= 3, "the hold is a grid")
+	check(grid.get_child_count() >= 9, "the hold pads empty squares")
 	var stage: Node3D = load("res://world/stage3d.gd").new()
 	stage.set("portrait_mode", true)
 	hud.add_child(stage)
@@ -76,8 +83,38 @@ func _run() -> void:
 	var rock := MeshInstance3D.new()
 	stage.call("dress_stock", rock, "nickel_cinder", Color("c4a06a"), Color("f6c36a"), 7)
 	check(rock.mesh != null, "nickel dresses a rock mesh")
+	var core := MeshInstance3D.new()
+	stage.call("dress_stock", core, "claim_core", Color("4ec8d8"), Color("3cf0ff"), 5)
+	check(core.mesh != null, "a claim core dresses a crystal")
+	var crate := MeshInstance3D.new()
+	stage.call("dress_stock", crate, "dock_crate", Color("8a6a3c"), Color("d4b078"), 9)
+	check(crate.mesh != null, "a dock crate dresses a box")
+	var wheat := MeshInstance3D.new()
+	stage.call("dress_stock", wheat, "glasswheat", Color("c4a24a"), Color("f0e08a"), 13)
+	check(wheat.mesh != null, "glasswheat dresses a sheaf")
+	var wing: Node3D = stage.call("pose_craft", "fighter")
+	check(wing != null and wing.get_child_count() > 0, "a fighter poses as a 3D hull")
+	var probe: Node3D = stage.call("pose_craft", "survey_probe")
+	check(probe != null and probe.get_child_count() > 0, "a probe poses as a 3D hull")
 	chunk.free()
 	rock.free()
+	core.free()
+	crate.free()
+	wheat.free()
+	if wing != null:
+		wing.free()
+	if probe != null:
+		probe.free()
+	hud.call("_toggle", "fleet")
+	check(str(hud.get("panel_kind")) == "fleet", "Fleet opens the wing")
+	var fleet: Node = hud.get("fleet_box")
+	check(fleet != null and fleet.visible, "the fleet box is open")
+	var ships: Dictionary = {}
+	_collect_craft(fleet, ships)
+	check(ships.get("fighter", false), "the fighter has a 3D card")
+	check(ships.get("survey_probe", false), "the probe has a 3D card")
+	var fleet_grid := _first_grid(fleet)
+	check(fleet_grid != null and int(fleet_grid.columns) >= 3, "the rack is a grid")
 
 
 func _collect_stock(node: Node, seen: Dictionary) -> void:
@@ -87,6 +124,25 @@ func _collect_stock(node: Node, seen: Dictionary) -> void:
 			seen[id] = true
 	for child in node.get_children():
 		_collect_stock(child, seen)
+
+
+func _collect_craft(node: Node, seen: Dictionary) -> void:
+	if node.get_script() != null and node.has_method("show_craft"):
+		var kind := str(node.get("craft_kind"))
+		if kind != "":
+			seen[kind] = true
+	for child in node.get_children():
+		_collect_craft(child, seen)
+
+
+func _first_grid(node: Node) -> GridContainer:
+	if node is GridContainer:
+		return node
+	for child in node.get_children():
+		var found := _first_grid(child)
+		if found != null:
+			return found
+	return null
 
 
 func _box_text(node: Node) -> String:

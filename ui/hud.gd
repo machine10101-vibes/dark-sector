@@ -1280,7 +1280,7 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 	if panel_scroll != null:
 		panel_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 		panel_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	if (panel_kind == "bay" or panel_kind == "stock") and not compact:
+	if (panel_kind == "bay" or panel_kind == "stock" or panel_kind == "fleet") and not compact:
 		# Fitting glass sits in the open helm: right of the status card, above
 		# the tank capsule, and clear of Hold and Stick.
 		var left := 360.0
@@ -1300,11 +1300,13 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 		panel.custom_minimum_size = Vector2(0, 0)
 		panel.position = Vector2(left, top)
 		var tall := 280.0
-		if panel_kind == "stock":
+		if panel_kind == "stock" or panel_kind == "fleet":
 			tall = 420.0
 		panel.size = Vector2(maxf(480.0, right - left), maxf(tall, bottom - top))
 		if panel_kind == "bay":
 			_fit_ship_pane()
+		elif panel_kind == "fleet":
+			_fit_fleet_pane()
 		else:
 			_fit_stock_pane()
 		return
@@ -2801,37 +2803,95 @@ func _build_hangar() -> void:
 	_refresh_hangar()
 
 
-func _append_craft_orders(block: VBoxContainer, item) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+func _append_craft_orders(block: VBoxContainer, item, slim: bool = false) -> void:
+	var row: Container = GridContainer.new() if slim else HBoxContainer.new()
+	if slim:
+		(row as GridContainer).columns = 2
+		row.add_theme_constant_override("h_separation", 4)
+		row.add_theme_constant_override("v_separation", 4)
+	else:
+		row.add_theme_constant_override("separation", 8)
 	var uid := str(item.uid)
 	var parked := str(item.def_id) == "salvage_tender"
 	var lost := str(item.state) == "lost"
 	if lost:
-		var rebuild := ThemeKit.button("Rebuild")
-		rebuild.pressed.connect(_order_uid.bind(uid, "rebuild"))
+		var rebuild := _slim_order("Rebuild", uid, "rebuild") if slim else ThemeKit.button("Rebuild")
+		if not slim:
+			rebuild.pressed.connect(_order_uid.bind(uid, "rebuild"))
 		row.add_child(rebuild)
 		block.add_child(ThemeKit.label("Loss is permanent until rebuild spends 1 raw mass.", 13, Color("c4512c")))
 	elif str(item.def_id) == "fighter":
-		row.add_child(_order_button("Launch", uid, "launch"))
-		row.add_child(_order_button("Attack", uid, "attack"))
-		row.add_child(_order_button("Return", uid, "return"))
+		row.add_child(_craft_action("Launch", uid, "launch", slim))
+		row.add_child(_craft_action("Attack", uid, "attack", slim))
+		row.add_child(_craft_action("Return", uid, "return", slim))
 	elif parked:
 		block.add_child(ThemeKit.label("Parked. It stays in the rack this slice.", 13, Color("8d826c")))
 	elif str(item.def_id) == "survey_probe":
-		row.add_child(_order_button("Launch", uid, "launch"))
-		row.add_child(_order_button("Orbit", uid, "orbit"))
-		row.add_child(_order_button("Scan", uid, "scan"))
-		row.add_child(_order_button("Harvest", uid, "cut"))
-		row.add_child(_order_button("Return", uid, "return"))
+		row.add_child(_craft_action("Launch", uid, "launch", slim))
+		row.add_child(_craft_action("Orbit", uid, "orbit", slim))
+		row.add_child(_craft_action("Scan", uid, "scan", slim))
+		row.add_child(_craft_action("Harvest", uid, "cut", slim))
+		row.add_child(_craft_action("Return", uid, "return", slim))
 	elif str(item.def_id) == "harvest_drone":
-		row.add_child(_order_button("Launch", uid, "launch"))
-		row.add_child(_order_button("Return", uid, "return"))
+		row.add_child(_craft_action("Launch", uid, "launch", slim))
+		row.add_child(_craft_action("Return", uid, "return", slim))
 	else:
-		row.add_child(_order_button("Launch", uid, "launch"))
-		row.add_child(_order_button("Return", uid, "return"))
+		row.add_child(_craft_action("Launch", uid, "launch", slim))
+		row.add_child(_craft_action("Return", uid, "return", slim))
 	if row.get_child_count() > 0:
 		block.add_child(row)
+
+
+func _craft_action(text: String, uid: String, verb: String, slim: bool) -> Button:
+	if slim:
+		return _slim_order(text, uid, verb)
+	return _order_button(text, uid, verb)
+
+
+func _slim_order(text: String, uid: String, verb: String) -> Button:
+	var button := ThemeKit.slim_button(text)
+	button.custom_minimum_size = Vector2(56, 32)
+	button.pressed.connect(_order_uid.bind(uid, verb))
+	return button
+
+
+func _inv_cols() -> int:
+	if compact:
+		return 3
+	return 4
+
+
+func _inv_grid() -> GridContainer:
+	var grid := GridContainer.new()
+	grid.columns = _inv_cols()
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	return grid
+
+
+func _pad_grid(grid: GridContainer) -> void:
+	var cols := maxi(1, grid.columns)
+	if grid.get_child_count() == 0:
+		for _i in cols:
+			grid.add_child(_empty_slot())
+		return
+	while grid.get_child_count() % cols != 0:
+		grid.add_child(_empty_slot())
+
+
+func _empty_slot() -> Control:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(118, 148)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
+	card.modulate = Color(1, 1, 1, 0.38)
+	var pad := Control.new()
+	pad.custom_minimum_size = Vector2(108, 132)
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(pad)
+	return card
 
 
 func _build_fleet() -> void:
@@ -2865,6 +2925,7 @@ func _build_fleet() -> void:
 		fleet_box.add_child(ThemeKit.label("This keel has an empty rack.", 14, Color("8d826c")))
 		fleet_sig = _craft_sig()
 		_refresh_fleet()
+		_fit_fleet_pane()
 		return
 	var outside: Array = []
 	var rack: Array = []
@@ -2877,27 +2938,56 @@ func _build_fleet() -> void:
 	if outside.is_empty():
 		fleet_box.add_child(ThemeKit.label("Nothing is flying. Launch from the rack.", 13, Color("8d826c")))
 	else:
+		var flying := _inv_grid()
+		fleet_box.add_child(flying)
 		for item in outside:
-			_fleet_card(item)
+			_fleet_card(item, flying)
+		_pad_grid(flying)
 	fleet_box.add_child(ThemeKit.label("ON THE RACK", 15, Color("e6d7bf")))
 	if rack.is_empty():
 		fleet_box.add_child(ThemeKit.label("The rack is clear.", 13, Color("8d826c")))
 	else:
+		var parked := _inv_grid()
+		fleet_box.add_child(parked)
 		for item in rack:
-			_fleet_card(item)
+			_fleet_card(item, parked)
+		_pad_grid(parked)
 	fleet_sig = _craft_sig()
 	_refresh_fleet()
+	_fit_fleet_pane()
 
 
-func _fleet_card(item) -> void:
+func _fleet_card(item, grid: GridContainer) -> void:
 	var spec: Dictionary = Game.sim.defs.craft[item.def_id]
-	var block := VBoxContainer.new()
-	block.add_child(ThemeKit.label("%s" % item.name, 16))
-	block.add_child(ThemeKit.label(str(spec.job), 13, Color("8d826c")))
-	var state := ThemeKit.label("", 14, Color("d7e6c8"))
-	block.add_child(state)
-	_append_craft_orders(block, item)
-	fleet_box.add_child(block)
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(118, 0)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(box)
+	var kind := str(item.def_id)
+	var glass := CraftGlass.new()
+	glass.craft_kind = kind
+	glass.custom_minimum_size = Vector2(108, 100)
+	glass.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(glass)
+	glass.call_deferred("show_craft", kind)
+	var title := ThemeKit.label(str(item.name), 13, Color("c8f4ff"))
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.clip_text = true
+	box.add_child(title)
+	var job := ThemeKit.label(str(spec.job), 11, Color("8d826c"))
+	job.autowrap_mode = TextServer.AUTOWRAP_OFF
+	job.clip_text = true
+	box.add_child(job)
+	var state := ThemeKit.label("", 12, Color("d7e6c8"))
+	state.autowrap_mode = TextServer.AUTOWRAP_OFF
+	state.clip_text = true
+	box.add_child(state)
+	_append_craft_orders(box, item, true)
+	grid.add_child(card)
 	fleet_rows[str(item.uid)] = state
 
 
@@ -2918,55 +3008,33 @@ func _build_stock() -> void:
 	var head := ThemeKit.label("The hold.  %d/%d" % [used, cap], 16, Color("e6d7bf"))
 	head.autowrap_mode = TextServer.AUTOWRAP_OFF
 	stock_box.add_child(head)
-	stock_box.add_child(ThemeKit.label("List a crate on the Helion pad, or sell it to the stall for GRT.", 13, Color("8d826c")))
+	stock_box.add_child(ThemeKit.label("Each square is a crate. List it on the Helion pad, or sell it to the stall for GRT.", 13, Color("8d826c")))
 	var cargo: Dictionary = sim.player.cargo
 	var ids: Array = []
 	for key in cargo.keys():
 		if int(cargo[key]) > 0:
 			ids.append(str(key))
 	ids.sort()
-	var raws: Array = []
-	var other: Array = []
-	for key in ids:
-		var id := str(key)
-		if _is_raw_stock(id):
-			raws.append(id)
-		else:
-			other.append(id)
-	if raws.is_empty():
-		stock_box.add_child(ThemeKit.label("No raw stock in the hold yet. Harvest a seam.", 13, Color("8d826c")))
-	else:
-		var grid := GridContainer.new()
-		var cols := 1
-		if not compact:
-			cols = 3
-		grid.columns = cols
-		grid.add_theme_constant_override("h_separation", 8)
-		grid.add_theme_constant_override("v_separation", 8)
-		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		grid.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		stock_box.add_child(grid)
-		for id in raws:
-			grid.add_child(_stock_card(str(id), int(cargo[id])))
-	if not other.is_empty():
-		stock_box.add_child(ThemeKit.label("ALSO ABOARD", 15, Color("e6d7bf")))
-		for id in other:
-			stock_box.add_child(_stock_line(str(id), int(cargo[id])))
+	var grid := _inv_grid()
+	stock_box.add_child(grid)
+	for id in ids:
+		grid.add_child(_stock_card(str(id), int(cargo[id])))
+	_pad_grid(grid)
 	_fit_stock_pane()
 
 
 func _stock_card(id: String, count: int) -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(168, 0)
+	card.custom_minimum_size = Vector2(118, 0)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", 3)
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_child(box)
 	var glass := StockGlass.new()
 	glass.stock_id = id
-	glass.custom_minimum_size = Vector2(140, 124)
+	glass.custom_minimum_size = Vector2(108, 100)
 	glass.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_child(glass)
 	glass.call_deferred("show_stock", id)
@@ -2974,19 +3042,20 @@ func _stock_card(id: String, count: int) -> Control:
 	var name := id
 	if sim != null:
 		name = sim.resource_name(id)
-	var title := ThemeKit.label("%s    ×%d" % [name, count], 14, Color("c8f4ff"))
+	var title := ThemeKit.label("%s  ×%d" % [name, count], 13, Color("c8f4ff"))
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.clip_text = true
 	box.add_child(title)
 	var actions := HBoxContainer.new()
-	actions.add_theme_constant_override("separation", 6)
+	actions.add_theme_constant_override("separation", 4)
 	if HelmMarket.listable(id):
 		var list := ThemeKit.slim_button("List")
-		list.custom_minimum_size = Vector2(56, 32)
+		list.custom_minimum_size = Vector2(52, 32)
 		list.pressed.connect(_stock_open_list.bind(id))
 		actions.add_child(list)
 	if HelmHarvest.stock_price(id) > 0:
 		var sell := ThemeKit.slim_button("Sell %d" % HelmHarvest.stock_price(id))
-		sell.custom_minimum_size = Vector2(72, 32)
+		sell.custom_minimum_size = Vector2(68, 32)
 		sell.pressed.connect(_sell_stock.bind(id))
 		actions.add_child(sell)
 	if actions.get_child_count() > 0:
@@ -3043,6 +3112,13 @@ func _fit_stock_pane() -> void:
 		return
 	stock_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stock_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+
+func _fit_fleet_pane() -> void:
+	if panel_kind != "fleet" or fleet_box == null or panel == null:
+		return
+	fleet_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fleet_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 
 func _hud_engage() -> void:
@@ -3751,5 +3827,138 @@ class StockGlass extends Control:
 			return
 		var dist := maxf(_extent * 1.55, 36.0)
 		_cam.position = Vector3(-0.62, 0.48, 0.78).normalized() * dist
+		if _cam.is_inside_tree():
+			_cam.look_at(Vector3.ZERO, Vector3.UP)
+
+
+class CraftGlass extends Control:
+	var craft_kind := ""
+	var _view: SubViewportContainer
+	var _vp: SubViewport
+	var _cam: Camera3D
+	var _stage: Node3D
+	var _pivot: Node3D
+	var _holder: Node3D
+	var _extent := 22.0
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clip_contents = true
+		_view = SubViewportContainer.new()
+		_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_view.stretch = true
+		add_child(_view)
+		_vp = SubViewport.new()
+		_vp.name = "CraftView"
+		_vp.own_world_3d = true
+		_vp.world_3d = World3D.new()
+		_vp.transparent_bg = false
+		_vp.handle_input_locally = false
+		_vp.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+		_vp.size = Vector2i(180, 180)
+		_view.add_child(_vp)
+		var env := WorldEnvironment.new()
+		var world := Environment.new()
+		world.background_mode = Environment.BG_COLOR
+		world.background_color = Color(0.028, 0.04, 0.054)
+		world.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		world.ambient_light_color = Color(0.7, 0.76, 0.86)
+		world.ambient_light_energy = 0.85
+		world.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		env.environment = world
+		_vp.add_child(env)
+		_cam = Camera3D.new()
+		_cam.name = "CraftEye"
+		_cam.current = true
+		_cam.fov = 30.0
+		_cam.near = 0.2
+		_cam.far = 800.0
+		_vp.add_child(_cam)
+		_stage = preload("res://world/stage3d.gd").new()
+		_stage.name = "CraftStage"
+		_stage.set("portrait_mode", true)
+		_vp.add_child(_stage)
+		_stage.set_process(false)
+		var kick := DirectionalLight3D.new()
+		kick.light_color = Color("fff0d4")
+		kick.light_energy = 1.6
+		kick.shadow_enabled = false
+		kick.rotation_degrees = Vector3(-38.0, -28.0, 0.0)
+		_vp.add_child(kick)
+		var fill := DirectionalLight3D.new()
+		fill.light_color = Color(0.7, 0.8, 0.94)
+		fill.light_energy = 0.7
+		fill.shadow_enabled = false
+		fill.rotation_degrees = Vector3(16.0, 142.0, 0.0)
+		_vp.add_child(fill)
+		_pivot = Node3D.new()
+		_pivot.name = "Turn"
+		_stage.add_child(_pivot)
+		resized.connect(_place_view)
+		if craft_kind != "":
+			_sync_craft()
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.008, 0.016, 0.022, 0.88))
+
+	func _process(_delta: float) -> void:
+		if not is_visible_in_tree():
+			return
+		if size.x > 8.0 and _view != null and _view.size.x < 8.0:
+			_place_view()
+		if _pivot != null:
+			_pivot.rotation.y = 0.55 + float(Time.get_ticks_msec()) * 0.00048
+			_pivot.rotation.x = 0.22
+
+	func _place_view() -> void:
+		if _view == null:
+			return
+		_view.position = Vector2.ZERO
+		_view.size = size
+		_frame_camera()
+
+	func show_craft(kind: String) -> void:
+		craft_kind = kind
+		_sync_craft()
+
+	func _sync_craft() -> void:
+		if _stage == null or _pivot == null or craft_kind == "":
+			return
+		if _holder != null:
+			_holder.queue_free()
+			_holder = null
+		_holder = _stage.call("pose_craft", craft_kind)
+		_pivot.add_child(_holder)
+		var box := _local_bounds(_holder)
+		_holder.position = -box.get_center()
+		_extent = maxf(box.size.x, maxf(box.size.y, box.size.z))
+		_frame_camera()
+
+	func _local_bounds(holder: Node3D) -> AABB:
+		var acc := AABB()
+		var any := false
+		var into := holder.global_transform.affine_inverse()
+		for node in holder.find_children("*", "MeshInstance3D", true, false):
+			var mesh_node := node as MeshInstance3D
+			if mesh_node.mesh == null:
+				continue
+			var part := str(mesh_node.name)
+			if part.begins_with("Exhaust") or part == "Wake":
+				continue
+			var box: AABB = into * mesh_node.global_transform * mesh_node.get_aabb()
+			if any:
+				acc = acc.merge(box)
+			else:
+				acc = box
+				any = true
+		if not any:
+			return AABB(Vector3(-10, -6, -6), Vector3(20, 12, 12))
+		return acc
+
+	func _frame_camera() -> void:
+		if _cam == null:
+			return
+		var dist := maxf(_extent * 1.7, 28.0)
+		_cam.position = Vector3(-0.58, 0.42, 0.82).normalized() * dist
 		if _cam.is_inside_tree():
 			_cam.look_at(Vector3.ZERO, Vector3.UP)
