@@ -21,6 +21,7 @@ func _init() -> void:
 	}
 	_data()
 	_cue()
+	_bolt_and_meet()
 	_wreck_salvage()
 	_shakedown("vesper", true)
 	_shakedown("anvil", true)
@@ -75,6 +76,22 @@ func _cue() -> void:
 		if str(row.get("state", "")) == "dormant":
 			dormant += 1
 	check(dormant == 0, "the quest log hides dormant authored shorts")
+
+
+func _bolt_and_meet() -> void:
+	var sim := make("vesper")
+	sim.quest_flags.shakedown_beat = "module"
+	check(sim.player.yard.has("sensor_mast"), "Needle keeps a mast in the yard")
+	check(QuestBoard.try_bolt(sim) == "", "Bolt installs from the helm")
+	check(sim.player.modules.has("sensor_mast"), "Bolt takes the mast")
+	QuestBoard.pulse(sim, 0.1)
+	check(str(sim.quest_flags.shakedown_beat) == "pirate", "Bolt advances the module beat")
+	check(QuestBoard.cue_line(sim).contains("Red Keel"), "the pirate beat names the pack")
+	check(QuestBoard.try_approach(sim) == "", "Approach takes the Red Keel mark")
+	var order = sim.player.get("order", {})
+	check(typeof(order) == TYPE_DICTIONARY and str(order.get("kind", "")) == "approach", "Approach is an approach order")
+	check(str(order.get("label", "")).contains("Red Keel"), "Approach names the pack")
+	check(QuestBoard.try_approach(make("vesper")).contains("Cast off"), "a moored keel is told to Cast off")
 
 
 func _wreck_salvage() -> void:

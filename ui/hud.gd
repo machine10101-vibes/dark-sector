@@ -909,6 +909,7 @@ func _build_actions() -> void:
 	_action("Market", func() -> void: _toggle("market"))
 	_action("Harvest", _harvest_craft)
 	_action("Salvage", _salvage_wreck)
+	_action("Bolt", _bolt_stock)
 	_action("Plasma", _plasma_cut)
 	_action("Weld", _repair)
 	_action("Hangar", func() -> void: _toggle("hangar"))
@@ -925,6 +926,7 @@ func _build_actions() -> void:
 			return
 		_say_result(QuestBoard.accept(Game.sim))
 	)
+	_action("Approach", _approach_job)
 	_action("Site", func() -> void:
 		if Game.sim == null:
 			return
@@ -3617,6 +3619,18 @@ func _salvage_wreck() -> void:
 	var message := CraftOrders.salvage(Game.sim)
 	if message != "":
 		Game.sim.say(message)
+
+
+func _bolt_stock() -> void:
+	if Game.sim == null:
+		return
+	_say_result(QuestBoard.try_bolt(Game.sim))
+
+
+func _approach_job() -> void:
+	if Game.sim == null:
+		return
+	_say_result(QuestBoard.try_approach(Game.sim))
 
 
 func _plasma_cut(node_id: String = "") -> void:

@@ -35,6 +35,7 @@ Player-visible what works now:
 - Fleet sells attack drones on the pad: Dart L1 interceptor, Sting L1 gunner, Wasp L2 striker, Fang L2 hunter, Lance L3 heavy, and the generic fighter. Each SKU has a 3D card, a GRT price, and a rack cap. Form, Attack, and Recall cover the whole wing. Combat math is unchanged.
 - The helm names the selected mark. A lock reads LOCK on the rail; a clicked seam reads MARK with range and ready/scan. The glass draws a diamond on that seam and a mark card when no ship is locked. Probe, or 1, scans the selected mark. An unmarked Probe still takes the next unread node. Harvest drone launch follows the same mark. The rail chips and labels carry a dark outline so they sit on the ice. Hold and craft lines stay short. Combat math is unchanged.
 - The amber helm cue now names the live job when no dock crate is out: Cast off, Scan Aegis, cut a seam, bolt a module, meet the Red Keel, lane to Quiet Hollow, or tend the garden. The amber beam follows that mark. Plant, Core, Tend, and Feed sit on the LAW row. Salvage sits on SHIP; a close wreck strips from the helm, and a far wreck sends the tender. Right-click a wreck for Approach and Salvage. The quest log leads with NEXT and hides dormant authored shorts. Combat math is unchanged.
+- Probe, or 1, scans an explicit harvest mark. An approach-only seam does not steal that launch; unmarked Probe still takes the nearer unread node. Bolt on SHIP installs the first spare (the mast on a stock Needle). Approach on SURVEY flies the live job — the Red Keel pack, a Quiet Hollow lane, a contract mark, or an in-system visit hook. Ash Hymn, Quay, Coda, and the other authored bodies name themselves on the cue and the log when the keel is in that system. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -53,4 +54,6 @@ Files touched:
 - ui/hud.gd
 - world/overhead.gd
 - tests/slice6_sim.gd
+- tests/harvest_cut.gd
+- tests/liveops_sim.gd
 - LOOP_STATE.md

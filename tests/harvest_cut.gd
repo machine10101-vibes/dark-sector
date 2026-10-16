@@ -119,6 +119,13 @@ func _marked() -> void:
 	var scan_probe = _craft(scan_home, "survey_probe")
 	check(scan_probe != null and str(scan_probe.target) == "copper_slag", "Probe and KEY_1 scan the mark")
 	check(str(scan_probe.order) == "scan", "a marked Probe order is a scan")
+	var aimed_scan := make("kestrel")
+	aimed_scan.player.moored = false
+	aimed_scan.player.pos = ice.pos + Vector2(30, 0)
+	aimed_scan.player.order = {"kind": "approach", "x": slag.pos.x, "y": slag.pos.y, "label": str(slag.name)}
+	check(CraftOrders.launch(aimed_scan, "survey_probe") == "", "an approach-only mark still launches Probe")
+	var aimed_scan_probe = _craft(aimed_scan, "survey_probe")
+	check(aimed_scan_probe != null and str(aimed_scan_probe.target) != "copper_slag", "Probe ignores an approach-only seam")
 	var drone_home := make("vesper")
 	drone_home.player.moored = false
 	drone_home.player.pos = ice.pos + Vector2(30, 0)

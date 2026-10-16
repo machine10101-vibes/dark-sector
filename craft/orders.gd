@@ -65,7 +65,8 @@ static func launch(sim, def_id: String) -> String:
 		return order(sim, str(craft.uid), "launch", "")
 	match def_id:
 		"survey_probe":
-			var place = HelmHarvest.marked(sim)
+			var hid := str(sim.player.get("harvest_id", ""))
+			var place = sim.survey_node(hid) if hid != "" else null
 			if place == null:
 				place = _next_scan_target(sim)
 			if place == null:
@@ -971,6 +972,9 @@ static func _next_scan_target(sim):
 		if _targeted(sim, str(place.id)):
 			continue
 		if sim.dossier_complete(str(place.id)):
+			continue
+		var kind := str(place.get("kind", ""))
+		if kind == "seam" or kind == "belt" or kind == "gravel" or kind == "stream":
 			continue
 		var dist = sim.player.pos.distance_to(place.pos)
 		if dist < best_dist:
