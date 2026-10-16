@@ -27,6 +27,7 @@ Player-visible what works now:
 - The Helion market now holds a stall. A captain lists a crate from the hold at a GRT price they set. The crate leaves the hold until another keel on the pad buys it, or until they pull the slip. The stall keeps ice, nickel, copper, and glasswheat posted. A claim core and a dock crate will not list. Instant pad buyback is still there. Combat math is unchanged.
 - The stall desk now splits STALL / ON THE PAD / YOUR SLIPS, lists a stack at a per-crate ask, lets a buyer take one crate or the slip, and lets the seller Set a new ask without pulling. LAST holds the recent ticks. Instant pad rates sit under PAD RATE. Combat math is unchanged.
 - The Helion market glass now has Board, List, and Yard tabs. Same-ask lists stack on one slip, and Set onto the same ask merges. LIVE shows best ask and depth. Price and qty use ± steppers. Combat math is unchanged.
+- Market sits on the pad bar beside Board when the keel is on Helion, on the SHIP row beside Stock, and on 6. The stall glass opens from that button. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:

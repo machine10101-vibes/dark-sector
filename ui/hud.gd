@@ -52,6 +52,7 @@ var hint_label: Label
 var cast_button: Button
 var board_button: Button
 var dock_button: Button
+var market_button: Button
 var quest_button: Button
 var probe_button: Button
 var board_box: VBoxContainer
@@ -146,6 +147,14 @@ func _ready() -> void:
 		_toggle("board")
 	)
 	root.add_child(board_button)
+	market_button = ThemeKit.button("Market", true)
+	market_button.visible = false
+	market_button.custom_minimum_size = Vector2(112, 48)
+	market_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	market_button.pressed.connect(func() -> void:
+		_toggle("market")
+	)
+	root.add_child(market_button)
 	_mount_primary()
 	stick_button = ThemeKit.button("Stick")
 	stick_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -453,6 +462,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_harvest_craft()
 		KEY_5, KEY_KP_5:
 			_plasma_cut()
+		KEY_6, KEY_KP_6:
+			_toggle("market")
 		KEY_3, KEY_KP_3:
 			_launch(_boat_id())
 		KEY_4, KEY_KP_4:
@@ -677,7 +688,7 @@ func _size_primary(is_compact: bool) -> void:
 	if cast_button != null:
 		cast_button.text = "Cast" if is_compact else "Cast off"
 		cast_button.add_theme_font_size_override("font_size", 14 if is_compact else 16)
-	for node in [cast_button, dock_button, board_button, quest_button, probe_button]:
+	for node in [cast_button, dock_button, board_button, market_button, quest_button, probe_button]:
 		if node == null:
 			continue
 		var button := node as Button
@@ -716,6 +727,7 @@ func _mount_primary() -> void:
 	_reparent(cast_button)
 	_reparent(dock_button)
 	_reparent(board_button)
+	_reparent(market_button)
 	quest_button = ThemeKit.button("Quests", true)
 	quest_button.custom_minimum_size = Vector2(112, 48)
 	quest_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -879,6 +891,7 @@ func _build_actions() -> void:
 	_action("Ship", func() -> void: _toggle("bay"))
 	_action("Fleet", func() -> void: _toggle("fleet"))
 	_action("Stock", func() -> void: _toggle("stock"))
+	_action("Market", func() -> void: _toggle("market"))
 	_action("Harvest", _harvest_craft)
 	_action("Plasma", _plasma_cut)
 	_action("Weld", _repair)
@@ -902,7 +915,6 @@ func _build_actions() -> void:
 		_say_result(Game.sim.enter_site())
 	)
 	_group("DOCK")
-	_action("Market", func() -> void: _toggle("market"))
 	_action("Lane", func() -> void:
 		if Game.sim == null:
 			return
@@ -1315,12 +1327,13 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 
 
 func _place_board_button(_is_compact: bool) -> void:
-	if board_button == null:
-		return
 	var at := false
 	if Game.sim != null and Game.mode == "sector":
 		at = DockBoard.at_pad(Game.sim)
-	board_button.visible = at
+	if board_button != null:
+		board_button.visible = at
+	if market_button != null:
+		market_button.visible = at
 
 
 func _fill_board() -> void:
