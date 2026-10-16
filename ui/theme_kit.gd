@@ -201,3 +201,31 @@ static func button(text: String, primary: bool = false) -> Button:
 	node.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	paint(node, primary)
 	return node
+
+
+static func field(text: String = "", width: float = 56.0) -> LineEdit:
+	var edit := LineEdit.new()
+	edit.text = text
+	edit.focus_mode = Control.FOCUS_ALL
+	edit.mouse_filter = Control.MOUSE_FILTER_STOP
+	edit.context_menu_enabled = false
+	edit.caret_blink = true
+	edit.custom_minimum_size = Vector2(width, 32)
+	edit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.02, 0.05, 0.07, 0.72)
+	box.border_color = Color(0.5, 0.82, 0.9, 0.45)
+	box.set_border_width_all(1)
+	box.set_corner_radius_all(2)
+	box.content_margin_left = 6
+	box.content_margin_right = 6
+	box.content_margin_top = 4
+	box.content_margin_bottom = 4
+	var focus := box.duplicate()
+	focus.border_color = Color(0.72, 0.94, 0.98, 0.9)
+	edit.add_theme_stylebox_override("normal", box)
+	edit.add_theme_stylebox_override("focus", focus)
+	edit.add_theme_color_override("font_color", Color("d7e6c8"))
+	edit.add_theme_color_override("font_placeholder_color", Color("8d826c"))
+	edit.add_theme_font_size_override("font_size", 13)
+	return edit

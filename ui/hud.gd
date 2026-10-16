@@ -60,8 +60,11 @@ var board_sig := ""
 var market_sig := ""
 var tag_edit: LineEdit
 var market_price_edits: Dictionary = {}
+var market_qty_edits: Dictionary = {}
+var market_reprice_edits: Dictionary = {}
 var market_purse: Label
 var market_hold: Label
+var market_tape: Label
 var show_tag := false
 var action_scroll: ScrollContainer
 var action_row: HBoxContainer
@@ -1369,21 +1372,36 @@ func _fill_market() -> void:
 		var old = market_price_edits[item_id]
 		if old != null and is_instance_valid(old):
 			price_drafts[str(item_id)] = old.text
+	var qty_drafts: Dictionary = {}
+	for item_id in market_qty_edits.keys():
+		var old = market_qty_edits[item_id]
+		if old != null and is_instance_valid(old):
+			qty_drafts[str(item_id)] = old.text
+	var reprice_drafts: Dictionary = {}
+	for listing_id in market_reprice_edits.keys():
+		var old = market_reprice_edits[listing_id]
+		if old != null and is_instance_valid(old):
+			reprice_drafts[str(listing_id)] = old.text
 	market_sig = sig
 	for child in market_box.get_children():
 		child.queue_free()
 	tag_edit = null
 	market_price_edits.clear()
+	market_qty_edits.clear()
+	market_reprice_edits.clear()
 	var where := "The Helion market stands on the pad."
 	if DockBoard.at_pad(sim):
 		where = "List a crate. Buy a slip. Instant stock still pays the pad rate."
 	market_box.add_child(_flat(where, 14, Color("cbb892")))
-	market_purse = _flat("GRT %d" % DockBoard.purse(sim), 16, Color("d7e6c8"))
+	market_purse = _flat(HelmMarket.desk_line(sim, sim.player), 15, Color("d7e6c8"))
 	market_box.add_child(market_purse)
-	market_hold = _flat("Glasswheat in the hold  %d" % DockBoard.holding(sim), 15)
+	market_hold = _flat("Glasswheat in the hold  %d" % DockBoard.holding(sim), 13, Color("8d826c"))
 	market_box.add_child(market_hold)
-	_fill_listings(sim)
-	_fill_list_hold(sim, price_drafts)
+	market_tape = _flat(HelmMarket.tape_line(sim), 13, Color("cbb892"))
+	market_box.add_child(market_tape)
+	_fill_listings(sim, reprice_drafts)
+	_fill_list_hold(sim, price_drafts, qty_drafts)
+	market_box.add_child(_flat("PAD RATE", 15, Color("e6d7bf")))
 	var buy := ThemeKit.button("Buy glasswheat")
 	buy.pressed.connect(_buy_good)
 	market_box.add_child(buy)
@@ -1432,39 +1450,91 @@ func _fill_market() -> void:
 	market_box.add_child(set_tag)
 
 
-func _fill_listings(sim) -> void:
-	market_box.add_child(_flat("STALL", 15, Color("e6d7bf")))
-	if sim.listings.is_empty():
-		market_box.add_child(_flat("No slips on the board.", 13, Color("8d826c")))
-		return
+func _fill_listings(sim, drafts: Dictionary = {}) -> void:
 	var mine := str(sim.player.get("agent_id", ""))
-	for raw in sim.listings:
-		var row: Dictionary = raw
-		var item_id := str(row.get("item", ""))
-		var who := str(row.get("seller_name", "Keel"))
-		var label := "%s  %d GRT  ·  %s" % [sim.resource_name(item_id), int(row.get("price", 0)), who]
-		if int(row.get("count", 1)) > 1:
-			label = "%s  ×%d" % [label, int(row.count)]
-		var line := HBoxContainer.new()
-		line.add_theme_constant_override("separation", 6)
-		line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var name := _flat(label, 13, Color("d7e6c8"))
-		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		line.add_child(name)
-		if str(row.get("seller", "")) == mine and not bool(row.get("stall", false)):
-			var pull := ThemeKit.slim_button("Pull")
-			pull.custom_minimum_size = Vector2(64, 32)
-			pull.pressed.connect(_pull_listing.bind(str(row.id)))
-			line.add_child(pull)
-		else:
-			var buy := ThemeKit.slim_button("Buy")
-			buy.custom_minimum_size = Vector2(64, 32)
-			buy.pressed.connect(_buy_listing.bind(str(row.id)))
-			line.add_child(buy)
-		market_box.add_child(line)
+	var board: Dictionary = HelmMarket.split_board(sim, mine)
+	var stall: Array = board.stall
+	var pad: Array = board.pad
+	var own: Array = board.mine
+	market_box.add_child(_flat("STALL", 15, Color("e6d7bf")))
+	if stall.is_empty() and pad.is_empty() and own.is_empty():
+		market_box.add_child(_flat("No slips on the board.", 13, Color("8d826c")))
+	else:
+		for raw in stall:
+			market_box.add_child(_slip_card(sim, raw, "buy", {}))
+		if not pad.is_empty():
+			market_box.add_child(_flat("ON THE PAD", 15, Color("e6d7bf")))
+			for raw in pad:
+				market_box.add_child(_slip_card(sim, raw, "buy", {}))
+		if not own.is_empty():
+			market_box.add_child(_flat("YOUR SLIPS", 15, Color("e6d7bf")))
+			for raw in own:
+				market_box.add_child(_slip_card(sim, raw, "mine", drafts))
 
 
-func _fill_list_hold(sim, drafts: Dictionary) -> void:
+func _slip_card(sim, raw, kind: String, drafts: Dictionary) -> Control:
+	var row: Dictionary = raw
+	var item_id := str(row.get("item", ""))
+	var count := maxi(1, int(row.get("count", 1)))
+	var ask := HelmMarket.unit_price(row)
+	var who := str(row.get("seller_name", "Keel"))
+	var title := str(sim.resource_name(item_id))
+	if count > 1:
+		title = "%s  ×%d" % [title, count]
+	var meta := "%d GRT · %s" % [ask, who]
+	if count > 1:
+		meta = "%d GRT each · %s" % [ask, who]
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", ThemeKit.slim_chip(false))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(col)
+	col.add_child(_flat(title, 14, Color("e7f3f6")))
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 6)
+	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var note := _flat(meta, 12, Color("cbb892"))
+	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	line.add_child(note)
+	if kind == "mine":
+		var edit := ThemeKit.field(str(drafts.get(str(row.id), str(ask))), 48)
+		edit.placeholder_text = "GRT"
+		edit.max_length = 2
+		edit.gui_input.connect(_focus_price)
+		market_reprice_edits[str(row.id)] = edit
+		line.add_child(edit)
+		var set_ask := ThemeKit.slim_button("Set")
+		set_ask.custom_minimum_size = Vector2(52, 32)
+		set_ask.pressed.connect(_reprice_listing.bind(str(row.id)))
+		line.add_child(set_ask)
+		var pull := ThemeKit.slim_button("Pull")
+		pull.custom_minimum_size = Vector2(56, 32)
+		pull.pressed.connect(_pull_listing.bind(str(row.id)))
+		line.add_child(pull)
+	else:
+		var purse := HelmMarket.coins(sim, sim.player)
+		if count > 1:
+			var one := ThemeKit.slim_button("1")
+			one.custom_minimum_size = Vector2(40, 32)
+			one.disabled = purse < ask
+			one.pressed.connect(_buy_listing.bind(str(row.id), 1))
+			line.add_child(one)
+		var buy := ThemeKit.slim_button("Buy")
+		buy.custom_minimum_size = Vector2(56, 32)
+		var cost := HelmMarket.slip_cost(row, 0)
+		if purse < cost:
+			buy.text = "Need %d" % cost
+			buy.custom_minimum_size = Vector2(72, 32)
+			buy.disabled = true
+		buy.pressed.connect(_buy_listing.bind(str(row.id), 0))
+		line.add_child(buy)
+	col.add_child(line)
+	return card
+
+
+func _fill_list_hold(sim, drafts: Dictionary, qty_drafts: Dictionary = {}) -> void:
 	market_box.add_child(_flat("LIST A CRATE", 15, Color("e6d7bf")))
 	var any := false
 	var cargo: Dictionary = sim.player.cargo
@@ -1478,50 +1548,74 @@ func _fill_list_hold(sim, drafts: Dictionary) -> void:
 		if held <= 0:
 			continue
 		any = true
+		var last := HelmMarket.last_tick(sim, item_id)
+		var head := "%s  ×%d" % [sim.resource_name(item_id), held]
+		if last > 0:
+			head = "%s    last %d" % [head, last]
+		var card := PanelContainer.new()
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.add_theme_stylebox_override("panel", ThemeKit.slim_chip(false))
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 2)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.add_child(col)
+		col.add_child(_flat(head, 14, Color("e7f3f6")))
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var title := _flat("%s  ×%d" % [sim.resource_name(item_id), held], 13, Color("d7e6c8"))
-		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(title)
-		var edit := LineEdit.new()
-		edit.placeholder_text = "GRT"
-		edit.max_length = 2
-		edit.custom_minimum_size = Vector2(56, 36)
-		edit.text = str(drafts.get(item_id, str(HelmMarket.ask_price(item_id))))
-		edit.focus_mode = Control.FOCUS_ALL
-		edit.mouse_filter = Control.MOUSE_FILTER_STOP
-		edit.context_menu_enabled = false
-		edit.caret_blink = true
-		edit.gui_input.connect(_focus_price)
-		row.add_child(edit)
-		market_price_edits[item_id] = edit
+		var price := ThemeKit.field(str(drafts.get(item_id, str(HelmMarket.ask_price(item_id)))), 48)
+		price.placeholder_text = "GRT"
+		price.max_length = 2
+		price.gui_input.connect(_focus_price)
+		market_price_edits[item_id] = price
+		row.add_child(price)
+		var qty := ThemeKit.field(str(qty_drafts.get(item_id, "1")), 40)
+		qty.placeholder_text = "qty"
+		qty.max_length = 2
+		qty.gui_input.connect(_focus_price)
+		market_qty_edits[item_id] = qty
+		row.add_child(qty)
 		var list := ThemeKit.slim_button("List")
-		list.custom_minimum_size = Vector2(64, 32)
+		list.custom_minimum_size = Vector2(56, 32)
 		list.pressed.connect(_list_item.bind(item_id))
 		row.add_child(list)
-		market_box.add_child(row)
+		col.add_child(row)
+		market_box.add_child(card)
 	if not any:
 		market_box.add_child(_flat("No listable crate in the hold.", 13, Color("8d826c")))
 
 
-func _market_field_focused() -> bool:
-	if tag_edit != null and is_instance_valid(tag_edit) and tag_edit.has_focus():
-		return true
-	for item_id in market_price_edits.keys():
-		var edit = market_price_edits[item_id]
+func _edit_focused(edits: Dictionary) -> bool:
+	for key in edits.keys():
+		var edit = edits[key]
 		if edit != null and is_instance_valid(edit) and edit.has_focus():
 			return true
 	return false
 
 
+func _market_field_focused() -> bool:
+	if tag_edit != null and is_instance_valid(tag_edit) and tag_edit.has_focus():
+		return true
+	if _edit_focused(market_price_edits):
+		return true
+	if _edit_focused(market_qty_edits):
+		return true
+	return _edit_focused(market_reprice_edits)
+
+
+func _release_edits(edits: Dictionary) -> void:
+	for key in edits.keys():
+		var edit = edits[key]
+		if edit != null and is_instance_valid(edit):
+			edit.release_focus()
+
+
 func _release_market_fields() -> void:
 	if tag_edit != null and is_instance_valid(tag_edit):
 		tag_edit.release_focus()
-	for item_id in market_price_edits.keys():
-		var edit = market_price_edits[item_id]
-		if edit != null and is_instance_valid(edit):
-			edit.release_focus()
+	_release_edits(market_price_edits)
+	_release_edits(market_qty_edits)
+	_release_edits(market_reprice_edits)
 	Game.text_entry = false
 
 
@@ -1543,17 +1637,38 @@ func _list_item(item_id: String) -> void:
 		var edit = market_price_edits[item_id]
 		if edit != null and is_instance_valid(edit):
 			price = HelmMarket.clip_price(edit.text)
-	var message := HelmMarket.list_item(Game.sim, Game.sim.player, item_id, price)
+	var count := 1
+	if market_qty_edits.has(item_id):
+		var qty = market_qty_edits[item_id]
+		if qty != null and is_instance_valid(qty):
+			var held := int(Game.sim.player.cargo.get(item_id, 0))
+			count = HelmMarket.clip_count(qty.text, held)
+	var message := HelmMarket.list_item(Game.sim, Game.sim.player, item_id, price, count)
 	if message != "":
 		Game.sim.say(message)
 	market_sig = ""
 	_fill_market()
 
 
-func _buy_listing(listing_id: String) -> void:
+func _buy_listing(listing_id: String, take: int = 0) -> void:
 	if Game.sim == null:
 		return
-	var message := HelmMarket.buy_listing(Game.sim, Game.sim.player, listing_id)
+	var message := HelmMarket.buy_listing(Game.sim, Game.sim.player, listing_id, take)
+	if message != "":
+		Game.sim.say(message)
+	market_sig = ""
+	_fill_market()
+
+
+func _reprice_listing(listing_id: String) -> void:
+	if Game.sim == null:
+		return
+	var price := HelmMarket.PRICE_MIN
+	if market_reprice_edits.has(listing_id):
+		var edit = market_reprice_edits[listing_id]
+		if edit != null and is_instance_valid(edit):
+			price = HelmMarket.clip_price(edit.text)
+	var message := HelmMarket.reprice_listing(Game.sim, Game.sim.player, listing_id, price)
 	if message != "":
 		Game.sim.say(message)
 	market_sig = ""
@@ -1583,9 +1698,11 @@ func _focus_tag(event: InputEvent) -> void:
 
 func _paint_market(sim) -> void:
 	if market_purse != null and is_instance_valid(market_purse):
-		market_purse.text = "GRT %d" % DockBoard.purse(sim)
+		market_purse.text = HelmMarket.desk_line(sim, sim.player)
 	if market_hold != null and is_instance_valid(market_hold):
 		market_hold.text = "Glasswheat in the hold  %d" % DockBoard.holding(sim)
+	if market_tape != null and is_instance_valid(market_tape):
+		market_tape.text = HelmMarket.tape_line(sim)
 	var where := "The Helion market stands on the pad."
 	if DockBoard.at_pad(sim):
 		where = "List a crate. Buy a slip. Instant stock still pays the pad rate."

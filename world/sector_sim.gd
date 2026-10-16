@@ -86,6 +86,7 @@ var nav_mark: Dictionary = {}
 var market: Dictionary = {"glasswheat": 4}
 var listings: Array = []
 var listing_seq := 0
+var market_tape: Array = []
 var claim: Dictionary = {}
 var captains: Array = []
 var commands: Dictionary = {}
@@ -132,6 +133,7 @@ func new_game(class_id: String) -> void:
 	cut_job = {}
 	listings = []
 	listing_seq = 0
+	market_tape = []
 	impacts = []
 	heat_log = []
 	lines = []
@@ -203,6 +205,7 @@ func new_game(class_id: String) -> void:
 	_fill_market()
 	listings = []
 	listing_seq = 0
+	market_tape = []
 	HelmMarket.seed_stall(self)
 	visited = [str(defs.system.id)]
 	var pocket: Dictionary = defs.system.pocket
@@ -945,6 +948,7 @@ func to_dict() -> Dictionary:
 		"market": market.duplicate(true),
 		"listings": listings.duplicate(true),
 		"listing_seq": listing_seq,
+		"market_tape": market_tape.duplicate(true),
 		"visited": visited.duplicate(),
 		"claim": claim.duplicate(true),
 		"captains": _captain_rows(),
@@ -1016,6 +1020,7 @@ func from_dict(data: Dictionary) -> void:
 	_fill_market()
 	listings = data.get("listings", []).duplicate(true)
 	listing_seq = int(data.get("listing_seq", 0))
+	market_tape = data.get("market_tape", []).duplicate(true)
 	HelmMarket.seed_stall(self)
 	visited = data.get("visited", []).duplicate()
 	if visited.is_empty():
@@ -2562,6 +2567,7 @@ func net_snapshot() -> Dictionary:
 		"heat_agent": str(player.agent_id),
 		"listings": listings.duplicate(true),
 		"listing_seq": listing_seq,
+		"market_tape": market_tape.duplicate(true),
 		"chat": chat.duplicate(true),
 		"claim": {
 			"slot_id": str(claim.get("slot_id", "")),
@@ -2633,6 +2639,8 @@ func apply_snapshot(data: Dictionary) -> void:
 	if data.has("listings"):
 		listings = data.get("listings", []).duplicate(true)
 		listing_seq = int(data.get("listing_seq", listing_seq))
+	if data.has("market_tape"):
+		market_tape = data.get("market_tape", []).duplicate(true)
 	time = float(data.get("time", time))
 	if data.has("layer"):
 		layer = int(data.layer)
@@ -2718,13 +2726,26 @@ func _apply_verbs(unit: Dictionary, cmd: Dictionary) -> void:
 		if listed != "":
 			say(listed)
 	if cmd.has("buy_listing"):
-		var bought := HelmMarket.buy_listing(self, unit, str(cmd.buy_listing))
+		var slip = cmd.buy_listing
+		var listing_id := ""
+		var take := 0
+		if typeof(slip) == TYPE_DICTIONARY:
+			listing_id = str(slip.get("id", ""))
+			take = int(slip.get("take", 0))
+		else:
+			listing_id = str(slip)
+		var bought := HelmMarket.buy_listing(self, unit, listing_id, take)
 		if bought != "":
 			say(bought)
 	if cmd.has("pull_listing"):
 		var pulled := HelmMarket.pull_listing(self, unit, str(cmd.pull_listing))
 		if pulled != "":
 			say(pulled)
+	if cmd.has("reprice"):
+		var slip: Dictionary = cmd.reprice if typeof(cmd.reprice) == TYPE_DICTIONARY else {}
+		var priced := HelmMarket.reprice_listing(self, unit, str(slip.get("id", "")), int(slip.get("price", 0)))
+		if priced != "":
+			say(priced)
 
 
 func _clear_oneshots() -> void:
@@ -2744,6 +2765,7 @@ func _clear_oneshots() -> void:
 		row.erase("list")
 		row.erase("buy_listing")
 		row.erase("pull_listing")
+		row.erase("reprice")
 		commands[key] = row
 
 

@@ -22,6 +22,7 @@ func _init() -> void:
 	_trade()
 	_ore()
 	_board()
+	_desk()
 	_tag()
 	if fails == 0:
 		print("DOCK MARKET PASS")
@@ -170,6 +171,54 @@ func _board() -> void:
 	var copy := SectorSim.new(defs)
 	copy.from_dict(sim.to_dict())
 	check(copy.listings.size() == sim.listings.size(), "a save keeps the stall")
+
+
+func _desk() -> void:
+	var sim := make()
+	sim.quest_flags.purse = 0
+	sim.player.cargo["nickel_cinder"] = 3
+	check(HelmMarket.list_item(sim, sim.player, "nickel_cinder", 5, 3) == "", "the keel lists a stack")
+	check(int(sim.player.cargo.get("nickel_cinder", 0)) == 0, "a stack list takes three")
+	var slip: Dictionary = {}
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if str(row.get("seller", "")) == str(sim.player.agent_id):
+			slip = row
+			break
+	check(int(slip.get("count", 0)) == 3, "the slip holds three")
+	check(int(slip.get("price", 0)) == 5, "the ask is per crate")
+	var guest: Dictionary = sim.admit("kestrel", "stack-buyer")
+	guest.moored = true
+	guest.pos = sim.beacon_pos
+	guest.purse = 40
+	guest.cargo = {}
+	check(HelmMarket.buy_listing(sim, guest, str(slip.id), 1) == "", "another keel buys one crate")
+	check(int(guest.cargo.get("nickel_cinder", 0)) == 1, "the first crate lands")
+	check(int(guest.purse) == 35, "one crate costs the unit ask")
+	check(DockBoard.purse(sim) == 5, "the seller is paid for one crate")
+	check(int(slip.get("count", 0)) == 2, "two crates stay on the slip")
+	check(HelmMarket.last_tick(sim, "nickel_cinder") == 5, "the tape notes the nickel")
+	check("nickel" in HelmMarket.tape_line(sim), "the tape names the sale")
+	check(HelmMarket.reprice_listing(sim, sim.player, str(slip.id), 8) == "", "the seller can reprice")
+	check(int(slip.get("price", 0)) == 8, "the new ask sticks")
+	check(HelmMarket.buy_listing(sim, guest, str(slip.id)) == "", "the rest of the stack sells")
+	check(int(guest.cargo.get("nickel_cinder", 0)) == 3, "the buyer takes the rest")
+	check(int(guest.purse) == 19, "two more crates cost sixteen")
+	check(DockBoard.purse(sim) == 21, "the seller is paid the new ask")
+	var ice: Dictionary = {}
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if bool(row.get("stall", false)) and str(row.get("item", "")) == "ice_spall":
+			ice = row
+			break
+	check(HelmMarket.reprice_listing(sim, sim.player, str(ice.id), 4) != "", "a stall slip will not reprice")
+	var copy := SectorSim.new(defs)
+	copy.from_dict(sim.to_dict())
+	check(copy.market_tape.size() == sim.market_tape.size(), "a save keeps the tape")
+	check(HelmMarket.last_tick(copy, "nickel_cinder") == 8, "the save keeps the last ask")
+	var board: Dictionary = HelmMarket.split_board(sim, str(sim.player.agent_id))
+	check(board.stall.size() >= 3, "the desk still splits the stall")
+	check(board.mine.is_empty(), "the sold stack leaves your slips")
 
 
 func _tag() -> void:
