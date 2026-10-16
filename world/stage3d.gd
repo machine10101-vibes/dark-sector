@@ -6939,6 +6939,17 @@ func dress_stock(chunk: MeshInstance3D, id: String, tint: Color, vein: Color, se
 	elif id == "scrap":
 		chunk.mesh = _wreck_mesh(seed + 22, radius * 0.82)
 		chunk.material_override = _plate_mat(Color("6a6460"), float(seed) * 0.27)
+	elif id == "aluminum_bar" or id == "steel_bar":
+		chunk.mesh = _ingot_mesh(seed + 13, radius)
+		var bar := StandardMaterial3D.new()
+		bar.albedo_color = tint
+		var light := id == "aluminum_bar"
+		bar.metallic = 0.88 if light else 0.76
+		bar.roughness = 0.18 if light else 0.32
+		bar.emission_enabled = true
+		bar.emission = vein
+		bar.emission_energy_multiplier = 0.28 if light else 0.12
+		chunk.material_override = bar
 	else:
 		chunk.mesh = _rock_mesh(seed + 3, radius)
 		var stone := ShaderMaterial.new()
@@ -6993,6 +7004,23 @@ func _sheaf_mesh(seed: int, radius: float) -> ArrayMesh:
 		var basis := Basis.from_euler(Vector3(lean, float(i) * 0.52, tilt))
 		var at := Vector3(rng.randf_range(-0.2, 0.2), radius * 0.12, rng.randf_range(-0.2, 0.2)) * radius
 		_add_box(st, Transform3D(basis, at), Vector3(radius * 0.18, radius * 1.12, radius * 0.18))
+	st.generate_normals()
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _ingot_mesh(seed: int, radius: float) -> ArrayMesh:
+	var key := "ingot|%d|%d" % [posmod(seed, 5), int(round(radius))]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, -radius * 0.3, 0.0)), Vector3(radius * 1.24, radius * 0.2, radius * 0.46))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(radius * 0.08, 0.0, radius * 0.05)), Vector3(radius * 1.18, radius * 0.2, radius * 0.44))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(-radius * 0.06, radius * 0.3, -radius * 0.04)), Vector3(radius * 1.14, radius * 0.2, radius * 0.42))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(-radius * 1.1, -radius * 0.3, 0.0)), Vector3(radius * 0.12, radius * 0.24, radius * 0.5))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(radius * 1.1, -radius * 0.3, 0.0)), Vector3(radius * 0.12, radius * 0.24, radius * 0.5))
 	st.generate_normals()
 	var mesh := st.commit()
 	_mesh_cache[key] = mesh

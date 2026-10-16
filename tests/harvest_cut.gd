@@ -194,32 +194,47 @@ func _grt() -> void:
 
 func _build() -> void:
 	var sim := make("vesper")
-	check(DockBoard.recipe_ids().size() >= 12, "the yard keeps ore plans")
+	check(DockBoard.recipe_ids().size() >= 16, "the yard keeps smelt and fleet plans")
+	check(DockBoard.fabricate(sim, "aluminum_bar") != "", "an empty hold cannot smelt aluminum")
 	check(DockBoard.fabricate(sim, "dart_drone") != "", "an empty hold cannot Make a Dart")
-	sim.player.cargo["nickel_cinder"] = 2
+	sim.player.cargo["ice_spall"] = 2
+	sim.player.cargo["nickel_cinder"] = 1
+	sim.player.cargo["raw_mass"] = 1
+	check(DockBoard.fabricate(sim, "aluminum_bar") == "", "the pad smelts an aluminum bar")
+	check(int(sim.player.cargo.get("aluminum_bar", 0)) == 1, "the bar sits in the hold")
+	check(int(sim.player.cargo.get("ice_spall", 0)) == 0, "smelt spends the ice")
+	check(int(sim.player.cargo.get("nickel_cinder", 0)) == 0, "smelt spends the nickel")
+	check(DockBoard.fabricate(sim, "dart_drone") != "", "a Dart waits for copper")
 	sim.player.cargo["copper_slag"] = 1
-	check(DockBoard.fabricate(sim, "dart_drone") == "", "the pad Makes a Dart from ore")
+	check(DockBoard.fabricate(sim, "dart_drone") == "", "the pad Makes a Dart from aluminum")
 	check(DockBoard.kind_count(sim, "dart_drone") == 1, "the Dart is on the rack")
-	check(int(sim.player.cargo.get("nickel_cinder", 0)) == 0, "Make spends the nickel")
+	check(int(sim.player.cargo.get("aluminum_bar", 0)) == 0, "Make spends the aluminum")
 	check(int(sim.player.cargo.get("copper_slag", 0)) == 0, "Make spends the copper")
 	sim.player.moored = false
 	sim.player.pos = sim.beacon_pos + Vector2(900, 0)
-	sim.player.cargo["hull_plate"] = 2
-	sim.player.cargo["copper_slag"] = 2
+	sim.player.cargo["nickel_cinder"] = 2
+	sim.player.cargo["hull_plate"] = 1
 	sim.player.cargo["salvage_parts"] = 1
-	check(DockBoard.fabricate(sim, "gun_sponson") != "", "off the pad Make waits for a shop")
+	check(DockBoard.fabricate(sim, "steel_bar") != "", "off the pad Make waits for a shop")
 	sim.player.moored = true
 	sim.player.pos = sim.beacon_pos
-	check(DockBoard.fabricate(sim, "gun_sponson") == "", "the pad Makes a Cheek Gun")
+	check(DockBoard.fabricate(sim, "steel_bar") == "", "the pad smelts a steel bar")
+	check(int(sim.player.cargo.get("steel_bar", 0)) == 1, "the steel sits in the hold")
+	sim.player.cargo["copper_slag"] = 2
+	check(DockBoard.fabricate(sim, "gun_sponson") == "", "the pad Makes a Cheek Gun from steel")
 	check(sim.player.yard.has("gun_sponson"), "the gun sits in the yard")
 	check(DockBoard.paid_mount(sim, "gun_sponson"), "the gun is paid")
+	check(int(sim.player.cargo.get("steel_bar", 0)) == 0, "the gun spends the steel")
 	var probes := DockBoard.kind_count(sim, "survey_probe")
 	sim.player.cargo["ice_spall"] = 2
 	sim.player.cargo["raw_mass"] = 1
 	check(DockBoard.fabricate(sim, "survey_probe") == "", "the pad Makes a probe")
 	check(DockBoard.kind_count(sim, "survey_probe") == probes + 1, "the new probe is on the rack")
 	sim.player.cargo["nickel_cinder"] = 2
-	check(DockBoard.fabricate(sim, "iron_belt") == "", "the pad Makes an iron belt")
+	sim.player.cargo["hull_plate"] = 1
+	sim.player.cargo["salvage_parts"] = 1
+	check(DockBoard.fabricate(sim, "steel_bar") == "", "the pad smelts a second steel bar")
+	check(DockBoard.fabricate(sim, "iron_belt") == "", "the pad Makes an iron belt from steel")
 	check(int(sim.player.rounds.get("iron", 0)) >= 40, "the belt adds iron rounds")
 	var soil := make("vesper")
 	soil._arrive("HC-V1-R5-S1", "")

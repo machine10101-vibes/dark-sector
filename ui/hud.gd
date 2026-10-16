@@ -3230,9 +3230,9 @@ func _build_fleet_shop() -> void:
 	var held := DockBoard.attack_count(sim)
 	fleet_box.add_child(ThemeKit.label("PAD RACK", 15, Color("e6d7bf")))
 	if DockBoard.at_pad(sim):
-		fleet_box.add_child(ThemeKit.label("Buy with GRT or Make from ore. Wing %d/%d. Form and Attack cover every attack drone." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
+		fleet_box.add_child(ThemeKit.label("Buy with GRT or Make from aluminum bars. Wing %d/%d. Form and Attack cover every attack drone." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
 	elif DockBoard.can_build(sim):
-		fleet_box.add_child(ThemeKit.label("The claim can Make a drone from stock. Wing %d/%d." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
+		fleet_box.add_child(ThemeKit.label("The claim can Make a drone from aluminum bars. Wing %d/%d." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
 	else:
 		fleet_box.add_child(ThemeKit.label("Moor at Helion to buy, or Make at a planted claim. Wing %d/%d." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
 	var shop := _inv_grid()
@@ -3346,7 +3346,7 @@ func _build_stock() -> void:
 	var head := ThemeKit.label("The hold.  %d/%d" % [used, cap], 16, Color("e6d7bf"))
 	head.autowrap_mode = TextServer.AUTOWRAP_OFF
 	stock_box.add_child(head)
-	stock_box.add_child(ThemeKit.label("Each square is a crate. List it, sell it for GRT, or Make a kit, gun, or craft from the stock.", 13, Color("8d826c")))
+	stock_box.add_child(ThemeKit.label("Each square is a crate. Smelt ore into bars, list it, sell it for GRT, or Make a kit, gun, or fleet ship.", 13, Color("8d826c")))
 	var to_make := ThemeKit.slim_button("Make")
 	to_make.custom_minimum_size = Vector2(72, 32)
 	to_make.pressed.connect(func() -> void: _toggle("build"))
@@ -3462,9 +3462,9 @@ func _build_make() -> void:
 		return
 	var where := "Moor at Helion, or stand a planted claim, then Make."
 	if DockBoard.at_pad(sim):
-		where = "The Helion pad can Make kits, guns, and craft from the hold."
+		where = "The Helion pad smelts ore into bars, then Makes kits, guns, and fleet ships."
 	elif DockBoard.can_build(sim):
-		where = "The claim shop Makes kits, guns, and craft from the hold."
+		where = "The claim shop smelts ore into bars, then Makes kits, guns, and fleet ships."
 	build_box.add_child(ThemeKit.label(where, 13, Color("8d826c")))
 	build_box.add_child(ThemeKit.label("HOLD  %s" % _hold_brief(sim), 13, Color("d7e6c8")))
 	var grid := _inv_grid()
@@ -3528,7 +3528,13 @@ func _make_card(product_id: String) -> Control:
 
 
 func _recipe_face(product_id: String) -> String:
+	if HelmHarvest.stock_price(product_id) > 0:
+		return product_id
 	var need: Dictionary = DockBoard.recipe_need(product_id)
+	if need.has("steel_bar"):
+		return "steel_bar"
+	if need.has("aluminum_bar"):
+		return "aluminum_bar"
 	for id in HelmHarvest.stock_ids():
 		if need.has(id):
 			return str(id)

@@ -555,18 +555,24 @@ const SUPPORT_CAP := {
 	"salvage_tender": 2,
 	"away_shuttle": 1,
 }
+const BARS := {
+	"aluminum_bar": {"name": "Aluminum bar"},
+	"steel_bar": {"name": "Steel bar"},
+}
 const RECIPES := {
-	"gun_sponson": {"name": "Cheek Gun", "need": {"hull_plate": 2, "copper_slag": 2, "salvage_parts": 1}},
-	"laser_bank": {"name": "Beam Bank", "need": {"copper_slag": 3, "ice_spall": 2, "salvage_parts": 1}},
-	"missile_rack": {"name": "Missile Rack", "need": {"nickel_cinder": 2, "hull_plate": 1, "salvage_parts": 2}},
-	"iron_belt": {"name": "Iron belt", "need": {"nickel_cinder": 2}},
-	"splinter_pack": {"name": "Splinter reload", "need": {"copper_slag": 1, "ice_spall": 1}},
-	"dart_drone": {"name": "Dart", "need": {"nickel_cinder": 2, "copper_slag": 1}},
-	"sting_drone": {"name": "Sting", "need": {"copper_slag": 2, "nickel_cinder": 1}},
-	"wasp_drone": {"name": "Wasp", "need": {"copper_slag": 2, "hull_plate": 1, "salvage_parts": 1}},
-	"fang_drone": {"name": "Fang", "need": {"nickel_cinder": 2, "hull_plate": 1, "salvage_parts": 1}},
-	"lance_drone": {"name": "Lance", "need": {"hull_plate": 2, "copper_slag": 2, "salvage_parts": 2}},
-	"fighter": {"name": "Fighter", "need": {"hull_plate": 2, "nickel_cinder": 2, "salvage_parts": 1}},
+	"aluminum_bar": {"name": "Aluminum bar", "need": {"ice_spall": 2, "nickel_cinder": 1, "raw_mass": 1}},
+	"steel_bar": {"name": "Steel bar", "need": {"nickel_cinder": 2, "hull_plate": 1, "salvage_parts": 1}},
+	"gun_sponson": {"name": "Cheek Gun", "need": {"steel_bar": 1, "copper_slag": 2}},
+	"laser_bank": {"name": "Beam Bank", "need": {"steel_bar": 1, "copper_slag": 1, "ice_spall": 2}},
+	"missile_rack": {"name": "Missile Rack", "need": {"steel_bar": 2, "salvage_parts": 1}},
+	"iron_belt": {"name": "Iron belt", "need": {"steel_bar": 1}},
+	"splinter_pack": {"name": "Splinter reload", "need": {"steel_bar": 1, "ice_spall": 1}},
+	"dart_drone": {"name": "Dart", "need": {"aluminum_bar": 1, "copper_slag": 1}},
+	"sting_drone": {"name": "Sting", "need": {"aluminum_bar": 1, "copper_slag": 1}},
+	"wasp_drone": {"name": "Wasp", "need": {"aluminum_bar": 2, "salvage_parts": 1}},
+	"fang_drone": {"name": "Fang", "need": {"aluminum_bar": 2, "salvage_parts": 1}},
+	"lance_drone": {"name": "Lance", "need": {"aluminum_bar": 3, "salvage_parts": 1}},
+	"fighter": {"name": "Fighter", "need": {"aluminum_bar": 2, "salvage_parts": 1}},
 	"survey_probe": {"name": "Survey Probe", "need": {"ice_spall": 2, "raw_mass": 1}},
 	"harvest_drone": {"name": "Harvest Drone", "need": {"ice_spall": 2, "nickel_cinder": 1, "raw_mass": 1}},
 	"salvage_tender": {"name": "Salvage Tender", "need": {"salvage_parts": 2, "hull_plate": 1}},
@@ -576,6 +582,8 @@ const RECIPES := {
 
 static func recipe_ids() -> Array:
 	return [
+		"aluminum_bar",
+		"steel_bar",
 		"gun_sponson",
 		"laser_bank",
 		"missile_rack",
@@ -676,11 +684,22 @@ static func fabricate(sim, product_id: String) -> String:
 		return "Make at the Helion pad or a planted claim."
 	if not can_afford(sim, product_id):
 		return "The hold is short. Need %s." % recipe_line(sim, product_id)
+	if BARS.has(product_id):
+		return _fab_bar(sim, product_id)
 	if KIT.has(product_id):
 		return _fab_kit(sim, product_id)
 	if ATTACK_SHOP.has(product_id):
 		return _fab_drone(sim, product_id)
 	return _fab_support(sim, product_id)
+
+
+static func _fab_bar(sim, bar_id: String) -> String:
+	var need: Dictionary = recipe_need(bar_id)
+	if not _spend_need(sim, need):
+		return "The hold is short. Need %s." % recipe_line(sim, bar_id)
+	sim._add_cargo(bar_id, 1)
+	sim.say("Made %s from stock." % recipe_name(bar_id))
+	return ""
 
 
 static func _fab_kit(sim, kit_id: String) -> String:

@@ -15,6 +15,8 @@ const STOCK_PAY := {
 	"hull_plate": 8,
 	"raw_mass": 4,
 	"salvage_parts": 9,
+	"aluminum_bar": 10,
+	"steel_bar": 11,
 }
 
 
@@ -237,7 +239,7 @@ static func stock_price(id: String) -> int:
 
 
 static func stock_ids() -> Array:
-	return ["nickel_cinder", "ice_spall", "copper_slag", "hull_plate", "raw_mass", "salvage_parts"]
+	return ["nickel_cinder", "ice_spall", "copper_slag", "hull_plate", "raw_mass", "salvage_parts", "aluminum_bar", "steel_bar"]
 
 
 static func _first_live(sim, def_id: String):
