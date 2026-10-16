@@ -1,0 +1,18 @@
+{
+  "region_id": "R6",
+  "name": "Drift and Fall",
+  "authority": "",
+  "law": "amber / red pockets",
+  "job": "Salvage industry, meteor gameplay, lost-craft stories.",
+  "palette": "#8d7352",
+  "flagship": "The Swallow",
+  "flagship_kind": "field",
+  "system_ids": ["HC-V1-R6-S1", "HC-V1-R6-S2", "HC-V1-R6-S3", "HC-V1-R6-S4", "HC-V1-R6-S5", "HC-V1-R6-S6"],
+  "status": "placed",
+  "map": {
+    "placed": true,
+    "x": 0,
+    "y": 2,
+    "unit": "catalog_span"
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "schema": "hc_v1_g0",
+  "catalog": "HC-V1",
+  "player_name": "The Dark Sector",
+  "notes": "Names are locked. Stars, rule colors, and jobs are not in this file. That index is G2.",
+  "regions": [
+    {
+      "id": "R1",
+      "name": "Compact Core",
+      "authority": "Helion Compact Guard",
+      "system_ids": ["HC-V1-R1-S1", "HC-V1-R1-S2", "HC-V1-R1-S3", "HC-V1-R1-S4", "HC-V1-R1-S5", "HC-V1-R1-S6"]
+    },
+    {
+      "id": "R2",
+      "name": "Charter Belt",
+      "authority": "Rimward Charter Authority",
+      "system_ids": ["HC-V1-R2-S1", "HC-V1-R2-S2", "HC-V1-R2-S3", "HC-V1-R2-S4", "HC-V1-R2-S5", "HC-V1-R2-S6"]
+    },
+    {
+      "id": "R3",
+      "name": "Municipal Skies",
+      "authority": "Orbital Municipal Navy",
+      "system_ids": ["HC-V1-R3-S1", "HC-V1-R3-S2", "HC-V1-R3-S3", "HC-V1-R3-S4", "HC-V1-R3-S5", "HC-V1-R3-S6"]
+    },
+    {
+      "id": "R4",
+      "name": "Glass Quarantine",
+      "authority": "Glass Choir Wardens",
+      "system_ids": ["HC-V1-R4-S1", "HC-V1-R4-S2", "HC-V1-R4-S3", "HC-V1-R4-S4", "HC-V1-R4-S5", "HC-V1-R4-S6"]
+    },
+    {
+      "id": "R5",
+      "name": "Garden Shards",
+      "authority": "",
+      "system_ids": ["HC-V1-R5-S1", "HC-V1-R5-S2", "HC-V1-R5-S3", "HC-V1-R5-S4", "HC-V1-R5-S5", "HC-V1-R5-S6"]
+    },
+    {
+      "id": "R6",
+      "name": "Drift and Fall",
+      "authority": "",
+      "system_ids": ["HC-V1-R6-S1", "HC-V1-R6-S2", "HC-V1-R6-S3", "HC-V1-R6-S4", "HC-V1-R6-S5", "HC-V1-R6-S6"]
+    },
+    {
+      "id": "R7",
+      "name": "Rimward Marches",
+      "authority": "",
+      "system_ids": ["HC-V1-R7-S1", "HC-V1-R7-S2", "HC-V1-R7-S3", "HC-V1-R7-S4", "HC-V1-R7-S5", "HC-V1-R7-S6"]
+    },
+    {
+      "id": "R8",
+      "name": "Black Sail Grounds",
+      "authority": "",
+      "system_ids": ["HC-V1-R8-S1", "HC-V1-R8-S2", "HC-V1-R8-S3", "HC-V1-R8-S4", "HC-V1-R8-S5", "HC-V1-R8-S6"]
+    }
+  ],
+  "systems": [
+    {"id": "HC-V1-R1-S1", "name": "Helion Dock", "region": "R1"},
+    {"id": "HC-V1-R1-S2", "name": "Brass Lantern", "region": "R1"},
+    {"id": "HC-V1-R1-S3", "name": "Writ", "region": "R1"},
+    {"id": "HC-V1-R1-S4", "name": "White Wake", "region": "R1"},
+    {"id": "HC-V1-R1-S5", "name": "Ledger", "region": "R1"},
+    {"id": "HC-V1-R1-S6", "name": "Quiet Sun", "region": "R1"},
+    {"id": "HC-V1-R2-S1", "name": "Lease", "region": "R2"},
+    {"id": "HC-V1-R2-S2", "name": "Towline", "region": "R2"},
+    {"id": "HC-V1-R2-S3", "name": "Ore Choir", "region": "R2"},
+    {"id": "HC-V1-R2-S4", "name": "Stamped Ice", "region": "R2"},
+    {"id": "HC-V1-R2-S5", "name": "Second Copy", "region": "R2"},
+    {"id": "HC-V1-R2-S6", "name": "Fine Print", "region": "R2"},
+    {"id": "HC-V1-R3-S1", "name": "Haven Wheel", "region": "R3"},
+    {"id": "HC-V1-R3-S2", "name": "Lower Stack", "region": "R3"},
+    {"id": "HC-V1-R3-S3", "name": "Guest Lamp", "region": "R3"},
+    {"id": "HC-V1-R3-S4", "name": "Not Ours", "region": "R3"},
+    {"id": "HC-V1-R3-S5", "name": "Cinder Parish", "region": "R3"},
+    {"id": "HC-V1-R3-S6", "name": "After Hours", "region": "R3"},
+    {"id": "HC-V1-R4-S1", "name": "Choir Gate", "region": "R4"},
+    {"id": "HC-V1-R4-S2", "name": "Sealed Orchard", "region": "R4"},
+    {"id": "HC-V1-R4-S3", "name": "Sporefall", "region": "R4"},
+    {"id": "HC-V1-R4-S4", "name": "Ash Hymn", "region": "R4"},
+    {"id": "HC-V1-R4-S5", "name": "Clean Hands", "region": "R4"},
+    {"id": "HC-V1-R4-S6", "name": "The Exception", "region": "R4"},
+    {"id": "HC-V1-R5-S1", "name": "First Soil", "region": "R5"},
+    {"id": "HC-V1-R5-S2", "name": "Two Weathers", "region": "R5"},
+    {"id": "HC-V1-R5-S3", "name": "Pollinator Road", "region": "R5"},
+    {"id": "HC-V1-R5-S4", "name": "Broken Charter", "region": "R5"},
+    {"id": "HC-V1-R5-S5", "name": "Silo Dark", "region": "R5"},
+    {"id": "HC-V1-R5-S6", "name": "Perimeter", "region": "R5"},
+    {"id": "HC-V1-R6-S1", "name": "Gyre", "region": "R6"},
+    {"id": "HC-V1-R6-S2", "name": "Clockstream", "region": "R6"},
+    {"id": "HC-V1-R6-S3", "name": "Nameless Chart", "region": "R6"},
+    {"id": "HC-V1-R6-S4", "name": "Hullweather", "region": "R6"},
+    {"id": "HC-V1-R6-S5", "name": "Iron Rain", "region": "R6"},
+    {"id": "HC-V1-R6-S6", "name": "Last Beacon", "region": "R6"},
+    {"id": "HC-V1-R7-S1", "name": "Marchport", "region": "R7"},
+    {"id": "HC-V1-R7-S2", "name": "Letter", "region": "R7"},
+    {"id": "HC-V1-R7-S3", "name": "Empty Tithe", "region": "R7"},
+    {"id": "HC-V1-R7-S4", "name": "Crossed Flags", "region": "R7"},
+    {"id": "HC-V1-R7-S5", "name": "Claimwake", "region": "R7"},
+    {"id": "HC-V1-R7-S6", "name": "No Witness", "region": "R7"},
+    {"id": "HC-V1-R8-S1", "name": "Black Quay", "region": "R8"},
+    {"id": "HC-V1-R8-S2", "name": "False Choir", "region": "R8"},
+    {"id": "HC-V1-R8-S3", "name": "Seedcut", "region": "R8"},
+    {"id": "HC-V1-R8-S4", "name": "Twin Wake", "region": "R8"},
+    {"id": "HC-V1-R8-S5", "name": "Deep Hold", "region": "R8"},
+    {"id": "HC-V1-R8-S6", "name": "The Joke", "region": "R8"}
+  ]
+}
