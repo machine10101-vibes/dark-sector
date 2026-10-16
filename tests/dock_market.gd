@@ -20,6 +20,7 @@ func _init() -> void:
 		"quests": Serde.load_json("res://data/quests.json"),
 	}
 	_trade()
+	_ore()
 	_tag()
 	if fails == 0:
 		print("DOCK MARKET PASS")
@@ -88,6 +89,24 @@ func _trade() -> void:
 	copy.from_dict(sim.to_dict())
 	check(DockBoard.purse(copy) == 76, "a save keeps the purse")
 	check(int(copy.market.glasswheat) == posted, "a save keeps the posted price")
+
+
+func _ore() -> void:
+	var sim := make()
+	check(DockBoard.at_pad(sim), "ore trade stands on the pad")
+	sim.player.cargo["nickel_cinder"] = 1
+	sim.player.cargo["raw_mass"] = 1
+	var purse := DockBoard.purse(sim)
+	check(DockBoard.sell_stock(sim, "nickel_cinder") == "", "the pad buys nickel cinder")
+	check(int(sim.player.cargo.get("nickel_cinder", 0)) == 0, "sell spends the nickel")
+	check(DockBoard.purse(sim) == purse + HelmHarvest.stock_price("nickel_cinder"), "nickel pays GRT")
+	purse = DockBoard.purse(sim)
+	check(DockBoard.sell_stock(sim, "raw_mass") == "", "the pad buys raw mass")
+	check(DockBoard.purse(sim) == purse + HelmHarvest.stock_price("raw_mass"), "raw mass pays GRT")
+	_leave(sim)
+	sim.player.cargo["copper_slag"] = 1
+	check(DockBoard.sell_stock(sim, "copper_slag") != "", "an off-pad ore sell refuses")
+	check(int(sim.player.cargo.copper_slag) == 1, "an off-pad ore sell leaves the slag")
 
 
 func _tag() -> void:

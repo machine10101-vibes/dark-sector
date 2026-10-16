@@ -442,7 +442,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_1, KEY_KP_1:
 			_launch("survey_probe")
 		KEY_2, KEY_KP_2:
-			_launch("harvest_drone")
+			_harvest_craft()
+		KEY_5, KEY_KP_5:
+			_plasma_cut()
 		KEY_3, KEY_KP_3:
 			_launch(_boat_id())
 		KEY_4, KEY_KP_4:
@@ -519,7 +521,7 @@ func _build_helm() -> void:
 	stat_hull = _chip("HULL", false)
 	stat_speed = _chip("0 m/s", true)
 	stat_heat = _chip("HEAT", false)
-	stat_purse = _chip("PURSE 0", true)
+	stat_purse = _chip("GRT 0", true)
 	box.add_child(helm_zone)
 	haul_cue = ThemeKit.label("", 18, Color("ffd27a"))
 	haul_cue.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -869,9 +871,10 @@ func _build_actions() -> void:
 	_action("Ship", func() -> void: _toggle("bay"))
 	_action("Fleet", func() -> void: _toggle("fleet"))
 	_action("Stock", func() -> void: _toggle("stock"))
+	_action("Harvest", _harvest_craft)
+	_action("Plasma", _plasma_cut)
 	_action("Weld", _repair)
 	_action("Hangar", func() -> void: _toggle("hangar"))
-	_action("Harvest", func() -> void: _launch("harvest_drone"))
 	_action("Boat", func() -> void: _launch(_boat_id()))
 	_group("SURVEY")
 	_action("Scan", func() -> void: _toggle("dossier"))
@@ -1047,7 +1050,7 @@ func _refresh_helm() -> void:
 	elif stage == "fine" or stage == "hail":
 		heat_color = Color("f0c36a")
 	stat_heat.add_theme_color_override("font_color", heat_color)
-	stat_purse.text = "PURSE  %d" % DockBoard.purse(sim)
+	stat_purse.text = "GRT  %d" % DockBoard.purse(sim)
 	stat_purse.add_theme_color_override("font_color", Color("f0d48a"))
 	var place := "Moored" if moored else ScaleFrame.layer_name(int(sim.layer))
 	var dock_word := ""
@@ -1328,11 +1331,11 @@ func _fill_board() -> void:
 	board_sig = sig
 	for child in board_box.get_children():
 		child.queue_free()
-	var where := "Stand the Helion pad to take a slip. Pay lands in the purse."
+	var where := "Stand the Helion pad to take a slip. Pay lands in GRT."
 	if DockBoard.at_pad(sim):
-		where = "You are on the Helion pad. Take a slip. Pay lands in the purse."
+		where = "You are on the Helion pad. Take a slip. Pay lands in GRT."
 	board_box.add_child(_flat(where, 14, Color("cbb892")))
-	board_box.add_child(_flat("Purse %d" % DockBoard.purse(sim), 16, Color("d7e6c8")))
+	board_box.add_child(_flat("GRT %d" % DockBoard.purse(sim), 16, Color("d7e6c8")))
 	var market := ThemeKit.button("Market")
 	market.pressed.connect(func() -> void: _toggle("market"))
 	board_box.add_child(market)
@@ -1360,7 +1363,7 @@ func _fill_market() -> void:
 	if market_box.get_child_count() > 0 and (focused or draft != DockBoard.tag_of(sim)):
 		_paint_market(sim)
 		return
-	var sig := "%s|%d|%d|%s" % [DockBoard.at_pad(sim), DockBoard.purse(sim), DockBoard.holding(sim), DockBoard.tag_of(sim)]
+	var sig := "%s|%d|%d|%s|%s" % [DockBoard.at_pad(sim), DockBoard.purse(sim), DockBoard.holding(sim), DockBoard.tag_of(sim), _cargo_sig()]
 	if sig == market_sig and market_box.get_child_count() > 0:
 		return
 	market_sig = sig
@@ -1369,9 +1372,9 @@ func _fill_market() -> void:
 	tag_edit = null
 	var where := "The Helion market stands on the pad."
 	if DockBoard.at_pad(sim):
-		where = "Glasswheat on the Helion pad. Buy %d. Sell %d." % [DockBoard.BUY_PRICE, DockBoard.SELL_PRICE]
+		where = "Sell raw stock for GRT. Glasswheat buy %d, sell %d." % [DockBoard.BUY_PRICE, DockBoard.SELL_PRICE]
 	market_box.add_child(_flat(where, 14, Color("cbb892")))
-	market_purse = _flat("Purse %d" % DockBoard.purse(sim), 16, Color("d7e6c8"))
+	market_purse = _flat("GRT %d" % DockBoard.purse(sim), 16, Color("d7e6c8"))
 	market_box.add_child(market_purse)
 	market_hold = _flat("Glasswheat in the hold  %d" % DockBoard.holding(sim), 15)
 	market_box.add_child(market_hold)
@@ -1381,6 +1384,16 @@ func _fill_market() -> void:
 	var sell := ThemeKit.button("Sell glasswheat")
 	sell.pressed.connect(_sell_good)
 	market_box.add_child(sell)
+	market_box.add_child(_flat("Raw stock. One crate, one GRT pay.", 14, Color("cbb892")))
+	for stock_id in HelmHarvest.stock_ids():
+		var held := int(sim.player.cargo.get(stock_id, 0))
+		var pay := HelmHarvest.stock_price(stock_id)
+		var label := "Sell %s  %d" % [sim.resource_name(stock_id), pay]
+		if held > 0:
+			label = "%s  ×%d" % [label, held]
+		var sell_stock := ThemeKit.button(label)
+		sell_stock.pressed.connect(_sell_stock.bind(stock_id))
+		market_box.add_child(sell_stock)
 	var wing := DockBoard.fighter_count(sim)
 	var buy_fighter := ThemeKit.button("Fighter  %d" % DockBoard.FIGHTER_PRICE)
 	buy_fighter.pressed.connect(_buy_fighter)
@@ -1426,12 +1439,12 @@ func _focus_tag(event: InputEvent) -> void:
 
 func _paint_market(sim) -> void:
 	if market_purse != null and is_instance_valid(market_purse):
-		market_purse.text = "Purse %d" % DockBoard.purse(sim)
+		market_purse.text = "GRT %d" % DockBoard.purse(sim)
 	if market_hold != null and is_instance_valid(market_hold):
 		market_hold.text = "Glasswheat in the hold  %d" % DockBoard.holding(sim)
 	var where := "The Helion market stands on the pad."
 	if DockBoard.at_pad(sim):
-		where = "Glasswheat on the Helion pad. Buy %d. Sell %d." % [DockBoard.BUY_PRICE, DockBoard.SELL_PRICE]
+		where = "Sell raw stock for GRT. Glasswheat buy %d, sell %d." % [DockBoard.BUY_PRICE, DockBoard.SELL_PRICE]
 	if market_box.get_child_count() > 0 and market_box.get_child(0) is Label:
 		(market_box.get_child(0) as Label).text = where
 
@@ -1981,6 +1994,7 @@ func _append_craft_orders(block: VBoxContainer, item) -> void:
 		row.add_child(_order_button("Launch", uid, "launch"))
 		row.add_child(_order_button("Orbit", uid, "orbit"))
 		row.add_child(_order_button("Scan", uid, "scan"))
+		row.add_child(_order_button("Harvest", uid, "cut"))
 		row.add_child(_order_button("Return", uid, "return"))
 	elif str(item.def_id) == "harvest_drone":
 		row.add_child(_order_button("Launch", uid, "launch"))
@@ -2076,7 +2090,7 @@ func _build_stock() -> void:
 	var head := ThemeKit.label("The hold.  %d/%d" % [used, cap], 16, Color("e6d7bf"))
 	head.autowrap_mode = TextServer.AUTOWRAP_OFF
 	stock_box.add_child(head)
-	stock_box.add_child(ThemeKit.label("Raw stock sits as it does in the sky.", 13, Color("8d826c")))
+	stock_box.add_child(ThemeKit.label("Raw stock sits as it does in the sky. Sell it on the Helion pad for GRT.", 13, Color("8d826c")))
 	var cargo: Dictionary = sim.player.cargo
 	var ids: Array = []
 	for key in cargo.keys():
@@ -2395,6 +2409,30 @@ func _repair() -> void:
 	var message := Game.sim.try_repair()
 	if message != "":
 		Game.sim.say(message)
+
+
+func _harvest_craft() -> void:
+	if Game.sim == null:
+		return
+	var message := HelmHarvest.send_craft(Game.sim)
+	if message != "":
+		Game.sim.say(message)
+
+
+func _plasma_cut(node_id: String = "") -> void:
+	if Game.sim == null:
+		return
+	Game.tap("cut", {"node": node_id})
+
+
+func _sell_stock(id: String) -> void:
+	if Game.sim == null:
+		return
+	var message := DockBoard.sell_stock(Game.sim, id)
+	if message != "":
+		Game.sim.say(message)
+	market_sig = ""
+	_fill_market()
 
 
 func _launch(def_id: String) -> void:

@@ -74,10 +74,10 @@ static func order(sim, uid: String, verb: String, node_id: String) -> String:
 	if place == null:
 		return "Pick a node first."
 	if str(craft.def_id) == "harvest_drone":
-		if not sim.dossier_complete(node_id):
+		if not HelmHarvest.ready(sim, place):
+			if int(sim.deposits.get(node_id, 0)) <= 0:
+				return "%s has nothing left to cut." % place.name
 			return "Scan %s before the drone cuts it." % place.name
-		if int(sim.deposits.get(node_id, 0)) <= 0:
-			return "%s has nothing left to cut." % place.name
 		if str(craft.state) == "docked" and sim.player.pos.distance_to(place.pos) > one_way_range(craft):
 			return "Harvester stays in the neighborhood. Bring the keel closer to %s." % place.name
 		_send(sim, craft, place, "cut")
@@ -86,6 +86,17 @@ static func order(sim, uid: String, verb: String, node_id: String) -> String:
 		return ""
 	if str(craft.def_id) != "survey_probe":
 		return "%s has no survey order." % craft.name
+	if verb == "cut" or verb == "harvest":
+		if not HelmHarvest.ready(sim, place):
+			if int(sim.deposits.get(node_id, 0)) <= 0:
+				return "%s has nothing left to cut." % place.name
+			return "Scan %s before the probe cuts it." % place.name
+		if str(craft.state) == "docked" and sim.player.pos.distance_to(place.pos) > one_way_range(craft):
+			return "The probe stays in the neighborhood. Bring the keel closer to %s." % place.name
+		_send(sim, craft, place, "cut")
+		sim.say("Probe away to harvest %s." % place.name)
+		sim.sfx("launch")
+		return ""
 	if verb == "orbit":
 		_send(sim, craft, place, "orbit")
 		sim.say("%s ordered to orbit %s." % [craft.name, place.name])
@@ -310,7 +321,11 @@ static func _step_probe(sim, craft, dt: float) -> void:
 		craft.km_x = fly_km.x
 		craft.km_y = fly_km.y
 		if dist < 28.0:
-			if order_name == "scan":
+			if order_name == "cut":
+				craft.state = "working"
+				craft.work = 0.0
+				craft.did_job = false
+			elif order_name == "scan":
 				craft.state = "working"
 				craft.work = 0.0
 				if sim.dossier_complete(str(place.id)):
@@ -324,6 +339,18 @@ static func _step_probe(sim, craft, dt: float) -> void:
 			craft.work = 0.0
 	elif str(craft.state) == "working":
 		_fly_safe(sim, craft, _work_point(place, craft.pos), dt, float(craft.speed) * 0.35)
+		if order_name == "cut":
+			HelmHarvest.note_cut(sim, craft.pos, place.pos, "probe")
+			craft.work = float(craft.work) + dt
+			if float(craft.work) >= HelmHarvest.PROBE_WORK and not bool(craft.did_job):
+				craft.did_job = true
+				var cut := str(sim.try_extract(str(place.id)))
+				if cut == "full":
+					sim.say("Hold is full. The probe is coming home empty.")
+				elif cut == "empty":
+					sim.say("%s's seam is worked out." % place.name)
+				craft.state = "returning"
+			return
 		if order_name == "orbit":
 			craft.state = "orbiting"
 			return
@@ -366,6 +393,7 @@ static func _step_harvest(sim, craft, dt: float) -> void:
 			craft.work = 0.0
 	elif str(craft.state) == "working":
 		_fly_safe(sim, craft, _work_point(place, craft.pos), dt, float(craft.speed) * 0.25)
+		HelmHarvest.note_cut(sim, craft.pos, place.pos, "drone")
 		craft.work = float(craft.work) + dt
 		if float(craft.work) >= float(craft.work_step) and not bool(craft.did_job):
 			craft.did_job = true
@@ -915,18 +943,7 @@ static func _next_scan_target(sim):
 
 
 static func _next_harvest_target(sim):
-	var best = null
-	var best_dist = 1.0e12
-	for place in sim.nodes:
-		if not sim.dossier_complete(str(place.id)):
-			continue
-		if int(sim.deposits.get(place.id, 0)) <= 0:
-			continue
-		var dist = sim.player.pos.distance_to(place.pos)
-		if dist < best_dist:
-			best_dist = dist
-			best = place
-	return best
+	return HelmHarvest.next_craft_target(sim)
 
 
 static func _nearest_wreck(sim):

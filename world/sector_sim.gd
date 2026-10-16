@@ -96,6 +96,8 @@ var pdo_alert = false
 var hailed = false
 var sfx_queue: Array = []
 var muzzles: Array = []
+var cuts: Array = []
+var cut_job: Dictionary = {}
 var hold_npc = false
 var layer := 2
 var body_id := ""
@@ -124,6 +126,8 @@ func new_game(class_id: String) -> void:
 	projectiles = []
 	beams = []
 	muzzles = []
+	cuts = []
+	cut_job = {}
 	impacts = []
 	heat_log = []
 	lines = []
@@ -1361,6 +1365,7 @@ func _step_projectiles(dt: float) -> void:
 	projectiles = kept
 	_age_beams(dt)
 	_age_muzzles(dt)
+	HelmHarvest.step(self, dt)
 
 
 func _steer_missile(shot: Dictionary, dt: float) -> void:
@@ -2231,6 +2236,8 @@ func _arrive(system_id: String, gate_id: String) -> void:
 	projectiles = []
 	beams = []
 	muzzles = []
+	cuts = []
+	cut_job = {}
 	impacts = []
 	wrecks = []
 	actors = []
@@ -2683,6 +2690,11 @@ func _apply_verbs(unit: Dictionary, cmd: Dictionary) -> void:
 		var swept := HelmCombat.try_sweep(self, unit)
 		if swept != "":
 			say(swept)
+	if cmd.has("cut"):
+		var spec: Dictionary = cmd.cut if typeof(cmd.cut) == TYPE_DICTIONARY else {}
+		var cut_line := HelmHarvest.try_cut(self, unit, str(spec.get("node", "")))
+		if cut_line != "":
+			say(cut_line)
 
 
 func _clear_oneshots() -> void:
@@ -2698,6 +2710,7 @@ func _clear_oneshots() -> void:
 		row.erase("order")
 		row.erase("engage")
 		row.erase("sweep")
+		row.erase("cut")
 		commands[key] = row
 
 
@@ -2830,17 +2843,22 @@ func _dossier(node_id: String) -> Dictionary:
 		return scans[node_id]
 	var row = survey_node(node_id)
 	var layers = {}
-	var source: Dictionary = row.layers
+	var source: Dictionary = {}
+	if row != null and typeof(row.get("layers", {})) == TYPE_DICTIONARY:
+		source = row.layers
 	for key in ["orbit", "atmosphere", "surface", "crust", "biosign", "ruins", "legal"]:
-		layers[key] = {"known": false, "text": str(source[key])}
+		layers[key] = {"known": false, "text": str(source.get(key, ""))}
+	var res: Dictionary = {}
+	if row != null and typeof(row.get("resource", {})) == TYPE_DICTIONARY:
+		res = row.resource
 	scans[node_id] = {
 		"node_id": node_id,
-		"name": row.name,
+		"name": str(row.name) if row != null else node_id,
 		"layers": layers,
 		"complete": false,
-		"legal": str(row.legal_title),
-		"resource_id": row.resource.id,
-		"resource_name": row.resource.name,
+		"legal": str(row.get("legal_title", "")) if row != null else "",
+		"resource_id": str(res.get("id", "")),
+		"resource_name": str(res.get("name", "")),
 	}
 	return scans[node_id]
 

@@ -1155,6 +1155,7 @@ func _sync_props(sim) -> void:
 	_sync_nebula()
 	_sync_shots(sim)
 	_sync_beams(sim)
+	_sync_cuts(sim)
 	_sync_muzzles(sim)
 	_sync_impacts(sim)
 	_sync_wrecks(sim)
@@ -1750,6 +1751,105 @@ func _pose_shot(bolt: MeshInstance3D, length: float, thick: float, tint: Color, 
 		cap.position = Vector3(0.0, length * 0.42, 0.0)
 		cap.scale = Vector3(thick * 0.9, 1.0, thick * 0.9)
 		_paint_bolt(cap, Color("ffc070"), 2.2 * flicker, 1.0)
+
+
+func _sync_cuts(sim) -> void:
+	if not sim.get("cuts"):
+		return
+	var index := 0
+	var read := _fx_read(sim)
+	for raw in sim.cuts:
+		var row: Dictionary = raw
+		var a2: Vector2 = row.from
+		var b2: Vector2 = row.to
+		var span: Vector2 = b2 - a2
+		var length := span.length()
+		if length < 2.0:
+			continue
+		var fade := clampf(1.0 - float(row.get("age", 0.0)) / HelmHarvest.CUT_LIFE, 0.05, 1.0)
+		var kind := str(row.get("kind", "plasma"))
+		var core := Color("d8fbff")
+		var edge := Color("3ad4ff")
+		if kind == "probe":
+			core = Color("c8ffe8")
+			edge = Color("4ad8a8")
+		elif kind == "drone":
+			core = Color("ffe0a0")
+			edge = Color("f0a04a")
+		var along := Vector3(span.x, 0.0, -span.y)
+		if along.length() < 0.2:
+			along = Vector3.RIGHT
+		along = along.normalized()
+		var mid := (a2 + b2) * 0.5
+		var rod := _prop("cut%d" % index)
+		if rod.mesh == null or not (rod.mesh is CylinderMesh):
+			var cyl := CylinderMesh.new()
+			cyl.radial_segments = 10
+			rod.mesh = cyl
+			var sheath := MeshInstance3D.new()
+			sheath.name = "Sheath"
+			var soft := CylinderMesh.new()
+			soft.radial_segments = 10
+			sheath.mesh = soft
+			rod.add_child(sheath)
+		var thick := 0.42 * read
+		if kind == "plasma":
+			thick = 0.62 * read
+		(rod.mesh as CylinderMesh).height = length
+		(rod.mesh as CylinderMesh).top_radius = thick * 0.45
+		(rod.mesh as CylinderMesh).bottom_radius = thick
+		rod.position = chart(mid, 6.4)
+		_aim_rod(rod, along)
+		_paint_bolt(rod, core, 3.8 * fade, clampf(fade, 0.08, 0.95))
+		var sheath_node := rod.get_node_or_null("Sheath") as MeshInstance3D
+		if sheath_node != null and sheath_node.mesh is CylinderMesh:
+			(sheath_node.mesh as CylinderMesh).height = length
+			(sheath_node.mesh as CylinderMesh).top_radius = thick * 1.8
+			(sheath_node.mesh as CylinderMesh).bottom_radius = thick * 2.6
+			_paint_bolt(sheath_node, edge, 2.2 * fade, clampf(fade * 0.55, 0.04, 0.7))
+		var spark := _prop("cutspark%d" % index)
+		if spark.mesh == null:
+			var orb := SphereMesh.new()
+			orb.radius = 1.0
+			orb.height = 2.0
+			orb.radial_segments = 10
+			orb.rings = 6
+			spark.mesh = orb
+		var pulse := 0.7 + 0.3 * sin(float(sim.time) * 28.0 + float(index))
+		spark.position = chart(b2, 6.8)
+		spark.scale = Vector3.ONE * (1.8 + fade * 2.4) * read * pulse
+		_paint_bolt(spark, core.lightened(0.25), 4.4 * fade, clampf(fade, 0.1, 0.95))
+		var hitch := _prop("cuthitch%d" % index)
+		if hitch.mesh == null:
+			var bloom := SphereMesh.new()
+			bloom.radius = 1.0
+			bloom.height = 2.0
+			bloom.radial_segments = 8
+			bloom.rings = 4
+			hitch.mesh = bloom
+		hitch.position = chart(a2, 8.2)
+		hitch.scale = Vector3.ONE * (1.1 + fade) * read
+		_paint_bolt(hitch, core, 2.8 * fade, clampf(fade * 0.8, 0.08, 0.85))
+		for chip_i in 3:
+			var flake := _prop("cutchip%d_%d" % [index, chip_i])
+			if flake.mesh == null:
+				var bit := SphereMesh.new()
+				bit.radius = 1.0
+				bit.height = 2.0
+				bit.radial_segments = 6
+				bit.rings = 3
+				flake.mesh = bit
+			var fly := float(row.get("age", 0.0))
+			var side := Vector3(-along.z, 0.0, along.x)
+			if side.length() < 0.2:
+				side = Vector3.RIGHT
+			side = side.normalized()
+			var slide := (float(chip_i) - 1.0) * 2.4 * read
+			var back := fly * (18.0 + float(chip_i) * 6.0) * read
+			flake.position = chart(b2, 7.2 + float(chip_i) * 0.8) - along * back + side * slide + Vector3(0.0, fly * 8.0, 0.0)
+			flake.scale = Vector3.ONE * (0.35 + fade * 0.25) * read
+			_paint_bolt(flake, edge.lightened(0.2), 1.6 * fade, clampf(fade, 0.12, 0.9))
+		index += 1
 
 
 func _sync_beams(sim) -> void:
@@ -5779,8 +5879,37 @@ func _sync_craft(sim) -> void:
 		var kind := str(row.get("def_id", "fighter"))
 		var holder := _craft_holder(key, kind)
 		_banked(holder, pos, rot, height)
+		_dress_harvest_work(sim, holder, row, pos)
 		if Game.zoom > 0.9 and str(row.get("state", "")) != "docked":
 			_tag(str(row.get("name", kind)), chart(pos + Vector2(14.0, 10.0), 8.0), Color("d7e6c8"), 12)
+
+
+func _dress_harvest_work(sim, holder: Node3D, row: Dictionary, _pos: Vector2) -> void:
+	if str(row.get("state", "")) != "working":
+		return
+	var kind := str(row.get("def_id", ""))
+	var order_name := str(row.get("order", ""))
+	if kind != "harvest_drone" and not (kind == "survey_probe" and order_name == "cut"):
+		return
+	var bit := holder.get_node_or_null("Bit") as Node3D
+	if bit != null:
+		bit.rotation.x = float(sim.time) * 16.0
+	var glow := holder.get_node_or_null("CutGlow") as MeshInstance3D
+	if glow == null:
+		glow = MeshInstance3D.new()
+		glow.name = "CutGlow"
+		var orb := SphereMesh.new()
+		orb.radius = 1.15
+		orb.height = 2.3
+		orb.radial_segments = 10
+		orb.rings = 6
+		glow.mesh = orb
+		holder.add_child(glow)
+	glow.position = Vector3(5.4, 2.2, 0.0)
+	var pulse := 0.65 + 0.35 * sin(float(sim.time) * 22.0)
+	glow.scale = Vector3.ONE * pulse
+	var tint := Color("ffe0a0") if kind == "harvest_drone" else Color("c8ffe8")
+	_paint_bolt(glow, tint, 3.4 * pulse, 0.7)
 
 
 func _craft_holder(key: String, kind: String) -> Node3D:

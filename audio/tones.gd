@@ -39,7 +39,8 @@ func _ready() -> void:
 		"launch": _tone(420.0, 0.12, 0.3, 0.8),
 		"dock": _tone(540.0, 0.1, 0.28, 1.0),
 		"hail": _tone(660.0, 0.22, 0.25, 0.6),
-		"extract": _tone(280.0, 0.16, 0.3, 0.7),
+		"extract": _extract_crunch(),
+		"plasma": _plasma_hiss(),
 		"scan_done": _tone(740.0, 0.18, 0.28, 0.5),
 		"install": _tone(190.0, 0.2, 0.4, 0.6),
 		"destroyed": _tone(80.0, 0.28, 0.45, 0.5),
@@ -94,9 +95,36 @@ func play(kind: String) -> void:
 		loud = -4.0
 	elif kind == "hit_laser_uv":
 		loud = -4.6
+	elif kind == "plasma":
+		loud = -3.4
+	elif kind == "extract":
+		loud = -3.8
 	voice.volume_db = loud
 	voice.stream = clips[kind]
 	voice.play()
+
+
+func _plasma_hiss() -> AudioStreamWAV:
+	return _render(0.42, func(t: float, env: float) -> float:
+		var strike: float = _noise(t * 4200.0) * exp(-t * 38.0)
+		var arc: float = sin(TAU * (920.0 + t * 480.0) * t) * (0.35 + 0.65 * absf(sin(TAU * 36.0 * t)))
+		var hiss: float = _noise(t * 2600.0) * (0.28 + 0.72 * absf(sin(TAU * 48.0 * t)))
+		var torch: float = sin(TAU * 70.0 * t) * exp(-t * 2.4)
+		var spit: float = 0.0
+		if t > 0.08:
+			spit = _noise((t - 0.08) * 1800.0) * exp(-(t - 0.08) * 14.0)
+		return (strike * 0.42 + arc * 0.38 + hiss * 0.7 + torch * 0.34 + spit * 0.22) * env * 0.62
+	, 0.55)
+
+
+func _extract_crunch() -> AudioStreamWAV:
+	return _render(0.28, func(t: float, env: float) -> float:
+		var bite: float = _noise(t * 520.0) * exp(-t * 10.0)
+		var rock: float = sin(TAU * (90.0 - t * 28.0) * t) * exp(-t * 6.0)
+		var flake: float = _noise(t * 2100.0) * exp(-t * 16.0)
+		var hold: float = sin(TAU * 160.0 * t) * exp(-t * 8.0)
+		return (bite * 0.7 + rock * 0.48 + flake * 0.32 + hold * 0.22) * env * 0.7
+	, 0.9)
 
 
 func _tone(freq: float, duration: float, volume: float, decay: float) -> AudioStreamWAV:

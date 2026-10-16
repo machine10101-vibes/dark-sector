@@ -520,7 +520,7 @@ static func buy_good(sim) -> String:
 		return "The hold is full."
 	sim.quest_flags.purse = purse(sim) - BUY_PRICE
 	sim._add_cargo(GOOD, 1)
-	sim.say("Bought glasswheat for %d. Purse %d." % [BUY_PRICE, purse(sim)])
+	sim.say("Bought glasswheat for %d. GRT %d." % [BUY_PRICE, purse(sim)])
 	return ""
 
 
@@ -605,7 +605,19 @@ static func sell_good(sim) -> String:
 		return "The Helion market stands on the pad."
 	if not sim.spend_cargo(GOOD, 1):
 		return "No glasswheat in the hold."
-	_pay(sim, SELL_PRICE, "Sold glasswheat for %d." % SELL_PRICE)
+	_pay(sim, SELL_PRICE, "Sold glasswheat for %d GRT." % SELL_PRICE)
+	return ""
+
+
+static func sell_stock(sim, id: String) -> String:
+	if not at_pad(sim):
+		return "The Helion market stands on the pad."
+	var price := HelmHarvest.stock_price(id)
+	if price <= 0:
+		return "The pad does not buy that."
+	if not sim.spend_cargo(id, 1):
+		return "No %s in the hold." % sim.resource_name(id)
+	_pay(sim, price, "Sold %s for %d GRT." % [sim.resource_name(id), price])
 	return ""
 
 
@@ -663,4 +675,4 @@ static func _near_ring(sim) -> bool:
 static func _pay(sim, amount: int, line: String) -> void:
 	var next := purse(sim) + amount
 	sim.quest_flags.purse = next
-	sim.say("%s Purse %d." % [line, next])
+	sim.say("%s GRT %d." % [line, next])

@@ -777,13 +777,15 @@ func _open_strike(hit: Dictionary, at: Vector2) -> void:
 	elif kind == "ore":
 		_strike_button("Approach", _strike_approach.bind(hit))
 		_strike_button("Scan", _strike_scan.bind(str(hit.id)))
-		_strike_button("Harvest", _strike_harvest.bind(str(hit.id)))
+		_strike_button("Harvest with probe", _strike_harvest.bind(str(hit.id)))
+		_strike_button("Plasma cut", _strike_plasma.bind(str(hit.id)))
 	elif kind == "rock" or kind == "meteor" or kind == "debris":
 		_strike_button("Approach", _strike_approach.bind(hit))
 		var seam := _ore_near(hit.pos)
 		if seam != "":
 			_strike_button("Scan", _strike_scan.bind(seam))
-			_strike_button("Harvest", _strike_harvest.bind(seam))
+			_strike_button("Harvest with probe", _strike_harvest.bind(seam))
+			_strike_button("Plasma cut", _strike_plasma.bind(seam))
 	else:
 		_strike_button("Approach", _strike_approach.bind(hit))
 	_place_strike(at)
@@ -996,13 +998,14 @@ func _strike_harvest(node_id: String) -> void:
 	_close_strike()
 	if Game.sim == null:
 		return
-	var uid := _craft_uid("harvest_drone")
-	if uid == "":
-		Game.sim.say("No harvest drone on this keel. Scan still maps the seam. A Needle or a Barn carries a drone.")
-		return
-	var message := CraftOrders.order(Game.sim, uid, "launch", node_id)
+	var message := HelmHarvest.send_craft(Game.sim, node_id)
 	if message != "":
 		Game.sim.say(message)
+
+
+func _strike_plasma(node_id: String) -> void:
+	_close_strike()
+	Game.tap("cut", {"node": node_id})
 
 
 func _strike_approach(hit: Dictionary) -> void:
@@ -1141,6 +1144,7 @@ func _draw() -> void:
 	var lock_id := str(sim.player.get("lock_id", ""))
 	_draw_rings(cam, stage, sim)
 	_draw_sweep(cam, stage, sim)
+	_draw_cuts(cam, stage, sim)
 	_draw_incoming(cam, stage, sim)
 	var quest_ids := {}
 	for goal in objectives_of(sim):
@@ -1187,6 +1191,28 @@ func _draw() -> void:
 		_text(Vector2(sp.x - radius, tank_y + 20.0), "%s · %s" % [_dist_word(row.dist), row.word], 10, Color(col.lerp(Color.WHITE, 0.35), 0.85))
 	_draw_own(cam, stage, sim)
 	_draw_box()
+
+
+func _draw_cuts(cam: Camera3D, stage, sim) -> void:
+	if not sim.get("cuts"):
+		return
+	for raw in sim.cuts:
+		var row: Dictionary = raw
+		var a3: Vector3 = stage.chart(row.from, 4.0)
+		var b3: Vector3 = stage.chart(row.to, 2.0)
+		if cam.is_position_behind(a3) or cam.is_position_behind(b3):
+			continue
+		var a := cam.unproject_position(a3)
+		var b := cam.unproject_position(b3)
+		var fade := clampf(1.0 - float(row.get("age", 0.0)) / HelmHarvest.CUT_LIFE, 0.12, 1.0)
+		var kind := str(row.get("kind", "plasma"))
+		var col := Color(0.55, 0.95, 1.0, 0.9 * fade)
+		if kind == "probe":
+			col = Color(0.55, 0.92, 0.78, 0.88 * fade)
+		elif kind == "drone":
+			col = Color(1.0, 0.72, 0.32, 0.9 * fade)
+		draw_line(a, b, col, 2.4 if kind == "plasma" else 1.8, true)
+		draw_circle(b, 4.0 + fade * 2.0, Color(col, 0.55 * fade))
 
 
 func _draw_rings(cam: Camera3D, stage, sim) -> void:
