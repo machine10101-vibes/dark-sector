@@ -464,7 +464,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_Y:
 			_say_result(QuestBoard.mark(Game.sim))
 		KEY_O:
-			_say_result(QuestBoard.accept(Game.sim))
+			_say_result(QuestBoard.try_take(Game.sim))
 		KEY_K:
 			_toggle("claim")
 		KEY_1, KEY_KP_1:
@@ -902,6 +902,9 @@ func _build_actions() -> void:
 	_action("Lock", func() -> void: Game.tap("lock_cycle", 1))
 	_action("Engage", _hud_engage)
 	_action("Stop", func() -> void: Game.tap("order", {"kind": "stop"}))
+	_action("Form", func() -> void: _fleet_order("form"))
+	_action("Attack", func() -> void: _fleet_order("attack"))
+	_action("Recall", func() -> void: _fleet_order("recall"))
 	_group("SHIP")
 	_action("Ship", func() -> void: _toggle("bay"))
 	_action("Fleet", func() -> void: _toggle("fleet"))
@@ -913,6 +916,7 @@ func _build_actions() -> void:
 	_action("Plasma", _plasma_cut)
 	_action("Weld", _repair)
 	_action("Hangar", func() -> void: _toggle("hangar"))
+	_action("Return", _recall_craft)
 	_action("Boat", func() -> void: _launch(_boat_id()))
 	_group("SURVEY")
 	_action("Scan", func() -> void: _toggle("dossier"))
@@ -924,7 +928,7 @@ func _build_actions() -> void:
 	_action("Take", func() -> void:
 		if Game.sim == null:
 			return
-		_say_result(QuestBoard.accept(Game.sim))
+		_say_result(QuestBoard.try_take(Game.sim))
 	)
 	_action("Approach", _approach_job)
 	_action("Sweep", func() -> void: Game.tap("sweep", true))
@@ -944,6 +948,7 @@ func _build_actions() -> void:
 	_action("Flag", func() -> void: Game.tap("flag", true))
 	_action("Heat", func() -> void: _toggle("heat"))
 	_action("Claim", func() -> void: _toggle("claim"))
+	_action("Walk", _walk_pocket)
 	_action("Plant", func() -> void:
 		if Game.sim == null:
 			return
@@ -3635,6 +3640,18 @@ func _salvage_wreck() -> void:
 	var message := CraftOrders.salvage(Game.sim)
 	if message != "":
 		Game.sim.say(message)
+
+
+func _recall_craft() -> void:
+	if Game.sim == null:
+		return
+	_say_result(CraftOrders.try_recall_working(Game.sim))
+
+
+func _walk_pocket() -> void:
+	if Game.sim == null:
+		return
+	_say_result(CraftOrders.try_walk(Game.sim))
 
 
 func _bolt_stock() -> void:

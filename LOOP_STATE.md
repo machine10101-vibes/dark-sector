@@ -37,6 +37,8 @@ Player-visible what works now:
 - The amber helm cue now names the live job when no dock crate is out: Cast off, Scan Aegis, cut a seam, bolt a module, meet the Red Keel, lane to Quiet Hollow, or tend the garden. The amber beam follows that mark. Plant, Core, Tend, and Feed sit on the LAW row. Salvage sits on SHIP; a close wreck strips from the helm, and a far wreck sends the tender. Right-click a wreck for Approach and Salvage. The quest log leads with NEXT and hides dormant authored shorts. Combat math is unchanged.
 - Probe, or 1, scans an explicit harvest mark. An approach-only seam does not steal that launch; unmarked Probe still takes the nearer unread node. Bolt on SHIP installs the first spare (the mast on a stock Needle). Approach on SURVEY flies the live job — the Red Keel pack, a Quiet Hollow lane, a contract mark, or an in-system visit hook. Ash Hymn, Quay, Coda, and the other authored bodies name themselves on the cue and the log when the keel is in that system. Combat math is unchanged.
 - Approach takes an offered contract and flies the real mark: the pack for a cull, the lost craft for recover, the unread body for a survey, Helion Dock once food is in the hold, Quiet Hollow for a defend, the stream or trash for a window job. Sweep sits on SURVEY. Haul, Pen, and Turret sit on LAW with Tend and Feed. Combat math is unchanged.
+- Approach flies a live dock slip — the ice ring, the pad on the return, Seized Hold, or the Compact cutter. Take, or O, files the first open Helion slip when no contract is offered. Form, Attack, and Recall sit on COMBAT and cover the whole wing. Combat math is unchanged.
+- Return on SHIP recalls every craft that is out, so Lane can fire after a probe. Take scan sends the docked probe to Aegis Prime. Salvage strips a close trash or stream field from the helm. Walk on LAW surveys a plantable pocket. A defend contract names the 48 s hold on the amber cue. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -50,11 +52,13 @@ Open design decisions (max 5):
 Files touched:
 - craft/orders.gd
 - quests/board.gd
+- quests/dock_board.gd
 - quests/log.gd
 - ui/helm_overlay.gd
 - ui/hud.gd
 - world/overhead.gd
 - tests/slice6_sim.gd
+- tests/dock_board_sim.gd
 - tests/harvest_cut.gd
 - tests/liveops_sim.gd
 - LOOP_STATE.md

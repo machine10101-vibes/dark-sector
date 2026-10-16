@@ -43,6 +43,18 @@ static func accept(sim) -> String:
 	return "No contract is offered."
 
 
+static func try_take(sim) -> String:
+	var note := accept(sim)
+	if note == "":
+		return ""
+	if not DockBoard.at_pad(sim):
+		return note
+	for job in ["scan", "haul", "salvage", "escort"]:
+		if DockBoard.state(sim, "dock_%s" % job) == "open":
+			return DockBoard.take(sim, job)
+	return note
+
+
 static func mark(sim) -> String:
 	var focus := focus(sim)
 	sim.nav_mark = focus
@@ -107,6 +119,11 @@ static func cue_line(sim) -> String:
 		var title := str(job.get("title", "Contract"))
 		if str(job.get("state", "")) == "offered":
 			return "OFFER  %s  ·  Take or Approach" % title
+		if str(job.get("template", "")) == "defend":
+			var held := float(job.get("pocket_time", 0.0))
+			if _in_claim(sim):
+				return "%s  ·  hold %.0f/48 in pocket" % [title, held]
+			return "%s  ·  enter the pocket" % title
 		var mark := _contract_focus(sim, job)
 		var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
 		if pos == Vector2.ZERO:
@@ -166,6 +183,9 @@ static func _beat_line(sim, beat: String) -> String:
 		"pirate":
 			return "Meet the Red Keel — %d m." % gap
 		"claim":
+			var out := CraftOrders.out_name(sim)
+			if out != "" and str(sim.defs.system.id) == "HC-V1-R1-S1":
+				return "Return %s — Lane waits." % out
 			if str(sim.defs.system.id) != "HC-V1-R5-S1":
 				return "Lane to Quiet Hollow — %s." % label
 			if int(sim.player.cargo.get("claim_core", 0)) < 1:
@@ -225,6 +245,19 @@ static func try_bolt(sim) -> String:
 static func try_approach(sim) -> String:
 	if sim == null or sim.player.is_empty():
 		return "No keel to move."
+	var slip_aim: Vector2 = DockBoard.cue_aim(sim)
+	if slip_aim.length() > 8.0:
+		var dest: Vector2 = sim.player.pos + slip_aim
+		var label := DockBoard.slip_line(sim)
+		if label == "":
+			label = "the dock mark"
+		HelmCombat.set_order(sim, sim.player, {
+			"kind": "approach",
+			"x": dest.x,
+			"y": dest.y,
+			"label": label,
+		})
+		return ""
 	var beat := str(sim.quest_flags.get("shakedown_beat", "undock"))
 	if beat == "undock" and bool(sim.player.get("moored", false)):
 		return "Cast off — leave the pad."

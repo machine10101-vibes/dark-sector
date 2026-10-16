@@ -148,15 +148,21 @@ static func _take_scan(sim) -> String:
 	sim.quest_flags.dock_scan = "active"
 	# A probe already in flight was aimed at the nearest node, which from
 	# this pad is the ice ring. The slip is Aegis Prime. Send it there.
+	# A docked probe stays on the rack until Take — launch it so the slip
+	# starts from the helm without a second Probe tap.
 	if sim.dossier_complete("aegis_prime") == false:
+		var flying := false
 		for craft in sim.craft:
 			if str(craft.def_id) != "survey_probe":
 				continue
 			if str(craft.state) == "docked" or str(craft.state) == "lost":
 				continue
+			flying = true
 			if str(craft.target) == "aegis_prime":
 				continue
 			CraftOrders.order(sim, str(craft.uid), "scan", "aegis_prime")
+		if not flying:
+			CraftOrders.launch(sim, "survey_probe")
 	sim.say("Aegis scan taken. The probe reads Aegis Prime. Stand the pad when the dossier seals for %d." % SCAN_PAY)
 	return ""
 

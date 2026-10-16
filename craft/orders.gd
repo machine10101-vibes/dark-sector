@@ -36,13 +36,25 @@ static func salvage(sim, wreck_id: String = "") -> String:
 			if result == "full":
 				return "Hold is full. Sell the stock for GRT, then strip again."
 			return "That wreck has nothing left."
+	var place = sim.survey_node(id)
+	if place != null:
+		var kind := str(place.get("kind", ""))
+		if kind == "trash" or kind == "stream":
+			var field_gap: float = sim.player.pos.distance_to(place.pos)
+			if field_gap <= 140.0:
+				var field := str(sim.try_field_salvage(id))
+				if field == "ok":
+					return ""
+				if field == "full":
+					return "Hold is full. Sell the stock for GRT, then strip again."
+				return "%s is already stripped." % place.name
 	var craft = _first_docked(sim, "salvage_tender")
 	if craft == null:
 		var any = _any_of(sim, "salvage_tender")
 		if any != null and str(any.state) != "lost":
 			craft = any
 	if craft == null:
-		return "Close on the wreck, or rack a salvage tender."
+		return "Close on the wreck or field, or rack a salvage tender."
 	return order(sim, str(craft.uid), "strip", id)
 
 
@@ -257,6 +269,41 @@ static func _unit_name(sim, target_id: String) -> String:
 	if other != null:
 		return str(other.get("name", "the target"))
 	return "the target"
+
+
+static func try_recall_working(sim) -> String:
+	return fleet(sim, "recall")
+
+
+static func out_name(sim) -> String:
+	if sim == null:
+		return ""
+	for craft in sim.craft:
+		var state := str(craft.state)
+		if state != "docked" and state != "lost":
+			return str(craft.name)
+	return ""
+
+
+static func try_walk(sim) -> String:
+	if sim == null or sim.player.is_empty():
+		return "No keel to walk from."
+	var pocket: Dictionary = sim.defs.system.pocket
+	if not bool(pocket.get("plantable", false)):
+		return "%s stays closed. Nothing can be planted." % str(pocket.get("name", "The pocket"))
+	if bool(sim.claim.get("surveyed", false)):
+		return "The pocket is already walked."
+	var reach := float(pocket.get("radius", 80.0)) + 80.0
+	if sim.player.pos.distance_to(sim.pocket_pos) > reach:
+		return "Bring the keel over the pocket, then Walk."
+	var shuttle = _first_docked(sim, "away_shuttle")
+	if shuttle != null:
+		return launch(sim, "away_shuttle")
+	var flying = _any_of(sim, "away_shuttle")
+	if flying != null and str(flying.state) != "lost" and str(flying.state) != "docked":
+		return "%s is already walking the pocket." % flying.name
+	PocketRules.confirm_walk(sim)
+	return ""
 
 
 static func fleet(sim, verb: String) -> String:

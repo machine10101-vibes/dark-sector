@@ -76,6 +76,26 @@ func _cue() -> void:
 		if str(row.get("state", "")) == "dormant":
 			dormant += 1
 	check(dormant == 0, "the quest log hides dormant authored shorts")
+	var pad := make("vesper")
+	check(QuestBoard.try_take(pad) == "", "Take files the first pad slip")
+	check(DockBoard.state(pad, "dock_scan") == "active", "Take opens the Aegis scan")
+	var aimed := false
+	for craft in pad.craft:
+		if str(craft.def_id) == "survey_probe" and str(craft.target) == "aegis_prime" and str(craft.state) != "docked":
+			aimed = true
+	check(aimed, "Take scan sends the probe to Aegis Prime")
+	check(CraftOrders.try_recall_working(pad) == "", "Return recalls the scan probe")
+	var recalled := false
+	for craft in pad.craft:
+		if str(craft.def_id) == "survey_probe" and str(craft.state) == "returning":
+			recalled = true
+	check(recalled, "Return turns the probe for the keel")
+	var offered := make("vesper")
+	offered.contracts = []
+	QuestBoard.refresh(offered)
+	check(QuestBoard.try_take(offered) == "", "Take still accepts a contract first")
+	check(str(offered.contracts[0].state) == "active", "an offered contract beats the pad slip")
+	check(DockBoard.state(offered, "dock_scan") == "open", "a contract Take leaves the scan slip")
 
 
 func _bolt_and_meet() -> void:
@@ -115,6 +135,28 @@ func _wreck_salvage() -> void:
 	check(CraftOrders.salvage(sim, "wreck_test") == "", "a close wreck strips from the helm")
 	check(int(sim.player.cargo.get("salvage_parts", 0)) >= 1, "the wreck leaves keel salvage")
 	check(CraftOrders.salvage(sim, "wreck_test") != "", "a stripped wreck refuses a second take")
+	var hold = sim.survey_node("seized_hold")
+	check(hold != null, "Seized Hold is a trash field")
+	if hold != null:
+		sim.player.pos = hold.pos
+		sim.deposits["seized_hold"] = 1
+		var before := int(sim.player.cargo.get("salvage_parts", 0))
+		check(CraftOrders.salvage(sim, "seized_hold") == "", "a close trash field strips from the helm")
+		check(int(sim.player.cargo.get("salvage_parts", 0)) > before, "the field leaves keel salvage")
+		check(CraftOrders.salvage(sim, "seized_hold") != "", "a stripped field refuses a second take")
+	var closed := make("vesper")
+	check(CraftOrders.try_walk(closed) != "", "the Unlet stays closed")
+	var soil := make("vesper")
+	soil._arrive("HC-V1-R5-S1", "")
+	soil.player.pos = soil.pocket_pos
+	check(CraftOrders.try_walk(soil) == "", "Walk surveys Quiet Hollow")
+	check(bool(soil.claim.surveyed), "Walk marks the pocket walked")
+	check(CraftOrders.try_walk(soil) != "", "a walked pocket refuses a second Walk")
+	var lane := make("vesper")
+	lane.quest_flags.shakedown_beat = "claim"
+	lane.player.moored = false
+	check(CraftOrders.launch(lane, "survey_probe") == "", "a claim-beat probe launches")
+	check(QuestBoard.cue_line(lane).contains("Return"), "claim beat names Return while a probe is out")
 
 
 func _shakedown(class_id: String, legal: bool) -> void:
@@ -265,8 +307,11 @@ func _contracts() -> void:
 	var held := QuestBoard.refresh(defend)
 	check(held == "systemic_defend", "a planted claim offers a defend contract")
 	QuestBoard.accept(defend)
-	defend.contracts[0].pocket_time = 47.5
+	defend.quest_flags.shakedown_beat = "done"
 	defend.player.pos = defend.pocket_pos
+	check(QuestBoard.cue_line(defend).contains("hold"), "the defend cue names the hold")
+	check(QuestBoard.cue_line(defend).contains("48"), "the defend cue names the timer")
+	defend.contracts[0].pocket_time = 47.5
 	QuestBoard.pulse(defend, 1.0)
 	check(str(defend.contracts[0].state) == "done", "staying through the raid timer holds the hollow")
 	var deliver := _to_claim("anvil")
