@@ -206,6 +206,15 @@ func _contracts() -> void:
 	pirates.contracts = []
 	var cull := QuestBoard.refresh(pirates)
 	check(cull == "systemic_cull", "a living pirate pack offers a cull contract")
+	pirates.quest_flags.shakedown_beat = "done"
+	pirates.player.moored = false
+	pirates.player.pos += Vector2(80, 0)
+	check(QuestBoard.cue_line(pirates).contains("Take or Approach"), "an offered cull names Take or Approach")
+	check(QuestBoard.try_approach(pirates) == "", "Approach takes the cull")
+	check(str(pirates.contracts[0].state) == "active", "Approach accepts the offer")
+	var pack_order = pirates.player.get("order", {})
+	var pack_aim := Vector2(float(pack_order.get("x", 0.0)), float(pack_order.get("y", 0.0)))
+	check(pack_aim.distance_to(pirates.pack_pos) < 80.0, "Approach flies the pack, not the pad")
 	var lost := make("vesper")
 	lost.contracts = []
 	lost.craft[0].state = "lost"
@@ -213,6 +222,10 @@ func _contracts() -> void:
 	var recover := QuestBoard.refresh(lost)
 	check(recover == "systemic_recover", "a lost craft offers a recover contract")
 	check(QuestBoard.accept(lost) == "", "the recover contract can be taken")
+	lost.quest_flags.shakedown_beat = "done"
+	var recover_mark: Dictionary = QuestBoard.focus(lost)
+	var recover_aim := Vector2(float(recover_mark.get("x", 0.0)), float(recover_mark.get("y", 0.0)))
+	check(recover_aim.distance_to(lost.craft[0].pos) < 8.0, "recover aims at the lost craft")
 	QuestBoard.pulse(lost, 0.2)
 	check(str(lost.contracts[0].state) == "done", "standing on the wreck parts finishes recover")
 	check(int(lost.player.cargo.get("salvage_parts", 0)) > 0, "recover puts wreck parts in the hold")

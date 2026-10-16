@@ -106,7 +106,7 @@ static func cue_line(sim) -> String:
 	if not job.is_empty():
 		var title := str(job.get("title", "Contract"))
 		if str(job.get("state", "")) == "offered":
-			return "OFFER  %s  ·  Take" % title
+			return "OFFER  %s  ·  Take or Approach" % title
 		var mark := _contract_focus(sim, job)
 		var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
 		if pos == Vector2.ZERO:
@@ -172,7 +172,9 @@ static func _beat_line(sim, beat: String) -> String:
 				return "Make a Claim Core — four raw mass."
 			return "Plant the core on Quiet Hollow."
 		"garden":
-			return "Tend glasswheat and keep the kine."
+			if not bool(sim.quest_flags.get("wheat_cut", false)):
+				return "Tend glasswheat — Tend on LAW."
+			return "Feed the kine — Feed on LAW."
 		_:
 			return ""
 
@@ -228,12 +230,16 @@ static func try_approach(sim) -> String:
 		return "Cast off — leave the pad."
 	if beat == "module":
 		return "Bolt a module from the SHIP row."
-	if beat == "garden":
-		return "Tend glasswheat and keep the kine."
+	if beat == "done" or beat == "failed":
+		var job := _active_contract(sim)
+		if not job.is_empty() and str(job.get("state", "")) == "offered":
+			accept(sim)
 	var mark: Dictionary = focus(sim)
 	var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
 	if pos == Vector2.ZERO:
 		return "No job mark to approach."
+	if beat == "garden" and pos.distance_to(sim.player.pos) <= 80.0:
+		return "Tend glasswheat and keep the kine."
 	if pos.distance_to(sim.player.pos) <= 8.0:
 		return "Already on the mark."
 	HelmCombat.set_order(sim, sim.player, {
@@ -962,7 +968,68 @@ static func _active_contract(sim) -> Dictionary:
 
 
 static func _contract_focus(sim, contract: Dictionary) -> Dictionary:
-	return _point(sim, str(contract.get("system_id", sim.defs.system.id)), str(contract.get("template", "system")), str(contract.get("target", "")), str(contract.get("title", "contract")))
+	var template := str(contract.get("template", ""))
+	var target := str(contract.get("target", ""))
+	var title := str(contract.get("title", "contract"))
+	var system_id := str(contract.get("system_id", sim.defs.system.id))
+	var stored := Vector2(float(contract.get("x", 0.0)), float(contract.get("y", 0.0)))
+	var food := int(sim.player.cargo.get("food_mass", 0))
+	match template:
+		"cull":
+			return _point(sim, str(sim.defs.system.id), "patrol", "red_keel", title)
+		"recover":
+			var spot := stored
+			for item in sim.craft:
+				if str(item.uid) == target:
+					spot = item.pos
+					break
+			return _mark_at(sim, system_id, "wreck", target, title, spot)
+		"survey", "ledger":
+			return _point(sim, system_id, "body", target, title)
+		"deliver":
+			if food > 0:
+				return _point(sim, "HC-V1-R1-S1", "pad", "helion_dock", "Helion Dock")
+			return _point(sim, "HC-V1-R5-S1", "claim", "quiet_hollow", "Quiet Hollow")
+		"defend":
+			return _point(sim, "HC-V1-R5-S1", "claim", "quiet_hollow", title)
+		"lantern":
+			if food > 0:
+				return _point(sim, "HC-V1-R1-S2", "body", "lamp_yard", title)
+			return _point(sim, "HC-V1-R5-S1", "claim", "quiet_hollow", title)
+		"towline":
+			return _point(sim, "HC-V1-R2-S2", "body", target, title)
+		"gyre":
+			return _point(sim, "HC-V1-R6-S1", "body", target, title)
+		"meteor_window", "choir_ash_window":
+			var rain: Vector2 = sim.stream_origin
+			if rain == Vector2.ZERO:
+				rain = stored
+			return _mark_at(sim, system_id, "stream", target, title, rain)
+		"unpaid_tow":
+			var dump: Vector2 = sim.trash_pos
+			if dump == Vector2.ZERO:
+				dump = stored
+			return _mark_at(sim, system_id, "trash", target, title, dump)
+		_:
+			if stored != Vector2.ZERO and str(sim.defs.system.id) == system_id:
+				return _mark_at(sim, system_id, template, target, title, stored)
+			return _point(sim, system_id, "body", target, title)
+
+
+static func _mark_at(sim, system_id: String, kind: String, target_id: String, label: String, pos: Vector2) -> Dictionary:
+	if str(sim.defs.system.id) != system_id:
+		return _point(sim, system_id, kind, target_id, label)
+	if pos == Vector2.ZERO:
+		pos = _local_pos(sim, kind, target_id)
+	return {
+		"system_id": str(sim.defs.system.id),
+		"target_system": system_id,
+		"kind": kind,
+		"target_id": target_id,
+		"label": label,
+		"x": pos.x,
+		"y": pos.y,
+	}
 
 
 static func _point(sim, system_id: String, kind: String, target_id: String, label: String) -> Dictionary:
@@ -996,14 +1063,31 @@ static func _local_pos(sim, kind: String, target_id: String) -> Vector2:
 		if bool(sim.claim.get("owned", false)) and str(sim.claim.get("system_id", "")) == str(sim.defs.system.id):
 			return Vector2(float(sim.claim.get("x", sim.pocket_pos.x)), float(sim.claim.get("y", sim.pocket_pos.y)))
 		return sim.pocket_pos
+	if kind == "pad":
+		return sim.beacon_pos
 	if kind == "patrol" and target_id == "red_keel":
+		return sim.pack_pos
+	if kind == "cull":
 		return sim.pack_pos
 	if kind == "patrol":
 		for actor in sim.actors:
 			if str(actor.team) == "helion_compact" and bool(actor.alive):
 				return actor.pos
 		return sim.beacon_pos
-	if kind == "body":
+	if kind == "stream":
+		if sim.stream_origin != Vector2.ZERO:
+			return sim.stream_origin
+	if kind == "trash":
+		if sim.trash_pos != Vector2.ZERO:
+			return sim.trash_pos
+	if kind == "wreck":
+		for item in sim.craft:
+			if str(item.uid) == target_id:
+				return item.pos
+		for wreck in sim.wrecks:
+			if str(wreck.get("id", "")) == target_id:
+				return wreck.pos
+	if kind == "body" or kind == "survey" or kind == "ledger" or kind == "gyre" or kind == "towline" or kind == "lantern":
 		var node = sim.survey_node(target_id)
 		if node != null:
 			return node.pos
@@ -1012,6 +1096,12 @@ static func _local_pos(sim, kind: String, target_id: String) -> Vector2:
 			return body.pos
 	if kind == "keel":
 		return sim.player.pos
+	var named = sim.survey_node(target_id)
+	if named != null:
+		return named.pos
+	var rock = sim.planet(target_id)
+	if rock != null:
+		return rock.pos
 	return sim.beacon_pos
 
 

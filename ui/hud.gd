@@ -927,6 +927,7 @@ func _build_actions() -> void:
 		_say_result(QuestBoard.accept(Game.sim))
 	)
 	_action("Approach", _approach_job)
+	_action("Sweep", func() -> void: Game.tap("sweep", true))
 	_action("Site", func() -> void:
 		if Game.sim == null:
 			return
@@ -962,6 +963,21 @@ func _build_actions() -> void:
 		if Game.sim == null:
 			return
 		_say_result(Homestead.feed(Game.sim))
+	)
+	_action("Haul", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.haul(Game.sim))
+	)
+	_action("Pen", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.fit_pen(Game.sim))
+	)
+	_action("Turret", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.toggle_turret(Game.sim))
 	)
 	_action("Crack", func() -> void: Game.tap("crack", true))
 	_group("COMMS")
