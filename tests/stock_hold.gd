@@ -115,6 +115,26 @@ func _run() -> void:
 	check(ships.get("survey_probe", false), "the probe has a 3D card")
 	var fleet_grid := _first_grid(fleet)
 	check(fleet_grid != null and int(fleet_grid.columns) >= 3, "the rack is a grid")
+	hud.call("_toggle", "market")
+	check(str(hud.get("panel_kind")) == "market", "Market opens the exchange")
+	var market: Node = hud.get("market_box")
+	check(market != null and market.visible, "the exchange box is open")
+	var words2 := _box_text(market)
+	check(words2.contains("COLLECT") or words2.contains("waiting"), "the desk has a Collect box")
+	check(words2.contains("SLOT") or words2.contains("Slot") or words2.contains("Empty"), "the desk still has slots")
+	hud.call("_open_buy")
+	var catalog: Dictionary = {}
+	_collect_stock(market, catalog)
+	check(catalog.get("nickel_cinder", false), "buy shows a 3D nickel")
+	check(catalog.get("ice_spall", false), "buy shows a 3D ice")
+	check(catalog.get("glasswheat", false), "buy shows a 3D glasswheat")
+	hud.call("_set_market_page", "tape")
+	check(str(hud.get("market_page")) == "tape", "Last opens the tape")
+	hud.call("_set_market_page", "yard")
+	var yard: Dictionary = {}
+	_collect_stock(market, yard)
+	check(yard.get("glasswheat", false), "the yard shows 3D glasswheat")
+	check(yard.get("nickel_cinder", false), "the yard shows 3D nickel")
 
 
 func _collect_stock(node: Node, seen: Dictionary) -> void:
