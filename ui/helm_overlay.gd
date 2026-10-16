@@ -292,7 +292,19 @@ func objectives_of(sim) -> Array:
 	var out: Array = []
 	var here := str(sim.defs.system.id)
 	if here == "HC-V1-R1-S1":
-		if DockBoard.state(sim, "dock_scan") == "active":
+		if DockBoard.state(sim, "dock_haul") == "active":
+			var ring = sim.survey_node("aegis_ring")
+			var back := bool(sim.quest_flags.get("dock_haul_ring", false))
+			var spot: Vector2 = sim.beacon_pos if back or ring == null else ring.pos
+			out.append({"title": "Crate to the ice ring  ·  pay %d" % DockBoard.HAUL_PAY, "step": "Bring the crate back" if back else "Hold toward the ice ring", "pos": spot, "label": "Helion pad" if back else "Ice ring drop"})
+		elif DockBoard.state(sim, "dock_salvage") == "active":
+			var cut := bool(sim.quest_flags.get("dock_salvage_cut", false))
+			out.append({"title": "Tow tag at Seized Hold  ·  pay %d" % DockBoard.SALVAGE_PAY, "step": "Bring the tag to the pad" if cut else "Strip one tow tag", "pos": sim.beacon_pos if cut else sim.trash_pos, "label": "Helion pad" if cut else "Seized Hold"})
+		elif DockBoard.state(sim, "dock_escort") == "active":
+			var met := bool(sim.quest_flags.get("dock_escort_met", false))
+			var cutter: Vector2 = DockBoard.cutter_pos(sim)
+			out.append({"title": "Show the Compact the lane  ·  pay %d" % DockBoard.ESCORT_PAY, "step": "Stand the pad" if met else "Find the Compact cutter", "pos": sim.beacon_pos if met else cutter, "label": "Helion pad" if met else "Compact cutter"})
+		elif DockBoard.state(sim, "dock_scan") == "active":
 			var sealed: bool = sim.dossier_complete("aegis_prime")
 			var body = sim.planet("aegis_prime")
 			var at: Vector2 = sim.beacon_pos if sealed else (body.pos if body != null else sim.beacon_pos)
@@ -301,24 +313,12 @@ func objectives_of(sim) -> Array:
 				if str(item.def_id) == "survey_probe" and str(item.state) != "docked" and str(item.state) != "lost":
 					probe = "Probe %s · %s" % [str(item.state), str(item.get("target", "aegis_prime"))]
 			out.append({"title": "Seal Aegis Prime  ·  pay %d" % DockBoard.SCAN_PAY, "step": "Stand the pad to file it" if sealed else probe, "pos": at, "label": "Helion pad" if sealed else "Aegis Prime"})
-		if DockBoard.state(sim, "dock_haul") == "active":
-			var ring = sim.survey_node("aegis_ring")
-			var back := bool(sim.quest_flags.get("dock_haul_ring", false))
-			var spot: Vector2 = sim.beacon_pos if back or ring == null else ring.pos
-			out.append({"title": "Crate to the ice ring  ·  pay %d" % DockBoard.HAUL_PAY, "step": "Bring the crate back" if back else "Hold toward the ice ring", "pos": spot, "label": "Helion pad" if back else "Ice ring drop"})
-		if DockBoard.state(sim, "dock_salvage") == "active":
-			var cut := bool(sim.quest_flags.get("dock_salvage_cut", false))
-			out.append({"title": "Tow tag at Seized Hold  ·  pay %d" % DockBoard.SALVAGE_PAY, "step": "Bring the tag to the pad" if cut else "Strip one tow tag", "pos": sim.beacon_pos if cut else sim.trash_pos, "label": "Helion pad" if cut else "Seized Hold"})
-		if DockBoard.state(sim, "dock_escort") == "active":
-			var met := bool(sim.quest_flags.get("dock_escort_met", false))
-			var cutter: Vector2 = DockBoard.cutter_pos(sim)
-			out.append({"title": "Show the Compact the lane  ·  pay %d" % DockBoard.ESCORT_PAY, "step": "Stand the pad" if met else "Find the Compact cutter", "pos": sim.beacon_pos if met else cutter, "label": "Helion pad" if met else "Compact cutter"})
 	var focus: Dictionary = QuestBoard.focus(sim)
 	var beat := str(sim.quest_flags.get("shakedown_beat", "undock"))
-	if out.size() < 2 and str(focus.get("system_id", "")) == here and beat != "done" and beat != "failed":
+	if out.size() < 2 and beat != "done" and beat != "failed":
 		var spot := Vector2(float(focus.get("x", 0.0)), float(focus.get("y", 0.0)))
 		if spot != Vector2.ZERO and str(focus.get("kind", "")) != "keel":
-			out.append({"title": "Shakedown  ·  %s" % beat, "step": "Mark: %s" % str(focus.get("label", "")), "pos": spot, "label": str(focus.get("label", "mark"))})
+			out.append({"title": "Shakedown  ·  %s" % beat, "step": QuestBoard.cue_line(sim), "pos": spot, "label": str(focus.get("label", "mark"))})
 	return out
 
 
@@ -469,6 +469,7 @@ func _overview_input(event: InputEvent) -> void:
 			"name": str(row.name),
 			"kind": "wreck" if bool(row.wreck) else "ship",
 			"wreck": bool(row.wreck),
+			"pos": row.unit.pos if typeof(row.get("unit", null)) == TYPE_DICTIONARY else Vector2.ZERO,
 		}
 		_open_strike(marked, overview.position + press.position)
 		overview.accept_event()
@@ -513,6 +514,8 @@ func _marks(cam: Camera3D, stage, sim) -> Array:
 			"name": str(row.name),
 			"kind": "wreck" if bool(row.wreck) else "ship",
 			"wreck": bool(row.wreck),
+			"pos": unit.pos,
+			"range": 80.0,
 			"at": spot.at,
 			"rad": spot.rad,
 		})
@@ -774,6 +777,9 @@ func _open_strike(hit: Dictionary, at: Vector2) -> void:
 	_strike_title(str(hit.get("name", "Target")))
 	if kind == "ship" or kind == "wreck":
 		_strike_button("Target", _strike_target.bind(str(hit.id), kind == "wreck"))
+		if kind == "wreck":
+			_strike_button("Approach", _strike_approach.bind(hit))
+			_strike_button("Salvage", _strike_salvage.bind(str(hit.id)))
 		if kind == "ship":
 			_strike_button("Engage", _engage_hit.bind(hit))
 			_strike_button("Approach", _strike_helm.bind(str(hit.id), "approach"))
@@ -1026,6 +1032,15 @@ func _strike_harvest(node_id: String) -> void:
 func _strike_plasma(node_id: String) -> void:
 	_close_strike()
 	Game.tap("cut", {"node": node_id})
+
+
+func _strike_salvage(wreck_id: String) -> void:
+	_close_strike()
+	if Game.sim == null:
+		return
+	var message := CraftOrders.salvage(Game.sim, wreck_id)
+	if message != "":
+		Game.sim.say(message)
 
 
 func _strike_approach(hit: Dictionary) -> void:

@@ -90,6 +90,82 @@ static func focus(sim) -> Dictionary:
 			return _point(sim, str(sim.defs.system.id), "system", str(sim.defs.system.id), str(sim.defs.system.name))
 
 
+static func cue_line(sim) -> String:
+	if sim == null or sim.player.is_empty():
+		return ""
+	var slip := DockBoard.slip_line(sim)
+	if slip != "":
+		return slip
+	var beat := str(sim.quest_flags.get("shakedown_beat", "undock"))
+	if beat != "" and beat != "done" and beat != "failed":
+		return _beat_line(sim, beat)
+	var job := _active_contract(sim)
+	if job.is_empty():
+		return ""
+	var title := str(job.get("title", "Contract"))
+	if str(job.get("state", "")) == "offered":
+		return "OFFER  %s  ·  Take" % title
+	var mark := _contract_focus(sim, job)
+	var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
+	if pos == Vector2.ZERO:
+		return title
+	var gap: float = sim.player.pos.distance_to(pos)
+	return "%s  ·  %d m" % [title, int(gap)]
+
+
+static func cue_aim(sim) -> Vector2:
+	if sim == null or sim.player.is_empty():
+		return Vector2.ZERO
+	var slip: Vector2 = DockBoard.cue_aim(sim)
+	if slip.length() > 8.0:
+		return slip
+	var beat := str(sim.quest_flags.get("shakedown_beat", ""))
+	if beat == "" or beat == "done" or beat == "failed" or beat == "module" or beat == "garden":
+		return Vector2.ZERO
+	var mark := focus(sim)
+	if str(mark.get("kind", "")) == "keel":
+		return Vector2.ZERO
+	var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
+	if pos == Vector2.ZERO:
+		return Vector2.ZERO
+	var beam: Vector2 = pos - sim.player.pos
+	if beam.length() <= 8.0:
+		return Vector2.ZERO
+	return beam
+
+
+static func _beat_line(sim, beat: String) -> String:
+	var mark := focus(sim)
+	var label := str(mark.get("label", "the mark"))
+	var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
+	var gap := 0
+	if pos != Vector2.ZERO:
+		gap = int(sim.player.pos.distance_to(pos))
+	match beat:
+		"undock":
+			if bool(sim.player.get("moored", false)):
+				return "Cast off — leave the pad."
+			return "Leave the pad — shakedown is live."
+		"scan":
+			return "Scan Aegis Prime — %d m." % gap
+		"harvest":
+			return "Cut the ice ring or Seized Hold — %d m." % gap
+		"module":
+			return "Bolt a module — open Ship."
+		"pirate":
+			return "Meet the Red Keel — %d m." % gap
+		"claim":
+			if str(sim.defs.system.id) != "HC-V1-R5-S1":
+				return "Lane to Quiet Hollow — %s." % label
+			if int(sim.player.cargo.get("claim_core", 0)) < 1:
+				return "Make a Claim Core — four raw mass."
+			return "Plant the core on Quiet Hollow."
+		"garden":
+			return "Tend glasswheat and keep the kine."
+		_:
+			return ""
+
+
 static func live_summary(sim) -> String:
 	var beat := str(sim.quest_flags.get("shakedown_beat", "undock"))
 	var choice := str(sim.quest_flags.get("harvest_choice", ""))

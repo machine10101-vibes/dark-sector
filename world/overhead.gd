@@ -427,10 +427,10 @@ class ScaleReadout extends Control:
 			return
 		if int(sim.layer) != ScaleFrame.BAND:
 			return
-		var beam: Vector2 = DockBoard.cue_aim(sim)
+		var beam: Vector2 = QuestBoard.cue_aim(sim)
 		if beam.length() < 8.0:
 			return
-		var caption := DockBoard.slip_line(sim)
+		var caption := QuestBoard.cue_line(sim)
 		if caption == "":
 			return
 		# The fly cue leaves the keel along keel→target. A far inward drop

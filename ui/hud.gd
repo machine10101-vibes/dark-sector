@@ -908,6 +908,7 @@ func _build_actions() -> void:
 	_action("Stock", func() -> void: _toggle("stock"))
 	_action("Market", func() -> void: _toggle("market"))
 	_action("Harvest", _harvest_craft)
+	_action("Salvage", _salvage_wreck)
 	_action("Plasma", _plasma_cut)
 	_action("Weld", _repair)
 	_action("Hangar", func() -> void: _toggle("hangar"))
@@ -940,6 +941,26 @@ func _build_actions() -> void:
 	_action("Flag", func() -> void: Game.tap("flag", true))
 	_action("Heat", func() -> void: _toggle("heat"))
 	_action("Claim", func() -> void: _toggle("claim"))
+	_action("Plant", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.try_plant(Game.sim))
+	)
+	_action("Core", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.try_make_core(Game.sim))
+	)
+	_action("Tend", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.tend(Game.sim))
+	)
+	_action("Feed", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.feed(Game.sim))
+	)
 	_action("Crack", func() -> void: Game.tap("crack", true))
 	_group("COMMS")
 	_action("Chat", _toggle_chat)
@@ -1103,7 +1124,7 @@ func _refresh_helm() -> void:
 	helm_zone.text = "%s  ·  %s  ·  %s%s%s" % [place, zoom_word, law_name, dock_word, link_word]
 	helm_zone.add_theme_color_override("font_color", Law.color_of(law_name))
 	if haul_cue != null:
-		var cue := DockBoard.slip_line(sim)
+		var cue := QuestBoard.cue_line(sim)
 		haul_cue.text = cue
 		haul_cue.visible = cue != ""
 	var repair := ""
@@ -3517,6 +3538,9 @@ func _heat_text() -> String:
 
 func _quest_text() -> String:
 	var blocks: Array = []
+	var next := QuestBoard.cue_line(Game.sim)
+	if next != "":
+		blocks.append("NEXT  %s" % next)
 	for entry in QuestLog.entries(Game.sim.defs, Game.sim):
 		var where := ""
 		if str(entry.get("where", "")) != "":
@@ -3583,6 +3607,14 @@ func _harvest_craft() -> void:
 	if Game.sim == null:
 		return
 	var message := HelmHarvest.send_craft(Game.sim)
+	if message != "":
+		Game.sim.say(message)
+
+
+func _salvage_wreck() -> void:
+	if Game.sim == null:
+		return
+	var message := CraftOrders.salvage(Game.sim)
 	if message != "":
 		Game.sim.say(message)
 

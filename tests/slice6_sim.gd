@@ -20,6 +20,8 @@ func _init() -> void:
 		"quests": Serde.load_json("res://data/quests.json"),
 	}
 	_data()
+	_cue()
+	_wreck_salvage()
 	_shakedown("vesper", true)
 	_shakedown("anvil", true)
 	_shakedown("kestrel", false)
@@ -57,6 +59,45 @@ func _data() -> void:
 	check(quest.success_mutations.has("blueprint"), "success mutations are on the quest")
 	check(quest.failure_mutations.has("rumor_shakedown_fail"), "failure mutations are on the quest")
 	check(quest.beats.size() == 7, "shakedown has seven beats")
+
+
+func _cue() -> void:
+	var sim := make("kestrel")
+	check(QuestBoard.cue_line(sim).contains("Cast off"), "a moored keel names Cast off")
+	sim.player.moored = false
+	sim.player.pos += Vector2(80, 0)
+	QuestBoard.pulse(sim, 0.1)
+	check(QuestBoard.cue_line(sim).contains("Aegis Prime"), "the scan beat names Aegis on the helm")
+	check(QuestBoard.cue_aim(sim).length() > 8.0, "the scan beat aims the amber beam")
+	var log: Array = QuestLog.entries(defs, sim)
+	var dormant := 0
+	for row in log:
+		if str(row.get("state", "")) == "dormant":
+			dormant += 1
+	check(dormant == 0, "the quest log hides dormant authored shorts")
+
+
+func _wreck_salvage() -> void:
+	var sim := make("kestrel")
+	sim.player.moored = false
+	sim.wrecks.append({
+		"id": "wreck_test",
+		"agent_id": "npc",
+		"controller": "npc",
+		"team": "red_keel",
+		"class_id": "cutter",
+		"pos": sim.player.pos + Vector2(40, 0),
+		"cargo": {},
+		"stripped": false,
+		"name": "Test wreck",
+		"born": 0.0,
+		"insured": false,
+		"rights": false,
+		"value": 10,
+	})
+	check(CraftOrders.salvage(sim, "wreck_test") == "", "a close wreck strips from the helm")
+	check(int(sim.player.cargo.get("salvage_parts", 0)) >= 1, "the wreck leaves keel salvage")
+	check(CraftOrders.salvage(sim, "wreck_test") != "", "a stripped wreck refuses a second take")
 
 
 func _shakedown(class_id: String, legal: bool) -> void:

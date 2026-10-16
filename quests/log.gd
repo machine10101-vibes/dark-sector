@@ -19,6 +19,8 @@ static func entries(defs: Dictionary, sim) -> Array:
 			where = str(focus.get("label", ""))
 			link = str(focus.get("kind", ""))
 			state = str(sim.quest_flags.get("shakedown_beat", state))
+		elif state == "dormant":
+			continue
 		out.append({
 			"id": quest_id,
 			"title": quest.title,

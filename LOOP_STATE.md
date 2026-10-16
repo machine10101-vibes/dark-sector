@@ -34,6 +34,7 @@ Player-visible what works now:
 - Helion Exchange is a wide terminal. Each slot shows the 3D crate, fill, Collect, and Abort. A Collect box sits under the desk. Buy and Sell pick from a 3D catalog. Last lists recent fills. Yard sells glasswheat and raw stock from 3D cards. Opening a terminal hides the hold dump on the helm. Combat math is unchanged.
 - Fleet sells attack drones on the pad: Dart L1 interceptor, Sting L1 gunner, Wasp L2 striker, Fang L2 hunter, Lance L3 heavy, and the generic fighter. Each SKU has a 3D card, a GRT price, and a rack cap. Form, Attack, and Recall cover the whole wing. Combat math is unchanged.
 - The helm names the selected mark. A lock reads LOCK on the rail; a clicked seam reads MARK with range and ready/scan. The glass draws a diamond on that seam and a mark card when no ship is locked. Probe, or 1, scans the selected mark. An unmarked Probe still takes the next unread node. Harvest drone launch follows the same mark. The rail chips and labels carry a dark outline so they sit on the ice. Hold and craft lines stay short. Combat math is unchanged.
+- The amber helm cue now names the live job when no dock crate is out: Cast off, Scan Aegis, cut a seam, bolt a module, meet the Red Keel, lane to Quiet Hollow, or tend the garden. The amber beam follows that mark. Plant, Core, Tend, and Feed sit on the LAW row. Salvage sits on SHIP; a close wreck strips from the helm, and a far wreck sends the tender. Right-click a wreck for Approach and Salvage. The quest log leads with NEXT and hides dormant authored shorts. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -46,8 +47,10 @@ Open design decisions (max 5):
 - A pocket takes a core only when claim_slots.json names it. The red box on First Soil keeps the Perimeter atlas id.
 Files touched:
 - craft/orders.gd
+- quests/board.gd
+- quests/log.gd
 - ui/helm_overlay.gd
 - ui/hud.gd
-- ui/theme_kit.gd
-- tests/harvest_cut.gd
+- world/overhead.gd
+- tests/slice6_sim.gd
 - LOOP_STATE.md

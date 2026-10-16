@@ -16,6 +16,36 @@ static func is_attack(sim, def_id: String) -> bool:
 	return str(spec.get("role", "")) == "attack"
 
 
+static func salvage(sim, wreck_id: String = "") -> String:
+	if sim == null:
+		return "No keel is live."
+	var id := str(wreck_id)
+	if id == "":
+		id = _salvage_mark(sim)
+	if id == "":
+		return "No wreck or seized field is in reach."
+	var wreck = sim.wreck_by_id(id)
+	if wreck != null:
+		if bool(wreck.get("stripped", false)):
+			return "%s is already stripped." % wreck.name
+		var gap: float = sim.player.pos.distance_to(wreck.pos)
+		if gap <= 140.0:
+			var result := str(sim.try_salvage(id))
+			if result == "ok":
+				return ""
+			if result == "full":
+				return "Hold is full. Sell the stock for GRT, then strip again."
+			return "That wreck has nothing left."
+	var craft = _first_docked(sim, "salvage_tender")
+	if craft == null:
+		var any = _any_of(sim, "salvage_tender")
+		if any != null and str(any.state) != "lost":
+			craft = any
+	if craft == null:
+		return "Close on the wreck, or rack a salvage tender."
+	return order(sim, str(craft.uid), "strip", id)
+
+
 static func launch(sim, def_id: String) -> String:
 	if def_id == "":
 		return "This keel has no boat in the rack."
