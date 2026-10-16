@@ -22,6 +22,7 @@ Player-visible what works now:
 - The save and the listen snapshot share system id, body id, layer, a rebasing local origin in kilometers, and a local pos. Law and patrol guns stay on distance inside the band.
 - The older loop still resolves: lanes, claims, scans, harvest, heat, modules, quests, and the host log.
 - The helm names anyone locking you, and the glass draws a lock-warning chip with range. Optimal, falloff, and sensor rings sit on the sky and the corner map when you have a lock or someone has you. 4, or empty-space Command → Sensor sweep, pulses the same reach the overview already uses and speaks hostiles, wrecks, and ore groups. The map caption reads captains and hostiles in this system. A broken keel pays insurance into the purse; the wreck keeps the old hold split and posts as yours.
+- The helm glass now carries an ATTACK rail above Cast off. Every live gun is a button: the hull turret or gun first, then Cheek Gun, Heavy Turret, Beam Bank, Missile Rack, Stake Gun, and Point Defense when those mounts are bolted. Each family keeps its own color. A tap arms that socket on the locked ship; a second tap holds the guns. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:

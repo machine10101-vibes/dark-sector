@@ -137,6 +137,14 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 	var stock := _find_button(hud, "Stock")
 	if stock == null:
 		_bad(tag + " missing Stock")
+	var attack := _find_button(hud, "Main turret")
+	if attack == null:
+		attack = _find_button(hud, "TURRET")
+	if attack == null:
+		_bad(tag + " missing attack")
+	else:
+		_inside_parent(attack, primary, tag + " attack")
+		_apart(attack, actions, tag + " attack/actions")
 	if touch:
 		var pad: Node = hud.get("pad")
 		var joy: Control = pad.get("joy")

@@ -835,16 +835,13 @@ func _place_strike(at: Vector2) -> void:
 
 func _weapon_rows() -> Array:
 	var rows: Array = []
-	var sim = Game.sim
-	if sim == null:
+	if Game.sim == null:
 		return rows
-	var gun: Dictionary = Fit.stats(sim.defs, sim.player).gun
-	var nose := "Main turret" if str(gun.get("kind", "")) == "turret" else "Main gun"
-	rows.append({"socket": "nose", "name": nose})
-	for mount in Fit.mounts(sim.defs, sim.player):
-		if str(mount.get("family", "")) == "pd":
+	for raw in HelmCombat.weapon_rows(Game.sim, Game.sim.player):
+		var row: Dictionary = raw
+		if str(row.get("family", "")) == "pd":
 			continue
-		rows.append({"socket": str(mount.get("socket", mount.get("id", ""))), "name": str(mount.get("name", "Mount"))})
+		rows.append(row)
 	return rows
 
 

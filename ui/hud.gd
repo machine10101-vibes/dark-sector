@@ -65,7 +65,12 @@ var show_tag := false
 var action_scroll: ScrollContainer
 var action_row: HBoxContainer
 var primary_bar: PanelContainer
+var primary_col: VBoxContainer
 var primary_row: HBoxContainer
+var attack_scroll: ScrollContainer
+var attack_row: HBoxContainer
+var attack_buttons: Dictionary = {}
+var attack_sig := ""
 var log_card: PanelContainer
 var pad: Control
 var minimap: Control
@@ -282,6 +287,8 @@ func _layout_chrome(screen: Vector2) -> void:
 		var primary_w := right - left
 		if not compact and not touch_on:
 			var hug := primary_row.get_combined_minimum_size().x + 28.0 if primary_row != null else primary_w
+			if attack_row != null:
+				hug = maxf(hug, attack_row.get_combined_minimum_size().x + 28.0)
 			primary_w = minf(primary_w, maxf(hug, 180.0))
 		primary_bar.position = Vector2(left, primary_y)
 		primary_bar.size = Vector2(maxf(primary_w, 120.0), primary_h)
@@ -676,10 +683,26 @@ func _mount_primary() -> void:
 	primary_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	primary_bar.add_theme_stylebox_override("panel", ThemeKit.rail(true))
 	root.add_child(primary_bar)
+	primary_col = VBoxContainer.new()
+	primary_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	primary_col.add_theme_constant_override("separation", 4)
+	primary_bar.add_child(primary_col)
+	attack_scroll = ScrollContainer.new()
+	attack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	attack_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	attack_scroll.focus_mode = Control.FOCUS_NONE
+	attack_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	attack_scroll.custom_minimum_size = Vector2(0, 34)
+	primary_col.add_child(attack_scroll)
+	attack_row = HBoxContainer.new()
+	attack_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	attack_row.add_theme_constant_override("separation", 5)
+	attack_scroll.add_child(attack_row)
 	primary_row = HBoxContainer.new()
 	primary_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	primary_row.add_theme_constant_override("separation", 8)
-	primary_bar.add_child(primary_row)
+	primary_col.add_child(primary_row)
+	_fill_attacks(_weapon_catalog())
 	_reparent(cast_button)
 	_reparent(dock_button)
 	_reparent(board_button)
@@ -702,6 +725,129 @@ func _reparent(node: Control) -> void:
 	if node.get_parent() != null:
 		node.get_parent().remove_child(node)
 	primary_row.add_child(node)
+
+
+func _weapon_catalog() -> Array:
+	if Game.sim == null:
+		return [{
+			"socket": "nose",
+			"name": "Main turret",
+			"family": "bullet",
+			"short": "TURRET",
+		}]
+	return HelmCombat.weapon_rows(Game.sim, Game.sim.player)
+
+
+func _refresh_attacks() -> void:
+	if attack_row == null:
+		return
+	var rows := _weapon_catalog()
+	var bits: PackedStringArray = PackedStringArray()
+	for raw in rows:
+		var row: Dictionary = raw
+		bits.append("%s:%s" % [str(row.socket), str(row.name)])
+	var sig := "|".join(bits)
+	if sig != attack_sig:
+		attack_sig = sig
+		_fill_attacks(rows)
+	var armed := ""
+	if Game.sim != null:
+		armed = str(Game.sim.player.get("engage", ""))
+	var short := compact or get_viewport().get_visible_rect().size.y < 520.0
+	for raw in rows:
+		var row: Dictionary = raw
+		var socket := str(row.socket)
+		if not attack_buttons.has(socket):
+			continue
+		var button: Button = attack_buttons[socket]
+		button.text = str(row.short) if short else str(row.name)
+		_tint_attack(button, str(row.family), armed == socket)
+
+
+func _fill_attacks(rows: Array) -> void:
+	for child in attack_row.get_children():
+		attack_row.remove_child(child)
+		child.queue_free()
+	attack_buttons.clear()
+	var tag := ThemeKit.label("ATTACK", 10, Color("7ed0dc"))
+	tag.autowrap_mode = TextServer.AUTOWRAP_OFF
+	tag.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tag.custom_minimum_size = Vector2(0, 0)
+	attack_row.add_child(tag)
+	var short := compact or get_viewport().get_visible_rect().size.y < 520.0
+	for raw in rows:
+		var row: Dictionary = raw
+		var title := str(row.short) if short else str(row.name)
+		var button := ThemeKit.slim_button(title)
+		button.custom_minimum_size = Vector2(70 if short else 92, 32)
+		button.pressed.connect(_press_attack.bind(str(row.socket), str(row.name)))
+		attack_row.add_child(button)
+		_sharpen(button)
+		_tint_attack(button, str(row.family), false)
+		attack_buttons[str(row.socket)] = button
+	if attack_scroll != null:
+		var need := 0.0
+		var gap := float(attack_row.get_theme_constant("separation"))
+		for child in attack_row.get_children():
+			need += (child as Control).get_combined_minimum_size().x + gap
+		attack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if need > 420.0 else ScrollContainer.SCROLL_MODE_SHOW_NEVER
+
+
+func _press_attack(socket: String, gun_name: String) -> void:
+	if Game.sim == null:
+		return
+	var lock := str(Game.sim.player.get("lock_id", ""))
+	if lock == "":
+		Game.sim.say("Lock a ship first.")
+		return
+	var armed := str(Game.sim.player.get("engage", ""))
+	if armed == socket:
+		Game.tap("engage", {"socket": "", "lock": lock, "name": gun_name})
+		return
+	Game.tap("engage", {"socket": socket, "lock": lock, "name": gun_name})
+
+
+func _tint_attack(button: Button, family: String, armed: bool) -> void:
+	var ink := Color("e8b36a")
+	var edge := Color(0.86, 0.68, 0.32, 0.7)
+	match family:
+		"laser":
+			ink = Color("7ed0dc")
+			edge = Color(0.45, 0.86, 0.92, 0.78)
+		"missile":
+			ink = Color("f0c27a")
+			edge = Color(0.9, 0.72, 0.32, 0.78)
+		"pd":
+			ink = Color("9be7d0")
+			edge = Color(0.45, 0.86, 0.7, 0.78)
+		"bullet":
+			ink = Color("e8b36a")
+			edge = Color(0.86, 0.68, 0.32, 0.7)
+		_:
+			ink = Color("c5d6dc")
+			edge = Color(0.45, 0.8, 0.88, 0.5)
+	if armed:
+		ThemeKit.paint(button, true)
+		button.add_theme_font_size_override("font_size", 13)
+		button.add_theme_color_override("font_color", ink.lerp(Color.WHITE, 0.4))
+		for state in ["normal", "hover", "pressed"]:
+			var lit := button.get_theme_stylebox(state, "Button") as StyleBoxFlat
+			if lit == null:
+				continue
+			lit.border_width_left = 3
+			lit.border_color = edge
+			lit.set_corner_radius_all(2)
+		return
+	button.add_theme_color_override("font_color", ink)
+	button.add_theme_font_size_override("font_size", 12)
+	for state in ["normal", "hover", "pressed"]:
+		var box := button.get_theme_stylebox(state, "Button") as StyleBoxFlat
+		if box == null:
+			continue
+		box.border_width_left = 2
+		box.border_color = edge
+		box.set_corner_radius_all(2)
 
 
 func _build_actions() -> void:
@@ -934,6 +1080,7 @@ func _refresh_helm() -> void:
 	log_label.max_lines_visible = keep
 	if log_card != null:
 		log_card.visible = log_label.text != "" and log_card.size.y >= 28.0
+	_refresh_attacks()
 	if screen.x >= 64.0:
 		_layout_chrome(screen)
 

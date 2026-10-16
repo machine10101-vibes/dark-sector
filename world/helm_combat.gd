@@ -414,6 +414,68 @@ static func range_bands(sim, unit: Dictionary) -> Dictionary:
 	}
 
 
+## Live attacks on this keel: the hull gun first, then every bolted mount.
+## Display and helm verbs only — families stay distinct.
+static func weapon_rows(sim, unit: Dictionary) -> Array:
+	var rows: Array = []
+	if sim == null or unit.is_empty():
+		return rows
+	var gun: Dictionary = Fit.stats(sim.defs, unit).gun
+	var turret := str(gun.get("kind", "nose")) == "turret"
+	var name := "Main turret" if turret else "Main gun"
+	rows.append({
+		"socket": "nose",
+		"name": name,
+		"family": str(gun.get("family", "bullet")),
+		"short": "TURRET" if turret else "GUN",
+		"kind": str(gun.get("kind", "nose")),
+	})
+	for raw in Fit.mounts(sim.defs, unit):
+		var mount: Dictionary = raw
+		var mount_name := str(mount.get("name", "Mount"))
+		var family := str(mount.get("family", ""))
+		rows.append({
+			"socket": str(mount.get("socket", mount.get("id", ""))),
+			"name": mount_name,
+			"family": family,
+			"short": weapon_short(mount_name, family),
+			"kind": str(mount.get("kind", "")),
+		})
+	return rows
+
+
+static func weapon_short(name: String, family: String) -> String:
+	match name:
+		"Main turret":
+			return "TURRET"
+		"Main gun":
+			return "GUN"
+		"Cheek Gun":
+			return "CHEEK"
+		"Heavy Turret":
+			return "HEAVY"
+		"Beam Bank":
+			return "BEAM"
+		"Missile Rack":
+			return "RACK"
+		"Point Defense":
+			return "PD"
+		"Stake Gun":
+			return "STAKE"
+	match family:
+		"laser":
+			return "BEAM"
+		"missile":
+			return "RACK"
+		"pd":
+			return "PD"
+		"bullet":
+			return "GUN"
+	if name.length() <= 6:
+		return name.to_upper()
+	return name.substr(0, 6).to_upper()
+
+
 static func wreck_value(wreck: Dictionary) -> int:
 	var n := 0
 	var cargo: Dictionary = wreck.get("cargo", {})
