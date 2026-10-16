@@ -84,6 +84,8 @@ var quest_flags: Dictionary = {}
 var contracts: Array = []
 var nav_mark: Dictionary = {}
 var market: Dictionary = {"glasswheat": 4}
+var listings: Array = []
+var listing_seq := 0
 var claim: Dictionary = {}
 var captains: Array = []
 var commands: Dictionary = {}
@@ -128,6 +130,8 @@ func new_game(class_id: String) -> void:
 	muzzles = []
 	cuts = []
 	cut_job = {}
+	listings = []
+	listing_seq = 0
 	impacts = []
 	heat_log = []
 	lines = []
@@ -197,6 +201,9 @@ func new_game(class_id: String) -> void:
 	nav_mark = {}
 	market = {}
 	_fill_market()
+	listings = []
+	listing_seq = 0
+	HelmMarket.seed_stall(self)
 	visited = [str(defs.system.id)]
 	var pocket: Dictionary = defs.system.pocket
 	claim = {
@@ -936,6 +943,8 @@ func to_dict() -> Dictionary:
 		"contracts": contracts.duplicate(true),
 		"nav_mark": nav_mark.duplicate(true),
 		"market": market.duplicate(true),
+		"listings": listings.duplicate(true),
+		"listing_seq": listing_seq,
 		"visited": visited.duplicate(),
 		"claim": claim.duplicate(true),
 		"captains": _captain_rows(),
@@ -1005,6 +1014,9 @@ func from_dict(data: Dictionary) -> void:
 	nav_mark = data.get("nav_mark", {}).duplicate(true)
 	market = data.get("market", {}).duplicate(true)
 	_fill_market()
+	listings = data.get("listings", []).duplicate(true)
+	listing_seq = int(data.get("listing_seq", 0))
+	HelmMarket.seed_stall(self)
 	visited = data.get("visited", []).duplicate()
 	if visited.is_empty():
 		visited = [str(defs.system.id)]
@@ -2548,6 +2560,8 @@ func net_snapshot() -> Dictionary:
 		"law_target": law_target,
 		"heat": heat.duplicate(true),
 		"heat_agent": str(player.agent_id),
+		"listings": listings.duplicate(true),
+		"listing_seq": listing_seq,
 		"chat": chat.duplicate(true),
 		"claim": {
 			"slot_id": str(claim.get("slot_id", "")),
@@ -2616,6 +2630,9 @@ func apply_snapshot(data: Dictionary) -> void:
 		claim[key] = claim_row[key]
 	law_target = str(data.get("law_target", ""))
 	chat = data.get("chat", []).duplicate(true)
+	if data.has("listings"):
+		listings = data.get("listings", []).duplicate(true)
+		listing_seq = int(data.get("listing_seq", listing_seq))
 	time = float(data.get("time", time))
 	if data.has("layer"):
 		layer = int(data.layer)
@@ -2695,6 +2712,19 @@ func _apply_verbs(unit: Dictionary, cmd: Dictionary) -> void:
 		var cut_line := HelmHarvest.try_cut(self, unit, str(spec.get("node", "")))
 		if cut_line != "":
 			say(cut_line)
+	if cmd.has("list"):
+		var slip: Dictionary = cmd.list if typeof(cmd.list) == TYPE_DICTIONARY else {}
+		var listed := HelmMarket.list_item(self, unit, str(slip.get("item", "")), int(slip.get("price", 0)), int(slip.get("count", 1)))
+		if listed != "":
+			say(listed)
+	if cmd.has("buy_listing"):
+		var bought := HelmMarket.buy_listing(self, unit, str(cmd.buy_listing))
+		if bought != "":
+			say(bought)
+	if cmd.has("pull_listing"):
+		var pulled := HelmMarket.pull_listing(self, unit, str(cmd.pull_listing))
+		if pulled != "":
+			say(pulled)
 
 
 func _clear_oneshots() -> void:
@@ -2711,6 +2741,9 @@ func _clear_oneshots() -> void:
 		row.erase("engage")
 		row.erase("sweep")
 		row.erase("cut")
+		row.erase("list")
+		row.erase("buy_listing")
+		row.erase("pull_listing")
 		commands[key] = row
 
 

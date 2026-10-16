@@ -24,6 +24,7 @@ Player-visible what works now:
 - The helm names anyone locking you, and the glass draws a lock-warning chip with range. Optimal, falloff, and sensor rings sit on the sky and the corner map when you have a lock or someone has you. 4, or empty-space Command → Sensor sweep, pulses the same reach the overview already uses and speaks hostiles, wrecks, and ore groups. The map caption reads captains and hostiles in this system. A broken keel pays insurance into the purse; the wreck keeps the old hold split and posts as yours.
 - The helm glass now carries an ATTACK rail above Cast off. Every live gun is a button: the hull turret or gun first, then Cheek Gun, Heavy Turret, Beam Bank, Missile Rack, Stake Gun, and Point Defense when those mounts are bolted. Each family keeps its own color. A tap arms that socket on the locked ship; a second tap holds the guns. Combat math is unchanged.
 - Harvest now has two cuts. Harvest, or 2, sends a harvest drone if the keel racks one, or a survey probe if it does not. Plasma, or 5, runs the keel torch on a seam inside 96 m. Both leave a beam and chips on the glass. A Beak with no drone still harvests with its probe. Raw stock sells on the Helion pad for GRT — nickel 6, ice 5, copper 7, plate 8, raw mass 4, salvage 9. The purse chip now reads GRT. Glasswheat buy 12 / sell 8 is unchanged. Combat math is unchanged.
+- The Helion market now holds a stall. A captain lists a crate from the hold at a GRT price they set. The crate leaves the hold until another keel on the pad buys it, or until they pull the slip. The stall keeps ice, nickel, copper, and glasswheat posted. A claim core and a dock crate will not list. Instant pad buyback is still there. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -35,15 +36,9 @@ Open design decisions (max 5):
 - The farm cassette carries a hold-kine. It does not grow a crop. Crops grow on a claim plot.
 - A pocket takes a core only when claim_slots.json names it. The red box on First Soil keeps the Perimeter atlas id.
 Files touched:
+- world/helm_market.gd
 - world/helm_harvest.gd
-- world/helm_combat.gd
 - world/sector_sim.gd
-- world/stage3d.gd
-- craft/orders.gd
-- quests/dock_board.gd
-- ui/helm_overlay.gd
 - ui/hud.gd
-- audio/tones.gd
-- tests/harvest_cut.gd
 - tests/dock_market.gd
 - LOOP_STATE.md

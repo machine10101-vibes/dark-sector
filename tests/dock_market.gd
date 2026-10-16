@@ -21,6 +21,7 @@ func _init() -> void:
 	}
 	_trade()
 	_ore()
+	_board()
 	_tag()
 	if fails == 0:
 		print("DOCK MARKET PASS")
@@ -107,6 +108,68 @@ func _ore() -> void:
 	sim.player.cargo["copper_slag"] = 1
 	check(DockBoard.sell_stock(sim, "copper_slag") != "", "an off-pad ore sell refuses")
 	check(int(sim.player.cargo.copper_slag) == 1, "an off-pad ore sell leaves the slag")
+
+
+func _board() -> void:
+	var sim := make()
+	check(sim.listings.size() >= 3, "the stall posts crates")
+	var stall: Dictionary = {}
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if bool(row.get("stall", false)) and str(row.get("item", "")) == "ice_spall":
+			stall = row
+			break
+	check(not stall.is_empty(), "the stall lists ice")
+	sim.quest_flags.purse = 20
+	var ice0 := int(sim.player.cargo.get("ice_spall", 0))
+	check(HelmMarket.buy_listing(sim, sim.player, str(stall.id)) == "", "the pad sells a stall slip")
+	check(int(sim.player.cargo.get("ice_spall", 0)) == ice0 + 1, "a stall buy loads the hold")
+	check(DockBoard.purse(sim) == 20 - int(stall.price), "a stall buy spends GRT")
+	var ice_left := 0
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if str(row.get("item", "")) == "ice_spall" and bool(row.get("stall", false)):
+			ice_left += 1
+	check(ice_left >= 1, "the stall restocks ice")
+	sim.player.cargo["nickel_cinder"] = 2
+	var held := int(sim.player.cargo.nickel_cinder)
+	check(HelmMarket.list_item(sim, sim.player, "nickel_cinder", 9) == "", "the keel lists nickel")
+	check(int(sim.player.cargo.get("nickel_cinder", 0)) == held - 1, "a list takes the crate")
+	var slip: Dictionary = {}
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if str(row.get("seller", "")) == str(sim.player.agent_id) and str(row.get("item", "")) == "nickel_cinder":
+			slip = row
+			break
+	check(not slip.is_empty() and int(slip.price) == 9, "the nickel slip is on the board")
+	check(HelmMarket.buy_listing(sim, sim.player, str(slip.id)) != "", "the seller cannot buy their own slip")
+	check(HelmMarket.list_item(sim, sim.player, "claim_core", 8) != "", "a claim core will not list")
+	_leave(sim)
+	check(HelmMarket.list_item(sim, sim.player, "nickel_cinder", 9) != "", "an off-pad list refuses")
+	sim.player.moored = true
+	sim.player.pos = sim.beacon_pos
+	check(HelmMarket.pull_listing(sim, sim.player, str(slip.id)) == "", "the seller can pull the slip")
+	check(int(sim.player.cargo.get("nickel_cinder", 0)) == held, "a pull returns the crate")
+	check(HelmMarket.list_item(sim, sim.player, "nickel_cinder", 11) == "", "the keel lists again")
+	var posted: Dictionary = {}
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if str(row.get("seller", "")) == str(sim.player.agent_id):
+			posted = row
+			break
+	var guest: Dictionary = sim.admit("kestrel", "buyer-1")
+	guest.moored = true
+	guest.pos = sim.beacon_pos
+	guest.purse = 40
+	guest.cargo = {}
+	var seller_purse := DockBoard.purse(sim)
+	check(HelmMarket.buy_listing(sim, guest, str(posted.id)) == "", "another keel buys the slip")
+	check(int(guest.cargo.get("nickel_cinder", 0)) == 1, "the buyer takes the nickel")
+	check(int(guest.purse) == 40 - 11, "the buyer spends GRT")
+	check(DockBoard.purse(sim) == seller_purse + 11, "the seller is paid GRT")
+	var copy := SectorSim.new(defs)
+	copy.from_dict(sim.to_dict())
+	check(copy.listings.size() == sim.listings.size(), "a save keeps the stall")
 
 
 func _tag() -> void:
