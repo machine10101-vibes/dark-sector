@@ -388,6 +388,69 @@ static func desk_line(sim, unit: Dictionary) -> String:
 	]
 
 
+static func hold_room(sim, unit: Dictionary) -> int:
+	if sim == null or unit.is_empty():
+		return 0
+	var stats: Dictionary = Fit.stats(sim.defs, unit)
+	return maxi(0, int(stats.cargo_cap) - Fit.cargo_used(unit))
+
+
+static func buy_block(sim, unit: Dictionary, row: Dictionary, take: int = 0) -> String:
+	if sim == null or unit.is_empty() or row.is_empty():
+		return "No keel"
+	if not on_pad(sim, unit):
+		return "On pad"
+	if str(row.get("seller", "")) == str(unit.get("agent_id", "")):
+		return "Yours"
+	var have := maxi(1, int(row.get("count", 1)))
+	var want := have if int(take) <= 0 else mini(have, maxi(1, int(take)))
+	var paid := unit_price(row) * want
+	if coins(sim, unit) < paid:
+		return "Need %d" % paid
+	if hold_room(sim, unit) < want:
+		return "Hold full"
+	return ""
+
+
+static func list_block(sim, unit: Dictionary, item_id: String, price: int = 0, count: int = 1) -> String:
+	if sim == null or unit.is_empty():
+		return "No keel"
+	if not on_pad(sim, unit):
+		return "On pad"
+	if not listable(item_id):
+		return "Won't list"
+	var held := int(unit.cargo.get(item_id, 0))
+	if held <= 0:
+		return "None"
+	var ask := clip_price(price) if int(price) > 0 else ask_price(item_id)
+	var found: Dictionary = _own_ask(sim, str(unit.get("agent_id", "")), item_id, ask)
+	if found.is_empty() and _owned_count(sim, str(unit.get("agent_id", ""))) >= LIST_CAP:
+		return "Slips full"
+	if clip_count(count, held) > held:
+		return "None"
+	return ""
+
+
+static func board_items(sim) -> Array:
+	var ids: Array = []
+	var seen: Dictionary = {}
+	if sim == null:
+		return ids
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		var item_id := str(row.get("item", ""))
+		if item_id == "" or seen.has(item_id):
+			continue
+		seen[item_id] = true
+		ids.append(item_id)
+	ids.sort()
+	return ids
+
+
+static func short_name(sim, item_id: String) -> String:
+	return _short(sim, item_id)
+
+
 static func board_sig(sim) -> String:
 	if sim == null:
 		return ""

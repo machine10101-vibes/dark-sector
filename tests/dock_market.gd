@@ -24,6 +24,7 @@ func _init() -> void:
 	_board()
 	_desk()
 	_stack()
+	_blocks()
 	_tag()
 	if fails == 0:
 		print("DOCK MARKET PASS")
@@ -267,6 +268,33 @@ func _stack() -> void:
 	check(left == 1, "the merge leaves one slip")
 	check(int(merged.get("count", 0)) == 2, "the merged slip holds both crates")
 	check(int(merged.get("price", 0)) == 5, "the merged ask is five")
+
+
+func _blocks() -> void:
+	var sim := make()
+	sim.quest_flags.purse = 4
+	var ice: Dictionary = {}
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if bool(row.get("stall", false)) and str(row.get("item", "")) == "ice_spall":
+			ice = row
+			break
+	check(not ice.is_empty(), "the stall still lists ice")
+	check(HelmMarket.board_items(sim).has("ice_spall"), "the board names ice")
+	check(HelmMarket.short_name(sim, "ice_spall") == "ice", "ice shortens")
+	check(HelmMarket.hold_room(sim, sim.player) > 0, "a fresh hold has room")
+	check(HelmMarket.buy_block(sim, sim.player, ice) == "Need %d" % int(ice.price), "a short purse blocks the buy")
+	sim.quest_flags.purse = 40
+	check(HelmMarket.buy_block(sim, sim.player, ice) == "", "a funded keel can buy")
+	_leave(sim)
+	check(HelmMarket.buy_block(sim, sim.player, ice) == "On pad", "an off-pad keel cannot buy")
+	sim.player.moored = true
+	sim.player.pos = sim.beacon_pos
+	sim.player.cargo["nickel_cinder"] = 1
+	check(HelmMarket.list_block(sim, sim.player, "nickel_cinder", 9, 1) == "", "the hold can list nickel")
+	check(HelmMarket.list_block(sim, sim.player, "claim_core", 8, 1) == "Won't list", "a claim core stays blocked")
+	_leave(sim)
+	check(HelmMarket.list_block(sim, sim.player, "nickel_cinder", 9, 1) == "On pad", "an off-pad list stays blocked")
 
 
 func _tag() -> void:
