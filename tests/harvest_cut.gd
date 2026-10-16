@@ -20,6 +20,7 @@ func _init() -> void:
 		"quests": Serde.load_json("res://data/quests.json"),
 	}
 	_probe()
+	_marked()
 	_plasma()
 	_grt()
 	if fails == 0:
@@ -74,6 +75,42 @@ func _probe() -> void:
 	check(int(sim.player.cargo.get("ice_spall", 0)) == held + 1, "the probe brings ice aboard (%d)" % guard)
 	check(int(sim.deposits.ice_spall) == left - 1, "the ice seam loses one crate")
 	check(sim.cuts.size() > 0 or guard > 0, "the cut leaves a harvest beam")
+
+
+func _marked() -> void:
+	var ice_home := make("kestrel")
+	var ice = ice_home.survey_node("ice_spall")
+	var slag = ice_home.survey_node("copper_slag")
+	check(ice != null and slag != null, "ice and copper are on the board")
+	if ice == null or slag == null:
+		return
+	ice_home.player.moored = false
+	ice_home.player.pos = ice.pos + Vector2(30, 0)
+	HelmHarvest.mark(ice_home, "copper_slag")
+	check(HelmHarvest.marked(ice_home) != null and str(HelmHarvest.marked(ice_home).id) == "copper_slag", "the helm keeps the selected seam")
+	check(HelmHarvest.send_craft(ice_home) == "", "Harvest sends the probe to the mark")
+	var probe = _craft(ice_home, "survey_probe")
+	check(probe != null and str(probe.target) == "copper_slag", "the probe flies to the selected copper")
+	var near := make("kestrel")
+	near.player.moored = false
+	near.player.pos = ice.pos + Vector2(30, 0)
+	check(HelmHarvest.send_craft(near) == "", "unmarked Harvest still finds a seam")
+	var near_probe = _craft(near, "survey_probe")
+	check(near_probe != null and str(near_probe.target) == "ice_spall", "unmarked Harvest takes the nearest seam")
+	var aimed := make("kestrel")
+	aimed.player.moored = false
+	aimed.player.pos = ice.pos + Vector2(30, 0)
+	aimed.player.order = {"kind": "approach", "x": slag.pos.x, "y": slag.pos.y, "label": str(slag.name)}
+	check(HelmHarvest.send_craft(aimed) == "", "an approach mark sends the probe")
+	var aimed_probe = _craft(aimed, "survey_probe")
+	check(aimed_probe != null and str(aimed_probe.target) == "copper_slag", "the probe follows the approached seam")
+	var ves := make("vesper")
+	ves.player.moored = false
+	ves.player.pos = ice.pos + Vector2(30, 0)
+	HelmHarvest.mark(ves, "copper_slag")
+	check(HelmHarvest.send_craft(ves) == "", "a harvest drone takes the selected seam")
+	var drone = _craft(ves, "harvest_drone")
+	check(drone != null and str(drone.target) == "copper_slag", "the drone flies to the selected copper")
 
 
 func _plasma() -> void:

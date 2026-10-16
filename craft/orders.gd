@@ -90,7 +90,7 @@ static func order(sim, uid: String, verb: String, node_id: String) -> String:
 			if int(sim.deposits.get(node_id, 0)) <= 0:
 				return "%s has nothing left to cut." % place.name
 			return "Scan %s before the drone cuts it." % place.name
-		if str(craft.state) == "docked" and sim.player.pos.distance_to(place.pos) > one_way_range(craft):
+		if str(craft.state) == "docked" and not _aimed(sim, place) and sim.player.pos.distance_to(place.pos) > one_way_range(craft):
 			return "Harvester stays in the neighborhood. Bring the keel closer to %s." % place.name
 		_send(sim, craft, place, "cut")
 		sim.say("Harvest drone dropped for %s." % place.name)
@@ -103,7 +103,7 @@ static func order(sim, uid: String, verb: String, node_id: String) -> String:
 			if int(sim.deposits.get(node_id, 0)) <= 0:
 				return "%s has nothing left to cut." % place.name
 			return "Scan %s before the probe cuts it." % place.name
-		if str(craft.state) == "docked" and sim.player.pos.distance_to(place.pos) > one_way_range(craft):
+		if str(craft.state) == "docked" and not _aimed(sim, place) and sim.player.pos.distance_to(place.pos) > one_way_range(craft):
 			return "The probe stays in the neighborhood. Bring the keel closer to %s." % place.name
 		_send(sim, craft, place, "cut")
 		sim.say("Probe away to harvest %s." % place.name)
@@ -981,6 +981,13 @@ static func _targeted(sim, node_id: String) -> bool:
 		if str(craft.target) == node_id:
 			return true
 	return false
+
+
+static func _aimed(sim, place) -> bool:
+	var mark = HelmHarvest.marked(sim)
+	if mark == null or place == null:
+		return false
+	return str(mark.id) == str(place.id)
 
 
 static func _pretty(def_id: String) -> String:

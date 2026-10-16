@@ -45,6 +45,60 @@ static func nearest_seam(sim, from: Vector2, reach: float = 1.0e12):
 	return best
 
 
+static func mark(sim, node_id: String) -> void:
+	if sim == null or sim.player.is_empty():
+		return
+	var id := str(node_id)
+	if id == "" or sim.survey_node(id) == null:
+		return
+	sim.player.harvest_id = id
+
+
+static func mark_at(sim, pos: Vector2, reach: float = 280.0) -> void:
+	var place = seam_at(sim, pos, reach)
+	if place != null:
+		mark(sim, str(place.id))
+
+
+static func marked(sim):
+	if sim == null or sim.player.is_empty():
+		return null
+	var id := str(sim.player.get("harvest_id", ""))
+	if id != "":
+		var place = sim.survey_node(id)
+		if place != null:
+			return place
+	return _from_order(sim)
+
+
+static func _from_order(sim):
+	var order = sim.player.get("order", {})
+	if typeof(order) != TYPE_DICTIONARY:
+		return null
+	var tid := str(order.get("target", ""))
+	if tid != "":
+		var named = sim.survey_node(tid)
+		if named != null:
+			return named
+	if order.has("x"):
+		return seam_at(sim, Vector2(float(order.x), float(order.y)), 280.0)
+	return null
+
+
+static func seam_at(sim, pos: Vector2, reach: float = 280.0):
+	if sim == null:
+		return null
+	var best = null
+	var best_dist := reach
+	for raw in sim.nodes:
+		var place: Dictionary = raw
+		var dist: float = pos.distance_to(place.pos)
+		if dist < best_dist:
+			best_dist = dist
+			best = place
+	return best
+
+
 static func next_craft_target(sim):
 	if sim == null:
 		return null
@@ -64,16 +118,26 @@ static func next_craft_target(sim):
 static func send_craft(sim, node_id: String = "") -> String:
 	if sim == null:
 		return "No keel is live."
-	var place = sim.survey_node(node_id) if node_id != "" else next_craft_target(sim)
+	if node_id != "":
+		mark(sim, node_id)
+	var place = sim.survey_node(node_id) if node_id != "" else marked(sim)
+	if place == null:
+		place = next_craft_target(sim)
 	if place == null:
 		return "No seam is ready. Scan a node, or fly the plasma onto the rock."
 	var drone = _first_live(sim, "harvest_drone")
+	var probe = _first_live(sim, "survey_probe")
+	if ready(sim, place):
+		if drone != null:
+			return CraftOrders.order(sim, str(drone.uid), "launch", str(place.id))
+		if probe != null:
+			return CraftOrders.order(sim, str(probe.uid), "cut", str(place.id))
+		return "No probe on this keel. Close on the seam and cut it with the plasma."
+	if probe != null:
+		return CraftOrders.order(sim, str(probe.uid), "scan", str(place.id))
 	if drone != null:
 		return CraftOrders.order(sim, str(drone.uid), "launch", str(place.id))
-	var probe = _first_live(sim, "survey_probe")
-	if probe != null:
-		return CraftOrders.order(sim, str(probe.uid), "cut", str(place.id))
-	return "No probe on this keel. Close on the seam and cut it with the plasma."
+	return "Scan %s before a cut, or fly the plasma onto the rock." % place.name
 
 
 static func try_cut(sim, unit: Dictionary, node_id: String = "") -> String:
@@ -81,7 +145,13 @@ static func try_cut(sim, unit: Dictionary, node_id: String = "") -> String:
 		return "No keel is live."
 	if not sim.cut_job.is_empty():
 		return "The plasma cutter is already on a seam."
-	var place = sim.survey_node(node_id) if node_id != "" else nearest_seam(sim, unit.pos, CUT_REACH)
+	var place = sim.survey_node(node_id) if node_id != "" else null
+	if place == null:
+		var aim = marked(sim)
+		if aim != null and unit.pos.distance_to(aim.pos) <= CUT_REACH:
+			place = aim
+	if place == null:
+		place = nearest_seam(sim, unit.pos, CUT_REACH)
 	if place == null:
 		return "No rock is in plasma reach. Close on a seam."
 	if int(sim.deposits.get(str(place.id), 0)) <= 0:

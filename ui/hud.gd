@@ -3377,6 +3377,7 @@ func _order_button(text: String, uid: String, verb: String) -> Button:
 
 func _pick_node(node_id: String) -> void:
 	hangar_node = node_id
+	HelmHarvest.mark(Game.sim, node_id)
 	if panel_kind == "hangar":
 		_build_hangar()
 	elif panel_kind == "fleet":

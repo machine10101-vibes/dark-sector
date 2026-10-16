@@ -738,14 +738,32 @@ func _fly_screen(at: Vector2) -> void:
 
 
 func _approach_hit(hit: Dictionary) -> void:
+	_mark_harvest(hit)
 	var pos: Vector2 = hit.pos
-	Game.tap("order", {
+	var spec := {
 		"kind": "approach",
 		"x": pos.x,
 		"y": pos.y,
 		"range": float(hit.get("range", 80.0)),
 		"label": str(hit.get("name", "the mark")),
-	})
+	}
+	var node_id := str(hit.get("id", ""))
+	if Game.sim != null and Game.sim.survey_node(node_id) != null:
+		spec.target = node_id
+	Game.tap("order", spec)
+
+
+func _mark_harvest(hit: Dictionary) -> void:
+	if Game.sim == null:
+		return
+	var kind := str(hit.get("kind", ""))
+	if kind == "ore" or kind == "node" or kind == "planet":
+		HelmHarvest.mark(Game.sim, str(hit.get("id", "")))
+		return
+	if kind == "rock" or kind == "meteor" or kind == "debris":
+		var seam := _ore_near(hit.pos)
+		if seam != "":
+			HelmHarvest.mark(Game.sim, seam)
 
 
 func _open_strike(hit: Dictionary, at: Vector2) -> void:
