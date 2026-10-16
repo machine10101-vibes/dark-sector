@@ -2840,13 +2840,20 @@ func _on_bolt(module_id: String) -> void:
 
 
 func _buy_fighter() -> void:
+	_buy_drone("fighter")
+
+
+func _buy_drone(def_id: String) -> void:
 	if Game.sim == null:
 		return
-	var message := DockBoard.buy_fighter(Game.sim)
+	var message := DockBoard.buy_drone(Game.sim, def_id)
 	if message != "":
 		Game.sim.say(message)
+	if panel_kind == "fleet":
+		_build_fleet()
 	market_sig = ""
-	_fill_market()
+	if panel_kind == "market":
+		_fill_market()
 
 
 func _buy_kit(kit_id: String) -> void:
@@ -2935,7 +2942,7 @@ func _append_craft_orders(block: VBoxContainer, item, slim: bool = false) -> voi
 			rebuild.pressed.connect(_order_uid.bind(uid, "rebuild"))
 		row.add_child(rebuild)
 		block.add_child(ThemeKit.label("Loss is permanent until rebuild spends 1 raw mass.", 13, Color("c4512c")))
-	elif str(item.def_id) == "fighter":
+	elif CraftOrders.is_attack(Game.sim, str(item.def_id)):
 		row.add_child(_craft_action("Launch", uid, "launch", slim))
 		row.add_child(_craft_action("Attack", uid, "attack", slim))
 		row.add_child(_craft_action("Return", uid, "return", slim))
@@ -3014,7 +3021,7 @@ func _build_fleet() -> void:
 		child.queue_free()
 	fleet_rows = {}
 	var sim = Game.sim
-	fleet_box.add_child(ThemeKit.label("Wing orders cover every fighter. Ships already outside and drones still on the rack take orders here too.", 13, Color("8d826c")))
+	fleet_box.add_child(ThemeKit.label("Wing orders cover every attack drone and fighter. Ships already outside and drones still on the rack take orders here too.", 13, Color("8d826c")))
 	var wing := HBoxContainer.new()
 	wing.add_theme_constant_override("separation", 8)
 	var form := ThemeKit.button("Form")
@@ -3036,6 +3043,7 @@ func _build_fleet() -> void:
 		pick.pressed.connect(_pick_node.bind(str(place.id)))
 		picks.add_child(pick)
 	fleet_box.add_child(picks)
+	_build_fleet_shop()
 	if sim.craft.is_empty():
 		fleet_box.add_child(ThemeKit.label("This keel has an empty rack.", 14, Color("8d826c")))
 		fleet_sig = _craft_sig()
@@ -3070,6 +3078,65 @@ func _build_fleet() -> void:
 	fleet_sig = _craft_sig()
 	_refresh_fleet()
 	_fit_fleet_pane()
+
+
+func _build_fleet_shop() -> void:
+	var sim = Game.sim
+	if sim == null or fleet_box == null:
+		return
+	var held := DockBoard.attack_count(sim)
+	fleet_box.add_child(ThemeKit.label("PAD RACK", 15, Color("e6d7bf")))
+	if DockBoard.at_pad(sim):
+		fleet_box.add_child(ThemeKit.label("Buy a level and a job. Wing %d/%d. Form and Attack cover every attack drone." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
+	else:
+		fleet_box.add_child(ThemeKit.label("Moor at Helion to buy. Wing %d/%d." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
+	var shop := _inv_grid()
+	fleet_box.add_child(shop)
+	for raw_id in DockBoard.attack_shop_ids():
+		_drone_shop_card(str(raw_id), shop)
+	_pad_grid(shop)
+
+
+func _drone_shop_card(def_id: String, grid: GridContainer) -> void:
+	var sim = Game.sim
+	var spec: Dictionary = sim.defs.craft.get(def_id, {})
+	var row: Dictionary = DockBoard.ATTACK_SHOP.get(def_id, {})
+	var price := int(row.get("price", 0))
+	var cap := int(row.get("cap", 0))
+	var owned := DockBoard.kind_count(sim, def_id)
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(118, 0)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(box)
+	var glass := CraftGlass.new()
+	glass.craft_kind = def_id
+	glass.custom_minimum_size = Vector2(108, 100)
+	glass.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(glass)
+	glass.call_deferred("show_craft", def_id)
+	var title := ThemeKit.label(str(spec.get("name", def_id)), 13, Color("c8f4ff"))
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.clip_text = true
+	box.add_child(title)
+	var post := "L%d  %s" % [int(spec.get("level", 1)), str(spec.get("post", "Attack"))]
+	var role := ThemeKit.label(post, 11, Color("8d826c"))
+	role.autowrap_mode = TextServer.AUTOWRAP_OFF
+	role.clip_text = true
+	box.add_child(role)
+	var stock := ThemeKit.label("%d GRT    %d/%d" % [price, owned, cap], 11, Color("d7e6c8"))
+	stock.autowrap_mode = TextServer.AUTOWRAP_OFF
+	stock.clip_text = true
+	box.add_child(stock)
+	var buy := ThemeKit.slim_button("Buy")
+	buy.custom_minimum_size = Vector2(56, 32)
+	buy.disabled = not DockBoard.at_pad(sim) or owned >= cap or DockBoard.attack_count(sim) >= DockBoard.ATTACK_WING or DockBoard.purse(sim) < price
+	buy.pressed.connect(_buy_drone.bind(def_id))
+	box.add_child(buy)
+	grid.add_child(card)
 
 
 func _fleet_card(item, grid: GridContainer) -> void:
@@ -3498,7 +3565,7 @@ func _launch(def_id: String) -> void:
 func _boat_id() -> String:
 	if Game.sim == null:
 		return ""
-	for def_id in ["fighter", "salvage_tender", "away_shuttle"]:
+	for def_id in ["fighter", "dart_drone", "sting_drone", "wasp_drone", "fang_drone", "lance_drone", "salvage_tender", "away_shuttle"]:
 		for item in Game.sim.craft:
 			if str(item.def_id) == def_id:
 				return def_id

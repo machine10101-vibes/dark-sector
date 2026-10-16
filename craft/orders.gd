@@ -4,6 +4,18 @@ extends RefCounted
 const LAYERS = ["orbit", "atmosphere", "surface", "crust", "biosign", "ruins", "legal"]
 
 
+static func is_attack(sim, def_id: String) -> bool:
+	var kind := str(def_id)
+	if kind == "fighter":
+		return true
+	if sim == null:
+		return false
+	var spec = sim.defs.craft.get(kind, {})
+	if typeof(spec) != TYPE_DICTIONARY:
+		return false
+	return str(spec.get("role", "")) == "attack"
+
+
 static func launch(sim, def_id: String) -> String:
 	if def_id == "":
 		return "This keel has no boat in the rack."
@@ -19,6 +31,8 @@ static func launch(sim, def_id: String) -> String:
 		if str(any.state) == "lost":
 			return "%s is lost. Rebuild it from returned mass." % any.name
 		return "%s is already out." % any.name
+	if is_attack(sim, def_id):
+		return order(sim, str(craft.uid), "launch", "")
 	match def_id:
 		"survey_probe":
 			var place = _next_scan_target(sim)
@@ -38,8 +52,6 @@ static func launch(sim, def_id: String) -> String:
 			sim.say("Shuttle away to %s." % sim.defs.system.pocket.name)
 			sim.sfx("launch")
 			return ""
-		"fighter":
-			return order(sim, str(craft.uid), "launch", "")
 	return "That craft has no order on the board."
 
 
@@ -68,7 +80,7 @@ static func order(sim, uid: String, verb: String, node_id: String) -> String:
 		return _order_lighter(sim, craft)
 	if str(craft.state) == "lost":
 		return "%s is lost. Rebuild it from returned mass." % craft.name
-	if str(craft.def_id) == "fighter":
+	if is_attack(sim, str(craft.def_id)):
 		return _order_fighter(sim, craft, verb)
 	var place = sim.survey_node(node_id)
 	if place == null:
@@ -144,7 +156,7 @@ static func strike(sim, uid: String, target_id: String) -> String:
 	var craft = _by_uid(sim, uid)
 	if craft == null:
 		return "That rack slot is empty."
-	if str(craft.def_id) != "fighter":
+	if not is_attack(sim, str(craft.def_id)):
 		return "%s does not attack." % craft.name
 	if str(craft.state) == "lost":
 		return "%s is lost. Rebuild it from returned mass." % craft.name
@@ -168,7 +180,7 @@ static func hold_at(sim, uid: String, pos: Vector2) -> String:
 		return "%s is lost. Rebuild it from returned mass." % craft.name
 	if str(craft.state) == "docked":
 		_depart(sim, craft, "")
-		if str(craft.def_id) == "fighter":
+		if is_attack(sim, str(craft.def_id)):
 			craft.state = "escort"
 	craft.order = "hold"
 	craft.hold = pos
@@ -191,7 +203,7 @@ static func wing_strike(sim, target_id: String) -> String:
 	var sent := 0
 	var first := ""
 	for craft in sim.craft:
-		if str(craft.def_id) != "fighter" or str(craft.state) == "lost":
+		if not is_attack(sim, str(craft.def_id)) or str(craft.state) == "lost":
 			continue
 		var message := strike(sim, str(craft.uid), target_id)
 		if message == "":
@@ -221,7 +233,7 @@ static func fleet(sim, verb: String) -> String:
 	var sent := 0
 	var first := ""
 	for craft in sim.craft:
-		if str(craft.def_id) != "fighter":
+		if not is_attack(sim, str(craft.def_id)):
 			continue
 		if str(craft.state) == "lost":
 			if first == "":
@@ -265,7 +277,7 @@ static func step(sim, craft, dt: float) -> void:
 		return
 	craft.fire_cd = maxf(0.0, float(craft.fire_cd) - dt)
 	var drain := float(craft.drain)
-	if str(craft.def_id) == "fighter" and str(craft.state) == "escort":
+	if is_attack(sim, str(craft.def_id)) and str(craft.state) == "escort":
 		if craft.pos.distance_to(sim.player.pos) < 1100.0:
 			drain = 0.0
 	craft.battery = maxf(0.0, float(craft.battery) - drain * dt)
@@ -276,19 +288,20 @@ static func step(sim, craft, dt: float) -> void:
 	if str(craft.get("order", "")) == "hold":
 		_step_hold(sim, craft, dt)
 	else:
-		match str(craft.def_id):
-			"survey_probe":
-				_step_probe(sim, craft, dt)
-			"harvest_drone":
-				_step_harvest(sim, craft, dt)
-			"salvage_tender":
-				_step_tender(sim, craft, dt)
-			"livestock_lighter":
-				_step_lighter(sim, craft, dt)
-			"away_shuttle":
-				_step_shuttle(sim, craft, dt)
-			"fighter":
-				_step_fighter(sim, craft, dt)
+		if is_attack(sim, str(craft.def_id)):
+			_step_fighter(sim, craft, dt)
+		else:
+			match str(craft.def_id):
+				"survey_probe":
+					_step_probe(sim, craft, dt)
+				"harvest_drone":
+					_step_harvest(sim, craft, dt)
+				"salvage_tender":
+					_step_tender(sim, craft, dt)
+				"livestock_lighter":
+					_step_lighter(sim, craft, dt)
+				"away_shuttle":
+					_step_shuttle(sim, craft, dt)
 	if str(craft.state) != "lost":
 		_hazards(sim, craft)
 	if float(craft.hp) <= 0.0 and str(craft.state) != "lost":
@@ -577,7 +590,7 @@ static func _escort_offset(sim, craft, index: int, t: float) -> Vector2:
 	var nose := Vector2.from_angle(float(sim.player.rot))
 	var side := Vector2(-nose.y, nose.x)
 	var local := Vector2.RIGHT * span * 2.0
-	if kind == "fighter":
+	if is_attack(sim, kind):
 		var flank := 1.0 if index % 2 == 0 else -1.0
 		var wobble := t * 0.85 + phase
 		var along := span * (0.15 + 0.55 * sin(wobble))

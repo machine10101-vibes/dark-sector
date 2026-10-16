@@ -792,6 +792,39 @@ func _craft_hull(kind: String, pos: Vector2, dir: Vector2, side: Vector2) -> Pac
 				pos - dir * 6.5 - side * 3.2,
 				pos + dir * 1.5 - side * 4.0,
 			])
+		"dart_drone":
+			return PackedVector2Array([
+				pos + dir * 13.0,
+				pos + dir * 2.0 + side * 1.15,
+				pos - dir * 7.0 + side * 0.85,
+				pos - dir * 7.0 - side * 0.85,
+				pos + dir * 2.0 - side * 1.15,
+			])
+		"sting_drone":
+			return PackedVector2Array([
+				pos + dir * 7.5,
+				pos + dir * 2.5 + side * 3.4,
+				pos - dir * 5.5 + side * 2.8,
+				pos - dir * 5.5 - side * 2.8,
+				pos + dir * 2.5 - side * 3.4,
+			])
+		"fang_drone":
+			return PackedVector2Array([
+				pos + dir * 14.0,
+				pos + dir * 3.0 + side * 1.5,
+				pos - dir * 6.0 + side * 2.2,
+				pos - dir * 6.5,
+				pos - dir * 6.0 - side * 2.2,
+				pos + dir * 3.0 - side * 1.5,
+			])
+		"lance_drone":
+			return PackedVector2Array([
+				pos + dir * 10.0,
+				pos + dir * 3.0 + side * 3.2,
+				pos - dir * 6.5 + side * 3.6,
+				pos - dir * 6.5 - side * 3.6,
+				pos + dir * 3.0 - side * 3.2,
+			])
 		_:
 			return PackedVector2Array([
 				pos + dir * 11.0,
@@ -817,6 +850,16 @@ func _draw_craft(sim, item: Dictionary) -> void:
 			col = Color("d7d2c4")
 		"fighter":
 			col = Color("c4512c")
+		"dart_drone":
+			col = Color("4ec8e0")
+		"sting_drone":
+			col = Color("e0a24a")
+		"wasp_drone":
+			col = Color("e07038")
+		"fang_drone":
+			col = Color("8a2030")
+		"lance_drone":
+			col = Color("8a8e96")
 	var dir := Vector2.from_angle(float(item.rot))
 	var side := dir.orthogonal()
 	var kind := str(item.def_id)

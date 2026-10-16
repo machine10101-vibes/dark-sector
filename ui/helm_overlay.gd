@@ -852,7 +852,7 @@ func _fighter_rows() -> Array:
 	if Game.sim == null:
 		return rows
 	for item in Game.sim.craft:
-		if str(item.def_id) != "fighter" or str(item.state) == "lost":
+		if not CraftOrders.is_attack(Game.sim, str(item.def_id)) or str(item.state) == "lost":
 			continue
 		rows.append(item)
 	return rows

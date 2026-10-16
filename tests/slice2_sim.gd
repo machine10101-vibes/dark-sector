@@ -17,6 +17,7 @@ func _init() -> void:
 	_fleet_orders()
 	_escort_spread()
 	_buy_wing()
+	_buy_drones()
 	_scan_harvest_heat()
 	_loss_and_save()
 	_helm()
@@ -159,6 +160,62 @@ func _buy_wing() -> void:
 			fired = true
 			break
 	check(fired, "the fighter fires on the target")
+
+
+func _buy_drones() -> void:
+	var far := make("vesper")
+	check(DockBoard.buy_drone(far, "dart_drone") != "", "off the pad the rack will not sell")
+	var sim := make("vesper")
+	sim.player.pos = sim.beacon_pos
+	sim.player.moored = true
+	check(DockBoard.buy_drone(sim, "harvest_drone") != "", "the pad will not sell a harvest drone as an attack wing")
+	check(CraftOrders.is_attack(sim, "dart_drone"), "Dart is an attack drone")
+	check(CraftOrders.is_attack(sim, "sting_drone"), "Sting is an attack drone")
+	check(CraftOrders.is_attack(sim, "wasp_drone"), "Wasp is an attack drone")
+	check(CraftOrders.is_attack(sim, "fang_drone"), "Fang is an attack drone")
+	check(CraftOrders.is_attack(sim, "lance_drone"), "Lance is an attack drone")
+	check(not CraftOrders.is_attack(sim, "harvest_drone"), "a harvest drone stays a cutter")
+	check(str(sim.defs.craft.dart_drone.post) == "Interceptor", "Dart is the interceptor")
+	check(int(sim.defs.craft.sting_drone.level) == 1, "Sting is level 1")
+	check(int(sim.defs.craft.wasp_drone.level) == 2, "Wasp is level 2")
+	check(int(sim.defs.craft.fang_drone.level) == 2, "Fang is level 2")
+	check(int(sim.defs.craft.lance_drone.level) == 3, "Lance is level 3")
+	sim.quest_flags.purse = 28
+	check(DockBoard.buy_drone(sim, "dart_drone") == "", "the pad sells a Dart")
+	check(DockBoard.purse(sim) == 0, "a Dart spends the purse")
+	check(_count(sim, "dart_drone") == 1, "Vesper racks the Dart")
+	sim.quest_flags.purse = 32 + 48 + 56 + 88
+	check(DockBoard.buy_drone(sim, "sting_drone") == "", "the pad sells a Sting")
+	check(DockBoard.buy_drone(sim, "wasp_drone") == "", "the pad sells a Wasp")
+	check(DockBoard.buy_drone(sim, "fang_drone") == "", "the pad sells a Fang")
+	check(DockBoard.buy_drone(sim, "lance_drone") == "", "the pad sells a Lance")
+	check(DockBoard.attack_count(sim) == 5, "the wing holds five bought attack drones")
+	check(CraftOrders.launch(sim, "dart_drone") == "", "the Dart launches onto the wing")
+	check(str(_craft(sim, "dart_drone_1").state) == "escort", "the Dart takes escort")
+	check(CraftOrders.fleet(sim, "form") == "", "form covers the bought drones")
+	check(str(_craft(sim, "sting_drone_1").order) == "escort", "form puts Sting on the wing")
+	check(CraftOrders.order(sim, "lance_drone_1", "attack", "") == "", "Lance takes an attack order")
+	sim.quest_flags.purse = 1000
+	check(DockBoard.buy_drone(sim, "dart_drone") == "", "the pad sells a second Dart")
+	check(DockBoard.buy_drone(sim, "dart_drone") != "", "Dart caps at two")
+	sim.player.pos += Vector2(0, 2200)
+	sim.player.vel = Vector2.ZERO
+	var skiff: Dictionary = sim._blank_ship("skiff", "Red Keel", "agent:red_keel:drones", "npc", "red_keel")
+	skiff.pos = sim.player.pos + Vector2(0, 460)
+	skiff.alive = true
+	sim.actors.append(skiff)
+	sim.player.lock_id = str(skiff.agent_id)
+	sim.player.lock_ok = true
+	var dart = _craft(sim, "dart_drone_1")
+	dart.pos = sim.player.pos + Vector2(-80, 200)
+	check(CraftOrders.order(sim, str(dart.uid), "attack", "") == "", "the Dart takes the lock")
+	var fired := false
+	for _i in 80:
+		sim.tick(0.05, {})
+		if sim.projectiles.size() > 0 or float(skiff.hp) < float(skiff.max_hp):
+			fired = true
+			break
+	check(fired, "the Dart fires on the target")
 
 
 func _scan_harvest_heat() -> void:

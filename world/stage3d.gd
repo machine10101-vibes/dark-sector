@@ -6028,6 +6028,46 @@ func _dress_craft(node: Node3D, kind: String) -> void:
 			_kit(node, "WingP", Vector3(3.8, 0.16, 3.4), Vector3(-0.8, 2.5, 4.8), Color("d4cfc2"))
 			_kit(node, "WingS", Vector3(3.8, 0.16, 3.4), Vector3(-0.8, 2.5, -4.8), Color("d4cfc2"))
 			_kit(node, "Door", Vector3(1.4, 1.6, 0.12), Vector3(1.8, 2.4, 1.6), Color("2a3034"))
+		"dart_drone":
+			_cyl(node, "Spike", 0.22, 7.2, Vector3(4.4, 2.8, 0.0), "x", Color("9fe8f4"))
+			_kit(node, "FinP", Vector3(3.4, 0.08, 1.6), Vector3(-0.4, 2.35, 3.1), Color("1a5a68"))
+			_kit(node, "FinS", Vector3(3.4, 0.08, 1.6), Vector3(-0.4, 2.35, -3.1), Color("1a5a68"))
+			_cyl(node, "GunN", 0.12, 2.8, Vector3(6.4, 2.55, 0.0), "x", Color("16181a"))
+			_cyl(node, "BellA", 0.42, 1.05, Vector3(-6.2, 1.7, 0.0), "x", Color("2c2622"))
+			_kit(node, "Canopy", Vector3(1.6, 0.4, 0.8), Vector3(2.2, 4.6, 0.0), Color("2a6878"))
+		"sting_drone":
+			_cyl(node, "GunA", 0.14, 2.4, Vector3(3.4, 3.0, 2.4), "x", Color("16181a"))
+			_cyl(node, "GunB", 0.14, 2.4, Vector3(3.4, 3.0, -2.4), "x", Color("16181a"))
+			_cyl(node, "GunC", 0.14, 2.4, Vector3(3.4, 2.2, 1.1), "x", Color("16181a"))
+			_cyl(node, "GunD", 0.14, 2.4, Vector3(3.4, 2.2, -1.1), "x", Color("16181a"))
+			_kit(node, "Drum", Vector3(2.6, 1.4, 2.8), Vector3(-0.6, 2.6, 0.0), Color("6a4a22"))
+			_cyl(node, "BellP", 0.55, 1.15, Vector3(-4.6, 1.55, 1.2), "x", Color("2c2622"))
+			_cyl(node, "BellS", 0.55, 1.15, Vector3(-4.6, 1.55, -1.2), "x", Color("2c2622"))
+			_kit(node, "Canopy", Vector3(1.8, 0.45, 1.05), Vector3(1.6, 4.6, 0.0), Color("5a4030"))
+		"wasp_drone":
+			_cyl(node, "GunP", 0.16, 3.6, Vector3(2.2, 3.15, 5.1), "x", Color("16181a"))
+			_cyl(node, "GunS", 0.16, 3.6, Vector3(2.2, 3.15, -5.1), "x", Color("16181a"))
+			_cyl(node, "BellP", 0.62, 1.35, Vector3(-4.8, 1.7, 1.55), "x", Color("2c2622"))
+			_cyl(node, "BellS", 0.62, 1.35, Vector3(-4.8, 1.7, -1.55), "x", Color("2c2622"))
+			_kit(node, "Stripe", Vector3(4.4, 0.12, 0.7), Vector3(0.4, 4.4, 0.0), Color("f0b44a"))
+			_kit(node, "Canopy", Vector3(2.2, 0.55, 1.15), Vector3(3.1, 5.0, 0.0), Color("5a3820"))
+		"fang_drone":
+			_kit(node, "Snout", Vector3(6.4, 0.7, 0.95), Vector3(5.2, 2.7, 0.0), Color("5a1824"))
+			_cyl(node, "Fang", 0.2, 4.8, Vector3(7.4, 2.55, 0.0), "x", Color("e8c8c4"))
+			_kit(node, "FinP", Vector3(2.8, 0.1, 2.2), Vector3(-0.8, 2.5, 3.8), Color("3a1018"))
+			_kit(node, "FinS", Vector3(2.8, 0.1, 2.2), Vector3(-0.8, 2.5, -3.8), Color("3a1018"))
+			_cyl(node, "GunV", 0.14, 3.2, Vector3(1.8, 1.35, 0.0), "x", Color("16181a"))
+			_cyl(node, "BellA", 0.5, 1.2, Vector3(-5.4, 1.65, 0.0), "x", Color("2c2622"))
+			_kit(node, "Canopy", Vector3(2.0, 0.48, 0.95), Vector3(1.6, 4.7, 0.0), Color("2a1016"))
+		"lance_drone":
+			_kit(node, "Block", Vector3(5.6, 2.2, 3.2), Vector3(-0.4, 2.4, 0.0), Color("6a6e74"))
+			_cyl(node, "Lance", 0.38, 8.4, Vector3(5.6, 2.7, 0.0), "x", Color("d8dde4"))
+			_kit(node, "Collar", Vector3(1.4, 1.3, 1.3), Vector3(3.4, 2.7, 0.0), Color("c8b48a"))
+			_kit(node, "PlateP", Vector3(3.2, 0.22, 2.4), Vector3(-1.2, 2.0, 2.6), Color("8a8e96"))
+			_kit(node, "PlateS", Vector3(3.2, 0.22, 2.4), Vector3(-1.2, 2.0, -2.6), Color("8a8e96"))
+			_cyl(node, "BellP", 0.78, 1.6, Vector3(-5.6, 1.55, 1.35), "x", Color("2c2622"))
+			_cyl(node, "BellS", 0.78, 1.6, Vector3(-5.6, 1.55, -1.35), "x", Color("2c2622"))
+			_kit(node, "Canopy", Vector3(2.0, 0.55, 1.2), Vector3(1.2, 4.8, 0.0), Color("2a3038"))
 		_:
 			_cyl(node, "GunP", 0.16, 3.6, Vector3(2.2, 3.15, 5.1), "x", Color("16181a"))
 			_cyl(node, "GunS", 0.16, 3.6, Vector3(2.2, 3.15, -5.1), "x", Color("16181a"))
@@ -6072,6 +6112,14 @@ func _craft_poly(kind: String) -> PackedVector2Array:
 			return PackedVector2Array([Vector2(8, 3), Vector2(3, 5.2), Vector2(-7.5, 4.4), Vector2(-7.5, -4.4), Vector2(3, -5.2), Vector2(8, -3)])
 		"away_shuttle":
 			return PackedVector2Array([Vector2(9, 0), Vector2(1.5, 4), Vector2(-6.5, 3.2), Vector2(-6.5, -3.2), Vector2(1.5, -4)])
+		"dart_drone":
+			return PackedVector2Array([Vector2(13, 0), Vector2(2, 1.15), Vector2(-7, 0.85), Vector2(-7, -0.85), Vector2(2, -1.15)])
+		"sting_drone":
+			return PackedVector2Array([Vector2(7.5, 0), Vector2(2.5, 3.4), Vector2(-5.5, 2.8), Vector2(-5.5, -2.8), Vector2(2.5, -3.4)])
+		"fang_drone":
+			return PackedVector2Array([Vector2(14, 0), Vector2(3, 1.5), Vector2(-6, 2.2), Vector2(-6.5, 0), Vector2(-6, -2.2), Vector2(3, -1.5)])
+		"lance_drone":
+			return PackedVector2Array([Vector2(10, 0), Vector2(3, 3.2), Vector2(-6.5, 3.6), Vector2(-6.5, -3.6), Vector2(3, -3.2)])
 		_:
 			return PackedVector2Array([Vector2(11, 0), Vector2(1, 2), Vector2(-3.5, 6), Vector2(-1.2, 0), Vector2(-3.5, -6), Vector2(1, -2)])
 
@@ -6086,6 +6134,16 @@ func _craft_color(kind: String) -> Color:
 			return Color("c47a4a")
 		"away_shuttle":
 			return Color("d7d2c4")
+		"dart_drone":
+			return Color("4ec8e0")
+		"sting_drone":
+			return Color("e0a24a")
+		"wasp_drone":
+			return Color("e07038")
+		"fang_drone":
+			return Color("8a2030")
+		"lance_drone":
+			return Color("8a8e96")
 		_:
 			return Color("c4512c")
 

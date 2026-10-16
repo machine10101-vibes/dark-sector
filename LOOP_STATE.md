@@ -32,6 +32,7 @@ Player-visible what works now:
 - Helion Exchange is a Grand Exchange desk: six slots, Buy or Sell on an empty box, guide price, ±5% , Confirm offer, progress, Collect, and Abort. A new offer matches the best resting opposite at the older price and refunds leftover GRT. The stall still posts ice, nickel, copper, and glasswheat so a solo pad fills. Yard keeps instant glasswheat and stock rates. Combat math is unchanged.
 - Inventory is a 3D grid. Every crate in the hold — ore, glasswheat, claim core, dock crate — sits in a square with the same mesh that flies in the sky. Empty squares pad the row. Fleet is the same grid for fighters, probes, and drones. Combat math is unchanged.
 - Helion Exchange is a wide terminal. Each slot shows the 3D crate, fill, Collect, and Abort. A Collect box sits under the desk. Buy and Sell pick from a 3D catalog. Last lists recent fills. Yard sells glasswheat and raw stock from 3D cards. Opening a terminal hides the hold dump on the helm. Combat math is unchanged.
+- Fleet sells attack drones on the pad: Dart L1 interceptor, Sting L1 gunner, Wasp L2 striker, Fang L2 hunter, Lance L3 heavy, and the generic fighter. Each SKU has a 3D card, a GRT price, and a rack cap. Form, Attack, and Recall cover the whole wing. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -43,6 +44,13 @@ Open design decisions (max 5):
 - The farm cassette carries a hold-kine. It does not grow a crop. Crops grow on a claim plot.
 - A pocket takes a core only when claim_slots.json names it. The red box on First Soil keeps the Perimeter atlas id.
 Files touched:
+- data/craft.json
+- quests/dock_board.gd
+- craft/orders.gd
 - ui/hud.gd
+- ui/helm_overlay.gd
+- world/stage3d.gd
+- world/sector_view.gd
+- tests/slice2_sim.gd
 - tests/stock_hold.gd
 - LOOP_STATE.md

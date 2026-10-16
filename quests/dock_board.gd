@@ -527,6 +527,15 @@ static func buy_good(sim) -> String:
 const MOUNT_PRICE := 80
 const FIGHTER_PRICE := 48
 const FIGHTER_WING := 4
+const ATTACK_WING := 8
+const ATTACK_SHOP := {
+	"dart_drone": {"price": 28, "cap": 2},
+	"sting_drone": {"price": 32, "cap": 2},
+	"wasp_drone": {"price": 48, "cap": 2},
+	"fang_drone": {"price": 56, "cap": 2},
+	"lance_drone": {"price": 88, "cap": 2},
+	"fighter": {"price": FIGHTER_PRICE, "cap": FIGHTER_WING},
+}
 const KIT := {
 	"gun_sponson": {"price": 80, "name": "Cheek Gun"},
 	"laser_bank": {"price": 80, "name": "Beam Bank"},
@@ -541,32 +550,72 @@ static func paid_mount(sim, module_id: String) -> bool:
 	return rows.has(module_id)
 
 
-static func fighter_count(sim) -> int:
+static func attack_shop_ids() -> Array:
+	return ["dart_drone", "sting_drone", "wasp_drone", "fang_drone", "lance_drone", "fighter"]
+
+
+static func kind_count(sim, def_id: String) -> int:
 	var total := 0
 	for item in sim.craft:
-		if str(item.get("def_id", "")) == "fighter" and str(item.get("state", "")) != "lost":
+		if str(item.get("def_id", "")) == def_id and str(item.get("state", "")) != "lost":
 			total += 1
 	return total
 
 
-static func buy_fighter(sim) -> String:
-	if not at_pad(sim):
-		return "Buy a fighter at the Helion pad."
-	if fighter_count(sim) >= FIGHTER_WING:
-		return "The wing is full at %d fighters." % FIGHTER_WING
-	if purse(sim) < FIGHTER_PRICE:
-		return "Purse is short of %d for a fighter." % FIGHTER_PRICE
+static func fighter_count(sim) -> int:
+	return kind_count(sim, "fighter")
+
+
+static func attack_count(sim) -> int:
+	var total := 0
+	for item in sim.craft:
+		if str(item.get("state", "")) == "lost":
+			continue
+		if CraftOrders.is_attack(sim, str(item.get("def_id", ""))):
+			total += 1
+	return total
+
+
+static func _craft_index(sim, def_id: String) -> int:
 	var index := 0
 	for item in sim.craft:
-		if str(item.get("def_id", "")) != "fighter":
+		if str(item.get("def_id", "")) != def_id:
 			continue
-		var tail := str(item.get("uid", "")).get_slice("_", 1)
+		var uid := str(item.get("uid", ""))
+		var tail := uid.get_slice("_", uid.get_slice_count("_") - 1)
 		index = maxi(index, int(tail))
-	var craft: Dictionary = sim._make_craft("fighter", index + 1)
+	return index
+
+
+static func buy_fighter(sim) -> String:
+	return buy_drone(sim, "fighter")
+
+
+static func buy_drone(sim, def_id: String) -> String:
+	def_id = str(def_id)
+	if not ATTACK_SHOP.has(def_id):
+		return "The pad does not sell that drone."
+	if not at_pad(sim):
+		if def_id == "fighter":
+			return "Buy a fighter at the Helion pad."
+		return "Buy attack drones at the Helion pad."
+	var row: Dictionary = ATTACK_SHOP[def_id]
+	var price := int(row.price)
+	var cap := int(row.cap)
+	if kind_count(sim, def_id) >= cap:
+		if def_id == "fighter":
+			return "The wing is full at %d fighters." % cap
+		return "The rack holds %d of that drone." % cap
+	if attack_count(sim) >= ATTACK_WING:
+		return "The wing is full at %d attack craft." % ATTACK_WING
+	if purse(sim) < price:
+		var noun := "fighter" if def_id == "fighter" else "drone"
+		return "Purse is short of %d for a %s." % [price, noun]
+	var craft: Dictionary = sim._make_craft(def_id, _craft_index(sim, def_id) + 1)
 	craft.pos = sim.player.pos
 	sim.craft.append(craft)
-	sim.quest_flags.purse = purse(sim) - FIGHTER_PRICE
-	sim.say("Bought %s for %d. Purse %d. Launch it from the hangar." % [craft.name, FIGHTER_PRICE, purse(sim)])
+	sim.quest_flags.purse = purse(sim) - price
+	sim.say("Bought %s for %d. Purse %d. Launch it from the hangar." % [craft.name, price, purse(sim)])
 	return ""
 
 
