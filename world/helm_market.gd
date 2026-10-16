@@ -490,9 +490,9 @@ static func tape_line(sim) -> String:
 
 static func desk_line(sim, unit: Dictionary) -> String:
 	if sim == null or unit.is_empty():
-		return "GRT 0 · hold 0/0 · slips 0/%d" % LIST_CAP
+		return "GRT 0 · hold 0/0 · slots 0/%d" % LIST_CAP
 	var stats: Dictionary = Fit.stats(sim.defs, unit)
-	return "GRT %d · hold %d/%d · slips %d/%d" % [
+	return "GRT %d · hold %d/%d · slots %d/%d" % [
 		coins(sim, unit),
 		Fit.cargo_used(unit),
 		int(stats.cargo_cap),
