@@ -549,6 +549,195 @@ const KIT := {
 	"iron_belt": {"price": 12, "name": "Iron belt", "round": "iron", "count": 40},
 	"splinter_pack": {"price": 16, "name": "Splinter reload", "round": "splinter", "count": 8},
 }
+const SUPPORT_CAP := {
+	"survey_probe": 3,
+	"harvest_drone": 2,
+	"salvage_tender": 2,
+	"away_shuttle": 1,
+}
+const RECIPES := {
+	"gun_sponson": {"name": "Cheek Gun", "need": {"hull_plate": 2, "copper_slag": 2, "salvage_parts": 1}},
+	"laser_bank": {"name": "Beam Bank", "need": {"copper_slag": 3, "ice_spall": 2, "salvage_parts": 1}},
+	"missile_rack": {"name": "Missile Rack", "need": {"nickel_cinder": 2, "hull_plate": 1, "salvage_parts": 2}},
+	"iron_belt": {"name": "Iron belt", "need": {"nickel_cinder": 2}},
+	"splinter_pack": {"name": "Splinter reload", "need": {"copper_slag": 1, "ice_spall": 1}},
+	"dart_drone": {"name": "Dart", "need": {"nickel_cinder": 2, "copper_slag": 1}},
+	"sting_drone": {"name": "Sting", "need": {"copper_slag": 2, "nickel_cinder": 1}},
+	"wasp_drone": {"name": "Wasp", "need": {"copper_slag": 2, "hull_plate": 1, "salvage_parts": 1}},
+	"fang_drone": {"name": "Fang", "need": {"nickel_cinder": 2, "hull_plate": 1, "salvage_parts": 1}},
+	"lance_drone": {"name": "Lance", "need": {"hull_plate": 2, "copper_slag": 2, "salvage_parts": 2}},
+	"fighter": {"name": "Fighter", "need": {"hull_plate": 2, "nickel_cinder": 2, "salvage_parts": 1}},
+	"survey_probe": {"name": "Survey Probe", "need": {"ice_spall": 2, "raw_mass": 1}},
+	"harvest_drone": {"name": "Harvest Drone", "need": {"ice_spall": 2, "nickel_cinder": 1, "raw_mass": 1}},
+	"salvage_tender": {"name": "Salvage Tender", "need": {"salvage_parts": 2, "hull_plate": 1}},
+	"away_shuttle": {"name": "Away Shuttle", "need": {"ice_spall": 1, "hull_plate": 1, "raw_mass": 2}},
+}
+
+
+static func recipe_ids() -> Array:
+	return [
+		"gun_sponson",
+		"laser_bank",
+		"missile_rack",
+		"iron_belt",
+		"splinter_pack",
+		"dart_drone",
+		"sting_drone",
+		"wasp_drone",
+		"fang_drone",
+		"lance_drone",
+		"fighter",
+		"survey_probe",
+		"harvest_drone",
+		"salvage_tender",
+		"away_shuttle",
+	]
+
+
+static func can_build(sim) -> bool:
+	if at_pad(sim):
+		return true
+	return _at_shop(sim)
+
+
+static func _at_shop(sim) -> bool:
+	if sim == null or sim.player.is_empty():
+		return false
+	if not bool(sim.claim.get("owned", false)):
+		return false
+	if bool(sim.claim.get("frozen", false)):
+		return false
+	if str(sim.claim.get("system_id", "")) != str(sim.defs.system.id):
+		return false
+	var reach := float(sim.defs.system.pocket.get("radius", 80.0)) + 80.0
+	return sim.player.pos.distance_to(sim.pocket_pos) <= reach
+
+
+static func recipe_need(id: String) -> Dictionary:
+	if RECIPES.has(id):
+		var row: Dictionary = RECIPES[id]
+		return row.need
+	return {}
+
+
+static func recipe_name(id: String) -> String:
+	if RECIPES.has(id):
+		return str(RECIPES[id].name)
+	if KIT.has(id):
+		return str(KIT[id].name)
+	return id
+
+
+static func can_afford(sim, id: String) -> bool:
+	if sim == null or sim.player.is_empty():
+		return false
+	var need: Dictionary = recipe_need(id)
+	if need.is_empty():
+		return false
+	for key in need.keys():
+		if int(sim.player.cargo.get(key, 0)) < int(need[key]):
+			return false
+	return true
+
+
+static func recipe_line(sim, id: String) -> String:
+	var need: Dictionary = recipe_need(id)
+	var bits: Array = []
+	for raw in HelmHarvest.stock_ids():
+		var key := str(raw)
+		if not need.has(key):
+			continue
+		var want := int(need[key])
+		var have := 0
+		if sim != null and not sim.player.is_empty():
+			have = int(sim.player.cargo.get(key, 0))
+		var label := key
+		if sim != null:
+			label = sim.resource_name(key)
+		bits.append("%s %d/%d" % [label, have, want])
+	return "  ·  ".join(bits)
+
+
+static func _spend_need(sim, need: Dictionary) -> bool:
+	for key in need.keys():
+		if int(sim.player.cargo.get(key, 0)) < int(need[key]):
+			return false
+	for key in need.keys():
+		if not sim.spend_cargo(str(key), int(need[key])):
+			return false
+	return true
+
+
+static func fabricate(sim, product_id: String) -> String:
+	product_id = str(product_id)
+	if not RECIPES.has(product_id):
+		return "The yard has no such plan."
+	if not can_build(sim):
+		return "Make at the Helion pad or a planted claim."
+	if not can_afford(sim, product_id):
+		return "The hold is short. Need %s." % recipe_line(sim, product_id)
+	if KIT.has(product_id):
+		return _fab_kit(sim, product_id)
+	if ATTACK_SHOP.has(product_id):
+		return _fab_drone(sim, product_id)
+	return _fab_support(sim, product_id)
+
+
+static func _fab_kit(sim, kit_id: String) -> String:
+	var row: Dictionary = KIT[kit_id]
+	var need: Dictionary = recipe_need(kit_id)
+	if row.has("round"):
+		if not _spend_need(sim, need):
+			return "The hold is short. Need %s." % recipe_line(sim, kit_id)
+		HelmCombat.ensure_rounds(sim.player)
+		var key := str(row.round)
+		sim.player.rounds[key] = int(sim.player.rounds.get(key, 0)) + int(row.count)
+		sim.say("Made %s from stock." % str(row.name))
+		return ""
+	if paid_mount(sim, kit_id):
+		return "The %s is already paid." % str(row.name)
+	if not _spend_need(sim, need):
+		return "The hold is short. Need %s." % recipe_line(sim, kit_id)
+	var paid: Array = []
+	if sim.quest_flags.has("paid_mounts"):
+		paid = sim.quest_flags.paid_mounts.duplicate()
+	paid.append(kit_id)
+	sim.quest_flags.paid_mounts = paid
+	if not sim.player.yard.has(kit_id):
+		sim.player.yard.append(kit_id)
+	sim.say("Made the %s from stock. Bolt it on the ship." % str(row.name))
+	return ""
+
+
+static func _fab_drone(sim, def_id: String) -> String:
+	var row: Dictionary = ATTACK_SHOP[def_id]
+	var cap := int(row.cap)
+	if kind_count(sim, def_id) >= cap:
+		if def_id == "fighter":
+			return "The wing is full at %d fighters." % cap
+		return "The rack holds %d of that drone." % cap
+	if attack_count(sim) >= ATTACK_WING:
+		return "The wing is full at %d attack craft." % ATTACK_WING
+	if not _spend_need(sim, recipe_need(def_id)):
+		return "The hold is short. Need %s." % recipe_line(sim, def_id)
+	var craft: Dictionary = sim._make_craft(def_id, _craft_index(sim, def_id) + 1)
+	craft.pos = sim.player.pos
+	sim.craft.append(craft)
+	sim.say("Made %s from stock. Launch it from the hangar." % craft.name)
+	return ""
+
+
+static func _fab_support(sim, def_id: String) -> String:
+	var cap := int(SUPPORT_CAP.get(def_id, 1))
+	if kind_count(sim, def_id) >= cap:
+		return "The rack holds %d of that craft." % cap
+	if not _spend_need(sim, recipe_need(def_id)):
+		return "The hold is short. Need %s." % recipe_line(sim, def_id)
+	var craft: Dictionary = sim._make_craft(def_id, _craft_index(sim, def_id) + 1)
+	craft.pos = sim.player.pos
+	sim.craft.append(craft)
+	sim.say("Made %s from stock. Launch it from the hangar." % craft.name)
+	return ""
 
 
 static func paid_mount(sim, module_id: String) -> bool:

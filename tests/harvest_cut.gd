@@ -23,6 +23,7 @@ func _init() -> void:
 	_marked()
 	_plasma()
 	_grt()
+	_build()
 	if fails == 0:
 		print("HARVEST CUT PASS")
 	else:
@@ -189,3 +190,45 @@ func _grt() -> void:
 	var copy := SectorSim.new(defs)
 	copy.from_dict(sim.to_dict())
 	check(DockBoard.purse(copy) == DockBoard.purse(sim), "a save keeps the GRT")
+
+
+func _build() -> void:
+	var sim := make("vesper")
+	check(DockBoard.recipe_ids().size() >= 12, "the yard keeps ore plans")
+	check(DockBoard.fabricate(sim, "dart_drone") != "", "an empty hold cannot Make a Dart")
+	sim.player.cargo["nickel_cinder"] = 2
+	sim.player.cargo["copper_slag"] = 1
+	check(DockBoard.fabricate(sim, "dart_drone") == "", "the pad Makes a Dart from ore")
+	check(DockBoard.kind_count(sim, "dart_drone") == 1, "the Dart is on the rack")
+	check(int(sim.player.cargo.get("nickel_cinder", 0)) == 0, "Make spends the nickel")
+	check(int(sim.player.cargo.get("copper_slag", 0)) == 0, "Make spends the copper")
+	sim.player.moored = false
+	sim.player.pos = sim.beacon_pos + Vector2(900, 0)
+	sim.player.cargo["hull_plate"] = 2
+	sim.player.cargo["copper_slag"] = 2
+	sim.player.cargo["salvage_parts"] = 1
+	check(DockBoard.fabricate(sim, "gun_sponson") != "", "off the pad Make waits for a shop")
+	sim.player.moored = true
+	sim.player.pos = sim.beacon_pos
+	check(DockBoard.fabricate(sim, "gun_sponson") == "", "the pad Makes a Cheek Gun")
+	check(sim.player.yard.has("gun_sponson"), "the gun sits in the yard")
+	check(DockBoard.paid_mount(sim, "gun_sponson"), "the gun is paid")
+	var probes := DockBoard.kind_count(sim, "survey_probe")
+	sim.player.cargo["ice_spall"] = 2
+	sim.player.cargo["raw_mass"] = 1
+	check(DockBoard.fabricate(sim, "survey_probe") == "", "the pad Makes a probe")
+	check(DockBoard.kind_count(sim, "survey_probe") == probes + 1, "the new probe is on the rack")
+	sim.player.cargo["nickel_cinder"] = 2
+	check(DockBoard.fabricate(sim, "iron_belt") == "", "the pad Makes an iron belt")
+	check(int(sim.player.rounds.get("iron", 0)) >= 40, "the belt adds iron rounds")
+	var soil := make("vesper")
+	soil._arrive("HC-V1-R5-S1", "")
+	soil.player.pos = soil.pocket_pos
+	soil.player.cargo["claim_core"] = 1
+	check(Homestead.try_plant(soil) == "", "the claim plants for a shop")
+	soil.player.cargo["ice_spall"] = 1
+	soil.player.cargo["hull_plate"] = 1
+	soil.player.cargo["raw_mass"] = 2
+	check(DockBoard.fabricate(soil, "away_shuttle") == "", "the claim Makes an away shuttle")
+	check(DockBoard.kind_count(soil, "away_shuttle") == 1, "the shuttle is on the rack")
+	check(DockBoard.fabricate(soil, "away_shuttle") != "", "the shuttle caps at one")

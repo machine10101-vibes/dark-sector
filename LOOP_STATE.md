@@ -39,6 +39,7 @@ Player-visible what works now:
 - Approach takes an offered contract and flies the real mark: the pack for a cull, the lost craft for recover, the unread body for a survey, Helion Dock once food is in the hold, Quiet Hollow for a defend, the stream or trash for a window job. Sweep sits on SURVEY. Haul, Pen, and Turret sit on LAW with Tend and Feed. Combat math is unchanged.
 - Approach flies a live dock slip — the ice ring, the pad on the return, Seized Hold, or the Compact cutter. Take, or O, files the first open Helion slip when no contract is offered. Form, Attack, and Recall sit on COMBAT and cover the whole wing. Combat math is unchanged.
 - Return on SHIP recalls every craft that is out, so Lane can fire after a probe. Take scan sends the docked probe to Aegis Prime. Salvage strips a close trash or stream field from the helm. Walk on LAW surveys a plantable pocket. A defend contract names the 48 s hold on the amber cue. Combat math is unchanged.
+- Harvested stock now Makes. Nickel, ice, copper, plate, raw mass, and keel salvage spend at the Helion pad or a planted claim into yard guns, iron and splinter reloads, attack drones, a probe, a harvest drone, a tender, or an away shuttle. Make sits on SHIP, on Inventory, on Yard kits, and on the Fleet pad rack. GRT Buy stays. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -61,4 +62,5 @@ Files touched:
 - tests/dock_board_sim.gd
 - tests/harvest_cut.gd
 - tests/liveops_sim.gd
+- data/materials.json
 - LOOP_STATE.md

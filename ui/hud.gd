@@ -18,6 +18,8 @@ var hangar_box: VBoxContainer
 var fleet_box: VBoxContainer
 var stock_box: VBoxContainer
 var stock_sig := ""
+var build_box: VBoxContainer
+var build_sig := ""
 var bay_box: VBoxContainer
 var dossier_box: VBoxContainer
 var pause_box: PanelContainer
@@ -404,6 +406,8 @@ func _process(_delta: float) -> void:
 		_refresh_fleet()
 	elif panel_kind == "stock":
 		_refresh_stock()
+	elif panel_kind == "build":
+		_refresh_build()
 	elif panel_kind == "dossier":
 		dossier_timer -= _delta
 		if dossier_timer <= 0.0:
@@ -651,6 +655,10 @@ func _build_panel() -> void:
 	stock_box.visible = false
 	stock_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	inner.add_child(stock_box)
+	build_box = VBoxContainer.new()
+	build_box.visible = false
+	build_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.add_child(build_box)
 	dossier_box = VBoxContainer.new()
 	dossier_box.visible = false
 	inner.add_child(dossier_box)
@@ -909,6 +917,7 @@ func _build_actions() -> void:
 	_action("Ship", func() -> void: _toggle("bay"))
 	_action("Fleet", func() -> void: _toggle("fleet"))
 	_action("Stock", func() -> void: _toggle("stock"))
+	_action("Make", func() -> void: _toggle("build"))
 	_action("Market", func() -> void: _toggle("market"))
 	_action("Harvest", _harvest_craft)
 	_action("Salvage", _salvage_wreck)
@@ -1258,6 +1267,8 @@ func _toggle(kind: String) -> void:
 	fleet_box.visible = kind == "fleet"
 	if stock_box != null:
 		stock_box.visible = kind == "stock"
+	if build_box != null:
+		build_box.visible = kind == "build"
 	dossier_box.visible = kind == "dossier"
 	board_box.visible = kind == "board"
 	if market_box != null:
@@ -1275,6 +1286,9 @@ func _toggle(kind: String) -> void:
 		"stock":
 			panel_title.text = "Inventory"
 			_build_stock()
+		"build":
+			panel_title.text = "Make"
+			_build_make()
 		"dossier":
 			panel_title.text = "Scan dossier"
 			_fill_dossier()
@@ -1376,7 +1390,7 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 	if panel_scroll != null:
 		panel_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 		panel_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	if (panel_kind == "bay" or panel_kind == "stock" or panel_kind == "fleet" or panel_kind == "market") and not compact:
+	if (panel_kind == "bay" or panel_kind == "stock" or panel_kind == "fleet" or panel_kind == "market" or panel_kind == "build") and not compact:
 		# Fitting glass sits in the open helm: right of the status card, above
 		# the tank capsule, and clear of Hold and Stick.
 		var left := 360.0
@@ -1396,7 +1410,7 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 		panel.custom_minimum_size = Vector2(0, 0)
 		panel.position = Vector2(left, top)
 		var tall := 280.0
-		if panel_kind == "stock" or panel_kind == "fleet" or panel_kind == "market":
+		if panel_kind == "stock" or panel_kind == "fleet" or panel_kind == "market" or panel_kind == "build":
 			tall = 420.0
 		panel.size = Vector2(maxf(480.0, right - left), maxf(tall, bottom - top))
 		if panel_kind == "bay":
@@ -1405,6 +1419,8 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 			_fit_fleet_pane()
 		elif panel_kind == "market":
 			_fit_market_pane()
+		elif panel_kind == "build":
+			_fit_build_pane()
 		else:
 			_fit_stock_pane()
 		return
@@ -2219,10 +2235,18 @@ func _fill_yard(sim) -> void:
 	market_box.add_child(_section("Yard kits"))
 	for kit_id in ["gun_sponson", "laser_bank", "missile_rack", "iron_belt", "splinter_pack"]:
 		var kit: Dictionary = DockBoard.KIT[kit_id]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
 		var label := "%s  %d" % [str(kit.name), int(kit.price)]
 		var buy_kit := ThemeKit.button(label)
 		buy_kit.pressed.connect(_buy_kit.bind(kit_id))
-		market_box.add_child(buy_kit)
+		row.add_child(buy_kit)
+		var make_kit := ThemeKit.slim_button("Make")
+		make_kit.custom_minimum_size = Vector2(64, 32)
+		make_kit.pressed.connect(_make_item.bind(kit_id))
+		row.add_child(make_kit)
+		market_box.add_child(row)
+		market_box.add_child(_flat(DockBoard.recipe_line(sim, kit_id), 12, Color("8d826c")))
 	market_box.add_child(_section("Corp tag"))
 	tag_edit = LineEdit.new()
 	tag_edit.name = "CorpTag"
@@ -2959,6 +2983,29 @@ func _buy_kit(kit_id: String) -> void:
 	if note != "":
 		Game.sim.say(note)
 	_refresh_bay_text()
+	_refresh_make_panels()
+
+
+func _make_item(product_id: String) -> void:
+	if Game.sim == null:
+		return
+	var note := DockBoard.fabricate(Game.sim, product_id)
+	if note != "":
+		Game.sim.say(note)
+	_refresh_bay_text()
+	_refresh_make_panels()
+
+
+func _refresh_make_panels() -> void:
+	market_sig = ""
+	if panel_kind == "fleet":
+		_build_fleet()
+	if panel_kind == "market":
+		_fill_market()
+	if panel_kind == "stock":
+		_build_stock()
+	if panel_kind == "build":
+		_build_make()
 
 
 func _cycle_load(kind: String) -> void:
@@ -3183,9 +3230,11 @@ func _build_fleet_shop() -> void:
 	var held := DockBoard.attack_count(sim)
 	fleet_box.add_child(ThemeKit.label("PAD RACK", 15, Color("e6d7bf")))
 	if DockBoard.at_pad(sim):
-		fleet_box.add_child(ThemeKit.label("Buy a level and a job. Wing %d/%d. Form and Attack cover every attack drone." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
+		fleet_box.add_child(ThemeKit.label("Buy with GRT or Make from ore. Wing %d/%d. Form and Attack cover every attack drone." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
+	elif DockBoard.can_build(sim):
+		fleet_box.add_child(ThemeKit.label("The claim can Make a drone from stock. Wing %d/%d." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
 	else:
-		fleet_box.add_child(ThemeKit.label("Moor at Helion to buy. Wing %d/%d." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
+		fleet_box.add_child(ThemeKit.label("Moor at Helion to buy, or Make at a planted claim. Wing %d/%d." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
 	var shop := _inv_grid()
 	fleet_box.add_child(shop)
 	for raw_id in DockBoard.attack_shop_ids():
@@ -3227,11 +3276,22 @@ func _drone_shop_card(def_id: String, grid: GridContainer) -> void:
 	stock.autowrap_mode = TextServer.AUTOWRAP_OFF
 	stock.clip_text = true
 	box.add_child(stock)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 4)
 	var buy := ThemeKit.slim_button("Buy")
 	buy.custom_minimum_size = Vector2(56, 32)
 	buy.disabled = not DockBoard.at_pad(sim) or owned >= cap or DockBoard.attack_count(sim) >= DockBoard.ATTACK_WING or DockBoard.purse(sim) < price
 	buy.pressed.connect(_buy_drone.bind(def_id))
-	box.add_child(buy)
+	actions.add_child(buy)
+	var make := ThemeKit.slim_button("Make")
+	make.custom_minimum_size = Vector2(56, 32)
+	make.disabled = not DockBoard.can_build(sim) or owned >= cap or DockBoard.attack_count(sim) >= DockBoard.ATTACK_WING or not DockBoard.can_afford(sim, def_id)
+	make.pressed.connect(_make_item.bind(def_id))
+	actions.add_child(make)
+	box.add_child(actions)
+	var cost := ThemeKit.label(DockBoard.recipe_line(sim, def_id), 10, Color("8d826c"))
+	cost.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(cost)
 	grid.add_child(card)
 
 
@@ -3286,7 +3346,11 @@ func _build_stock() -> void:
 	var head := ThemeKit.label("The hold.  %d/%d" % [used, cap], 16, Color("e6d7bf"))
 	head.autowrap_mode = TextServer.AUTOWRAP_OFF
 	stock_box.add_child(head)
-	stock_box.add_child(ThemeKit.label("Each square is a crate. List it on the Helion pad, or sell it to the stall for GRT.", 13, Color("8d826c")))
+	stock_box.add_child(ThemeKit.label("Each square is a crate. List it, sell it for GRT, or Make a kit, gun, or craft from the stock.", 13, Color("8d826c")))
+	var to_make := ThemeKit.slim_button("Make")
+	to_make.custom_minimum_size = Vector2(72, 32)
+	to_make.pressed.connect(func() -> void: _toggle("build"))
+	stock_box.add_child(to_make)
 	var cargo: Dictionary = sim.player.cargo
 	var ids: Array = []
 	for key in cargo.keys():
@@ -3383,6 +3447,106 @@ func _refresh_stock() -> void:
 		return
 	if _cargo_sig() != stock_sig:
 		_build_stock()
+
+
+func _build_make() -> void:
+	if build_box == null:
+		return
+	for child in build_box.get_children():
+		build_box.remove_child(child)
+		child.queue_free()
+	build_sig = _cargo_sig()
+	var sim = Game.sim
+	if sim == null:
+		build_box.add_child(ThemeKit.label("No keel to make from.", 14, Color("8d826c")))
+		return
+	var where := "Moor at Helion, or stand a planted claim, then Make."
+	if DockBoard.at_pad(sim):
+		where = "The Helion pad can Make kits, guns, and craft from the hold."
+	elif DockBoard.can_build(sim):
+		where = "The claim shop Makes kits, guns, and craft from the hold."
+	build_box.add_child(ThemeKit.label(where, 13, Color("8d826c")))
+	build_box.add_child(ThemeKit.label("HOLD  %s" % _hold_brief(sim), 13, Color("d7e6c8")))
+	var grid := _inv_grid()
+	build_box.add_child(grid)
+	for product_id in DockBoard.recipe_ids():
+		grid.add_child(_make_card(str(product_id)))
+	_pad_grid(grid)
+	_fit_build_pane()
+
+
+func _hold_brief(sim) -> String:
+	var bits: Array = []
+	for id in HelmHarvest.stock_ids():
+		var held := int(sim.player.cargo.get(id, 0))
+		if held <= 0:
+			continue
+		bits.append("%s ×%d" % [HelmMarket.short_name(sim, str(id)), held])
+	if bits.is_empty():
+		return "empty"
+	return "  ".join(bits)
+
+
+func _make_card(product_id: String) -> Control:
+	var sim = Game.sim
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(118, 0)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(box)
+	if sim != null and sim.defs.craft.has(product_id):
+		var glass := CraftGlass.new()
+		glass.craft_kind = product_id
+		glass.custom_minimum_size = Vector2(108, 100)
+		glass.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		box.add_child(glass)
+		glass.call_deferred("show_craft", product_id)
+	else:
+		var stock_id := _recipe_face(product_id)
+		var glass := StockGlass.new()
+		glass.stock_id = stock_id
+		glass.custom_minimum_size = Vector2(108, 100)
+		glass.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		box.add_child(glass)
+		glass.call_deferred("show_stock", stock_id)
+	var title := ThemeKit.label(DockBoard.recipe_name(product_id), 13, Color("c8f4ff"))
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.clip_text = true
+	box.add_child(title)
+	var cost := ThemeKit.label(DockBoard.recipe_line(sim, product_id), 10, Color("8d826c"))
+	cost.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(cost)
+	var make := ThemeKit.slim_button("Make")
+	make.custom_minimum_size = Vector2(64, 32)
+	make.disabled = sim == null or not DockBoard.can_build(sim) or not DockBoard.can_afford(sim, product_id)
+	make.pressed.connect(_make_item.bind(product_id))
+	box.add_child(make)
+	return card
+
+
+func _recipe_face(product_id: String) -> String:
+	var need: Dictionary = DockBoard.recipe_need(product_id)
+	for id in HelmHarvest.stock_ids():
+		if need.has(id):
+			return str(id)
+	return "raw_mass"
+
+
+func _refresh_build() -> void:
+	if Game.sim == null or build_box == null:
+		return
+	if _cargo_sig() != build_sig:
+		_build_make()
+
+
+func _fit_build_pane() -> void:
+	if panel_kind != "build" or build_box == null or panel == null:
+		return
+	build_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	build_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 
 
 func _fit_stock_pane() -> void:

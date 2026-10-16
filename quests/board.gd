@@ -235,6 +235,8 @@ static func try_bolt(sim) -> String:
 				cheapest = str(kit_id)
 		if cheapest != "":
 			var note := DockBoard.buy_kit(sim, cheapest)
+			if note != "" and DockBoard.can_afford(sim, cheapest):
+				note = DockBoard.fabricate(sim, cheapest)
 			if note != "":
 				return note
 			sim.install(cheapest)
