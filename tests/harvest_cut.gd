@@ -111,6 +111,21 @@ func _marked() -> void:
 	check(HelmHarvest.send_craft(ves) == "", "a harvest drone takes the selected seam")
 	var drone = _craft(ves, "harvest_drone")
 	check(drone != null and str(drone.target) == "copper_slag", "the drone flies to the selected copper")
+	var scan_home := make("kestrel")
+	scan_home.player.moored = false
+	scan_home.player.pos = ice.pos + Vector2(30, 0)
+	HelmHarvest.mark(scan_home, "copper_slag")
+	check(CraftOrders.launch(scan_home, "survey_probe") == "", "Probe launches onto the selected seam")
+	var scan_probe = _craft(scan_home, "survey_probe")
+	check(scan_probe != null and str(scan_probe.target) == "copper_slag", "Probe and KEY_1 scan the mark")
+	check(str(scan_probe.order) == "scan", "a marked Probe order is a scan")
+	var drone_home := make("vesper")
+	drone_home.player.moored = false
+	drone_home.player.pos = ice.pos + Vector2(30, 0)
+	HelmHarvest.mark(drone_home, "copper_slag")
+	check(CraftOrders.launch(drone_home, "harvest_drone") == "", "a drone launch takes the mark")
+	var launched = _craft(drone_home, "harvest_drone")
+	check(launched != null and str(launched.target) == "copper_slag", "the launched drone flies to the selected copper")
 
 
 func _plasma() -> void:

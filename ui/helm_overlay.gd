@@ -161,8 +161,9 @@ func _place() -> void:
 		overview.position = Vector2(right_x - ov_w, col_top)
 
 	var locked := str(sim.player.get("lock_id", "")) != ""
-	card.visible = band and locked
-	var card_h := 108.0
+	var marked = HelmHarvest.marked(sim)
+	card.visible = band and (locked or marked != null)
+	var card_h := 108.0 if locked else 72.0
 	if card.visible:
 		var lo := 8.0
 		if status != null:
@@ -185,6 +186,7 @@ func _place() -> void:
 			floor_y = card.position.y - 6.0
 			if card.position.y < left_bottom:
 				card.visible = false
+		order_row.visible = locked
 		order_row.position = Vector2(8.0, card_h - 36.0)
 		order_row.size = Vector2(card.size.x - 16.0, 30.0)
 
@@ -1163,6 +1165,7 @@ func _draw() -> void:
 	_draw_rings(cam, stage, sim)
 	_draw_sweep(cam, stage, sim)
 	_draw_cuts(cam, stage, sim)
+	_draw_mark(cam, stage, sim)
 	_draw_incoming(cam, stage, sim)
 	var quest_ids := {}
 	for goal in objectives_of(sim):
@@ -1209,6 +1212,24 @@ func _draw() -> void:
 		_text(Vector2(sp.x - radius, tank_y + 20.0), "%s · %s" % [_dist_word(row.dist), row.word], 10, Color(col.lerp(Color.WHITE, 0.35), 0.85))
 	_draw_own(cam, stage, sim)
 	_draw_box()
+
+
+func _draw_mark(cam: Camera3D, stage, sim) -> void:
+	var place = HelmHarvest.marked(sim)
+	if place == null:
+		return
+	var at3: Vector3 = stage.chart(place.pos, 2.0)
+	if cam.is_position_behind(at3):
+		return
+	var sp := cam.unproject_position(at3)
+	if sp.x < -40.0 or sp.y < -40.0 or sp.x > size.x + 40.0 or sp.y > size.y + 40.0:
+		return
+	var col := Color(0.55, 0.96, 0.82, 0.95)
+	_diamond(sp, 12.0, col, 2.1)
+	_corners(sp, 20.0, col, 1.7, 0.3)
+	var gap: float = sim.player.pos.distance_to(place.pos)
+	var word := "READY" if HelmHarvest.ready(sim, place) else "SCAN"
+	_text(sp + Vector2(16, -8), "%s  ·  %s  ·  %s" % [str(place.name), _dist_word(gap), word], 11, Color(col, 0.96))
 
 
 func _draw_cuts(cam: Camera3D, stage, sim) -> void:
@@ -1444,9 +1465,9 @@ func _text_right(on: CanvasItem, right_x: float, y: float, text: String, font_si
 
 func _plate(pane: Control, strong: bool) -> void:
 	var s := pane.size
-	var fill := Color(0.01, 0.032, 0.046, 0.62 if strong else 0.4)
-	var edge := Color(0.45, 0.82, 0.92, 0.45 if strong else 0.28)
-	var accent := Color(0.72, 0.96, 1.0, 0.92)
+	var fill := Color(0.008, 0.028, 0.042, 0.78 if strong else 0.58)
+	var edge := Color(0.5, 0.88, 0.96, 0.62 if strong else 0.4)
+	var accent := Color(0.78, 0.98, 1.0, 0.95)
 	pane.draw_rect(Rect2(Vector2.ZERO, s), fill)
 	pane.draw_rect(Rect2(Vector2(1, 1), s - Vector2(2, 2)), edge, false, 1.0)
 	var arm := 9.0
@@ -1609,6 +1630,7 @@ func _draw_card(pane: Control) -> void:
 	var target = HelmCombat.find_unit(sim, str(p.get("lock_id", "")))
 	_plate(pane, true)
 	if target == null:
+		_draw_mark_card(pane, sim, p)
 		return
 	var mark := standing(sim, target)
 	var col: Color = mark.color
@@ -1663,6 +1685,25 @@ func _draw_card(pane: Control) -> void:
 		button.add_theme_color_override("font_color", Color("9be7d0") if on else Color("c5d6dc"))
 	(order_buttons["orbit"] as Button).text = "Orbit %d" % int(ORBIT_RANGES[_orbit_pick])
 	(order_buttons["keep"] as Button).text = "Keep %d" % int(KEEP_RANGES[_keep_pick])
+
+
+func _draw_mark_card(pane: Control, sim, p: Dictionary) -> void:
+	var place = HelmHarvest.marked(sim)
+	if place == null:
+		return
+	var w := pane.size.x
+	var col := Color(0.55, 0.96, 0.82, 0.95)
+	pane.draw_rect(Rect2(Vector2(0, 10), Vector2(2, 36)), col)
+	_clip_text(pane, Vector2(10, 16), w - 96.0, str(place.name), 14, Color("f4fcff"))
+	var word := "ready to cut" if HelmHarvest.ready(sim, place) else "needs a scan"
+	_text(Vector2(10, 30), "MARK  ·  %s" % word, 10, Color(col, 0.9), pane)
+	var dist: float = p.pos.distance_to(place.pos)
+	_text_right(pane, w - 10.0, 16.0, _dist_word(dist), 14, Color("f4fcff"))
+	var left := int(sim.deposits.get(str(place.id), 0))
+	var line := "Probe or Harvest flies here.  %d crate%s left." % [left, "" if left == 1 else "s"]
+	if left <= 0:
+		line = "This seam is worked out."
+	_text(Vector2(10, 52), line, 10, Color("d5e4e8"), pane)
 
 
 # Incoming lock ------------------------------------------------------------

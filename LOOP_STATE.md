@@ -33,6 +33,7 @@ Player-visible what works now:
 - Inventory is a 3D grid. Every crate in the hold — ore, glasswheat, claim core, dock crate — sits in a square with the same mesh that flies in the sky. Empty squares pad the row. Fleet is the same grid for fighters, probes, and drones. Combat math is unchanged.
 - Helion Exchange is a wide terminal. Each slot shows the 3D crate, fill, Collect, and Abort. A Collect box sits under the desk. Buy and Sell pick from a 3D catalog. Last lists recent fills. Yard sells glasswheat and raw stock from 3D cards. Opening a terminal hides the hold dump on the helm. Combat math is unchanged.
 - Fleet sells attack drones on the pad: Dart L1 interceptor, Sting L1 gunner, Wasp L2 striker, Fang L2 hunter, Lance L3 heavy, and the generic fighter. Each SKU has a 3D card, a GRT price, and a rack cap. Form, Attack, and Recall cover the whole wing. Combat math is unchanged.
+- The helm names the selected mark. A lock reads LOCK on the rail; a clicked seam reads MARK with range and ready/scan. The glass draws a diamond on that seam and a mark card when no ship is locked. Probe, or 1, scans the selected mark. An unmarked Probe still takes the next unread node. Harvest drone launch follows the same mark. The rail chips and labels carry a dark outline so they sit on the ice. Hold and craft lines stay short. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -44,8 +45,9 @@ Open design decisions (max 5):
 - The farm cassette carries a hold-kine. It does not grow a crop. Crops grow on a claim plot.
 - A pocket takes a core only when claim_slots.json names it. The red box on First Soil keeps the Perimeter atlas id.
 Files touched:
-- world/helm_harvest.gd
+- craft/orders.gd
 - ui/helm_overlay.gd
 - ui/hud.gd
+- ui/theme_kit.gd
 - tests/harvest_cut.gd
 - LOOP_STATE.md

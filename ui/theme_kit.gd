@@ -19,7 +19,11 @@ static func build() -> Theme:
 	theme.set_color("font_color", "Button", Color("d7eef2"))
 	theme.set_color("font_hover_color", "Button", Color("f4fcff"))
 	theme.set_color("font_disabled_color", "Button", Color("7f9098"))
+	theme.set_color("font_outline_color", "Button", Color(0.0, 0.02, 0.04, 0.9))
+	theme.set_constant("outline_size", "Button", 3)
 	theme.set_color("font_color", "Label", Color("e7f3f6"))
+	theme.set_color("font_outline_color", "Label", Color(0.0, 0.02, 0.04, 0.92))
+	theme.set_constant("outline_size", "Label", 4)
 	theme.set_font_size("font_size", "Label", 15)
 	theme.set_font_size("font_size", "Button", 15)
 	theme.set_stylebox("panel", "PanelContainer", glass())
@@ -37,23 +41,23 @@ static func _clip(box: StyleBoxFlat, accent: bool = false) -> void:
 
 static func glass(strong: bool = false) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
-	box.bg_color = Color(0.012, 0.03, 0.045, 0.86 if strong else 0.7)
-	box.border_color = Color(0.42, 0.9, 0.98, 0.78 if strong else 0.42)
+	box.bg_color = Color(0.01, 0.028, 0.042, 0.9 if strong else 0.78)
+	box.border_color = Color(0.48, 0.92, 1.0, 0.88 if strong else 0.55)
 	box.set_border_width_all(1)
 	_clip(box, true)
 	box.content_margin_left = 12
 	box.content_margin_right = 12
 	box.content_margin_top = 8
 	box.content_margin_bottom = 8
-	box.shadow_color = Color(0.0, 0.16, 0.22, 0.38)
-	box.shadow_size = 12
+	box.shadow_color = Color(0.0, 0.18, 0.24, 0.46)
+	box.shadow_size = 14
 	return box
 
 
 static func rail(strong: bool = false) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
-	box.bg_color = Color(0.008, 0.03, 0.045, 0.78 if strong else 0.5)
-	box.border_color = Color(0.38, 0.88, 0.98, 0.82 if strong else 0.4)
+	box.bg_color = Color(0.006, 0.028, 0.042, 0.88 if strong else 0.68)
+	box.border_color = Color(0.42, 0.9, 1.0, 0.9 if strong else 0.52)
 	box.set_border_width_all(1)
 	box.border_width_left = 2
 	_clip(box, true)
@@ -61,19 +65,19 @@ static func rail(strong: bool = false) -> StyleBoxFlat:
 	box.content_margin_right = 8
 	box.content_margin_top = 3
 	box.content_margin_bottom = 3
-	box.shadow_color = Color(0.0, 0.12, 0.18, 0.28)
-	box.shadow_size = 6
+	box.shadow_color = Color(0.0, 0.14, 0.2, 0.36)
+	box.shadow_size = 8
 	return box
 
 
 static func slim_chip(strong: bool = false) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
 	if strong:
-		box.bg_color = Color(0.03, 0.14, 0.18, 0.82)
-		box.border_color = Color(0.5, 0.94, 1.0, 0.88)
+		box.bg_color = Color(0.04, 0.18, 0.22, 0.94)
+		box.border_color = Color(0.58, 0.96, 1.0, 0.96)
 	else:
-		box.bg_color = Color(0.02, 0.06, 0.09, 0.42)
-		box.border_color = Color(0.32, 0.7, 0.8, 0.36)
+		box.bg_color = Color(0.02, 0.08, 0.12, 0.78)
+		box.border_color = Color(0.42, 0.84, 0.94, 0.62)
 	box.set_border_width_all(1)
 	box.border_width_left = 2 if strong else 1
 	_clip(box, strong)
@@ -87,8 +91,8 @@ static func slim_chip(strong: bool = false) -> StyleBoxFlat:
 static func veil() -> StyleBoxFlat:
 	var box := glass(false)
 	# Dark enough that the ice limb stays behind the words instead of through them.
-	box.bg_color = Color(0.008, 0.02, 0.03, 0.86)
-	box.border_color = Color(0.48, 0.9, 0.98, 0.62)
+	box.bg_color = Color(0.006, 0.018, 0.028, 0.92)
+	box.border_color = Color(0.52, 0.92, 1.0, 0.72)
 	box.set_border_width_all(1)
 	_clip(box, true)
 	box.content_margin_left = 14
@@ -101,11 +105,11 @@ static func veil() -> StyleBoxFlat:
 static func chip_box(strong: bool = false) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
 	if strong:
-		box.bg_color = Color(0.04, 0.16, 0.2, 0.92)
-		box.border_color = Color(0.58, 0.94, 1.0, 0.88)
+		box.bg_color = Color(0.045, 0.18, 0.22, 0.95)
+		box.border_color = Color(0.62, 0.96, 1.0, 0.94)
 	else:
-		box.bg_color = Color(0.03, 0.08, 0.11, 0.62)
-		box.border_color = Color(0.36, 0.7, 0.8, 0.36)
+		box.bg_color = Color(0.03, 0.1, 0.14, 0.78)
+		box.border_color = Color(0.4, 0.78, 0.88, 0.5)
 	box.set_border_width_all(1)
 	_clip(box, strong)
 	box.content_margin_left = 8
@@ -146,6 +150,8 @@ static func paint(node: Button, primary: bool) -> void:
 	node.add_theme_stylebox_override("disabled", _quiet_box())
 	node.add_theme_color_override("font_color", Color("e9fbff") if primary else Color("c5d6dc"))
 	node.add_theme_color_override("font_disabled_color", Color("6d7c82"))
+	node.add_theme_color_override("font_outline_color", Color(0.0, 0.02, 0.04, 0.9))
+	node.add_theme_constant_override("outline_size", 3)
 	node.add_theme_font_size_override("font_size", 16 if primary else 14)
 
 
@@ -171,6 +177,8 @@ static func label(text: String, size: int = 15, color: Color = Color("e7f3f6")) 
 	node.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	node.add_theme_font_size_override("font_size", size)
 	node.add_theme_color_override("font_color", color)
+	node.add_theme_color_override("font_outline_color", Color(0.0, 0.02, 0.04, 0.92))
+	node.add_theme_constant_override("outline_size", 4)
 	return node
 
 
@@ -199,6 +207,8 @@ static func slim_button(text: String) -> Button:
 	node.add_theme_stylebox_override("hover", hover)
 	node.add_theme_stylebox_override("pressed", pressed)
 	node.add_theme_color_override("font_color", Color("d7eef2"))
+	node.add_theme_color_override("font_outline_color", Color(0.0, 0.02, 0.04, 0.88))
+	node.add_theme_constant_override("outline_size", 3)
 	node.add_theme_font_size_override("font_size", 13)
 	return node
 

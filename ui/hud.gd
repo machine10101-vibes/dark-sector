@@ -4,6 +4,7 @@ var root: Control
 var helm_name: Label
 var helm_flight: Label
 var helm_zone: Label
+var helm_mark: Label
 var haul_cue: Label
 var helm_cargo: Label
 var helm_craft: Label
@@ -249,6 +250,8 @@ func _layout_chrome(screen: Vector2) -> void:
 			helm_flight.add_theme_font_size_override("font_size", 16)
 	if helm_zone != null:
 		helm_zone.visible = not short
+	if helm_mark != null:
+		helm_mark.visible = not short and helm_mark.text != ""
 	if helm_cargo != null:
 		helm_cargo.visible = not compact and panel_kind == ""
 	if helm_craft != null:
@@ -549,6 +552,10 @@ func _build_helm() -> void:
 	stat_speed = _chip("0 m/s", true)
 	stat_heat = _chip("HEAT", false)
 	stat_purse = _chip("GRT 0", true)
+	helm_mark = ThemeKit.label("", 13, Color("9be7d0"))
+	helm_mark.autowrap_mode = TextServer.AUTOWRAP_OFF
+	helm_mark.clip_text = true
+	box.add_child(helm_mark)
 	box.add_child(helm_zone)
 	haul_cue = ThemeKit.label("", 18, Color("ffd27a"))
 	haul_cue.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -1080,6 +1087,14 @@ func _refresh_helm() -> void:
 	stat_heat.add_theme_color_override("font_color", heat_color)
 	stat_purse.text = "GRT  %d" % DockBoard.purse(sim)
 	stat_purse.add_theme_color_override("font_color", Color("f0d48a"))
+	if helm_mark != null:
+		var mark_line := _mark_line(sim)
+		helm_mark.text = mark_line
+		helm_mark.visible = mark_line != "" and screen.y >= 520.0
+		if mark_line.begins_with("LOCK"):
+			helm_mark.add_theme_color_override("font_color", Color("f0a0a0"))
+		else:
+			helm_mark.add_theme_color_override("font_color", Color("9be7d0"))
 	var place := "Moored" if moored else ScaleFrame.layer_name(int(sim.layer))
 	var dock_word := ""
 	if moored == false and str(sim.defs.system.id) == "HC-V1-R1-S1" and int(sim.layer) == ScaleFrame.BAND and sim.beacon_pos != Vector2.ZERO:
@@ -1126,28 +1141,65 @@ func _mass_line(stats: Dictionary) -> String:
 	return "mass %.0f t" % mass
 
 
+func _mark_line(sim) -> String:
+	var lock = HelmCombat.find_unit(sim, str(sim.player.get("lock_id", "")))
+	if lock != null:
+		var gap: float = sim.player.pos.distance_to(lock.pos)
+		var name := str(lock.get("callsign", lock.get("name", "contact")))
+		return "LOCK  %s  ·  %d m" % [name, int(gap)]
+	var place = HelmHarvest.marked(sim)
+	if place != null:
+		var gap: float = sim.player.pos.distance_to(place.pos)
+		var word := "ready" if HelmHarvest.ready(sim, place) else "scan"
+		return "MARK  %s  ·  %d m  ·  %s" % [str(place.name), int(gap), word]
+	var order = sim.player.get("order", {})
+	if typeof(order) == TYPE_DICTIONARY and str(order.get("kind", "")) == "approach":
+		var label := str(order.get("label", ""))
+		if label != "":
+			return "MARK  %s" % label
+	return ""
+
+
 func _cargo_line(sim, stats: Dictionary) -> String:
+	var used := Fit.cargo_used(sim.player)
+	var cap := int(stats.cargo_cap)
 	if sim.player.cargo.is_empty():
-		return "Hold empty.  0/%d" % int(stats.cargo_cap)
+		return "HOLD  0/%d" % cap
 	var parts: Array = []
+	var seen := 0
 	for id in sim.player.cargo.keys():
-		parts.append("%s ×%d" % [sim.resource_name(str(id)), int(sim.player.cargo[id])])
-	return "%s    %d/%d" % ["   ".join(parts), Fit.cargo_used(sim.player), int(stats.cargo_cap)]
+		if seen >= 2:
+			parts.append("+%d" % (sim.player.cargo.size() - 2))
+			break
+		parts.append("%s ×%d" % [_short_stock(sim, str(id)), int(sim.player.cargo[id])])
+		seen += 1
+	return "HOLD  %d/%d  ·  %s" % [used, cap, "  ".join(parts)]
+
+
+func _short_stock(sim, id: String) -> String:
+	var name := str(sim.resource_name(id))
+	var cut := name.find(" ")
+	if cut > 0:
+		return name.substr(0, cut)
+	return name
 
 
 func _craft_line(sim) -> String:
-	var bits: Array = []
 	if sim.hangar_down():
-		bits.append("Hangar down — craft cannot come aboard")
+		return "HANGAR down"
+	var out := 0
+	var live := ""
 	for item in sim.craft:
-		if str(item.state) == "docked":
+		if str(item.state) == "docked" or str(item.state) == "lost":
 			continue
-		bits.append("%s %s" % [item.name, item.state])
-	if bits.is_empty():
-		return "Hangar sealed. Craft are aboard."
-	if sim.hangar_down() and bits.size() == 1:
-		return str(bits[0])
-	return "   ".join(bits)
+		out += 1
+		if live == "":
+			live = "%s %s" % [item.name, item.state]
+	if out == 0:
+		return "CRAFT  sealed"
+	if out == 1:
+		return "CRAFT  %s" % live
+	return "CRAFT  %d out  ·  %s" % [out, live]
 
 
 func _toggle(kind: String) -> void:

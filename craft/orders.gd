@@ -35,15 +35,19 @@ static func launch(sim, def_id: String) -> String:
 		return order(sim, str(craft.uid), "launch", "")
 	match def_id:
 		"survey_probe":
-			var place = _next_scan_target(sim)
+			var place = HelmHarvest.marked(sim)
+			if place == null:
+				place = _next_scan_target(sim)
 			if place == null:
 				return "No node left to put a probe on."
 			return order(sim, str(craft.uid), "scan", str(place.id))
 		"harvest_drone":
-			var place = _next_harvest_target(sim)
+			var place = HelmHarvest.marked(sim)
+			if place == null or not HelmHarvest.ready(sim, place):
+				place = _next_harvest_target(sim)
 			if place == null:
 				return "No surveyed seam. Read a dossier before you drop the drone."
-			if sim.player.pos.distance_to(place.pos) > one_way_range(craft):
+			if not _aimed(sim, place) and sim.player.pos.distance_to(place.pos) > one_way_range(craft):
 				return "Harvester stays in the neighborhood. Bring the keel closer to %s." % place.name
 			return order(sim, str(craft.uid), "launch", str(place.id))
 		"away_shuttle":
