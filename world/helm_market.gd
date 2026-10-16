@@ -1,9 +1,9 @@
 class_name HelmMarket
 extends RefCounted
 
-## Player slips on the Helion pad. A crate leaves the hold when it is listed.
-## Another keel on the pad buys it for GRT. The stall keeps a few posted crates
-## so the board is never empty. Combat math stays off this path.
+## Helion Exchange. Six offer slots, buy or sell, escrow, then Collect.
+## A new offer matches the best resting opposite at that older price.
+## The stall keeps posted sells so a solo pad still fills. Combat math stays off this path.
 
 const LIST_CAP := 6
 const PRICE_MIN := 1
@@ -94,14 +94,17 @@ static func list_item(sim, unit: Dictionary, item_id: String, price: int, count:
 		need = mini(need, room)
 		if not _take_cargo(unit, item_id, need):
 			return "No %s in the hold." % sim.resource_name(item_id)
-		found.count = int(found.get("count", 1)) + need
+		var have := int(found.get("count", 1))
+		found.count = have + need
+		found.want = int(found.get("want", have)) + need
+		_match_sell(sim, found)
 		if need > 1:
 			sim.say("Added %d %s to the %d GRT slip." % [need, sim.resource_name(item_id), ask])
 		else:
 			sim.say("Added %s to the %d GRT slip." % [sim.resource_name(item_id), ask])
 		sim.sfx("install")
 		return ""
-	if _owned_count(sim, agent_id) >= LIST_CAP:
+	if _empty_slot(sim, agent_id) < 0:
 		return "The stall holds %d of your slips. Pull one first." % LIST_CAP
 	if not _take_cargo(unit, item_id, need):
 		return "No %s in the hold." % sim.resource_name(item_id)
@@ -109,11 +112,14 @@ static func list_item(sim, unit: Dictionary, item_id: String, price: int, count:
 	row.seller = agent_id
 	row.seller_name = _name_of(unit)
 	row.stall = false
+	row.side = "sell"
+	row.slot = _empty_slot(sim, agent_id)
 	sim.listings.append(row)
+	_match_sell(sim, row)
 	if need > 1:
-		sim.say("Listed %d %s at %d GRT each." % [need, sim.resource_name(item_id), ask])
+		sim.say("Sell offer: %d %s at %d GRT each." % [need, sim.resource_name(item_id), ask])
 	else:
-		sim.say("Listed %s for %d GRT." % [sim.resource_name(item_id), ask])
+		sim.say("Sell offer: %s at %d GRT." % [sim.resource_name(item_id), ask])
 	sim.sfx("install")
 	return ""
 
@@ -130,12 +136,24 @@ static func pull_listing(sim, unit: Dictionary, listing_id: String) -> String:
 		return "The stall keeps its own crates."
 	if str(row.get("seller", "")) != str(unit.get("agent_id", "")):
 		return "That slip is not yours."
-	var stats: Dictionary = Fit.stats(sim.defs, unit)
-	if Fit.cargo_used(unit) + int(row.get("count", 1)) > int(stats.cargo_cap):
-		return "The hold is full."
-	_give_cargo(unit, str(row.item), int(row.get("count", 1)))
+	var side := str(row.get("side", "sell"))
+	var leftover := int(row.get("count", 0)) + int(row.get("collect_item", 0))
+	if side == "sell" or leftover > 0:
+		var stats: Dictionary = Fit.stats(sim.defs, unit)
+		if Fit.cargo_used(unit) + leftover > int(stats.cargo_cap):
+			return "The hold is full."
+	if leftover > 0:
+		_give_cargo(unit, str(row.item), leftover)
+	var coins_back := int(row.get("collect_coins", 0))
+	if side == "buy":
+		coins_back += unit_price(row) * maxi(0, int(row.get("count", 0)))
+	if coins_back > 0:
+		set_coins(sim, unit, coins(sim, unit) + coins_back)
 	_drop(sim, listing_id)
-	sim.say("Pulled %s off the stall." % sim.resource_name(str(row.item)))
+	if side == "buy":
+		sim.say("Aborted the buy offer.")
+	else:
+		sim.say("Pulled %s off the stall." % sim.resource_name(str(row.item)))
 	sim.sfx("dock")
 	return ""
 
@@ -163,6 +181,10 @@ static func reprice_listing(sim, unit: Dictionary, listing_id: String, price: in
 		sim.say("Merged %s onto the %d GRT slip." % [sim.resource_name(str(row.item)), ask])
 		sim.sfx("install")
 		return ""
+	if str(row.get("side", "sell")) == "buy":
+		_match_buy(sim, row)
+	else:
+		_match_sell(sim, row)
 	sim.say("Reposted %s at %d GRT each." % [sim.resource_name(str(row.item)), ask])
 	sim.sfx("install")
 	return ""
@@ -211,6 +233,87 @@ static func buy_listing(sim, unit: Dictionary, listing_id: String, take: int = 0
 	return ""
 
 
+static func buy_offer(sim, unit: Dictionary, item_id: String, price: int, count: int = 1) -> String:
+	if sim == null or unit.is_empty():
+		return "No keel is live."
+	if not on_pad(sim, unit):
+		return "The Helion market stands on the pad."
+	if not listable(item_id):
+		return "The stall will not take that crate."
+	var want := clip_count(count)
+	var ask := clip_price(price)
+	var paid := ask * want
+	if coins(sim, unit) < paid:
+		return "GRT is short of %d for that offer." % paid
+	var agent_id := str(unit.get("agent_id", ""))
+	var slot := _empty_slot(sim, agent_id)
+	if slot < 0:
+		return "The stall holds %d of your slips. Pull one first." % LIST_CAP
+	set_coins(sim, unit, coins(sim, unit) - paid)
+	var row := _blank(sim, item_id, want, ask)
+	row.seller = agent_id
+	row.seller_name = _name_of(unit)
+	row.stall = false
+	row.side = "buy"
+	row.slot = slot
+	sim.listings.append(row)
+	_match_buy(sim, row)
+	if int(row.get("filled", 0)) > 0:
+		sim.say("Buy offer: %s at %d GRT. %d filled." % [sim.resource_name(item_id), ask, int(row.filled)])
+	else:
+		sim.say("Buy offer: %d %s at %d GRT each." % [want, sim.resource_name(item_id), ask])
+	sim.sfx("install")
+	return ""
+
+
+static func collect_offer(sim, unit: Dictionary, listing_id: String) -> String:
+	if sim == null or unit.is_empty():
+		return "No keel is live."
+	if not on_pad(sim, unit):
+		return "The Helion market stands on the pad."
+	var row: Dictionary = find_listing(sim, listing_id)
+	if row.is_empty():
+		return "That slip is gone."
+	if str(row.get("seller", "")) != str(unit.get("agent_id", "")):
+		return "That slip is not yours."
+	var crates := int(row.get("collect_item", 0))
+	if crates > 0 and hold_room(sim, unit) < crates:
+		return "The hold is full."
+	if crates > 0:
+		_give_cargo(unit, str(row.item), crates)
+		row.collect_item = 0
+	var pay := int(row.get("collect_coins", 0))
+	if pay > 0:
+		set_coins(sim, unit, coins(sim, unit) + pay)
+		row.collect_coins = 0
+	if int(row.get("count", 0)) <= 0:
+		_drop(sim, listing_id)
+	sim.say("Collected from the exchange.")
+	sim.sfx("dock")
+	return ""
+
+
+static func collect_all(sim, unit: Dictionary) -> String:
+	if sim == null or unit.is_empty():
+		return "No keel is live."
+	var ids: Array = []
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if str(row.get("seller", "")) != str(unit.get("agent_id", "")):
+			continue
+		if int(row.get("collect_item", 0)) <= 0 and int(row.get("collect_coins", 0)) <= 0:
+			continue
+		ids.append(str(row.get("id", "")))
+	if ids.is_empty():
+		return "Nothing to collect."
+	var last := ""
+	for raw_id in ids:
+		last = collect_offer(sim, unit, str(raw_id))
+		if last != "":
+			return last
+	return ""
+
+
 static func find_listing(sim, listing_id: String) -> Dictionary:
 	if sim == null:
 		return {}
@@ -229,6 +332,8 @@ static func split_board(sim, agent_id: String) -> Dictionary:
 		return {"stall": stall, "pad": pad, "mine": mine}
 	for raw in sim.listings:
 		var row: Dictionary = raw
+		if str(row.get("side", "sell")) == "buy":
+			continue
 		if bool(row.get("stall", false)):
 			stall.append(row)
 		elif str(row.get("seller", "")) == agent_id:
@@ -290,7 +395,11 @@ static func best_ask(sim, item_id: String, skip_agent: String = "") -> int:
 		return 0
 	for raw in sim.listings:
 		var row: Dictionary = raw
+		if str(row.get("side", "sell")) == "buy":
+			continue
 		if str(row.get("item", "")) != item_id:
+			continue
+		if int(row.get("count", 0)) <= 0:
 			continue
 		if skip_agent != "" and str(row.get("seller", "")) == skip_agent:
 			continue
@@ -306,8 +415,10 @@ static func depth(sim, item_id: String) -> int:
 		return 0
 	for raw in sim.listings:
 		var row: Dictionary = raw
+		if str(row.get("side", "sell")) == "buy":
+			continue
 		if str(row.get("item", "")) == item_id:
-			n += maxi(1, int(row.get("count", 1)))
+			n += maxi(0, int(row.get("count", 0)))
 	return n
 
 
@@ -342,8 +453,10 @@ static func depth_line(sim) -> String:
 	var ids: Array = []
 	for raw in sim.listings:
 		var row: Dictionary = raw
+		if str(row.get("side", "sell")) == "buy":
+			continue
 		var item_id := str(row.get("item", ""))
-		if item_id == "":
+		if item_id == "" or int(row.get("count", 0)) <= 0:
 			continue
 		var have := maxi(1, int(row.get("count", 1)))
 		var ask := unit_price(row)
@@ -438,6 +551,8 @@ static func board_items(sim) -> Array:
 		return ids
 	for raw in sim.listings:
 		var row: Dictionary = raw
+		if str(row.get("side", "sell")) == "buy":
+			continue
 		var item_id := str(row.get("item", ""))
 		if item_id == "" or seen.has(item_id):
 			continue
@@ -457,11 +572,14 @@ static func board_sig(sim) -> String:
 	var bits: PackedStringArray = PackedStringArray()
 	for raw in sim.listings:
 		var row: Dictionary = raw
-		bits.append("%s:%s:%d:%d:%s" % [
+		bits.append("%s:%s:%s:%d:%d:%d:%d:%s" % [
 			str(row.get("id", "")),
 			str(row.get("item", "")),
+			str(row.get("side", "sell")),
 			int(row.get("price", 0)),
 			int(row.get("count", 0)),
+			int(row.get("collect_item", 0)),
+			int(row.get("collect_coins", 0)),
 			str(row.get("seller", "")),
 		])
 	bits.append(tape_line(sim))
@@ -476,6 +594,8 @@ static func _own_ask(sim, agent_id: String, item_id: String, price: int, skip_id
 		var row: Dictionary = raw
 		if bool(row.get("stall", false)):
 			continue
+		if str(row.get("side", "sell")) == "buy":
+			continue
 		if str(row.get("seller", "")) != agent_id:
 			continue
 		if str(row.get("item", "")) != item_id:
@@ -488,13 +608,216 @@ static func _own_ask(sim, agent_id: String, item_id: String, price: int, skip_id
 	return {}
 
 
+static func catalog() -> Array:
+	var ids: Array = HelmHarvest.stock_ids().duplicate()
+	ids.append("glasswheat")
+	return ids
+
+
+static func guide_price(sim, item_id: String, skip_agent: String = "") -> int:
+	return default_ask(sim, item_id, skip_agent)
+
+
+static func has_slot(sim, unit: Dictionary) -> bool:
+	if sim == null or unit.is_empty():
+		return false
+	return _empty_slot(sim, str(unit.get("agent_id", ""))) >= 0
+
+
+static func own_desk(sim, agent_id: String) -> Array:
+	var slots: Array = []
+	var used: Dictionary = {}
+	if sim != null:
+		for raw in sim.listings:
+			var row: Dictionary = raw
+			if bool(row.get("stall", false)):
+				continue
+			if str(row.get("seller", "")) != agent_id:
+				continue
+			if _slot_done(row):
+				continue
+			var at := int(row.get("slot", -1))
+			if at < 0:
+				at = _first_free(used)
+				row.slot = at
+			used[at] = row
+	for i in LIST_CAP:
+		if used.has(i):
+			slots.append(used[i])
+		else:
+			slots.append({})
+	return slots
+
+
+static func offer_left(row: Dictionary) -> int:
+	return maxi(0, int(row.get("count", 0)))
+
+
+static func offer_want(row: Dictionary) -> int:
+	return maxi(1, int(row.get("want", row.get("count", 1))))
+
+
+static func offer_filled(row: Dictionary) -> int:
+	var filled := int(row.get("filled", 0))
+	if filled > 0:
+		return filled
+	return maxi(0, offer_want(row) - offer_left(row))
+
+
+static func can_collect(row: Dictionary) -> bool:
+	return int(row.get("collect_item", 0)) > 0 or int(row.get("collect_coins", 0)) > 0
+
+
 static func _owned_count(sim, agent_id: String) -> int:
 	var n := 0
 	for raw in sim.listings:
 		var row: Dictionary = raw
-		if str(row.get("seller", "")) == agent_id and not bool(row.get("stall", false)):
-			n += 1
+		if str(row.get("seller", "")) != agent_id:
+			continue
+		if bool(row.get("stall", false)):
+			continue
+		if _slot_done(row):
+			continue
+		n += 1
 	return n
+
+
+static func _slot_done(row: Dictionary) -> bool:
+	if int(row.get("count", 0)) > 0:
+		return false
+	if int(row.get("collect_item", 0)) > 0:
+		return false
+	if int(row.get("collect_coins", 0)) > 0:
+		return false
+	return true
+
+
+static func _empty_slot(sim, agent_id: String) -> int:
+	var used: Dictionary = {}
+	if sim != null:
+		for raw in sim.listings:
+			var row: Dictionary = raw
+			if bool(row.get("stall", false)):
+				continue
+			if str(row.get("seller", "")) != agent_id:
+				continue
+			if _slot_done(row):
+				continue
+			used[int(row.get("slot", 0))] = true
+	return _first_free(used)
+
+
+static func _first_free(used: Dictionary) -> int:
+	for i in LIST_CAP:
+		if not used.has(i):
+			return i
+	return -1
+
+
+static func _age(row: Dictionary) -> int:
+	var id := str(row.get("id", "l0"))
+	if id.begins_with("l") and id.length() > 1:
+		return int(id.substr(1))
+	return int(row.get("seq", 0))
+
+
+static func _match_buy(sim, buy: Dictionary) -> void:
+	if sim == null or buy.is_empty():
+		return
+	var item_id := str(buy.get("item", ""))
+	var buyer := str(buy.get("seller", ""))
+	var sells: Array = []
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if str(row.get("side", "sell")) == "buy":
+			continue
+		if str(row.get("item", "")) != item_id:
+			continue
+		if str(row.get("seller", "")) == buyer:
+			continue
+		if int(row.get("count", 0)) <= 0:
+			continue
+		if unit_price(row) > unit_price(buy):
+			continue
+		sells.append(row)
+	sells.sort_custom(_by_ask_age)
+	for raw in sells:
+		if int(buy.get("count", 0)) <= 0:
+			break
+		var sell: Dictionary = raw
+		_cross(sim, buy, sell)
+
+
+static func _match_sell(sim, sell: Dictionary) -> void:
+	if sim == null or sell.is_empty():
+		return
+	var item_id := str(sell.get("item", ""))
+	var owner := str(sell.get("seller", ""))
+	var buys: Array = []
+	for raw in sim.listings:
+		var row: Dictionary = raw
+		if str(row.get("side", "sell")) != "buy":
+			continue
+		if str(row.get("item", "")) != item_id:
+			continue
+		if str(row.get("seller", "")) == owner:
+			continue
+		if int(row.get("count", 0)) <= 0:
+			continue
+		if unit_price(row) < unit_price(sell):
+			continue
+		buys.append(row)
+	buys.sort_custom(_by_bid)
+	for raw in buys:
+		if int(sell.get("count", 0)) <= 0:
+			break
+		var buy: Dictionary = raw
+		_cross(sim, buy, sell)
+
+
+static func _cross(sim, buy: Dictionary, sell: Dictionary) -> void:
+	var qty := mini(int(buy.get("count", 0)), int(sell.get("count", 0)))
+	if qty <= 0:
+		return
+	var bid := unit_price(buy)
+	var ask := unit_price(sell)
+	var trade := ask
+	if _age(buy) < _age(sell):
+		trade = bid
+	buy.count = int(buy.get("count", 0)) - qty
+	sell.count = int(sell.get("count", 0)) - qty
+	buy.filled = int(buy.get("filled", 0)) + qty
+	sell.filled = int(sell.get("filled", 0)) + qty
+	buy.collect_item = int(buy.get("collect_item", 0)) + qty
+	if bid > trade:
+		buy.collect_coins = int(buy.get("collect_coins", 0)) + (bid - trade) * qty
+	if not bool(sell.get("stall", false)):
+		sell.collect_coins = int(sell.get("collect_coins", 0)) + trade * qty
+	var item_id := str(sell.get("item", ""))
+	note_sale(sim, item_id, trade, qty)
+	if int(sell.get("count", 0)) <= 0 and bool(sell.get("stall", false)):
+		_drop(sim, str(sell.get("id", "")))
+		_post_stall(sim, item_id, ask)
+
+
+static func _by_ask_age(a, b) -> bool:
+	var left: Dictionary = a
+	var right: Dictionary = b
+	var lp := int(left.get("price", 0))
+	var rp := int(right.get("price", 0))
+	if lp != rp:
+		return lp < rp
+	return _age(left) < _age(right)
+
+
+static func _by_bid(a, b) -> bool:
+	var left: Dictionary = a
+	var right: Dictionary = b
+	var lp := int(left.get("price", 0))
+	var rp := int(right.get("price", 0))
+	if lp != rp:
+		return lp > rp
+	return _age(left) < _age(right)
 
 
 static func _blank(sim, item_id: String, count: int, price: int) -> Dictionary:
@@ -507,6 +830,12 @@ static func _blank(sim, item_id: String, count: int, price: int) -> Dictionary:
 		"seller": STALL,
 		"seller_name": "Helion stall",
 		"stall": true,
+		"side": "sell",
+		"want": count,
+		"filled": 0,
+		"slot": -1,
+		"collect_item": 0,
+		"collect_coins": 0,
 	}
 
 

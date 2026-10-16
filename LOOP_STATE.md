@@ -28,7 +28,8 @@ Player-visible what works now:
 - The stall desk now splits STALL / ON THE PAD / YOUR SLIPS, lists a stack at a per-crate ask, lets a buyer take one crate or the slip, and lets the seller Set a new ask without pulling. LAST holds the recent ticks. Instant pad rates sit under PAD RATE. Combat math is unchanged.
 - The Helion market glass now has Board, List, and Yard tabs. Same-ask lists stack on one slip, and Set onto the same ask merges. LIVE shows best ask and depth. Price and qty use ± steppers. Combat math is unchanged.
 - Market sits on the pad bar beside Board when the keel is on Helion, on the SHIP row beside Stock, and on 6. The stall glass opens from that button. Combat math is unchanged.
-- The helm glass is clipped cyan rail, not round beige boxes. Market Board filters a good, Buy shows the GRT cost and blocks On pad / Need / Hold full / Yours, List takes a qty from Stock or the List tab, and a guest posts list/buy/pull/reprice as helm verbs. Combat math is unchanged.
+- The helm glass is clipped cyan rail, not round beige boxes. Combat math is unchanged.
+- Helion Exchange is a Grand Exchange desk: six slots, Buy or Sell on an empty box, guide price, ±5% , Confirm offer, progress, Collect, and Abort. A new offer matches the best resting opposite at the older price and refunds leftover GRT. The stall still posts ice, nickel, copper, and glasswheat so a solo pad fills. Yard keeps instant glasswheat and stock rates. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -40,8 +41,8 @@ Open design decisions (max 5):
 - The farm cassette carries a hold-kine. It does not grow a crop. Crops grow on a claim plot.
 - A pocket takes a core only when claim_slots.json names it. The red box on First Soil keeps the Perimeter atlas id.
 Files touched:
-- ui/theme_kit.gd
-- ui/hud.gd
 - world/helm_market.gd
+- world/sector_sim.gd
+- ui/hud.gd
 - tests/dock_market.gd
 - LOOP_STATE.md

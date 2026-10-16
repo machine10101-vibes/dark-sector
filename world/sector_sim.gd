@@ -2746,6 +2746,22 @@ func _apply_verbs(unit: Dictionary, cmd: Dictionary) -> void:
 		var priced := HelmMarket.reprice_listing(self, unit, str(slip.get("id", "")), int(slip.get("price", 0)))
 		if priced != "":
 			say(priced)
+	if cmd.has("buy_offer"):
+		var slip: Dictionary = cmd.buy_offer if typeof(cmd.buy_offer) == TYPE_DICTIONARY else {}
+		var offered := HelmMarket.buy_offer(self, unit, str(slip.get("item", "")), int(slip.get("price", 0)), int(slip.get("count", 1)))
+		if offered != "":
+			say(offered)
+	if cmd.has("collect"):
+		var slip = cmd.collect
+		var taken := ""
+		if typeof(slip) == TYPE_STRING and str(slip) == "all":
+			taken = HelmMarket.collect_all(self, unit)
+		elif typeof(slip) == TYPE_BOOL and bool(slip):
+			taken = HelmMarket.collect_all(self, unit)
+		else:
+			taken = HelmMarket.collect_offer(self, unit, str(slip))
+		if taken != "":
+			say(taken)
 
 
 func _clear_oneshots() -> void:
@@ -2766,6 +2782,8 @@ func _clear_oneshots() -> void:
 		row.erase("buy_listing")
 		row.erase("pull_listing")
 		row.erase("reprice")
+		row.erase("buy_offer")
+		row.erase("collect")
 		commands[key] = row
 
 
