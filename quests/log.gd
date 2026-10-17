@@ -19,6 +19,18 @@ static func entries(defs: Dictionary, sim) -> Array:
 			where = str(focus.get("label", ""))
 			link = str(focus.get("kind", ""))
 			state = str(sim.quest_flags.get("shakedown_beat", state))
+		elif QuestBoard.hook_open(sim, quest, quest_id):
+			if state == "dormant":
+				state = "open"
+			var body := str(quest.get("body", ""))
+			if body != "":
+				where = str(quest.get("title", quest_id))
+				link = body
+			elif quest.has("route"):
+				where = str(sim.defs.system.name)
+				link = "route"
+		elif state == "dormant":
+			continue
 		out.append({
 			"id": quest_id,
 			"title": quest.title,

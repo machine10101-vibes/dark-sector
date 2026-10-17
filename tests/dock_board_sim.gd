@@ -131,6 +131,10 @@ func _haul() -> void:
 	check(sim.player.pos.distance_to(ring.pos) > DockBoard.RING, "the pad is not already on the ring")
 	check(DockBoard.take(sim, "haul") == "", "haul can be taken on the pad")
 	check(int(sim.player.cargo.get(DockBoard.CRATE, 0)) == 1, "the crate is in the hold")
+	check(QuestBoard.try_approach(sim) == "", "Approach flies the ice ring")
+	var haul_order = sim.player.get("order", {})
+	var haul_aim := Vector2(float(haul_order.get("x", 0.0)), float(haul_order.get("y", 0.0)))
+	check(haul_aim.distance_to(ring.pos) < 20.0, "Approach aims at the ring, not the pad")
 	sim.player.moored = false
 	sim.player.pos = ring.pos
 	DockBoard.pulse(sim, 0.2)

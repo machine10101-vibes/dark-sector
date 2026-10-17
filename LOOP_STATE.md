@@ -1,7 +1,7 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Ring haul cue
+Slice just completed: Helm lock warning, range rings, sweep, insurance
 Player-visible what works now:
 - A fresh keel moors on a berth ring beside Aegis, in clear space. The pad is not a planet-sized disc, and the hull is not inside the city or the ice. The title-yard Needle stays in its own world, so Take does not leave a second, larger keel sitting on the pad.
 - Phone portrait and landscape keep Speed, Purse, the bars, the stick, the gun, and the scale in separate bands. The scale sits above the bars on a tall phone and beside the stick on a short one.
@@ -21,10 +21,31 @@ Player-visible what works now:
 - Aegis traffic is civic, cargo, and PDO shells, plus the yard. Belts and meteor streams are volumes. A probe scan is a flight you can watch, and the time scales with altitude and body size. A lost craft keeps kilometer coordinates.
 - The save and the listen snapshot share system id, body id, layer, a rebasing local origin in kilometers, and a local pos. Law and patrol guns stay on distance inside the band.
 - The older loop still resolves: lanes, claims, scans, harvest, heat, modules, quests, and the host log.
+- The helm names anyone locking you, and the glass draws a lock-warning chip with range. Optimal, falloff, and sensor rings sit on the sky and the corner map when you have a lock or someone has you. 4, or empty-space Command → Sensor sweep, pulses the same reach the overview already uses and speaks hostiles, wrecks, and ore groups. The map caption reads captains and hostiles in this system. A broken keel pays insurance into the purse; the wreck keeps the old hold split and posts as yours.
+- The helm glass now carries an ATTACK rail above Cast off. Every live gun is a button: the hull turret or gun first, then Cheek Gun, Heavy Turret, Beam Bank, Missile Rack, Stake Gun, and Point Defense when those mounts are bolted. Each family keeps its own color. A tap arms that socket on the locked ship; a second tap holds the guns. Combat math is unchanged.
+- Harvest now has two cuts. Harvest, or 2, sends a harvest drone if the keel racks one, or a survey probe if it does not. The craft flies to the seam the captain targeted — the last clicked ore, planet, or rock, or the approach mark — not the nearest ready seam. An unmarked Harvest still takes the nearest ready seam. Plasma, or 5, runs the keel torch on a seam inside 96 m. Both leave a beam and chips on the glass. A Beak with no drone still harvests with its probe. Raw stock sells on the Helion pad for GRT — nickel 6, ice 5, copper 7, plate 8, raw mass 4, salvage 9. The purse chip now reads GRT. Glasswheat buy 12 / sell 8 is unchanged. Combat math is unchanged.
+- The Helion market now holds a stall. A captain lists a crate from the hold at a GRT price they set. The crate leaves the hold until another keel on the pad buys it, or until they pull the slip. The stall keeps ice, nickel, copper, and glasswheat posted. A claim core and a dock crate will not list. Instant pad buyback is still there. Combat math is unchanged.
+- The stall desk now splits STALL / ON THE PAD / YOUR SLIPS, lists a stack at a per-crate ask, lets a buyer take one crate or the slip, and lets the seller Set a new ask without pulling. LAST holds the recent ticks. Instant pad rates sit under PAD RATE. Combat math is unchanged.
+- The Helion market glass now has Board, List, and Yard tabs. Same-ask lists stack on one slip, and Set onto the same ask merges. LIVE shows best ask and depth. Price and qty use ± steppers. Combat math is unchanged.
+- Market sits on the pad bar beside Board when the keel is on Helion, on the SHIP row beside Stock, and on 6. The stall glass opens from that button. Combat math is unchanged.
+- The helm glass is clipped cyan rail, not round beige boxes. Combat math is unchanged.
+- Helion Exchange is a Grand Exchange desk: six slots, Buy or Sell on an empty box, guide price, ±5% , Confirm offer, progress, Collect, and Abort. A new offer matches the best resting opposite at the older price and refunds leftover GRT. The stall still posts ice, nickel, copper, and glasswheat so a solo pad fills. Yard keeps instant glasswheat and stock rates. Combat math is unchanged.
+- Inventory is a 3D grid. Every crate in the hold — ore, glasswheat, claim core, dock crate — sits in a square with the same mesh that flies in the sky. Empty squares pad the row. Fleet is the same grid for fighters, probes, and drones. Combat math is unchanged.
+- Helion Exchange is a wide terminal. Each slot shows the 3D crate, fill, Collect, and Abort. A Collect box sits under the desk. Buy and Sell pick from a 3D catalog. Last lists recent fills. Yard sells glasswheat and raw stock from 3D cards. Opening a terminal hides the hold dump on the helm. Combat math is unchanged.
+- Fleet sells attack drones on the pad: Dart L1 interceptor, Sting L1 gunner, Wasp L2 striker, Fang L2 hunter, Lance L3 heavy, and the generic fighter. Each SKU has a 3D card, a GRT price, and a rack cap. Form, Attack, and Recall cover the whole wing. Combat math is unchanged.
+- The helm names the selected mark. A lock reads LOCK on the rail; a clicked seam reads MARK with range and ready/scan. The glass draws a diamond on that seam and a mark card when no ship is locked. Probe, or 1, scans the selected mark. An unmarked Probe still takes the next unread node. Harvest drone launch follows the same mark. The rail chips and labels carry a dark outline so they sit on the ice. Hold and craft lines stay short. Combat math is unchanged.
+- The amber helm cue now names the live job when no dock crate is out: Cast off, Scan Aegis, cut a seam, bolt a module, meet the Red Keel, lane to Quiet Hollow, or tend the garden. The amber beam follows that mark. Plant, Core, Tend, and Feed sit on the LAW row. Salvage sits on SHIP; a close wreck strips from the helm, and a far wreck sends the tender. Right-click a wreck for Approach and Salvage. The quest log leads with NEXT and hides dormant authored shorts. Combat math is unchanged.
+- Probe, or 1, scans an explicit harvest mark. An approach-only seam does not steal that launch; unmarked Probe still takes the nearer unread node. Bolt on SHIP installs the first spare (the mast on a stock Needle). Approach on SURVEY flies the live job — the Red Keel pack, a Quiet Hollow lane, a contract mark, or an in-system visit hook. Ash Hymn, Quay, Coda, and the other authored bodies name themselves on the cue and the log when the keel is in that system. Combat math is unchanged.
+- Approach takes an offered contract and flies the real mark: the pack for a cull, the lost craft for recover, the unread body for a survey, Helion Dock once food is in the hold, Quiet Hollow for a defend, the stream or trash for a window job. Sweep sits on SURVEY. Haul, Pen, and Turret sit on LAW with Tend and Feed. Combat math is unchanged.
+- Approach flies a live dock slip — the ice ring, the pad on the return, Seized Hold, or the Compact cutter. Take, or O, files the first open Helion slip when no contract is offered. Form, Attack, and Recall sit on COMBAT and cover the whole wing. Combat math is unchanged.
+- Return on SHIP recalls every craft that is out, so Lane can fire after a probe. Take scan sends the docked probe to Aegis Prime. Salvage strips a close trash or stream field from the helm. Walk on LAW surveys a plantable pocket. A defend contract names the 48 s hold on the amber cue. Combat math is unchanged.
+- Harvested ore now smelts. Ice, nickel, and raw mass Make an aluminum bar; nickel, plate, and salvage Make a steel bar. Aluminum Makes the attack wing — Dart, Sting, Wasp, Fang, Lance, and fighter — not the keel. Steel Makes yard guns, belts, and racks. Support craft still spend ore. Make sits on SHIP, Inventory, Yard, and the Fleet pad rack. GRT Buy stays. Combat math is unchanged.
+- Hull metal now reads as large plates with weld seams and edge wear, not grit. Needle, Barn, and Beak keep their own paint and trim. Fleet craft loft as small ships with bells, intakes, and role gear. Asteroids grow extra lobes; meteors mix rock and ice. Aegis keeps a thicker air rim. Combat math is unchanged.
+- Hull plates, armor, tanks, and beams now take their own metal so a keel is not one dark slab. The dock ring stands as a collar with clamps. Fleet craft grow towers, dishes, jaws, fins, and barrels that name the role. Asteroids add more lobes; ice crystals grow longer spines. Aegis keeps a thicker air rim. Combat math is unchanged.
 What is next (ordered):
-1. Live-Ops 2 — player count per system, insurance/wreck tuning, more HC-V1 authored hooks, art loop Gate 2+ on three starters
+1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
-- Nothing in this repo blocks Live-Ops 2. Do not add a pillar, a second veil, or a new region pass.
+- Nothing in this repo blocks the authored-hook pass. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):
 - Planets stay on fixed positions until a later pass adds orbits.
 - The Unlet stays unplantable. Helion Dock and green capitals refuse a Claim Core.
@@ -32,28 +53,18 @@ Open design decisions (max 5):
 - The farm cassette carries a hold-kine. It does not grow a crop. Crops grow on a claim plot.
 - A pocket takes a core only when claim_slots.json names it. The red box on First Soil keeps the Perimeter atlas id.
 Files touched:
-- tests/slice1_sim.gd
-- world/sector_view.gd
-- quests/dock_board.gd
-- scripts/main.gd
-- data/craft.json
-- data/first_soil.json
-- data/ships.json
-- data/system.json
 - craft/orders.gd
-- tests/scale_sim.gd
+- quests/board.gd
+- quests/dock_board.gd
+- quests/log.gd
+- ui/helm_overlay.gd
 - ui/hud.gd
 - world/overhead.gd
-- world/scale.gd
-- world/sector_sim.gd
-- world/sector_view.gd
+- world/helm_harvest.gd
 - world/stage3d.gd
-- world/overhead.gd
-- quests/dock_board.gd
-- scripts/web_moor_proof.gd
+- tests/slice6_sim.gd
 - tests/dock_board_sim.gd
-- tests/dock_market.gd
-- tests/layout_fit.gd
-- PLAYTEST.md
+- tests/harvest_cut.gd
+- tests/liveops_sim.gd
+- data/materials.json
 - LOOP_STATE.md
-- README.md

@@ -9,6 +9,7 @@ var phase := 0
 var hud: Node
 var size_i := 0
 var waits := 0
+var volume_wait := 0
 var sizes: Array = [Vector2i(1280, 720), Vector2i(390, 844), Vector2i(844, 390), Vector2i(1116, 1941)]
 
 
@@ -23,6 +24,14 @@ func _process(_dt: float) -> bool:
 		root.add_child(hud)
 		return false
 	if size_i >= sizes.size():
+		if volume_wait == 0:
+			_open_volume()
+			volume_wait = 1
+			return false
+		if volume_wait < 4:
+			volume_wait += 1
+			return false
+		_check_volume()
 		_finish()
 		return true
 	var want: Vector2i = sizes[size_i]
@@ -38,9 +47,6 @@ func _process(_dt: float) -> bool:
 	_check_helm(screen)
 	size_i += 1
 	waits = 0
-	if size_i >= sizes.size():
-		_finish()
-		return true
 	return false
 
 
@@ -85,6 +91,35 @@ func _atlas() -> void:
 	check(hop_ids.has("HC-V1-R1-S3"), "Helion lane reaches Writ")
 	var regions: Array = atlas.get("regions", [])
 	check(regions.size() == 8, "eight regions (%d)" % regions.size())
+
+
+func _open_volume() -> void:
+	var game = root.get_node("/root/Game")
+	game.begin_new("vesper")
+	game.mode = "sector"
+	game.set_map_open(true)
+	root.size = Vector2i(1280, 720)
+
+
+func _check_volume() -> void:
+	var chart: Control = hud.get("space_map")
+	if chart == null:
+		_bad("3D chart missing")
+		return
+	check(chart.visible, "the 3D chart fills the glass")
+	var view = chart.get("vp")
+	var eye = chart.get("cam")
+	var stage = chart.get("stage")
+	check(view is SubViewport, "the chart has its own 3D viewport")
+	if view is SubViewport:
+		check(bool((view as SubViewport).own_world_3d), "the chart world is its own sky")
+	check(eye is Camera3D, "the chart has a camera")
+	if stage != null and stage.has_method("system_count"):
+		check(int(stage.system_count()) == 48, "the 3D chart plants every system (%d)" % int(stage.system_count()))
+		check(int(stage.lane_count()) > 8, "the 3D chart draws the lanes (%d)" % int(stage.lane_count()))
+	else:
+		_bad("the 3D chart stage is missing")
+	check(str(chart.get("selected")) != "", "the chart marks the system you are in")
 
 
 func _quiet_helm() -> void:

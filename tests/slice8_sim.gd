@@ -266,7 +266,7 @@ func _craft() -> void:
 	var parked := make("anvil")
 	check("parked" in CraftOrders.launch(parked, "salvage_tender").to_lower(), "the tender stays parked away from a field")
 	var beak := make("kestrel")
-	check("parked" in CraftOrders.launch(beak, "fighter").to_lower(), "the fighter stays parked")
+	check(CraftOrders.launch(beak, "fighter") == "", "the fighter launches onto the wing")
 	var gyre := make("anvil")
 	gyre._arrive("HC-V1-R6-S1", "")
 	var field = gyre.survey_node("the_swallow")

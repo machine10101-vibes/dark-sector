@@ -14,4 +14,4 @@ Do not replace, crop, redraw, or swap this file when improving the menu. Open it
 
 ## What stays Dark Sector
 
-This picture is a composition example. The menu keeps Dark Sector's own title, Helion Dock, New ship, Host, Join, Continue, and the three ships. Do not copy the example's wordmark, expansion name, login fields, or artwork into the game.
+This picture is a composition example. The menu keeps Dark Sector's own title, Helion Dock, New ship, Host, Join, Continue, and the ships Needle, Barn, Beak, Wick, Ram, and Kite. Do not copy the example's wordmark, expansion name, login fields, or artwork into the game.

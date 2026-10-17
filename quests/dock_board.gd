@@ -148,15 +148,21 @@ static func _take_scan(sim) -> String:
 	sim.quest_flags.dock_scan = "active"
 	# A probe already in flight was aimed at the nearest node, which from
 	# this pad is the ice ring. The slip is Aegis Prime. Send it there.
+	# A docked probe stays on the rack until Take — launch it so the slip
+	# starts from the helm without a second Probe tap.
 	if sim.dossier_complete("aegis_prime") == false:
+		var flying := false
 		for craft in sim.craft:
 			if str(craft.def_id) != "survey_probe":
 				continue
 			if str(craft.state) == "docked" or str(craft.state) == "lost":
 				continue
+			flying = true
 			if str(craft.target) == "aegis_prime":
 				continue
 			CraftOrders.order(sim, str(craft.uid), "scan", "aegis_prime")
+		if not flying:
+			CraftOrders.launch(sim, "survey_probe")
 	sim.say("Aegis scan taken. The probe reads Aegis Prime. Stand the pad when the dossier seals for %d." % SCAN_PAY)
 	return ""
 
@@ -520,11 +526,22 @@ static func buy_good(sim) -> String:
 		return "The hold is full."
 	sim.quest_flags.purse = purse(sim) - BUY_PRICE
 	sim._add_cargo(GOOD, 1)
-	sim.say("Bought glasswheat for %d. Purse %d." % [BUY_PRICE, purse(sim)])
+	sim.say("Bought glasswheat for %d. GRT %d." % [BUY_PRICE, purse(sim)])
 	return ""
 
 
 const MOUNT_PRICE := 80
+const FIGHTER_PRICE := 48
+const FIGHTER_WING := 4
+const ATTACK_WING := 8
+const ATTACK_SHOP := {
+	"dart_drone": {"price": 28, "cap": 2},
+	"sting_drone": {"price": 32, "cap": 2},
+	"wasp_drone": {"price": 48, "cap": 2},
+	"fang_drone": {"price": 56, "cap": 2},
+	"lance_drone": {"price": 88, "cap": 2},
+	"fighter": {"price": FIGHTER_PRICE, "cap": FIGHTER_WING},
+}
 const KIT := {
 	"gun_sponson": {"price": 80, "name": "Cheek Gun"},
 	"laser_bank": {"price": 80, "name": "Beam Bank"},
@@ -532,11 +549,288 @@ const KIT := {
 	"iron_belt": {"price": 12, "name": "Iron belt", "round": "iron", "count": 40},
 	"splinter_pack": {"price": 16, "name": "Splinter reload", "round": "splinter", "count": 8},
 }
+const SUPPORT_CAP := {
+	"survey_probe": 3,
+	"harvest_drone": 2,
+	"salvage_tender": 2,
+	"away_shuttle": 1,
+}
+const BARS := {
+	"aluminum_bar": {"name": "Aluminum bar"},
+	"steel_bar": {"name": "Steel bar"},
+}
+const RECIPES := {
+	"aluminum_bar": {"name": "Aluminum bar", "need": {"ice_spall": 2, "nickel_cinder": 1, "raw_mass": 1}},
+	"steel_bar": {"name": "Steel bar", "need": {"nickel_cinder": 2, "hull_plate": 1, "salvage_parts": 1}},
+	"gun_sponson": {"name": "Cheek Gun", "need": {"steel_bar": 1, "copper_slag": 2}},
+	"laser_bank": {"name": "Beam Bank", "need": {"steel_bar": 1, "copper_slag": 1, "ice_spall": 2}},
+	"missile_rack": {"name": "Missile Rack", "need": {"steel_bar": 2, "salvage_parts": 1}},
+	"iron_belt": {"name": "Iron belt", "need": {"steel_bar": 1}},
+	"splinter_pack": {"name": "Splinter reload", "need": {"steel_bar": 1, "ice_spall": 1}},
+	"dart_drone": {"name": "Dart", "need": {"aluminum_bar": 1, "copper_slag": 1}},
+	"sting_drone": {"name": "Sting", "need": {"aluminum_bar": 1, "copper_slag": 1}},
+	"wasp_drone": {"name": "Wasp", "need": {"aluminum_bar": 2, "salvage_parts": 1}},
+	"fang_drone": {"name": "Fang", "need": {"aluminum_bar": 2, "salvage_parts": 1}},
+	"lance_drone": {"name": "Lance", "need": {"aluminum_bar": 3, "salvage_parts": 1}},
+	"fighter": {"name": "Fighter", "need": {"aluminum_bar": 2, "salvage_parts": 1}},
+	"survey_probe": {"name": "Survey Probe", "need": {"ice_spall": 2, "raw_mass": 1}},
+	"harvest_drone": {"name": "Harvest Drone", "need": {"ice_spall": 2, "nickel_cinder": 1, "raw_mass": 1}},
+	"salvage_tender": {"name": "Salvage Tender", "need": {"salvage_parts": 2, "hull_plate": 1}},
+	"away_shuttle": {"name": "Away Shuttle", "need": {"ice_spall": 1, "hull_plate": 1, "raw_mass": 2}},
+}
+
+
+static func recipe_ids() -> Array:
+	return [
+		"aluminum_bar",
+		"steel_bar",
+		"gun_sponson",
+		"laser_bank",
+		"missile_rack",
+		"iron_belt",
+		"splinter_pack",
+		"dart_drone",
+		"sting_drone",
+		"wasp_drone",
+		"fang_drone",
+		"lance_drone",
+		"fighter",
+		"survey_probe",
+		"harvest_drone",
+		"salvage_tender",
+		"away_shuttle",
+	]
+
+
+static func can_build(sim) -> bool:
+	if at_pad(sim):
+		return true
+	return _at_shop(sim)
+
+
+static func _at_shop(sim) -> bool:
+	if sim == null or sim.player.is_empty():
+		return false
+	if not bool(sim.claim.get("owned", false)):
+		return false
+	if bool(sim.claim.get("frozen", false)):
+		return false
+	if str(sim.claim.get("system_id", "")) != str(sim.defs.system.id):
+		return false
+	var reach := float(sim.defs.system.pocket.get("radius", 80.0)) + 80.0
+	return sim.player.pos.distance_to(sim.pocket_pos) <= reach
+
+
+static func recipe_need(id: String) -> Dictionary:
+	if RECIPES.has(id):
+		var row: Dictionary = RECIPES[id]
+		return row.need
+	return {}
+
+
+static func recipe_name(id: String) -> String:
+	if RECIPES.has(id):
+		return str(RECIPES[id].name)
+	if KIT.has(id):
+		return str(KIT[id].name)
+	return id
+
+
+static func can_afford(sim, id: String) -> bool:
+	if sim == null or sim.player.is_empty():
+		return false
+	var need: Dictionary = recipe_need(id)
+	if need.is_empty():
+		return false
+	for key in need.keys():
+		if int(sim.player.cargo.get(key, 0)) < int(need[key]):
+			return false
+	return true
+
+
+static func recipe_line(sim, id: String) -> String:
+	var need: Dictionary = recipe_need(id)
+	var bits: Array = []
+	for raw in HelmHarvest.stock_ids():
+		var key := str(raw)
+		if not need.has(key):
+			continue
+		var want := int(need[key])
+		var have := 0
+		if sim != null and not sim.player.is_empty():
+			have = int(sim.player.cargo.get(key, 0))
+		var label := key
+		if sim != null:
+			label = sim.resource_name(key)
+		bits.append("%s %d/%d" % [label, have, want])
+	return "  ·  ".join(bits)
+
+
+static func _spend_need(sim, need: Dictionary) -> bool:
+	for key in need.keys():
+		if int(sim.player.cargo.get(key, 0)) < int(need[key]):
+			return false
+	for key in need.keys():
+		if not sim.spend_cargo(str(key), int(need[key])):
+			return false
+	return true
+
+
+static func fabricate(sim, product_id: String) -> String:
+	product_id = str(product_id)
+	if not RECIPES.has(product_id):
+		return "The yard has no such plan."
+	if not can_build(sim):
+		return "Make at the Helion pad or a planted claim."
+	if not can_afford(sim, product_id):
+		return "The hold is short. Need %s." % recipe_line(sim, product_id)
+	if BARS.has(product_id):
+		return _fab_bar(sim, product_id)
+	if KIT.has(product_id):
+		return _fab_kit(sim, product_id)
+	if ATTACK_SHOP.has(product_id):
+		return _fab_drone(sim, product_id)
+	return _fab_support(sim, product_id)
+
+
+static func _fab_bar(sim, bar_id: String) -> String:
+	var need: Dictionary = recipe_need(bar_id)
+	if not _spend_need(sim, need):
+		return "The hold is short. Need %s." % recipe_line(sim, bar_id)
+	sim._add_cargo(bar_id, 1)
+	sim.say("Made %s from stock." % recipe_name(bar_id))
+	return ""
+
+
+static func _fab_kit(sim, kit_id: String) -> String:
+	var row: Dictionary = KIT[kit_id]
+	var need: Dictionary = recipe_need(kit_id)
+	if row.has("round"):
+		if not _spend_need(sim, need):
+			return "The hold is short. Need %s." % recipe_line(sim, kit_id)
+		HelmCombat.ensure_rounds(sim.player)
+		var key := str(row.round)
+		sim.player.rounds[key] = int(sim.player.rounds.get(key, 0)) + int(row.count)
+		sim.say("Made %s from stock." % str(row.name))
+		return ""
+	if paid_mount(sim, kit_id):
+		return "The %s is already paid." % str(row.name)
+	if not _spend_need(sim, need):
+		return "The hold is short. Need %s." % recipe_line(sim, kit_id)
+	var paid: Array = []
+	if sim.quest_flags.has("paid_mounts"):
+		paid = sim.quest_flags.paid_mounts.duplicate()
+	paid.append(kit_id)
+	sim.quest_flags.paid_mounts = paid
+	if not sim.player.yard.has(kit_id):
+		sim.player.yard.append(kit_id)
+	sim.say("Made the %s from stock. Bolt it on the ship." % str(row.name))
+	return ""
+
+
+static func _fab_drone(sim, def_id: String) -> String:
+	var row: Dictionary = ATTACK_SHOP[def_id]
+	var cap := int(row.cap)
+	if kind_count(sim, def_id) >= cap:
+		if def_id == "fighter":
+			return "The wing is full at %d fighters." % cap
+		return "The rack holds %d of that drone." % cap
+	if attack_count(sim) >= ATTACK_WING:
+		return "The wing is full at %d attack craft." % ATTACK_WING
+	if not _spend_need(sim, recipe_need(def_id)):
+		return "The hold is short. Need %s." % recipe_line(sim, def_id)
+	var craft: Dictionary = sim._make_craft(def_id, _craft_index(sim, def_id) + 1)
+	craft.pos = sim.player.pos
+	sim.craft.append(craft)
+	sim.say("Made %s from stock. Launch it from the hangar." % craft.name)
+	return ""
+
+
+static func _fab_support(sim, def_id: String) -> String:
+	var cap := int(SUPPORT_CAP.get(def_id, 1))
+	if kind_count(sim, def_id) >= cap:
+		return "The rack holds %d of that craft." % cap
+	if not _spend_need(sim, recipe_need(def_id)):
+		return "The hold is short. Need %s." % recipe_line(sim, def_id)
+	var craft: Dictionary = sim._make_craft(def_id, _craft_index(sim, def_id) + 1)
+	craft.pos = sim.player.pos
+	sim.craft.append(craft)
+	sim.say("Made %s from stock. Launch it from the hangar." % craft.name)
+	return ""
 
 
 static func paid_mount(sim, module_id: String) -> bool:
 	var rows: Array = sim.quest_flags.get("paid_mounts", [])
 	return rows.has(module_id)
+
+
+static func attack_shop_ids() -> Array:
+	return ["dart_drone", "sting_drone", "wasp_drone", "fang_drone", "lance_drone", "fighter"]
+
+
+static func kind_count(sim, def_id: String) -> int:
+	var total := 0
+	for item in sim.craft:
+		if str(item.get("def_id", "")) == def_id and str(item.get("state", "")) != "lost":
+			total += 1
+	return total
+
+
+static func fighter_count(sim) -> int:
+	return kind_count(sim, "fighter")
+
+
+static func attack_count(sim) -> int:
+	var total := 0
+	for item in sim.craft:
+		if str(item.get("state", "")) == "lost":
+			continue
+		if CraftOrders.is_attack(sim, str(item.get("def_id", ""))):
+			total += 1
+	return total
+
+
+static func _craft_index(sim, def_id: String) -> int:
+	var index := 0
+	for item in sim.craft:
+		if str(item.get("def_id", "")) != def_id:
+			continue
+		var uid := str(item.get("uid", ""))
+		var tail := uid.get_slice("_", uid.get_slice_count("_") - 1)
+		index = maxi(index, int(tail))
+	return index
+
+
+static func buy_fighter(sim) -> String:
+	return buy_drone(sim, "fighter")
+
+
+static func buy_drone(sim, def_id: String) -> String:
+	def_id = str(def_id)
+	if not ATTACK_SHOP.has(def_id):
+		return "The pad does not sell that drone."
+	if not at_pad(sim):
+		if def_id == "fighter":
+			return "Buy a fighter at the Helion pad."
+		return "Buy attack drones at the Helion pad."
+	var row: Dictionary = ATTACK_SHOP[def_id]
+	var price := int(row.price)
+	var cap := int(row.cap)
+	if kind_count(sim, def_id) >= cap:
+		if def_id == "fighter":
+			return "The wing is full at %d fighters." % cap
+		return "The rack holds %d of that drone." % cap
+	if attack_count(sim) >= ATTACK_WING:
+		return "The wing is full at %d attack craft." % ATTACK_WING
+	if purse(sim) < price:
+		var noun := "fighter" if def_id == "fighter" else "drone"
+		return "Purse is short of %d for a %s." % [price, noun]
+	var craft: Dictionary = sim._make_craft(def_id, _craft_index(sim, def_id) + 1)
+	craft.pos = sim.player.pos
+	sim.craft.append(craft)
+	sim.quest_flags.purse = purse(sim) - price
+	sim.say("Bought %s for %d. Purse %d. Launch it from the hangar." % [craft.name, price, purse(sim)])
+	return ""
 
 
 static func buy_kit(sim, kit_id: String) -> String:
@@ -574,7 +868,19 @@ static func sell_good(sim) -> String:
 		return "The Helion market stands on the pad."
 	if not sim.spend_cargo(GOOD, 1):
 		return "No glasswheat in the hold."
-	_pay(sim, SELL_PRICE, "Sold glasswheat for %d." % SELL_PRICE)
+	_pay(sim, SELL_PRICE, "Sold glasswheat for %d GRT." % SELL_PRICE)
+	return ""
+
+
+static func sell_stock(sim, id: String) -> String:
+	if not at_pad(sim):
+		return "The Helion market stands on the pad."
+	var price := HelmHarvest.stock_price(id)
+	if price <= 0:
+		return "The pad does not buy that."
+	if not sim.spend_cargo(id, 1):
+		return "No %s in the hold." % sim.resource_name(id)
+	_pay(sim, price, "Sold %s for %d GRT." % [sim.resource_name(id), price])
 	return ""
 
 
@@ -632,4 +938,4 @@ static func _near_ring(sim) -> bool:
 static func _pay(sim, amount: int, line: String) -> void:
 	var next := purse(sim) + amount
 	sim.quest_flags.purse = next
-	sim.say("%s Purse %d." % [line, next])
+	sim.say("%s GRT %d." % [line, next])
