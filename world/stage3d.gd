@@ -133,9 +133,11 @@ void fragment() {
 	col *= 1.0 - cloud_shade * day * 0.42;
 	vec3 glow = vec3(1.0, 0.86, 0.38) * lamps * 8.0;
 	float rim = pow(clamp(1.0 - max(dot(n, eye), 0.0), 0.0, 1.0), 2.4);
-	col += vec3(0.55, 0.72, 0.88) * rim * 0.22 + glow;
+	float air = pow(clamp(1.0 - max(dot(n, eye), 0.0), 0.0, 1.0), 4.4);
+	col += vec3(0.55, 0.72, 0.88) * rim * 0.28 + glow;
+	col += vec3(0.42, 0.66, 0.95) * air * 0.32;
 	ALBEDO = col;
-	EMISSION = glow + vec3(0.45, 0.62, 0.78) * rim * 0.28 + vec3(0.9, 0.45, 0.18) * twilight * 0.15;
+	EMISSION = glow + vec3(0.45, 0.62, 0.78) * rim * 0.34 + vec3(0.42, 0.66, 0.95) * air * 0.22 + vec3(0.9, 0.45, 0.18) * twilight * 0.15;
 }
 "
 
@@ -278,29 +280,23 @@ varying vec3 local_nrm;
 uniform vec4 albedo : source_color = vec4(0.5, 0.55, 0.58, 1.0);
 uniform vec4 accent : source_color = vec4(0.0, 0.0, 0.0, 0.0);
 float seam_of(vec3 p) {
-	float sx = smoothstep(0.452, 0.5, abs(fract(p.x * 0.36) - 0.5));
-	float sz = smoothstep(0.448, 0.5, abs(fract(p.z * 0.58) - 0.5));
-	float sy = smoothstep(0.462, 0.5, abs(fract(p.y * 0.48) - 0.5));
-	float weld = smoothstep(0.476, 0.5, abs(fract(p.x * 0.36 + 0.5) - 0.5));
-	float micro = smoothstep(0.472, 0.5, abs(fract(p.x * 0.92) - 0.5));
-	float fine = smoothstep(0.478, 0.5, abs(fract(p.z * 1.15) - 0.5));
-	return max(max(max(sx, sz), sy * 0.78), max(max(weld * 0.5, micro * 0.48), fine * 0.38));
+	float sx = smoothstep(0.468, 0.5, abs(fract(p.x * 0.13) - 0.5));
+	float sz = smoothstep(0.466, 0.5, abs(fract(p.z * 0.2) - 0.5));
+	float sy = smoothstep(0.474, 0.5, abs(fract(p.y * 0.16) - 0.5));
+	float weld = smoothstep(0.484, 0.5, abs(fract(p.x * 0.13 + 0.5) - 0.5));
+	return max(max(sx, sz * 0.82), max(sy * 0.48, weld * 0.38));
 }
 float plate_h(vec3 p) {
 	float seam = seam_of(p);
-	vec2 cell = floor(p.xz * vec2(0.32, 0.52));
+	vec2 cell = floor(p.xz * vec2(0.13, 0.2));
 	float id = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
-	float h = (0.18 + 0.82 * id) * (1.0 - seam);
-	float riv = seam * smoothstep(0.07, 0.0, abs(fract(p.x * 2.8) - 0.5)) * smoothstep(0.07, 0.0, abs(fract(p.z * 3.6) - 0.5));
-	h += riv * 1.5;
-	float riv2 = seam * smoothstep(0.045, 0.0, abs(fract(p.x * 5.6) - 0.5)) * smoothstep(0.045, 0.0, abs(fract(p.z * 7.2) - 0.5));
-	h += riv2 * 0.82;
-	float hatch = smoothstep(0.1, 0.0, length(fract(p.xz * vec2(0.22, 0.3)) - vec2(0.5))) * (1.0 - seam);
-	h += hatch * 0.34;
-	float scratch = smoothstep(0.82, 0.995, fract(sin(p.x * 8.2 + p.z * 23.0) * 91.3));
-	h -= scratch * 0.3;
-	float streak = smoothstep(0.91, 1.0, fract(sin(p.z * 9.4 + floor(p.x * 0.7) * 19.0) * 51.3));
-	h -= streak * 0.2;
+	float h = (0.08 + 0.28 * id) * (1.0 - seam);
+	float riv = seam * smoothstep(0.06, 0.0, abs(fract(p.x * 1.15) - 0.5)) * smoothstep(0.06, 0.0, abs(fract(p.z * 1.6) - 0.5));
+	h += riv * 0.85;
+	float hatch = smoothstep(0.16, 0.0, length(fract(p.xz * vec2(0.09, 0.12)) - vec2(0.5))) * (1.0 - seam);
+	h += hatch * 0.18;
+	float scratch = smoothstep(0.9, 0.995, fract(sin(p.x * 3.2 + p.z * 11.0) * 91.3));
+	h -= scratch * 0.12;
 	return h;
 }
 void vertex() {
@@ -310,50 +306,49 @@ void vertex() {
 void fragment() {
 	vec3 n = normalize(local_nrm);
 	float h = plate_h(local_pos);
-	float hx = plate_h(local_pos + vec3(0.22, 0.0, 0.0));
-	float hz = plate_h(local_pos + vec3(0.0, 0.0, 0.22));
+	float hx = plate_h(local_pos + vec3(0.35, 0.0, 0.0));
+	float hz = plate_h(local_pos + vec3(0.0, 0.0, 0.35));
 	vec3 tangent = abs(n.y) > 0.92 ? vec3(1.0, 0.0, 0.0) : normalize(cross(n, vec3(0.0, 1.0, 0.0)));
 	vec3 bitangent = normalize(cross(n, tangent));
-	vec3 bumped = normalize(n + tangent * (h - hx) * 7.4 + bitangent * (h - hz) * 7.4);
+	vec3 bumped = normalize(n + tangent * (h - hx) * 2.4 + bitangent * (h - hz) * 2.4);
 	vec3 world_n = normalize((MODEL_MATRIX * vec4(bumped, 0.0)).xyz);
 	NORMAL = normalize((VIEW_MATRIX * vec4(world_n, 0.0)).xyz);
 	float seam = clamp(seam_of(local_pos), 0.0, 1.0);
-	vec2 cell = floor(local_pos.xz * vec2(0.32, 0.52));
+	vec2 cell = floor(local_pos.xz * vec2(0.13, 0.2));
 	float id = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
-	vec3 col = albedo.rgb * (0.88 + 0.22 * id);
-	col = mix(col, col * vec3(0.28, 0.3, 0.33), seam * 0.95);
-	float edge_wear = smoothstep(0.22, 0.95, 1.0 - abs(n.y));
-	col = mix(col, mix(col, vec3(0.72, 0.7, 0.64), 0.55), edge_wear * 0.7);
-	float flake = smoothstep(0.78, 0.97, fract(sin(dot(local_pos.xz, vec2(19.0, 47.0))) * 311.0));
-	col = mix(col, col * vec3(0.52, 0.5, 0.46), flake * 0.45);
+	vec3 col = albedo.rgb * (0.94 + 0.1 * id);
+	col = mix(col, col * vec3(0.22, 0.24, 0.26), seam * 0.88);
+	float edge_wear = smoothstep(0.18, 0.92, 1.0 - abs(n.y));
+	col = mix(col, mix(col, vec3(0.82, 0.8, 0.74), 0.62), edge_wear * 0.55);
+	float flake = smoothstep(0.86, 0.98, fract(sin(dot(local_pos.xz, vec2(19.0, 47.0))) * 311.0));
+	col = mix(col, col * vec3(0.62, 0.6, 0.56), flake * 0.28);
 	float aft = smoothstep(-12.0, -28.0, local_pos.x);
 	float temper = smoothstep(-4.0, -16.0, local_pos.x) * (1.0 - aft);
-	col = mix(col, col * vec3(1.15, 0.78, 0.55), aft * 0.35);
-	col = mix(col, col * vec3(0.62, 0.74, 0.95), temper * 0.22);
-	float stripe = smoothstep(1.2, 0.08, abs(local_pos.z));
-	col = mix(col, col * vec3(1.06, 1.1, 1.04), stripe * clamp(n.y, 0.0, 1.0) * 0.35);
-	float livery = smoothstep(1.7, 0.2, abs(abs(local_pos.z) - 3.4));
-	livery *= smoothstep(-0.05, 0.55, n.y);
-	col = mix(col, accent.rgb, livery * accent.a * 0.9);
+	col = mix(col, col * vec3(1.12, 0.82, 0.62), aft * 0.28);
+	col = mix(col, col * vec3(0.7, 0.8, 0.96), temper * 0.16);
+	float stripe = smoothstep(1.4, 0.12, abs(local_pos.z));
+	col = mix(col, col * vec3(1.08, 1.1, 1.05), stripe * clamp(n.y, 0.0, 1.0) * 0.28);
+	float livery = smoothstep(2.1, 0.28, abs(abs(local_pos.z) - 3.6));
+	livery *= smoothstep(-0.02, 0.55, n.y);
+	col = mix(col, accent.rgb, livery * accent.a * 0.92);
 	float belly = smoothstep(7.5, 0.6, local_pos.y);
-	col *= mix(1.0, 0.58, belly);
-	float brush = 0.92 + 0.08 * sin(local_pos.x * 3.1 + local_pos.z * 13.0);
-	float grain = fract(sin(dot(local_pos.xz, vec2(41.3, 17.1))) * 913.7);
-	col *= brush * (0.93 + 0.09 * grain);
-	float oil = smoothstep(0.88, 0.99, fract(sin(local_pos.x * 2.1 + local_pos.z * 0.7) * 41.0));
-	col = mix(col, col * vec3(0.22, 0.2, 0.18), oil * 0.35 * clamp(1.0 - n.y, 0.0, 1.0));
+	col *= mix(1.0, 0.82, belly);
+	float brush = 0.96 + 0.04 * sin(local_pos.x * 1.6 + local_pos.z * 6.0);
+	col *= brush;
+	float oil = smoothstep(0.92, 0.995, fract(sin(local_pos.x * 1.4 + local_pos.z * 0.5) * 41.0));
+	col = mix(col, col * vec3(0.3, 0.28, 0.24), oil * 0.22 * clamp(1.0 - n.y, 0.0, 1.0));
 	float side = smoothstep(0.22, 0.7, 1.0 - abs(n.y));
 	float row = smoothstep(0.7, 0.08, abs(local_pos.y - 4.6));
-	float slot = smoothstep(0.22, 0.02, abs(fract(local_pos.x * 0.38) - 0.5));
+	float slot = smoothstep(0.18, 0.02, abs(fract(local_pos.x * 0.22) - 0.5));
 	float port = side * row * slot;
-	float lit_port = step(0.74, fract(sin(floor(local_pos.x * 0.38) * 17.13) * 91.7));
-	col = mix(col, vec3(0.03, 0.045, 0.06), port * 0.85);
+	float lit_port = step(0.7, fract(sin(floor(local_pos.x * 0.22) * 17.13) * 91.7));
+	col = mix(col, vec3(0.04, 0.055, 0.07), port * 0.88);
 	ALBEDO = col;
 	float bare = clamp(edge_wear * (1.0 - seam), 0.0, 1.0);
-	METALLIC = mix(0.42, 0.86, bare * (1.0 - port));
-	ROUGHNESS = mix(mix(0.52, 0.36, bare), 0.9, max(seam, port));
-	AO = mix(1.0, 0.48, seam);
-	EMISSION = vec3(1.0, 0.42, 0.14) * aft * 0.05 + vec3(1.0, 0.78, 0.42) * port * lit_port * 0.85;
+	METALLIC = mix(0.62, 0.9, bare * (1.0 - port));
+	ROUGHNESS = mix(mix(0.34, 0.2, bare), 0.78, max(seam, port));
+	AO = mix(1.0, 0.55, seam);
+	EMISSION = vec3(1.0, 0.42, 0.14) * aft * 0.04 + vec3(1.0, 0.78, 0.42) * port * lit_port * 0.95;
 }
 "
 
@@ -525,18 +520,20 @@ void fragment() {
 	float flake = smoothstep(0.78, 0.94, noise3(n * 28.0 + vec3(seed * 1.4)));
 	col = mix(col, col * vec3(0.55, 0.5, 0.46), flake * 0.55);
 	float fill = clamp(dot(n, normalize(vec3(-0.45, 0.15, 0.75))), 0.0, 1.0);
-	col += mineral * fill * 0.16;
+	col += mineral * fill * 0.22;
+	float bounce = clamp(dot(n, normalize(vec3(0.2, -0.35, -0.6))), 0.0, 1.0);
+	col += mineral * vec3(0.55, 0.48, 0.4) * bounce * 0.18;
 	float vein = smoothstep(0.46, 0.7, fbm(n * 9.0 + vec3(seed, 2.2, 0.5)));
 	vec3 ore = vein_color.rgb;
 	col = mix(col, ore, vein * 0.92);
 	float fleck = smoothstep(0.72, 0.9, noise3(n * 22.0 + vec3(seed * 3.0)));
 	col = mix(col, vec3(0.98, 0.86, 0.55), fleck * 0.7);
 	float rim = pow(1.0 - ndl, 2.2);
-	col += mineral * rim * 0.12;
+	col += mineral * rim * 0.18;
 	ALBEDO = col;
-	ROUGHNESS = mix(mix(0.62, 0.92, cavity), 0.28, max(vein, fleck));
-	METALLIC = mix(0.08, 0.72, max(vein, fleck));
-	EMISSION = ore * vein * 0.45 + vec3(1.0, 0.82, 0.45) * fleck * 0.2;
+	ROUGHNESS = mix(mix(0.58, 0.9, cavity), 0.22, max(vein, fleck));
+	METALLIC = mix(0.1, 0.78, max(vein, fleck));
+	EMISSION = ore * vein * 0.52 + vec3(1.0, 0.82, 0.45) * fleck * 0.24;
 }
 "
 
@@ -568,15 +565,16 @@ void fragment() {
 	vec3 ice = mix(deep, face, 0.28 + 0.72 * ndl);
 	ice = mix(ice, vec3(0.7, 0.84, 0.95), grit * 0.22);
 	ice = mix(ice, deep * 0.55, max(crack, sheet * 0.7) * 0.75);
-	ice = mix(ice, face * 0.92, facet * 0.28);
+	ice = mix(ice, face * 0.92, facet * 0.38);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
 	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 2.1);
-	ice = mix(ice, vec3(0.85, 0.94, 1.0), fres * 0.55);
+	ice = mix(ice, vec3(0.88, 0.96, 1.0), fres * 0.62);
+	float spark = pow(clamp(dot(n, normalize(sun + eye)), 0.0, 1.0), 42.0);
 	ALBEDO = ice;
-	ROUGHNESS = mix(0.08, 0.55, max(crack, sheet));
-	METALLIC = 0.04;
-	SPECULAR = 0.9;
-	EMISSION = vec3(0.75, 0.9, 1.0) * (pow(ndl, 10.0) * 0.45 + fres * 0.18);
+	ROUGHNESS = mix(0.06, 0.48, max(crack, sheet));
+	METALLIC = 0.05;
+	SPECULAR = 0.95;
+	EMISSION = vec3(0.75, 0.9, 1.0) * (pow(ndl, 10.0) * 0.55 + fres * 0.24) + vec3(0.95, 0.98, 1.0) * spark * 0.65;
 }
 "
 
@@ -739,13 +737,13 @@ func _ready() -> void:
 	_sun = DirectionalLight3D.new()
 	_sun.name = "Sun"
 	_sun.light_color = Color("fff0d4")
-	_sun.light_energy = 2.8 if portrait_mode else 2.05
+	_sun.light_energy = 2.8 if portrait_mode else 2.45
 	_sun.shadow_enabled = false
 	add_child(_sun)
 	_fill = DirectionalLight3D.new()
 	_fill.name = "Fill"
 	_fill.light_color = Color(0.72, 0.8, 0.95)
-	_fill.light_energy = 1.05 if portrait_mode else 0.75
+	_fill.light_energy = 1.05 if portrait_mode else 0.95
 	_fill.shadow_enabled = false
 	_fill.basis = Basis(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0), Vector3(0.0, 1.0, 0.0))
 	add_child(_fill)
@@ -2484,11 +2482,20 @@ func _sync_meteors(sim) -> void:
 		var node := _prop("meteor%d" % index)
 		var radius := maxf(12.0, float(row.get("size", 8.0)) * 1.7)
 		if str(node.get_meta("built", "")) != "yes":
-			node.mesh = _crystal_mesh(index + 17, radius)
-			var ice_body := ShaderMaterial.new()
-			ice_body.shader = _ice_shader
-			ice_body.set_shader_parameter("seed", float(index) * 0.37)
-			node.material_override = ice_body
+			if index % 2 == 0:
+				node.mesh = _rock_mesh(index + 17, radius)
+				var stone := ShaderMaterial.new()
+				stone.shader = _rock_shader
+				stone.set_shader_parameter("albedo", Color("8a7a68"))
+				stone.set_shader_parameter("vein_color", Color("d5e6f0"))
+				stone.set_shader_parameter("seed", float(index) * 0.37)
+				node.material_override = stone
+			else:
+				node.mesh = _crystal_mesh(index + 17, radius)
+				var ice_body := ShaderMaterial.new()
+				ice_body.shader = _ice_shader
+				ice_body.set_shader_parameter("seed", float(index) * 0.37)
+				node.material_override = ice_body
 			node.set_meta("built", "yes")
 		node.visible = not on_chart
 		node.position = chart(row.pos, radius * 0.85)
@@ -3923,23 +3930,23 @@ func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array, 
 	for point in geom.hull:
 		nose = maxf(nose, point.x)
 	holder.set_meta("nose", nose)
-	var hull_mesh := _prism(geom.hull, height, 0.97, true)
+	var hull_mesh := _prism(geom.hull, height, 0.91, true)
 	if hull_mesh == null:
 		hull_mesh = _hull_loft(geom.hull, height)
 	if hull_mesh != null:
 		var plate := MeshInstance3D.new()
 		plate.name = "Plate"
 		plate.mesh = hull_mesh
-		plate.material_override = _hull_mat(Color("888888"))
+		plate.material_override = _hull_paint(class_id)
 		holder.add_child(plate)
 	var deck_poly := _inset_poly(geom.hull, 0.74)
-	var deck_mesh := _prism(deck_poly, height * 0.055, 0.98, true)
+	var deck_mesh := _prism(deck_poly, height * 0.055, 0.96, true)
 	if deck_mesh != null:
 		var deck := MeshInstance3D.new()
 		deck.name = "Deck"
 		deck.mesh = deck_mesh
 		deck.position.y = height * 0.96
-		deck.material_override = _hull_mat(Color("9a9a9a"))
+		deck.material_override = _hull_paint(class_id, true)
 		holder.add_child(deck)
 	_add_bridge(holder, class_id, height, float(geom.tail))
 	_mount_roles(holder, class_id, shapes, height)
@@ -4575,6 +4582,9 @@ func _pack_spine(root: Node3D) -> void:
 		_stud(root, Vector3(bx, 0.16, -2.25), 0.12)
 		_stud(root, Vector3(bx, 0.16, 2.25), 0.12)
 	_kit(root, "Hazard", Vector3(1.6, 0.06, 1.35), Vector3(-4.2, 0.42, 1.42), Color("e0b13a"))
+	_kit(root, "Harness", Vector3(11.4, 0.1, 0.16), Vector3(0.0, 0.52, 0.0), Color("1a1410"))
+	_kit(root, "Label", Vector3(1.5, 0.04, 0.72), Vector3(2.6, 0.44, 1.42), Color("e0b13a"))
+	_cyl(root, "Cable", 0.07, 3.4, Vector3(-7.2, 0.55, 0.7), "x", Color("14161a"))
 
 
 func _pack_bank(root: Node3D, cols: int, rows: int, fit: float, pitch_x: float, pitch_z: float) -> void:
@@ -5936,11 +5946,31 @@ func pose_craft(kind: String) -> Node3D:
 	return node
 
 
+func _craft_bell(node: Node3D, part_name: String, at: Vector3, mouth: float, length: float) -> void:
+	var bell := MeshInstance3D.new()
+	bell.name = part_name
+	bell.mesh = _bell_mesh(length, mouth * 0.42, mouth)
+	bell.position = at
+	var iron := _metal(Color("1c1612"))
+	iron.emission_enabled = true
+	iron.emission = Color("c47a3a")
+	iron.emission_energy_multiplier = 0.2
+	bell.material_override = iron
+	node.add_child(bell)
+
+
 func _assemble_craft(node: Node3D, kind: String) -> void:
 	var poly := _craft_poly(kind)
-	var mesh := _prism(poly, 4.4, 0.8)
+	var height := 3.8
+	if kind == "lance_drone" or kind == "harvest_drone" or kind == "salvage_tender":
+		height = 4.8
+	elif kind == "survey_probe":
+		height = 2.6
+	elif kind == "dart_drone" or kind == "fang_drone":
+		height = 3.1
+	var mesh := _hull_loft(poly, height)
 	if mesh == null:
-		mesh = _hull_loft(poly, 4.4)
+		mesh = _prism(poly, height, 0.78)
 	if mesh == null:
 		return
 	var body := MeshInstance3D.new()
@@ -5948,132 +5978,145 @@ func _assemble_craft(node: Node3D, kind: String) -> void:
 	body.mesh = mesh
 	body.material_override = _hull_mat(_craft_color(kind))
 	node.add_child(body)
-	var cap_mesh := _prism(_inset_poly(poly, 0.7), 0.55, 0.92)
+	var cap_mesh := _prism(_inset_poly(poly, 0.68), 0.48, 0.9)
 	if cap_mesh != null:
 		var cap := MeshInstance3D.new()
 		cap.name = "Deck"
 		cap.mesh = cap_mesh
-		cap.position.y = 3.15
-		cap.material_override = _hull_mat(_craft_color(kind).lightened(0.12))
+		cap.position.y = height * 0.78
+		cap.material_override = _hull_mat(_craft_color(kind).lightened(0.14))
 		node.add_child(cap)
 	var lamp := MeshInstance3D.new()
 	lamp.name = "LampNose"
 	var bulb := SphereMesh.new()
-	bulb.radius = 0.55
-	bulb.height = 1.1
+	bulb.radius = 0.42
+	bulb.height = 0.84
 	lamp.mesh = bulb
-	lamp.position = Vector3(8.0, 4.2, 0.0)
+	lamp.position = Vector3(7.4, height * 0.62, 0.0)
 	var glow := StandardMaterial3D.new()
 	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	glow.albedo_color = Color("f2e2c4")
 	glow.emission_enabled = true
 	glow.emission = Color("f2e2c4")
-	glow.emission_energy_multiplier = 1.4
+	glow.emission_energy_multiplier = 1.6
 	lamp.material_override = glow
 	node.add_child(lamp)
 	var canopy := MeshInstance3D.new()
 	canopy.name = "Glass"
-	var pane_mesh := BoxMesh.new()
-	pane_mesh.size = Vector3(2.8, 0.9, 1.4)
-	canopy.mesh = pane_mesh
-	canopy.position = Vector3(2.4, 5.2, 0.0)
+	canopy.mesh = _canopy_mesh(2.6, 1.15, 1.05)
+	canopy.position = Vector3(2.2, height * 0.92, 0.0)
 	var pane := ShaderMaterial.new()
 	pane.shader = _glass_shader
-	pane.set_shader_parameter("albedo", Color(0.55, 0.82, 0.86, 0.35))
+	pane.set_shader_parameter("albedo", Color(0.55, 0.82, 0.86, 0.38))
 	canopy.material_override = pane
 	node.add_child(canopy)
 	var nozzle := MeshInstance3D.new()
 	nozzle.name = "Exhaust"
-	nozzle.mesh = _plume_mesh(6.5, 0.7)
-	nozzle.position = Vector3(-7.2, 2.2, 0.0)
+	nozzle.mesh = _plume_mesh(5.8, 0.62)
+	nozzle.position = Vector3(-7.0, height * 0.42, 0.0)
 	var burn := ShaderMaterial.new()
 	burn.shader = _plume_shader
 	burn.set_shader_parameter("albedo", Color(0.95, 0.62, 0.28, 0.45))
 	burn.set_shader_parameter("core", 0.35)
 	nozzle.material_override = burn
 	node.add_child(nozzle)
+	_craft_bell(node, "BellMain", Vector3(-6.6, height * 0.38, 0.0), 0.72, 1.35)
+	_kit(node, "Intake", Vector3(1.6, 0.55, 1.05), Vector3(4.6, height * 0.42, 0.0), Color("1a1e22"))
+	_kit(node, "ChineP", Vector3(6.4, 0.28, 0.42), Vector3(0.2, height * 0.28, 1.35), Color("2a3034"))
+	_kit(node, "ChineS", Vector3(6.4, 0.28, 0.42), Vector3(0.2, height * 0.28, -1.35), Color("2a3034"))
 	_dress_craft(node, kind)
 
 
 func _dress_craft(node: Node3D, kind: String) -> void:
 	match kind:
 		"survey_probe":
-			_lens(node, "Dish", 2.15, Vector3(9.4, 2.4, 0.0), Color("d7e6ee"))
+			_lens(node, "Dish", 2.35, Vector3(9.6, 2.2, 0.0), Color("d7e6ee"))
 			var dish := node.get_node("Dish") as Node3D
 			dish.rotation.z = -PI * 0.5
-			_kit(node, "WingP", Vector3(5.2, 0.08, 2.5), Vector3(0.6, 2.55, 3.5), Color("163848"))
-			_kit(node, "WingS", Vector3(5.2, 0.08, 2.5), Vector3(0.6, 2.55, -3.5), Color("163848"))
-			_kit(node, "CellP", Vector3(3.4, 0.05, 1.7), Vector3(0.6, 2.62, 3.5), Color("1a4a68"))
-			_kit(node, "CellS", Vector3(3.4, 0.05, 1.7), Vector3(0.6, 2.62, -3.5), Color("1a4a68"))
-			_cyl(node, "Boom", 0.18, 4.8, Vector3(7.2, 2.4, 0.0), "x", Color("6a7678"))
-			_kit(node, "Bus", Vector3(2.4, 0.55, 1.1), Vector3(-1.2, 3.4, 0.0), Color("2a3438"))
+			_kit(node, "WingP", Vector3(5.6, 0.06, 2.8), Vector3(0.4, 2.35, 3.7), Color("163848"))
+			_kit(node, "WingS", Vector3(5.6, 0.06, 2.8), Vector3(0.4, 2.35, -3.7), Color("163848"))
+			_kit(node, "CellP", Vector3(3.8, 0.04, 1.9), Vector3(0.4, 2.42, 3.7), Color("1a4a68"))
+			_kit(node, "CellS", Vector3(3.8, 0.04, 1.9), Vector3(0.4, 2.42, -3.7), Color("1a4a68"))
+			_cyl(node, "Boom", 0.16, 5.2, Vector3(7.4, 2.2, 0.0), "x", Color("6a7678"))
+			_kit(node, "Bus", Vector3(2.6, 0.48, 1.05), Vector3(-1.4, 3.1, 0.0), Color("2a3438"))
+			_kit(node, "Radiator", Vector3(1.8, 0.08, 2.2), Vector3(-3.2, 2.8, 0.0), Color("3a3330"))
 		"harvest_drone":
-			_cyl(node, "Cutter", 1.15, 1.7, Vector3(5.6, 2.1, 0.0), "z", Color("8d9296"))
-			_kit(node, "ArmP", Vector3(3.2, 0.26, 0.26), Vector3(3.8, 2.7, 2.3), Color("6a5438"))
-			_kit(node, "ArmS", Vector3(3.2, 0.26, 0.26), Vector3(3.8, 2.7, -2.3), Color("6a5438"))
-			_kit(node, "JawP", Vector3(0.7, 1.05, 0.2), Vector3(6.1, 2.15, 1.55), Color("d2c6b2"))
-			_kit(node, "JawS", Vector3(0.7, 1.05, 0.2), Vector3(6.1, 2.15, -1.55), Color("d2c6b2"))
-			_kit(node, "Bucket", Vector3(1.8, 0.7, 2.6), Vector3(-1.4, 1.15, 0.0), Color("5c4834"))
-			_kit(node, "Hopper", Vector3(2.4, 1.15, 2.1), Vector3(-2.6, 2.4, 0.0), Color("8a6a3c"))
-			_cyl(node, "Bit", 0.35, 1.4, Vector3(6.6, 2.1, 0.0), "x", Color("d8d0c4"))
+			_cyl(node, "Cutter", 1.25, 1.85, Vector3(5.8, 2.15, 0.0), "z", Color("8d9296"))
+			_kit(node, "ArmP", Vector3(3.4, 0.28, 0.28), Vector3(3.9, 2.8, 2.45), Color("6a5438"))
+			_kit(node, "ArmS", Vector3(3.4, 0.28, 0.28), Vector3(3.9, 2.8, -2.45), Color("6a5438"))
+			_kit(node, "JawP", Vector3(0.75, 1.15, 0.22), Vector3(6.3, 2.2, 1.65), Color("d2c6b2"))
+			_kit(node, "JawS", Vector3(0.75, 1.15, 0.22), Vector3(6.3, 2.2, -1.65), Color("d2c6b2"))
+			_kit(node, "Bucket", Vector3(2.0, 0.78, 2.8), Vector3(-1.5, 1.1, 0.0), Color("5c4834"))
+			_kit(node, "Hopper", Vector3(2.6, 1.25, 2.25), Vector3(-2.8, 2.45, 0.0), Color("8a6a3c"))
+			_cyl(node, "Bit", 0.38, 1.55, Vector3(6.8, 2.15, 0.0), "x", Color("d8d0c4"))
+			_kit(node, "Guard", Vector3(0.22, 1.4, 2.4), Vector3(5.1, 2.15, 0.0), Color("3a3630"))
 		"salvage_tender":
-			_kit(node, "Boom", Vector3(6.8, 0.26, 0.26), Vector3(1.6, 6.2, 0.0), Color("8a5a32"))
-			_kit(node, "ClawP", Vector3(1.05, 0.72, 0.16), Vector3(5.2, 5.5, 0.55), Color("e4d8c4"))
-			_kit(node, "ClawS", Vector3(1.05, 0.72, 0.16), Vector3(5.2, 5.5, -0.55), Color("e4d8c4"))
-			_cyl(node, "Winch", 0.62, 0.7, Vector3(-1.6, 5.15, 0.0), "z", Color("24282c"))
-			_kit(node, "AFrameP", Vector3(0.22, 4.4, 0.22), Vector3(-0.8, 4.4, 1.1), Color("6a4a2c"))
-			_kit(node, "AFrameS", Vector3(0.22, 4.4, 0.22), Vector3(-0.8, 4.4, -1.1), Color("6a4a2c"))
-			_kit(node, "Hook", Vector3(0.28, 1.1, 0.16), Vector3(5.6, 4.7, 0.0), Color("c4b8a4"))
+			_kit(node, "Boom", Vector3(7.2, 0.28, 0.28), Vector3(1.7, 6.35, 0.0), Color("8a5a32"))
+			_kit(node, "ClawP", Vector3(1.15, 0.78, 0.18), Vector3(5.4, 5.55, 0.6), Color("e4d8c4"))
+			_kit(node, "ClawS", Vector3(1.15, 0.78, 0.18), Vector3(5.4, 5.55, -0.6), Color("e4d8c4"))
+			_cyl(node, "Winch", 0.68, 0.78, Vector3(-1.6, 5.2, 0.0), "z", Color("24282c"))
+			_kit(node, "AFrameP", Vector3(0.24, 4.6, 0.24), Vector3(-0.8, 4.5, 1.15), Color("6a4a2c"))
+			_kit(node, "AFrameS", Vector3(0.24, 4.6, 0.24), Vector3(-0.8, 4.5, -1.15), Color("6a4a2c"))
+			_kit(node, "Hook", Vector3(0.3, 1.2, 0.18), Vector3(5.8, 4.75, 0.0), Color("c4b8a4"))
+			_kit(node, "Cab", Vector3(2.2, 1.35, 1.8), Vector3(-2.4, 4.2, 0.0), Color("3a2a20"))
 		"away_shuttle":
-			_kit(node, "WingP", Vector3(3.8, 0.16, 3.4), Vector3(-0.8, 2.5, 4.8), Color("d4cfc2"))
-			_kit(node, "WingS", Vector3(3.8, 0.16, 3.4), Vector3(-0.8, 2.5, -4.8), Color("d4cfc2"))
-			_kit(node, "Door", Vector3(1.4, 1.6, 0.12), Vector3(1.8, 2.4, 1.6), Color("2a3034"))
+			_kit(node, "WingP", Vector3(4.2, 0.14, 3.8), Vector3(-0.9, 2.45, 5.1), Color("d4cfc2"))
+			_kit(node, "WingS", Vector3(4.2, 0.14, 3.8), Vector3(-0.9, 2.45, -5.1), Color("d4cfc2"))
+			_kit(node, "Door", Vector3(1.5, 1.7, 0.12), Vector3(1.8, 2.35, 1.65), Color("2a3034"))
+			_kit(node, "Ramp", Vector3(1.8, 0.12, 1.4), Vector3(-4.4, 0.85, 0.0), Color("4a453c"))
+			_craft_bell(node, "BellP", Vector3(-5.8, 1.55, 1.35), 0.55, 1.1)
+			_craft_bell(node, "BellS", Vector3(-5.8, 1.55, -1.35), 0.55, 1.1)
 		"dart_drone":
-			_cyl(node, "Spike", 0.22, 7.2, Vector3(4.4, 2.8, 0.0), "x", Color("9fe8f4"))
-			_kit(node, "FinP", Vector3(3.4, 0.08, 1.6), Vector3(-0.4, 2.35, 3.1), Color("1a5a68"))
-			_kit(node, "FinS", Vector3(3.4, 0.08, 1.6), Vector3(-0.4, 2.35, -3.1), Color("1a5a68"))
-			_cyl(node, "GunN", 0.12, 2.8, Vector3(6.4, 2.55, 0.0), "x", Color("16181a"))
-			_cyl(node, "BellA", 0.42, 1.05, Vector3(-6.2, 1.7, 0.0), "x", Color("2c2622"))
-			_kit(node, "Canopy", Vector3(1.6, 0.4, 0.8), Vector3(2.2, 4.6, 0.0), Color("2a6878"))
+			_cyl(node, "Spike", 0.2, 7.6, Vector3(4.6, 2.55, 0.0), "x", Color("9fe8f4"))
+			_kit(node, "FinP", Vector3(3.6, 0.07, 1.75), Vector3(-0.5, 2.2, 3.2), Color("1a5a68"))
+			_kit(node, "FinS", Vector3(3.6, 0.07, 1.75), Vector3(-0.5, 2.2, -3.2), Color("1a5a68"))
+			_kit(node, "VaneP", Vector3(1.6, 1.15, 0.08), Vector3(-2.2, 3.1, 0.85), Color("163848"))
+			_kit(node, "VaneS", Vector3(1.6, 1.15, 0.08), Vector3(-2.2, 3.1, -0.85), Color("163848"))
+			_cyl(node, "GunN", 0.11, 3.1, Vector3(6.6, 2.4, 0.0), "x", Color("16181a"))
+			_kit(node, "Canopy", Vector3(1.7, 0.36, 0.72), Vector3(2.1, 4.15, 0.0), Color("2a6878"))
 		"sting_drone":
-			_cyl(node, "GunA", 0.14, 2.4, Vector3(3.4, 3.0, 2.4), "x", Color("16181a"))
-			_cyl(node, "GunB", 0.14, 2.4, Vector3(3.4, 3.0, -2.4), "x", Color("16181a"))
-			_cyl(node, "GunC", 0.14, 2.4, Vector3(3.4, 2.2, 1.1), "x", Color("16181a"))
-			_cyl(node, "GunD", 0.14, 2.4, Vector3(3.4, 2.2, -1.1), "x", Color("16181a"))
-			_kit(node, "Drum", Vector3(2.6, 1.4, 2.8), Vector3(-0.6, 2.6, 0.0), Color("6a4a22"))
-			_cyl(node, "BellP", 0.55, 1.15, Vector3(-4.6, 1.55, 1.2), "x", Color("2c2622"))
-			_cyl(node, "BellS", 0.55, 1.15, Vector3(-4.6, 1.55, -1.2), "x", Color("2c2622"))
-			_kit(node, "Canopy", Vector3(1.8, 0.45, 1.05), Vector3(1.6, 4.6, 0.0), Color("5a4030"))
+			_cyl(node, "GunA", 0.13, 2.6, Vector3(3.5, 2.95, 2.45), "x", Color("16181a"))
+			_cyl(node, "GunB", 0.13, 2.6, Vector3(3.5, 2.95, -2.45), "x", Color("16181a"))
+			_cyl(node, "GunC", 0.13, 2.6, Vector3(3.5, 2.15, 1.15), "x", Color("16181a"))
+			_cyl(node, "GunD", 0.13, 2.6, Vector3(3.5, 2.15, -1.15), "x", Color("16181a"))
+			_kit(node, "Drum", Vector3(2.7, 1.45, 2.9), Vector3(-0.5, 2.55, 0.0), Color("6a4a22"))
+			_kit(node, "Belt", Vector3(1.4, 0.22, 2.2), Vector3(1.6, 2.7, 0.0), Color("2a2014"))
+			_craft_bell(node, "BellP", Vector3(-4.8, 1.5, 1.25), 0.58, 1.2)
+			_craft_bell(node, "BellS", Vector3(-4.8, 1.5, -1.25), 0.58, 1.2)
+			_kit(node, "Canopy", Vector3(1.85, 0.42, 1.0), Vector3(1.5, 4.2, 0.0), Color("5a4030"))
 		"wasp_drone":
-			_cyl(node, "GunP", 0.16, 3.6, Vector3(2.2, 3.15, 5.1), "x", Color("16181a"))
-			_cyl(node, "GunS", 0.16, 3.6, Vector3(2.2, 3.15, -5.1), "x", Color("16181a"))
-			_cyl(node, "BellP", 0.62, 1.35, Vector3(-4.8, 1.7, 1.55), "x", Color("2c2622"))
-			_cyl(node, "BellS", 0.62, 1.35, Vector3(-4.8, 1.7, -1.55), "x", Color("2c2622"))
-			_kit(node, "Stripe", Vector3(4.4, 0.12, 0.7), Vector3(0.4, 4.4, 0.0), Color("f0b44a"))
-			_kit(node, "Canopy", Vector3(2.2, 0.55, 1.15), Vector3(3.1, 5.0, 0.0), Color("5a3820"))
+			_cyl(node, "GunP", 0.15, 3.8, Vector3(2.3, 3.05, 5.2), "x", Color("16181a"))
+			_cyl(node, "GunS", 0.15, 3.8, Vector3(2.3, 3.05, -5.2), "x", Color("16181a"))
+			_kit(node, "PodP", Vector3(2.2, 0.7, 0.7), Vector3(1.4, 3.0, 5.2), Color("2a2420"))
+			_kit(node, "PodS", Vector3(2.2, 0.7, 0.7), Vector3(1.4, 3.0, -5.2), Color("2a2420"))
+			_craft_bell(node, "BellP", Vector3(-5.0, 1.65, 1.6), 0.64, 1.35)
+			_craft_bell(node, "BellS", Vector3(-5.0, 1.65, -1.6), 0.64, 1.35)
+			_kit(node, "Stripe", Vector3(4.6, 0.1, 0.72), Vector3(0.4, 4.15, 0.0), Color("f0b44a"))
+			_kit(node, "Canopy", Vector3(2.2, 0.5, 1.1), Vector3(3.0, 4.55, 0.0), Color("5a3820"))
 		"fang_drone":
-			_kit(node, "Snout", Vector3(6.4, 0.7, 0.95), Vector3(5.2, 2.7, 0.0), Color("5a1824"))
-			_cyl(node, "Fang", 0.2, 4.8, Vector3(7.4, 2.55, 0.0), "x", Color("e8c8c4"))
-			_kit(node, "FinP", Vector3(2.8, 0.1, 2.2), Vector3(-0.8, 2.5, 3.8), Color("3a1018"))
-			_kit(node, "FinS", Vector3(2.8, 0.1, 2.2), Vector3(-0.8, 2.5, -3.8), Color("3a1018"))
-			_cyl(node, "GunV", 0.14, 3.2, Vector3(1.8, 1.35, 0.0), "x", Color("16181a"))
-			_cyl(node, "BellA", 0.5, 1.2, Vector3(-5.4, 1.65, 0.0), "x", Color("2c2622"))
-			_kit(node, "Canopy", Vector3(2.0, 0.48, 0.95), Vector3(1.6, 4.7, 0.0), Color("2a1016"))
+			_kit(node, "Snout", Vector3(6.6, 0.72, 0.98), Vector3(5.3, 2.55, 0.0), Color("5a1824"))
+			_cyl(node, "Fang", 0.18, 5.1, Vector3(7.6, 2.4, 0.0), "x", Color("e8c8c4"))
+			_kit(node, "FinP", Vector3(3.0, 0.09, 2.35), Vector3(-0.9, 2.35, 3.9), Color("3a1018"))
+			_kit(node, "FinS", Vector3(3.0, 0.09, 2.35), Vector3(-0.9, 2.35, -3.9), Color("3a1018"))
+			_cyl(node, "GunV", 0.13, 3.4, Vector3(1.9, 1.25, 0.0), "x", Color("16181a"))
+			_kit(node, "Canopy", Vector3(2.05, 0.44, 0.9), Vector3(1.5, 4.25, 0.0), Color("2a1016"))
 		"lance_drone":
-			_kit(node, "Block", Vector3(5.6, 2.2, 3.2), Vector3(-0.4, 2.4, 0.0), Color("6a6e74"))
-			_cyl(node, "Lance", 0.38, 8.4, Vector3(5.6, 2.7, 0.0), "x", Color("d8dde4"))
-			_kit(node, "Collar", Vector3(1.4, 1.3, 1.3), Vector3(3.4, 2.7, 0.0), Color("c8b48a"))
-			_kit(node, "PlateP", Vector3(3.2, 0.22, 2.4), Vector3(-1.2, 2.0, 2.6), Color("8a8e96"))
-			_kit(node, "PlateS", Vector3(3.2, 0.22, 2.4), Vector3(-1.2, 2.0, -2.6), Color("8a8e96"))
-			_cyl(node, "BellP", 0.78, 1.6, Vector3(-5.6, 1.55, 1.35), "x", Color("2c2622"))
-			_cyl(node, "BellS", 0.78, 1.6, Vector3(-5.6, 1.55, -1.35), "x", Color("2c2622"))
-			_kit(node, "Canopy", Vector3(2.0, 0.55, 1.2), Vector3(1.2, 4.8, 0.0), Color("2a3038"))
+			_kit(node, "Block", Vector3(5.8, 2.3, 3.3), Vector3(-0.4, 2.35, 0.0), Color("6a6e74"))
+			_cyl(node, "Lance", 0.4, 8.8, Vector3(5.7, 2.65, 0.0), "x", Color("d8dde4"))
+			_kit(node, "Collar", Vector3(1.5, 1.35, 1.35), Vector3(3.5, 2.65, 0.0), Color("c8b48a"))
+			_kit(node, "PlateP", Vector3(3.4, 0.24, 2.55), Vector3(-1.2, 1.95, 2.7), Color("8a8e96"))
+			_kit(node, "PlateS", Vector3(3.4, 0.24, 2.55), Vector3(-1.2, 1.95, -2.7), Color("8a8e96"))
+			_craft_bell(node, "BellP", Vector3(-5.8, 1.5, 1.4), 0.82, 1.65)
+			_craft_bell(node, "BellS", Vector3(-5.8, 1.5, -1.4), 0.82, 1.65)
+			_kit(node, "Canopy", Vector3(2.05, 0.5, 1.15), Vector3(1.15, 4.45, 0.0), Color("2a3038"))
 		_:
-			_cyl(node, "GunP", 0.16, 3.6, Vector3(2.2, 3.15, 5.1), "x", Color("16181a"))
-			_cyl(node, "GunS", 0.16, 3.6, Vector3(2.2, 3.15, -5.1), "x", Color("16181a"))
-			_cyl(node, "BellP", 0.62, 1.35, Vector3(-4.8, 1.7, 1.55), "x", Color("2c2622"))
-			_cyl(node, "BellS", 0.62, 1.35, Vector3(-4.8, 1.7, -1.55), "x", Color("2c2622"))
-			_kit(node, "Canopy", Vector3(2.2, 0.55, 1.15), Vector3(3.1, 5.0, 0.0), Color("3a5058"))
+			_cyl(node, "GunP", 0.15, 3.8, Vector3(2.3, 3.05, 5.2), "x", Color("16181a"))
+			_cyl(node, "GunS", 0.15, 3.8, Vector3(2.3, 3.05, -5.2), "x", Color("16181a"))
+			_kit(node, "PodP", Vector3(2.1, 0.65, 0.65), Vector3(1.4, 3.0, 5.2), Color("2a2420"))
+			_kit(node, "PodS", Vector3(2.1, 0.65, 0.65), Vector3(1.4, 3.0, -5.2), Color("2a2420"))
+			_craft_bell(node, "BellP", Vector3(-5.0, 1.65, 1.55), 0.64, 1.35)
+			_craft_bell(node, "BellS", Vector3(-5.0, 1.65, -1.55), 0.64, 1.35)
+			_kit(node, "Canopy", Vector3(2.2, 0.5, 1.1), Vector3(3.0, 4.55, 0.0), Color("3a5058"))
 	_dress_craft_skin(node, kind)
 
 
@@ -6639,11 +6682,35 @@ func _canopy_quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector
 	st.add_vertex(d)
 
 
-func _hull_mat(color: Color) -> ShaderMaterial:
+func _hull_mat(color: Color, accent: Color = Color(0, 0, 0, 0)) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = _hull_shader
 	mat.set_shader_parameter("albedo", color)
+	if accent.a > 0.0:
+		mat.set_shader_parameter("accent", accent)
 	return mat
+
+
+func _hull_paint(class_id: String, deck: bool = false) -> ShaderMaterial:
+	var paint := Color("9aa2a8")
+	var trim := Color(0, 0, 0, 0)
+	if class_id == "vesper" or class_id == "lumen":
+		paint = Color("7a9296") if deck else Color("6a8286")
+		trim = Color("9fd0c8")
+		trim.a = 0.62
+	elif class_id == "anvil":
+		paint = Color("8a8276") if deck else Color("70685e")
+		trim = Color("c4a06a")
+		trim.a = 0.35
+	elif class_id == "kestrel" or class_id == "casque":
+		paint = Color("7a6a62") if deck else Color("5e524c")
+		trim = Color("c4512c")
+		trim.a = 0.48
+	elif class_id == "alidade":
+		paint = Color("7a8890") if deck else Color("5c6a72")
+		trim = Color("8ec8ff")
+		trim.a = 0.4
+	return _hull_mat(paint, trim)
 
 
 func _pulse_lamps(holder: Node3D) -> void:
@@ -6860,8 +6927,8 @@ func _sync_band() -> void:
 func _metal(color: Color) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
-	mat.metallic = 0.8
-	mat.roughness = 0.32
+	mat.metallic = 0.86
+	mat.roughness = 0.24
 	return mat
 
 
@@ -7016,11 +7083,12 @@ func _ingot_mesh(seed: int, radius: float) -> ArrayMesh:
 		return _mesh_cache[key]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, -radius * 0.3, 0.0)), Vector3(radius * 1.24, radius * 0.2, radius * 0.46))
-	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(radius * 0.08, 0.0, radius * 0.05)), Vector3(radius * 1.18, radius * 0.2, radius * 0.44))
-	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(-radius * 0.06, radius * 0.3, -radius * 0.04)), Vector3(radius * 1.14, radius * 0.2, radius * 0.42))
-	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(-radius * 1.1, -radius * 0.3, 0.0)), Vector3(radius * 0.12, radius * 0.24, radius * 0.5))
-	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(radius * 1.1, -radius * 0.3, 0.0)), Vector3(radius * 0.12, radius * 0.24, radius * 0.5))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, -radius * 0.3, 0.0)), Vector3(radius * 1.28, radius * 0.18, radius * 0.42))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(radius * 0.06, 0.0, radius * 0.04)), Vector3(radius * 1.2, radius * 0.16, radius * 0.38))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(-radius * 0.05, radius * 0.28, -radius * 0.03)), Vector3(radius * 1.14, radius * 0.16, radius * 0.36))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(-radius * 1.18, -radius * 0.3, 0.0)), Vector3(radius * 0.1, radius * 0.22, radius * 0.46))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(radius * 1.18, -radius * 0.3, 0.0)), Vector3(radius * 0.1, radius * 0.22, radius * 0.46))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, -radius * 0.18, 0.0)), Vector3(radius * 0.22, radius * 0.06, radius * 0.48))
 	st.generate_normals()
 	var mesh := st.commit()
 	_mesh_cache[key] = mesh
@@ -7284,6 +7352,8 @@ func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
 	_add_rock_lobe(st, rng, radius * 0.5, Vector3(-radius * 0.34, radius * 0.2, radius * 0.52))
 	_add_rock_lobe(st, rng, radius * 0.34, Vector3(radius * 0.08, -radius * 0.46, -radius * 0.4))
 	_add_rock_lobe(st, rng, radius * 0.28, Vector3(-radius * 0.52, -radius * 0.18, radius * 0.28))
+	_add_rock_lobe(st, rng, radius * 0.22, Vector3(radius * 0.42, radius * 0.38, -radius * 0.36))
+	_add_rock_lobe(st, rng, radius * 0.2, Vector3(-radius * 0.18, -radius * 0.52, radius * 0.44))
 	st.index()
 	st.generate_normals()
 	var mesh := st.commit()
@@ -7489,8 +7559,8 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 		_fairing(holder, "VaneP", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 1.02, 1.4))
 		_fairing(holder, "VaneS", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 1.02, -1.4))
 	_tube(holder, "Collar", maxf(height * 0.11, 1.5), 2.1, Vector3(tail + 1.6, height * 0.4, 0.0), "x", Color("5c6468"))
-	_hardware(holder, "ChineP", Vector3(span * 0.62, 0.7, 1.15), Vector3(mid, height * 0.22, chine_z), Color("6a7278"))
-	_hardware(holder, "ChineS", Vector3(span * 0.62, 0.7, 1.15), Vector3(mid, height * 0.22, -chine_z), Color("6a7278"))
+	_hardware(holder, "ChineP", Vector3(span * 0.72, 1.05, 1.45), Vector3(mid, height * 0.24, chine_z), Color("6a7278"))
+	_hardware(holder, "ChineS", Vector3(span * 0.72, 1.05, 1.45), Vector3(mid, height * 0.24, -chine_z), Color("6a7278"))
 	_hardware(holder, "SkidP", Vector3(span * 0.42, 0.55, 0.9), Vector3(mid, -0.35, chine_z * 0.62), Color("4a5256"))
 	_hardware(holder, "SkidS", Vector3(span * 0.42, 0.55, 0.9), Vector3(mid, -0.35, -chine_z * 0.62), Color("4a5256"))
 	for i in 3:
