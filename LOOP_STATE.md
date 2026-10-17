@@ -41,6 +41,7 @@ Player-visible what works now:
 - Return on SHIP recalls every craft that is out, so Lane can fire after a probe. Take scan sends the docked probe to Aegis Prime. Salvage strips a close trash or stream field from the helm. Walk on LAW surveys a plantable pocket. A defend contract names the 48 s hold on the amber cue. Combat math is unchanged.
 - Harvested ore now smelts. Ice, nickel, and raw mass Make an aluminum bar; nickel, plate, and salvage Make a steel bar. Aluminum Makes the attack wing — Dart, Sting, Wasp, Fang, Lance, and fighter — not the keel. Steel Makes yard guns, belts, and racks. Support craft still spend ore. Make sits on SHIP, Inventory, Yard, and the Fleet pad rack. GRT Buy stays. Combat math is unchanged.
 - Hull metal now reads as large plates with weld seams and edge wear, not grit. Needle, Barn, and Beak keep their own paint and trim. Fleet craft loft as small ships with bells, intakes, and role gear. Asteroids grow extra lobes; meteors mix rock and ice. Aegis keeps a thicker air rim. Combat math is unchanged.
+- Hull plates, armor, tanks, and beams now take their own metal so a keel is not one dark slab. The dock ring stands as a collar with clamps. Fleet craft grow towers, dishes, jaws, fins, and barrels that name the role. Asteroids add more lobes; ice crystals grow longer spines. Aegis keeps a thicker air rim. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
