@@ -55,18 +55,18 @@ void fragment() {
 	float field = fbm(n * 3.1 + vec3(seed, 1.7, seed * 0.4));
 	float detail = fbm(n * 8.5 + vec3(seed * 2.0, 0.4, 3.0));
 	float ridges = fbm(n * 14.0 + vec3(seed * 1.3, 0.2, 2.2));
-	float land_w = smoothstep(0.38, 0.56, field);
-	vec3 deep = vec3(0.05, 0.16, 0.28);
-	vec3 shoal = vec3(0.16, 0.42, 0.46);
+	float land_w = smoothstep(0.46, 0.66, field);
+	vec3 deep = vec3(0.03, 0.12, 0.26);
+	vec3 shoal = vec3(0.1, 0.36, 0.44);
 	float depth = smoothstep(0.18, 0.48, field);
-	vec3 sea = mix(deep, mix(albedo.rgb, shoal, 0.45), depth);
-	vec3 coast = mix(albedo.rgb, vec3(0.72, 0.64, 0.42), 0.4);
-	vec3 ground = mix(albedo.rgb, land.rgb, 0.62) * (0.72 + 0.38 * detail);
+	vec3 sea = mix(deep, mix(shoal, albedo.rgb, 0.22), depth);
+	vec3 coast = mix(land.rgb, vec3(0.78, 0.64, 0.36), 0.55);
+	vec3 ground = mix(vec3(0.26, 0.34, 0.2), land.rgb, 0.62) * (0.7 + 0.4 * detail);
 	ground *= mix(0.62, 1.08, smoothstep(0.35, 0.72, ridges));
 	vec3 terrain = mix(sea, mix(coast, ground, smoothstep(0.48, 0.7, field)), land_w);
 	float polar = smoothstep(0.55, 0.92, abs(n.y));
 	float ice_cap = fbm(n * 6.0 + vec3(seed, 4.0, 0.2));
-	terrain = mix(terrain, vec3(0.86, 0.91, 0.94) * (0.85 + 0.2 * ice_cap), polar * 0.88);
+	terrain = mix(terrain, vec3(0.86, 0.91, 0.94) * (0.85 + 0.2 * ice_cap), polar * 0.48);
 	float bowl = noise3(n * 6.5 + vec3(seed * 2.2, 3.1, 0.4));
 	float crater = smoothstep(0.68, 0.84, bowl);
 	float rim_c = smoothstep(0.58, 0.7, bowl) * (1.0 - crater);
@@ -74,7 +74,7 @@ void fragment() {
 	terrain += vec3(0.18, 0.16, 0.13) * rim_c * land_w;
 	float mottled = fbm(wpos * 0.0055 + vec3(seed, 2.2, 0.4));
 	float fleck = fbm(wpos * 0.016 + n * 3.0);
-	terrain *= 0.74 + 0.38 * mottled;
+	terrain *= 0.86 + 0.26 * mottled;
 	terrain = mix(terrain, terrain * vec3(0.76, 0.92, 0.7), fleck * land_w * 0.45);
 	float ridge_hi = fbm(n * 22.0 + vec3(seed * 0.8, 3.2, 0.5));
 	terrain = mix(terrain, terrain * vec3(0.82, 0.78, 0.7), ridge_hi * land_w * 0.35);
@@ -86,9 +86,9 @@ void fragment() {
 		float parks = smoothstep(0.6, 0.82, fbm(n * 2.6 + vec3(seed, 2.0, 0.6)));
 		vec3 concrete = mix(albedo.rgb * 0.88, land.rgb * 0.92, roofs);
 		concrete *= 0.82 + 0.22 * districts;
-		vec3 urban = mix(concrete, mix(vec3(0.24, 0.42, 0.32), land.rgb, 0.45), parks * 0.5);
-		urban = mix(urban, vec3(0.9, 0.93, 0.95), polar * 0.65);
-		terrain = mix(terrain, urban, 0.58);
+		vec3 urban = mix(concrete * 0.72, mix(vec3(0.2, 0.34, 0.28), land.rgb, 0.4), parks * 0.5);
+		urban = mix(urban, vec3(0.72, 0.76, 0.78), polar * 0.42);
+		terrain = mix(terrain, urban, 0.36);
 	}
 	float dist = length(CAMERA_POSITION_WORLD - wpos);
 	float near = 1.0 - smoothstep(320.0, 1700.0, dist);
@@ -331,6 +331,12 @@ void fragment() {
 	float livery = smoothstep(2.1, 0.28, abs(abs(local_pos.z) - 3.6));
 	livery *= smoothstep(-0.02, 0.55, n.y);
 	col = mix(col, accent.rgb, livery * accent.a * 0.92);
+	float deck_line = smoothstep(1.25, 0.1, abs(local_pos.z)) * clamp(n.y, 0.0, 1.0);
+	col = mix(col, mix(col, accent.rgb, 0.78), deck_line * accent.a * 0.62);
+	float hatch_cell = smoothstep(0.2, 0.0, length(fract(local_pos.xz * vec2(0.075, 0.095)) - vec2(0.5)));
+	col = mix(col, col * vec3(0.22, 0.24, 0.26), hatch_cell * clamp(n.y, 0.0, 1.0) * 0.6);
+	float deck_face = smoothstep(0.28, 0.78, n.y);
+	col = mix(col, mix(col, vec3(0.76, 0.73, 0.66), 0.72), deck_face * 0.84);
 	float belly = smoothstep(7.5, 0.6, local_pos.y);
 	col *= mix(1.0, 0.86, belly);
 	float brush = 0.94 + 0.06 * sin(local_pos.x * 1.6 + local_pos.z * 6.0);
@@ -343,8 +349,9 @@ void fragment() {
 	col = mix(col, col * vec3(0.3, 0.28, 0.24), oil * 0.22 * clamp(1.0 - n.y, 0.0, 1.0));
 	float side = smoothstep(0.22, 0.7, 1.0 - abs(n.y));
 	float row = smoothstep(0.7, 0.08, abs(local_pos.y - 4.6));
+	float row2 = smoothstep(0.7, 0.08, abs(local_pos.y - 8.4));
 	float slot = smoothstep(0.18, 0.02, abs(fract(local_pos.x * 0.22) - 0.5));
-	float port = side * row * slot;
+	float port = side * max(row, row2) * slot;
 	float lit_port = step(0.7, fract(sin(floor(local_pos.x * 0.22) * 17.13) * 91.7));
 	col = mix(col, vec3(0.04, 0.055, 0.07), port * 0.88);
 	ALBEDO = col;
@@ -564,15 +571,18 @@ void fragment() {
 	float sheet = smoothstep(0.48, 0.5, abs(fract(n.x * 3.2 + n.z * 5.1 + seed * 1.7) - 0.5));
 	float facet = smoothstep(0.46, 0.5, abs(fract(n.z * 8.2 + n.y * 3.1 + seed * 2.2) - 0.5));
 	float grit = fract(sin(dot(n.xy, vec2(41.3, 17.7)) + seed) * 913.1);
-	vec3 deep = vec3(0.42, 0.58, 0.72);
-	vec3 face = vec3(0.93, 0.97, 1.0);
-	vec3 ice = mix(deep, face, 0.28 + 0.72 * ndl);
-	ice = mix(ice, vec3(0.7, 0.84, 0.95), grit * 0.22);
-	ice = mix(ice, deep * 0.55, max(crack, sheet * 0.7) * 0.75);
-	ice = mix(ice, face * 0.92, facet * 0.38);
+	vec3 deep = vec3(0.1, 0.32, 0.56);
+	vec3 face = vec3(0.62, 0.82, 0.94);
+	vec3 frost = vec3(0.86, 0.94, 1.0);
+	vec3 ice = mix(deep, face, 0.18 + 0.72 * ndl);
+	ice = mix(ice, vec3(0.36, 0.6, 0.78), grit * 0.22);
+	ice = mix(ice, deep * 0.42, max(crack, sheet * 0.7) * 0.88);
+	ice = mix(ice, face * 0.9, facet * 0.28);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 2.1);
-	ice = mix(ice, vec3(0.88, 0.96, 1.0), fres * 0.62);
+	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.7);
+	ice = mix(ice, frost, fres * 0.62);
+	float cavity = smoothstep(0.15, 0.72, 1.0 - ndl);
+	ice = mix(ice, deep * 0.7, cavity * 0.45);
 	float spark = pow(clamp(dot(n, normalize(sun + eye)), 0.0, 1.0), 42.0);
 	ALBEDO = ice;
 	ROUGHNESS = mix(0.06, 0.48, max(crack, sheet));
@@ -873,7 +883,7 @@ func _sync_props(sim) -> void:
 		if str(chunk.get_meta("built", "")) != "yes":
 			var material_id := str(row.get("material", ""))
 			if material_id == "ice_spall":
-				chunk.mesh = _crystal_mesh(index + 3, radius)
+				chunk.mesh = _ice_mesh(index + 3, radius)
 				var ice := ShaderMaterial.new()
 				ice.shader = _ice_shader
 				ice.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
@@ -2503,7 +2513,7 @@ func _sync_meteors(sim) -> void:
 				stone.set_shader_parameter("seed", float(index) * 0.37)
 				node.material_override = stone
 			else:
-				node.mesh = _crystal_mesh(index + 17, radius)
+				node.mesh = _ice_mesh(index + 17, radius)
 				var ice_body := ShaderMaterial.new()
 				ice_body.shader = _ice_shader
 				ice_body.set_shader_parameter("seed", float(index) * 0.37)
@@ -3889,15 +3899,15 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 		holder.add_child(nozzle)
 	var island := MeshInstance3D.new()
 	island.name = "Island"
-	island.mesh = _bevel_box(Vector3(deck_size.x * 0.62, deck_size.y * 0.55, deck_size.z * 0.72), 0.07)
-	island.position = bridge.position + Vector3(-deck_size.x * 0.08, deck_size.y * 0.52, 0.0)
-	island.material_override = _hull_mat(Color("4a555c"))
+	island.mesh = _bevel_box(Vector3(deck_size.x * 0.72, deck_size.y * 0.88, deck_size.z * 0.78), 0.07)
+	island.position = bridge.position + Vector3(-deck_size.x * 0.08, deck_size.y * 0.72, 0.0)
+	island.material_override = _hull_mat(Color("6a767e"))
 	holder.add_child(island)
 	var bow_house := MeshInstance3D.new()
 	bow_house.name = "Forecastle"
-	bow_house.mesh = _bevel_box(Vector3(maxf(span * 0.12, 8.0), height * 0.28, maxf(height * 0.22, 5.2)), 0.06)
-	bow_house.position = Vector3(nose * 0.62, height + height * 0.14, 0.0)
-	bow_house.material_override = _hull_mat(Color("3e484e"))
+	bow_house.mesh = _bevel_box(Vector3(maxf(span * 0.16, 10.0), height * 0.4, maxf(height * 0.28, 6.4)), 0.06)
+	bow_house.position = Vector3(nose * 0.68, height + height * 0.2, 0.0)
+	bow_house.material_override = _hull_mat(Color("5a666e"))
 	holder.add_child(bow_house)
 	_nav_lamp(holder, "LampNose", Vector3(nose * 0.86, height * 0.62, 0.0), Color("d8fff6"), 1.05)
 	_nav_lamp(holder, "LampPort", Vector3(tail * 0.55, height * 0.28, 2.1), Color("d4553a"), 0.75)
@@ -4585,7 +4595,7 @@ func _pack_spine(root: Node3D) -> void:
 		_kit(root, "Tray", Vector3(13.2, 0.38, 1.45), Vector3(0.0, 0.2, s * 1.42), olive)
 		_kit(root, "Lip", Vector3(13.0, 0.22, 0.12), Vector3(0.0, 0.48, s * 2.1), Color("1a1e18"))
 		for i in 6:
-			var cell := _cyl(root, "Cell", 0.46, 1.7, Vector3(-5.0 + float(i) * 2.0, 1.15, s * 1.42), "y", Color("d7dee4"))
+			var cell := _cyl(root, "Cell", 0.64, 2.15, Vector3(-5.0 + float(i) * 2.0, 1.22, s * 1.42), "y", Color("d7dee4"))
 			cell.position.y = 1.15
 			var cap := _cyl(root, "Cap", 0.32, 0.14, cell.position + Vector3(0.0, 0.9, 0.0), "y", Color("8a3a32") if i % 2 == 0 else Color("1c1e22"))
 			cap.position = cell.position + Vector3(0.0, 0.9, 0.0)
@@ -6047,8 +6057,11 @@ func _assemble_craft(node: Node3D, kind: String) -> void:
 	_kit(node, "Intake", Vector3(2.05, 0.72, 1.25), Vector3(4.6, height * 0.42, 0.0), Color("1a1e22"))
 	_kit(node, "ChineP", Vector3(7.2, 0.34, 0.55), Vector3(0.2, height * 0.28, 1.55), Color("2a3034"))
 	_kit(node, "ChineS", Vector3(7.2, 0.34, 0.55), Vector3(0.2, height * 0.28, -1.55), Color("2a3034"))
-	_kit(node, "Tower", Vector3(2.9, 1.25, 1.65), Vector3(1.35, height * 0.98, 0.0), Color("2a3238"))
-	_kit(node, "Cowling", Vector3(3.6, 0.42, 2.05), Vector3(-1.1, height * 0.72, 0.0), Color("1c2226"))
+	_kit(node, "Tower", Vector3(3.2, 1.85, 1.85), Vector3(1.35, height * 1.12, 0.0), Color("2a3238"))
+	_kit(node, "Cowling", Vector3(4.1, 0.55, 2.25), Vector3(-1.1, height * 0.78, 0.0), Color("1c2226"))
+	_kit(node, "Chin", Vector3(3.4, 0.55, 1.55), Vector3(3.4, height * 0.28, 0.0), Color("3a4248"))
+	_kit(node, "RailP", Vector3(6.2, 0.32, 0.22), Vector3(0.15, height * 0.98, 1.72), Color("d2c094"))
+	_kit(node, "RailS", Vector3(6.2, 0.32, 0.22), Vector3(0.15, height * 0.98, -1.72), Color("d2c094"))
 	_dress_craft(node, kind)
 
 
@@ -6589,7 +6602,7 @@ func _flat_xform(pos: Vector2, rot: float, height: float) -> Transform3D:
 
 func _skin_tone(part: String, body: Color, accent: Color) -> Color:
 	if part == "Deck":
-		return body.lightened(0.24)
+		return Color("c4bba8").lerp(body.lightened(0.52), 0.28)
 	if part.begins_with("Trim"):
 		return accent
 	if part.begins_with("Armor") or part.begins_with("CombatPlate") or part.begins_with("CheekArmor") or part.begins_with("ArmorBrick"):
@@ -6809,8 +6822,8 @@ func _port_slit(holder: Node3D, part_name: String, size: Vector3, at: Vector3) -
 	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	glow.albedo_color = Color(0.16, 0.24, 0.28)
 	glow.emission_enabled = true
-	glow.emission = Color(0.55, 0.82, 0.76)
-	glow.emission_energy_multiplier = 0.7
+	glow.emission = Color(0.72, 0.94, 0.88)
+	glow.emission_energy_multiplier = 1.35
 	node.material_override = glow
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	holder.add_child(node)
@@ -6994,7 +7007,7 @@ func dress_stock(chunk: MeshInstance3D, id: String, tint: Color, vein: Color, se
 	var radius := 18.0
 	var mix := float(absi(seed) % 97) * 0.1
 	if id == "ice_spall":
-		chunk.mesh = _crystal_mesh(seed + 3, radius)
+		chunk.mesh = _ice_mesh(seed + 3, radius)
 		var ice := ShaderMaterial.new()
 		ice.shader = _ice_shader
 		ice.set_shader_parameter("seed", mix)
@@ -7453,6 +7466,64 @@ func _crystal_mesh(seed: int, radius: float) -> ArrayMesh:
 	return mesh
 
 
+func _ice_mesh(seed: int, radius: float) -> ArrayMesh:
+	var bucket := int(round(radius))
+	var key := "icevol|%d|%d" % [posmod(seed, 11), bucket]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var lat := 14
+	var lon := 20
+	var rng := RandomNumberGenerator.new()
+	rng.seed = absi(seed) + 71
+	var rads := PackedFloat32Array()
+	rads.resize((lat + 1) * lon)
+	var wobble := 0.0
+	for yi in lat + 1:
+		for xi in lon:
+			wobble = 0.74 + rng.randf() * 0.4
+			if yi == 0 or yi == lat:
+				wobble = 0.8 + rng.randf() * 0.14
+			if (yi + xi) % 4 == 0:
+				wobble *= 0.84
+			rads[yi * lon + xi] = wobble
+	var a := Vector3.ZERO
+	var b := Vector3.ZERO
+	var c := Vector3.ZERO
+	var d := Vector3.ZERO
+	var nrm := Vector3.UP
+	for y0 in lat:
+		for x0 in lon:
+			a = _rock_vert(y0, x0, lat, lon, rads, radius)
+			b = _rock_vert(y0, x0 + 1, lat, lon, rads, radius)
+			c = _rock_vert(y0 + 1, x0 + 1, lat, lon, rads, radius)
+			d = _rock_vert(y0 + 1, x0, lat, lon, rads, radius)
+			nrm = (b - a).cross(d - a)
+			if nrm.length_squared() < 0.0001:
+				nrm = a.normalized()
+			_rock_tri(st, a, b, d, nrm.normalized())
+			nrm = (c - b).cross(d - b)
+			if nrm.length_squared() < 0.0001:
+				nrm = d.normalized()
+			_rock_tri(st, b, c, d, nrm.normalized())
+	_add_rock_lobe(st, rng, radius * 0.48, Vector3(radius * 0.42, radius * 0.06, radius * 0.14))
+	_add_rock_lobe(st, rng, radius * 0.4, Vector3(-radius * 0.28, radius * 0.16, radius * 0.38))
+	_add_rock_lobe(st, rng, radius * 0.34, Vector3(radius * 0.1, -radius * 0.32, -radius * 0.3))
+	_add_rock_lobe(st, rng, radius * 0.3, Vector3(-radius * 0.4, -radius * 0.12, radius * 0.22))
+	for i in 3:
+		var shelf := Transform3D(
+			Basis(Vector3(rng.randf() - 0.5, 1.0, rng.randf() - 0.5).normalized(), rng.randf_range(-0.25, 0.25)),
+			Vector3(rng.randf_range(-0.22, 0.22), rng.randf_range(-0.12, 0.18), rng.randf_range(-0.22, 0.22)) * radius
+		)
+		_add_box(st, shelf, Vector3(radius * 0.72, radius * 0.16, radius * 0.5))
+	st.index()
+	st.generate_normals()
+	var ice := st.commit()
+	_mesh_cache[key] = ice
+	return ice
+
+
 func _add_rock_lobe(st: SurfaceTool, rng: RandomNumberGenerator, radius: float, center: Vector3) -> void:
 	var lat := 5
 	var lon := 7
@@ -7632,6 +7703,71 @@ func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
 	_nav_lamp(holder, "RunS", Vector3(mid + span * 0.12, height * 0.42, -chine_z - 1.1), Color("7dcea0"), 0.72)
 	_dress_skin(holder, class_id, height)
 	_dress_industry(holder, class_id, height)
+	_dress_profile(holder, class_id, height)
+
+
+func _dress_profile(holder: Node3D, class_id: String, height: float) -> void:
+	var nose := float(holder.get_meta("nose", 40.0))
+	var tail := float(holder.get_meta("tail", -16.0))
+	var span := maxf(nose - tail, 12.0)
+	var mid := (nose + tail) * 0.42
+	var chine_z := _flank_z(class_id, mid)
+	var prow := MeshInstance3D.new()
+	prow.name = "Prow"
+	prow.mesh = _bevel_box(Vector3(span * 0.24, height * 0.72, maxf(chine_z * 0.58, 4.4)), 0.08)
+	prow.position = Vector3(nose - span * 0.04, height * 0.62, 0.0)
+	prow.material_override = _hull_mat(Color("8a9298"))
+	holder.add_child(prow)
+	_hardware(holder, "Wash0", Vector3(span * 0.72, 0.22, maxf(chine_z * 1.15, 4.8)), Vector3(mid, height * 1.01, 0.0), Color("c8c2b4"))
+	_hardware(holder, "Catwalk", Vector3(span * 0.7, 0.55, 2.6), Vector3(mid, height * 1.16, 0.0), Color("6a7278"))
+	_hardware(holder, "House0", Vector3(span * 0.22, height * 0.32, maxf(chine_z * 0.55, 4.2)), Vector3(tail + span * 0.38, height * 1.22, 0.0), Color("7a848c"))
+	_hardware(holder, "House1", Vector3(span * 0.16, height * 0.22, maxf(chine_z * 0.42, 3.4)), Vector3(tail + span * 0.58, height * 1.18, 0.0), Color("5a646c"))
+	_tube(holder, "Funnel0", 2.85, height * 0.82, Vector3(tail + span * 0.26, height * 1.42, 1.6), "y", Color("3a4248"))
+	_tube(holder, "Funnel1", 2.35, height * 0.68, Vector3(tail + span * 0.26, height * 1.34, -1.8), "y", Color("2e363c"))
+	_tube(holder, "FunnelCap", 3.2, 0.62, Vector3(tail + span * 0.26, height * 1.84, 1.6), "y", Color("1a1e22"))
+	_tube(holder, "FunnelCap1", 2.7, 0.52, Vector3(tail + span * 0.26, height * 1.7, -1.8), "y", Color("1a1e22"))
+	_hardware(holder, "Transom", Vector3(1.55, height * 0.72, maxf(chine_z * 1.25, 6.4)), Vector3(tail + 0.9, height * 0.52, 0.0), Color("3e464c"))
+	var pane_i := 0
+	for i in 8:
+		var along := tail + span * (0.18 + float(i) * 0.09)
+		var pane_z := _flank_z(class_id, along, 0.15)
+		_port_slit(holder, "HullPaneP%d" % pane_i, Vector3(span * 0.055, 2.05, 0.28), Vector3(along, height * 0.62, pane_z))
+		_port_slit(holder, "HullPaneS%d" % pane_i, Vector3(span * 0.055, 2.05, 0.28), Vector3(along, height * 0.62, -pane_z))
+		pane_i += 1
+	var geom: Dictionary = Silhouette.parts(class_id, [])
+	var hull: PackedVector2Array = geom.hull
+	var deck_y := height * 1.02
+	var count := hull.size()
+	for i in count:
+		var a: Vector2 = hull[i]
+		var b: Vector2 = hull[(i + 1) % count]
+		var edge: Vector2 = b - a
+		var length := edge.length()
+		if length < 2.4:
+			continue
+		var mid_pt: Vector2 = (a + b) * 0.5
+		var outward := Vector2(-edge.y, edge.x)
+		if outward.length() > 0.001:
+			outward = outward.normalized()
+		if outward.dot(mid_pt) < 0.0:
+			outward = -outward
+		var lip := mid_pt + outward * 1.35
+		var rail := MeshInstance3D.new()
+		rail.name = "Rail%d" % i
+		rail.mesh = _bevel_box(Vector3(length * 0.92, 4.6, 1.55), 0.05)
+		rail.position = Vector3(lip.x, deck_y + 2.15, lip.y)
+		rail.rotation.y = -atan2(edge.y, edge.x)
+		var tone := Color("d2c094")
+		if i % 2 != 0:
+			tone = Color("c4b48a")
+		rail.material_override = _hull_mat(tone)
+		holder.add_child(rail)
+		var post := MeshInstance3D.new()
+		post.name = "Stanchion%d" % i
+		post.mesh = _bevel_box(Vector3(0.42, 4.8, 0.42), 0.04)
+		post.position = Vector3(lip.x, deck_y + 2.4, lip.y)
+		post.material_override = _hull_mat(Color("a89878"))
+		holder.add_child(post)
 
 
 func _dress_skin(holder: Node3D, class_id: String, height: float) -> void:
