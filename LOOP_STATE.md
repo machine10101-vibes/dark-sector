@@ -44,6 +44,7 @@ Player-visible what works now:
 - Hull plates, armor, tanks, and beams now take their own metal so a keel is not one dark slab. The dock ring stands as a collar with clamps. Fleet craft grow towers, dishes, jaws, fins, and barrels that name the role. Asteroids add more lobes; ice crystals grow longer spines. Aegis keeps a thicker air rim. Combat math is unchanged.
 - Every keel now wears gunwales, a prow, a catwalk, and a funnel so the helm angle reads a ship, not a slab. Deck livery and hatches sit on the plates. Ice seams stay deep blue with cracks. Combat math is unchanged.
 - Keels now carry a light deck, brass gunwales, a real prow, twin stacks, and a lit window band so the helm 42° angle reads a ship. Ice seams are glacier chunks, not star crystals. Aegis keeps blue sea against land. Combat math is unchanged.
+- Armor belts stand off the skin. Battery cells are large silver cans on an olive tray. Courier tanks sit on the flanks. Hull plates weld bright. Clouds thin so Aegis shows sea. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
