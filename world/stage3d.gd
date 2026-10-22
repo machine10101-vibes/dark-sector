@@ -55,7 +55,7 @@ void fragment() {
 	float field = fbm(n * 3.1 + vec3(seed, 1.7, seed * 0.4));
 	float detail = fbm(n * 8.5 + vec3(seed * 2.0, 0.4, 3.0));
 	float ridges = fbm(n * 14.0 + vec3(seed * 1.3, 0.2, 2.2));
-	float land_w = smoothstep(0.3, 0.56, field);
+	float land_w = smoothstep(0.28, 0.52, field);
 	vec3 deep = vec3(0.01, 0.07, 0.34);
 	vec3 shoal = vec3(0.05, 0.26, 0.52);
 	float depth = smoothstep(0.18, 0.48, field);
@@ -123,8 +123,8 @@ void fragment() {
 		float blob = smoothstep(0.62, 0.9, noise3(n * 26.0 + vec3(seed, 2.4, 0.6)));
 		lamps = max(max(street, window * 0.72), blob * 0.88) * district * night_side * mix(0.75, 1.0, land_w);
 	}
-	float shore = 1.0 - smoothstep(0.0, 0.035, abs(field - 0.5));
-	col += vec3(0.9, 0.93, 0.88) * shore * day * 0.55 * (1.0 - city);
+	float shore = 1.0 - smoothstep(0.0, 0.026, abs(field - 0.5));
+	col += vec3(0.92, 0.94, 0.86) * shore * day * 0.7 * (1.0 - city);
 	if (city > 0.5) {
 		float pane = smoothstep(0.72, 0.9, fbm(n * 40.0 + vec3(seed, 0.2, 1.4)));
 		col = mix(col, vec3(0.75, 0.86, 0.9), pane * day * 0.18);
@@ -317,7 +317,7 @@ void fragment() {
 	vec2 cell = floor(local_pos.xz * vec2(0.13, 0.2));
 	float id = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
 	vec3 col = albedo.rgb * (1.04 + 0.16 * id);
-	col = mix(col, mix(col, vec3(0.78, 0.74, 0.64), 0.42), seam * 0.58);
+	col = mix(col, col * vec3(0.16, 0.18, 0.2), seam * 0.82);
 	float edge_wear = smoothstep(0.12, 0.88, 1.0 - abs(n.y));
 	col = mix(col, mix(col, albedo.rgb * 1.18, 0.35), edge_wear * 0.28);
 	float flake = smoothstep(0.86, 0.98, fract(sin(dot(local_pos.xz, vec2(19.0, 47.0))) * 311.0));
@@ -528,8 +528,8 @@ void fragment() {
 	float bowl = noise3(n * 3.4 + vec3(seed * 1.7, 0.4, 2.1));
 	float pit = smoothstep(0.64, 0.82, bowl);
 	float lip = smoothstep(0.52, 0.66, bowl) * (1.0 - pit);
-	col = mix(col, col * 0.32, pit * 0.9);
-	col += mineral * lip * 0.55;
+	col = mix(col, col * 0.18, pit * 0.96);
+	col += mineral * lip * 0.78;
 	float flake = smoothstep(0.78, 0.94, noise3(n * 28.0 + vec3(seed * 1.4)));
 	col = mix(col, col * vec3(0.55, 0.5, 0.46), flake * 0.55);
 	float fill = clamp(dot(n, normalize(vec3(-0.45, 0.15, 0.75))), 0.0, 1.0);
@@ -6090,27 +6090,27 @@ func _dress_craft(node: Node3D, kind: String) -> void:
 			var wheel := MeshInstance3D.new()
 			wheel.name = "Cutter"
 			var torus := TorusMesh.new()
-			torus.inner_radius = 2.15
-			torus.outer_radius = 3.55
-			torus.rings = 20
-			torus.ring_segments = 14
+			torus.inner_radius = 2.45
+			torus.outer_radius = 4.25
+			torus.rings = 22
+			torus.ring_segments = 16
 			wheel.mesh = torus
-			wheel.position = Vector3(8.2, 2.65, 0.0)
+			wheel.position = Vector3(8.6, 2.75, 0.0)
 			wheel.rotation.y = PI * 0.5
-			wheel.material_override = _metal(Color("d0ccc0"))
+			wheel.material_override = _metal(Color("d8d4c8"))
 			node.add_child(wheel)
-			for i in 8:
-				var ang := TAU * 0.125 * float(i)
-				_kit(node, "Tooth%d" % i, Vector3(0.55, 0.22, 0.85), Vector3(8.2, 2.65 + sin(ang) * 3.15, cos(ang) * 3.15), Color("e8e2d4"))
-			_kit(node, "ArmP", Vector3(7.4, 0.72, 0.72), Vector3(4.8, 3.55, 4.35), Color("8a6a38"))
-			_kit(node, "ArmS", Vector3(7.4, 0.72, 0.72), Vector3(4.8, 3.55, -4.35), Color("8a6a38"))
-			_kit(node, "JawP", Vector3(2.45, 3.25, 0.62), Vector3(9.6, 2.65, 3.25), Color("e2d6c0"))
-			_kit(node, "JawS", Vector3(2.45, 3.25, 0.62), Vector3(9.6, 2.65, -3.25), Color("e2d6c0"))
-			_kit(node, "Bucket", Vector3(4.2, 1.85, 5.1), Vector3(-1.8, 1.2, 0.0), Color("6a5438"))
-			_kit(node, "Hopper", Vector3(5.4, 2.65, 4.2), Vector3(-3.2, 3.35, 0.0), Color("c48a42"))
-			_cyl(node, "Bit", 0.92, 3.85, Vector3(10.2, 2.65, 0.0), "x", Color("e8e0d4"))
-			_kit(node, "Guard", Vector3(0.48, 3.05, 4.6), Vector3(6.2, 2.65, 0.0), Color("3a3630"))
-			_kit(node, "Cab", Vector3(2.4, 1.55, 2.15), Vector3(0.6, 4.85, 0.0), Color("4a3a28"))
+			for i in 12:
+				var ang := TAU * (1.0 / 12.0) * float(i)
+				_kit(node, "Tooth%d" % i, Vector3(0.72, 0.28, 1.05), Vector3(8.6, 2.75 + sin(ang) * 3.85, cos(ang) * 3.85), Color("e8e2d4"))
+			_kit(node, "ArmP", Vector3(8.2, 0.82, 0.82), Vector3(5.0, 3.75, 4.65), Color("8a6a38"))
+			_kit(node, "ArmS", Vector3(8.2, 0.82, 0.82), Vector3(5.0, 3.75, -4.65), Color("8a6a38"))
+			_kit(node, "JawP", Vector3(2.85, 3.65, 0.72), Vector3(10.2, 2.75, 3.55), Color("e2d6c0"))
+			_kit(node, "JawS", Vector3(2.85, 3.65, 0.72), Vector3(10.2, 2.75, -3.55), Color("e2d6c0"))
+			_kit(node, "Bucket", Vector3(4.8, 2.15, 5.6), Vector3(-2.0, 1.15, 0.0), Color("6a5438"))
+			_kit(node, "Hopper", Vector3(6.2, 3.15, 4.8), Vector3(-3.6, 3.55, 0.0), Color("c48a42"))
+			_cyl(node, "Bit", 1.05, 4.25, Vector3(10.8, 2.75, 0.0), "x", Color("e8e0d4"))
+			_kit(node, "Guard", Vector3(0.55, 3.45, 5.2), Vector3(6.4, 2.75, 0.0), Color("3a3630"))
+			_kit(node, "Cab", Vector3(2.65, 1.75, 2.35), Vector3(0.4, 5.05, 0.0), Color("4a3a28"))
 		"salvage_tender":
 			_kit(node, "Boom", Vector3(7.2, 0.28, 0.28), Vector3(1.7, 6.35, 0.0), Color("8a5a32"))
 			_kit(node, "ClawP", Vector3(1.15, 0.78, 0.18), Vector3(5.4, 5.55, 0.6), Color("e4d8c4"))
@@ -7439,6 +7439,7 @@ func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
 	_add_rock_lobe(st, rng, radius * 0.2, Vector3(-radius * 0.18, -radius * 0.52, radius * 0.44))
 	_add_rock_lobe(st, rng, radius * 0.26, Vector3(radius * 0.22, radius * 0.48, radius * 0.4))
 	_add_rock_lobe(st, rng, radius * 0.18, Vector3(-radius * 0.46, radius * 0.32, -radius * 0.28))
+	_add_rock_lobe(st, rng, radius * 0.3, Vector3(radius * 0.5, -radius * 0.28, radius * 0.22))
 	st.index()
 	st.generate_normals()
 	var mesh := st.commit()
@@ -7748,17 +7749,28 @@ func _dress_profile(holder: Node3D, class_id: String, height: float) -> void:
 	_hardware(holder, "Catwalk", Vector3(span * 0.7, 0.55, 2.6), Vector3(mid, height * 1.16, 0.0), Color("6a7278"))
 	_hardware(holder, "House0", Vector3(span * 0.24, height * 0.42, maxf(chine_z * 0.58, 4.6)), Vector3(tail + span * 0.38, height * 1.32, 0.0), Color("7a848c"))
 	_hardware(holder, "House1", Vector3(span * 0.18, height * 0.28, maxf(chine_z * 0.45, 3.6)), Vector3(tail + span * 0.58, height * 1.26, 0.0), Color("5a646c"))
-	_tube(holder, "Funnel0", 2.85, height * 0.82, Vector3(tail + span * 0.26, height * 1.42, 1.6), "y", Color("3a4248"))
-	_tube(holder, "Funnel1", 2.35, height * 0.68, Vector3(tail + span * 0.26, height * 1.34, -1.8), "y", Color("2e363c"))
-	_tube(holder, "FunnelCap", 3.2, 0.62, Vector3(tail + span * 0.26, height * 1.84, 1.6), "y", Color("1a1e22"))
-	_tube(holder, "FunnelCap1", 2.7, 0.52, Vector3(tail + span * 0.26, height * 1.7, -1.8), "y", Color("1a1e22"))
+	_tube(holder, "Funnel0", 3.35, height * 0.98, Vector3(tail + span * 0.26, height * 1.52, 1.6), "y", Color("3a4248"))
+	_tube(holder, "Funnel1", 2.85, height * 0.84, Vector3(tail + span * 0.26, height * 1.44, -1.8), "y", Color("2e363c"))
+	_tube(holder, "FunnelCap", 3.85, 0.78, Vector3(tail + span * 0.26, height * 2.02, 1.6), "y", Color("1a1e22"))
+	_tube(holder, "FunnelCap1", 3.25, 0.68, Vector3(tail + span * 0.26, height * 1.88, -1.8), "y", Color("1a1e22"))
+	var stripe := Color("d7e6c8")
+	if class_id == "anvil":
+		stripe = Color("e6c39a")
+	elif class_id == "kestrel" or class_id == "casque":
+		stripe = Color("c4512c")
+	_kit(holder, "LiveryP", Vector3(span * 0.58, 1.75, 0.42), Vector3(mid, height * 0.56, chine_z + 0.22), stripe)
+	_kit(holder, "LiveryS", Vector3(span * 0.58, 1.75, 0.42), Vector3(mid, height * 0.56, -chine_z - 0.22), stripe)
+	for i in 5:
+		var gutter_x := tail + span * (0.2 + float(i) * 0.14)
+		_hardware(holder, "Gutter%d" % i, Vector3(0.38, height * 0.58, 0.28), Vector3(gutter_x, height * 0.48, chine_z * 0.92), Color("121618"))
+		_hardware(holder, "GutterS%d" % i, Vector3(0.38, height * 0.58, 0.28), Vector3(gutter_x, height * 0.48, -chine_z * 0.92), Color("121618"))
 	_hardware(holder, "Transom", Vector3(1.55, height * 0.72, maxf(chine_z * 1.25, 6.4)), Vector3(tail + 0.9, height * 0.52, 0.0), Color("3e464c"))
 	var pane_i := 0
 	for i in 8:
 		var along := tail + span * (0.18 + float(i) * 0.09)
 		var pane_z := _flank_z(class_id, along, 0.15)
-		_port_slit(holder, "HullPaneP%d" % pane_i, Vector3(span * 0.055, 2.05, 0.28), Vector3(along, height * 0.62, pane_z))
-		_port_slit(holder, "HullPaneS%d" % pane_i, Vector3(span * 0.055, 2.05, 0.28), Vector3(along, height * 0.62, -pane_z))
+		_port_slit(holder, "HullPaneP%d" % pane_i, Vector3(span * 0.072, 2.55, 0.4), Vector3(along, height * 0.58, pane_z))
+		_port_slit(holder, "HullPaneS%d" % pane_i, Vector3(span * 0.072, 2.55, 0.4), Vector3(along, height * 0.58, -pane_z))
 		pane_i += 1
 	var geom: Dictionary = Silhouette.parts(class_id, [])
 	var hull: PackedVector2Array = geom.hull
@@ -7925,7 +7937,7 @@ func _dress_industry(holder: Node3D, class_id: String, height: float) -> void:
 		holder.add_child(stack)
 	if hauler:
 		for i in 4:
-			_hardware(holder, "CargoMod%d" % i, Vector3(span * 0.13, height * 0.28, maxf(chine_z * 1.15, 6.2)), Vector3(tail + span * (0.22 + float(i) * 0.16), height * 1.08, 0.0), Color("8a7a62"))
+			_hardware(holder, "CargoMod%d" % i, Vector3(span * 0.145, height * 0.46, maxf(chine_z * 1.22, 7.0)), Vector3(tail + span * (0.22 + float(i) * 0.16), height * 1.18, 0.0), Color("8a7a62"))
 			_hardware(holder, "RibExtra%d" % i, Vector3(0.52, height * 0.68, maxf(chine_z * 2.0 + 0.8, 10.2)), Vector3(tail + span * (0.2 + float(i) * 0.16), height * 0.48, 0.0), Color("262c30"))
 		_hardware(holder, "LoadHatch", Vector3(span * 0.2, 0.32, maxf(chine_z * 1.4, 8.2)), Vector3(mid, height * 1.07, 0.0), Color("181c20"))
 	if combat:
@@ -7949,15 +7961,24 @@ func _dress_industry(holder: Node3D, class_id: String, height: float) -> void:
 	if courier:
 		for i in 3:
 			var tank_x := tail + span * (0.28 + float(i) * 0.16)
-			var tank_z := _flank_z(class_id, tank_x, height * 0.22)
+			var tank_z := _flank_z(class_id, tank_x, height * 0.2)
 			var tank_side := 1.0 if i != 1 else -1.0
-			var tank_at := Vector3(tank_x, height * 0.48, tank_z * tank_side)
-			var tank := _cyl(holder, "Tank%d" % i, height * 0.24, span * 0.24, tank_at, "x", Color("9aa8ae"))
-			tank.material_override = _metal(Color("8a9aa0"))
-			_cyl(holder, "TankBandA%d" % i, height * 0.26, 0.46, tank_at + Vector3(span * 0.055, 0.0, 0.0), "x", Color("2e363c"))
-			_cyl(holder, "TankBandB%d" % i, height * 0.26, 0.46, tank_at + Vector3(-span * 0.055, 0.0, 0.0), "x", Color("2e363c"))
-			_cyl(holder, "TankCap%d" % i, height * 0.25, 0.42, tank_at + Vector3(span * 0.118, 0.0, 0.0), "x", Color("7a3a32"))
-			_kit(holder, "TankValve%d" % i, Vector3(0.55, 0.92, 0.55), tank_at + Vector3(0.0, height * 0.27, 0.0), Color("2a3034"))
+			var tank_at := Vector3(tank_x, height * 0.5, tank_z * tank_side)
+			var tank_rad := height * 0.2
+			var tank_len := span * 0.28
+			var tank := _cyl(holder, "Tank%d" % i, tank_rad, tank_len, tank_at, "x", Color("6a767c"))
+			tank.material_override = _metal(Color("6e7a80"))
+			for bi in 3:
+				var bx := (float(bi) - 1.0) * tank_len * 0.28
+				_cyl(holder, "TankBand%d_%d" % [i, bi], tank_rad + 0.22, 0.78, tank_at + Vector3(bx, 0.0, 0.0), "x", Color("1a2024"))
+			_cyl(holder, "TankCapF%d" % i, tank_rad + 0.06, 0.62, tank_at + Vector3(tank_len * 0.48, 0.0, 0.0), "x", Color("6a3228"))
+			_cyl(holder, "TankCapA%d" % i, tank_rad + 0.06, 0.62, tank_at + Vector3(-tank_len * 0.48, 0.0, 0.0), "x", Color("2a3034"))
+			_kit(holder, "TankSaddle%d" % i, Vector3(tank_len * 0.62, 0.95, tank_rad * 1.4), tank_at + Vector3(0.0, -tank_rad * 0.82, -tank_side * tank_rad * 0.12), Color("3a4248"))
+			_kit(holder, "TankStrutA%d" % i, Vector3(0.48, tank_rad * 1.2, 0.48), tank_at + Vector3(tank_len * 0.22, -tank_rad * 0.72, -tank_side * tank_rad * 0.55), Color("2a3034"))
+			_kit(holder, "TankStrutB%d" % i, Vector3(0.48, tank_rad * 1.2, 0.48), tank_at + Vector3(-tank_len * 0.22, -tank_rad * 0.72, -tank_side * tank_rad * 0.55), Color("2a3034"))
+			_cyl(holder, "TankPipe%d" % i, 0.18, tank_rad * 1.9, tank_at + Vector3(0.0, -tank_rad * 0.15, -tank_side * tank_rad * 0.95), "z", Color("2a2018"))
+			_kit(holder, "TankValve%d" % i, Vector3(0.78, 1.15, 0.78), tank_at + Vector3(0.0, tank_rad + 0.42, 0.0), Color("2a3034"))
+			_cyl(holder, "TankGauge%d" % i, 0.24, 0.62, tank_at + Vector3(tank_len * 0.12, tank_rad + 0.62, 0.0), "y", Color("8a3a32"))
 	_dress_combat(holder, class_id, height)
 	_dress_hauler(holder, class_id, height)
 

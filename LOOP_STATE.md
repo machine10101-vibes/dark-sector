@@ -48,6 +48,7 @@ Player-visible what works now:
 - Survey masts now raise a tall silver dish. Cheek guns are thick metal barrels on the flanks. Battery banks sit outboard as 6 m cans. Armor plates are thicker and proud. Aegis keeps patchy clouds so sea and land show. Fleet craft grow dishes, jaws, spikes, and barrels. Combat math is unchanged.
 - Hull paint now reads as painted plate, not black chrome. Windows glow. Aegis air thins so blue sea and green land show on the limb. Harvest drones wear a cutter wheel; probes keep a large dish. Combat math is unchanged.
 - Hull paint keeps each keel's own color instead of a pale wash. Courier tanks wear bands and caps. The island stands taller with lit panes. Fleet craft grow role gear: a toothed harvest wheel, a probe dish on a boom, a dart spike, and a sting ammo drum. Ice stays deep blue. Combat math is unchanged.
+- Hull plates now show dark gutters. Courier tanks sit on saddles with hoop bands, end caps, and feed pipes. Accent livery runs the flanks. Barn cargo stacks taller. Harvest drones wear a larger toothed cutter. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
