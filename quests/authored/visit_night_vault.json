@@ -1,0 +1,13 @@
+{
+  "id": "authored_night_vault",
+  "title": "Silo Dark",
+  "kind": "authored",
+  "giver": "Homestead",
+  "summary": "Start: enter the system. The log opens Silo Dark and the helm marks Night Vault. Do: Close on Night Vault. The Vault Clerk names which silo still has a case. An ambush holds the buoy until you enter 520 meters, and a raider wants the clerk. Finish: come inside Night Vault's shell. The Charter writes standing. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "night_vault",
+  "system_id": "HC-V1-R5-S5",
+  "mutations": [
+    "rumor_night_vault",
+    "charter_standing_up"
+  ]
+}

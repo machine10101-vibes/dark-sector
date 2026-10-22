@@ -1,0 +1,13 @@
+{
+  "id": "authored_expired_charter",
+  "title": "Fine Print",
+  "kind": "authored",
+  "giver": "Rimward Charter",
+  "summary": "Start: enter the system. The log opens Fine Print and the helm marks Expired Charter. Do: Close on Expired Charter. The law here is red. An ambush holds the school buoy, a kite keeps 340 to 460 meters, and a raider takes the Expired Clerk, who runs inside 640 meters. Finish: come inside Expired Charter's shell. The Charter writes standing. Wreck rights stay red. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "expired_charter",
+  "system_id": "HC-V1-R2-S6",
+  "mutations": [
+    "rumor_clause_school",
+    "charter_standing_up"
+  ]
+}

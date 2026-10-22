@@ -331,7 +331,18 @@ static func _near_hook(sim) -> Dictionary:
 				continue
 			return _point(sim, str(sim.defs.system.id), "body", body, str(quest.get("title", qid)))
 		if quest.has("route"):
-			return _point(sim, str(sim.defs.system.id), "system", str(sim.defs.system.id), str(quest.get("title", qid)))
+			var route: Array = quest.route
+			var step := int(sim.quest_flags.get("%s_step" % qid, 0))
+			if step < 0:
+				step = 0
+			if step >= route.size():
+				continue
+			var next_id := str(route[step])
+			var title := str(quest.get("title", qid))
+			var marks: Array = quest.get("marks", [])
+			if next_id == str(sim.defs.system.id) and step < marks.size() and str(marks[step]) != "":
+				return _point(sim, next_id, "body", str(marks[step]), title)
+			return _point(sim, next_id, "system", next_id, title)
 	return {}
 
 

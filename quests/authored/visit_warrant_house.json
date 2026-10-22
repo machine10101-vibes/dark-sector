@@ -1,0 +1,13 @@
+{
+  "id": "authored_warrant_house",
+  "title": "Post the Writ",
+  "kind": "authored",
+  "giver": "Helion Compact",
+  "summary": "Start: enter the system. The log opens Post the Writ and the helm marks Warrant House. Do: Close on Warrant House. The bailiff patrol reads a hold that lingers in the seized yard. Bailiff Holt names the next tow to Gyre. Finish: come inside Warrant House's shell. The Compact writes standing. Seized hulls still leave for the Swallow. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "warrant_house",
+  "system_id": "HC-V1-R1-S3",
+  "mutations": [
+    "rumor_warrant_house",
+    "compact_standing_up"
+  ]
+}

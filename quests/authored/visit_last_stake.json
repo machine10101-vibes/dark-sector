@@ -1,0 +1,13 @@
+{
+  "id": "authored_last_stake",
+  "title": "Perimeter",
+  "kind": "authored",
+  "giver": "Homestead",
+  "summary": "Start: enter the system. The log opens Perimeter and the helm marks Last Stake. Do: Close on Last Stake. The law is red. A raider takes a keel that lingers, and an ambush holds the stake until you enter 520 meters. The pocket is still a garden. Finish: come inside Last Stake's shell. The Charter writes standing. Wreck rights stay red. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "last_stake",
+  "system_id": "HC-V1-R5-S6",
+  "mutations": [
+    "rumor_last_stake",
+    "charter_standing_up"
+  ]
+}

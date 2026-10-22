@@ -1,0 +1,13 @@
+{
+  "id": "authored_lamp_yard",
+  "title": "Honest Scales",
+  "kind": "authored",
+  "giver": "Helion Compact",
+  "summary": "Start: enter the system. The log opens Honest Scales and the helm marks Lamp Yard. Do: Close on Lamp Yard. Two range cutters orbit the yard and hail if you crowd the guns. The Scale Clerk weighs fuel and ammo in public. Finish: come inside Lamp Yard's shell. The Compact writes standing and a rumor. The grain delivery is a separate contract. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "lamp_yard",
+  "system_id": "HC-V1-R1-S2",
+  "mutations": [
+    "rumor_lamp_yard",
+    "compact_standing_up"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "authored_garden_moon",
+  "title": "Not Ours",
+  "kind": "authored",
+  "giver": "Orbital Municipal Navy",
+  "summary": "Start: enter the system. The log opens Not Ours and the helm marks Garden Moon. Do: Close on Garden Moon. The Orbit Clerk will not leave the moon to help you two lanes over. That refusal is the jurisdiction hole. Finish: come inside Garden Moon's shell. The navy writes standing. The smuggle route is the separate run. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "garden_moon",
+  "system_id": "HC-V1-R3-S4",
+  "mutations": [
+    "rumor_garden_moon",
+    "municipal_standing_up"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "authored_bonded_loft",
+  "title": "Bonded Loft",
+  "kind": "authored",
+  "giver": "Helion Compact",
+  "summary": "Start: enter the system. The log opens Bonded Loft and the helm marks Bonded Loft. Do: Close on Bonded Loft. The warehouse patrol hails. Sealing a layer is the Ledger contract. This job is the visit that opens the bond. Finish: come inside Bonded Loft's shell. The Compact writes standing. The scan contract still wants one sealed layer. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "bonded_loft",
+  "system_id": "HC-V1-R1-S5",
+  "mutations": [
+    "rumor_bonded_loft",
+    "compact_standing_up"
+  ]
+}

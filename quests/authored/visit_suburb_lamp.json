@@ -1,0 +1,13 @@
+{
+  "id": "authored_suburb_lamp",
+  "title": "Quiet Sun",
+  "kind": "authored",
+  "giver": "Helion Compact",
+  "summary": "Start: enter the system. The log opens Quiet Sun and the helm marks Suburb Lamp. Do: Close on Suburb Lamp. The suburb cutter hails. The amber pocket is the buoy gyre behind the lamp, and the keeper orbits that gyre. Finish: come inside Suburb Lamp's shell. The Compact writes standing. The porch is not a homestead. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "suburb_lamp",
+  "system_id": "HC-V1-R1-S6",
+  "mutations": [
+    "rumor_suburb_lamp",
+    "compact_standing_up"
+  ]
+}

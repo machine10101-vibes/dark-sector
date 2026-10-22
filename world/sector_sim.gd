@@ -1275,8 +1275,32 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 		_step_pirate(actor, dt)
 		return
 	elif str(actor.team) == "civilian":
-		var coast = time * 0.07 + float(actor.ai.phase)
-		dest = actor.home + Vector2.from_angle(coast) * float(actor.ai.radius)
+		var action := str(actor.ai.get("action", "trader"))
+		var coast: float = float(time) * 0.07 + float(actor.ai.get("phase", 0.0))
+		var orbit := float(actor.ai.get("radius", 400.0))
+		dest = actor.home + Vector2.from_angle(coast) * orbit
+		if action == "tow" or action == "tug":
+			coast = float(time) * 0.05 + float(actor.ai.get("phase", 0.0))
+			dest = actor.home + Vector2.from_angle(coast) * orbit
+			if player.pos.distance_to(actor.pos) < 480.0:
+				dest = player.pos + Vector2.from_angle(player.rot) * 160.0
+				_say_duty(actor)
+		elif action == "herd" or action == "herdsman":
+			coast = float(time) * 0.08 + float(actor.ai.get("phase", 0.0))
+			dest = pocket_pos + Vector2.from_angle(coast) * 180.0
+			var pocket_r := float(defs.system.pocket.get("radius", 200.0))
+			if player.pos.distance_to(pocket_pos) < pocket_r + 80.0:
+				_say_duty(actor)
+		elif action == "flee":
+			var threat := _nearest_team(actor, "red_keel", 640.0)
+			if not threat.is_empty():
+				var away: Vector2 = actor.pos - threat.pos
+				if away.length() < 1.0:
+					away = Vector2.RIGHT
+				dest = actor.pos + away.normalized() * 420.0
+				_say_duty(actor)
+		elif player.pos.distance_to(actor.pos) < 560.0:
+			_say_duty(actor)
 		_fly_ship(actor, dest, dt, false)
 		return
 	elif str(actor.team) == _pdo_id():
@@ -1299,6 +1323,14 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 		if target == null:
 			var ang = time * 0.16 + float(actor.ai.phase)
 			dest = actor.home + Vector2.from_angle(ang) * float(actor.ai.radius)
+			var action := str(actor.ai.get("action", "patrol"))
+			if action == "escort":
+				var ward := _nearest_civilian(actor, 1800.0)
+				if not ward.is_empty():
+					dest = ward.pos + Vector2(120.0, 90.0)
+					_say_duty(actor)
+			elif player.alive and player.pos.distance_to(actor.pos) < 640.0:
+				_say_duty(actor)
 	HelmCombat.set_lock(self, actor, "" if target == null else str(target.get("agent_id", "")))
 	if target != null:
 		dest = target.pos
@@ -1788,6 +1820,24 @@ func _step_pirate(actor: Dictionary, dt: float) -> void:
 
 
 func _pirate_quarry(actor: Dictionary) -> Dictionary:
+	var role := str(actor.ai.get("role", "interceptor"))
+	if bool(actor.ai.get("role_authored", false)):
+		if role == "ambush":
+			var pressing := float(player.get("fight_cd", 0.0)) > 0.0
+			if player.pos.distance_to(actor.home) > 520.0 and not pressing:
+				return {}
+		elif role == "claim_jumper":
+			var reach := float(defs.system.pocket.get("radius", 180.0)) + 220.0
+			var near_pocket: bool = player.pos.distance_to(pocket_pos) <= reach
+			var near_home: bool = player.pos.distance_to(actor.home) <= reach
+			var in_pocket: bool = near_pocket or near_home
+			if not in_pocket and float(player.get("fight_cd", 0.0)) <= 0.0:
+				return {}
+		elif role == "raider":
+			var haul := _nearest_civilian(actor, 1100.0)
+			if not haul.is_empty():
+				_say_duty(actor)
+				return haul
 	var best: Dictionary = {}
 	var best_d := 1400.0
 	for item in craft:
@@ -1801,6 +1851,7 @@ func _pirate_quarry(actor: Dictionary) -> Dictionary:
 			best = row
 			best_d = dist
 	if not best.is_empty():
+		_say_duty(actor)
 		return best
 	if not bool(player.alive):
 		return {}
@@ -1811,6 +1862,7 @@ func _pirate_quarry(actor: Dictionary) -> Dictionary:
 		reach = 900.0
 		sight = 1000.0
 	if player.pos.distance_to(actor.home) < reach or player.pos.distance_to(actor.pos) < sight:
+		_say_duty(actor)
 		return player
 	return {}
 
@@ -2399,8 +2451,77 @@ func _lift_buried_orbits() -> void:
 			break
 
 
+func _mob_book() -> Dictionary:
+	var cached = defs.get("mob_roles", null)
+	if typeof(cached) == TYPE_DICTIONARY:
+		return cached
+	var loaded = Serde.load_json("res://data/mob_roles.json")
+	var book := {}
+	if typeof(loaded) == TYPE_DICTIONARY:
+		var systems = loaded.get("systems", {})
+		if typeof(systems) == TYPE_DICTIONARY:
+			book = systems
+	defs["mob_roles"] = book
+	return book
+
+
+func _mob_row() -> Dictionary:
+	var book := _mob_book()
+	var row = book.get(str(defs.system.id), {})
+	if typeof(row) != TYPE_DICTIONARY:
+		return {}
+	return row
+
+
+func _say_duty(actor: Dictionary) -> void:
+	if bool(actor.ai.get("said_duty", false)):
+		return
+	var duty := str(actor.ai.get("duty", ""))
+	if duty == "":
+		return
+	actor.ai.said_duty = true
+	say("%s — %s" % [str(actor.get("name", "A ship")), duty])
+
+
+func _nearest_civilian(actor: Dictionary, reach: float) -> Dictionary:
+	return _nearest_team(actor, "civilian", reach)
+
+
+func _nearest_team(actor: Dictionary, team: String, reach: float) -> Dictionary:
+	var best: Dictionary = {}
+	var best_d := reach
+	for other in actors:
+		if str(other.get("team", "")) != team:
+			continue
+		if not bool(other.get("alive", false)):
+			continue
+		if str(other.get("agent_id", "")) == str(actor.get("agent_id", "")):
+			continue
+		var dist: float = actor.pos.distance_to(other.pos)
+		if dist < best_d:
+			best = other
+			best_d = dist
+	return best
+
+
 func _spawn_factions() -> void:
 	var faction_id := _pdo_id()
+	var mob := _mob_row()
+	var pdo_mob: Dictionary = mob.get("pdo", {})
+	if typeof(pdo_mob) != TYPE_DICTIONARY:
+		pdo_mob = {}
+	var pdo_role := str(defs.system.pdo.get("role", pdo_mob.get("role", "patrol")))
+	var pdo_duty := str(defs.system.pdo.get("duty", pdo_mob.get("duty", "")))
+	var pdo_action := str(defs.system.pdo.get("action", pdo_mob.get("action", pdo_role)))
+	var haul_book: Dictionary = mob.get("haulers", {})
+	if typeof(haul_book) != TYPE_DICTIONARY:
+		haul_book = {}
+	var pirate_rows: Array = mob.get("pirates", [])
+	if typeof(pirate_rows) != TYPE_ARRAY:
+		pirate_rows = []
+	var inline_roles: Array = defs.system.pirates.get("roles", [])
+	var inline_duties: Array = defs.system.pirates.get("duties", [])
+	var inline_actions: Array = defs.system.pirates.get("actions", [])
 	var home_body = planet(str(defs.system.pdo.get("home", "")))
 	var home := Vector2.ZERO
 	if home_body != null:
@@ -2414,7 +2535,16 @@ func _spawn_factions() -> void:
 		actor.home = home
 		actor.pos = actor.home + Vector2.from_angle(ang) * patrol
 		actor.rot = ang + PI * 0.5
-		actor.ai = {"phase": ang, "radius": patrol, "enraged": false}
+		actor.ai = {
+			"phase": ang,
+			"radius": patrol,
+			"enraged": false,
+			"role": pdo_role,
+			"duty": pdo_duty,
+			"action": pdo_action,
+			"said_duty": false,
+			"role_authored": pdo_duty != "" or pdo_role != "patrol",
+		}
 		actor.cargo = {"scrap": 1}
 		actors.append(actor)
 	if bool(quest_flags.get("patrol_reinforced", false)) and int(defs.system.pdo.count) > 0:
@@ -2422,7 +2552,16 @@ func _spawn_factions() -> void:
 		extra.home = home
 		extra.pos = home + Vector2(patrol, 80.0)
 		extra.rot = PI * 0.5
-		extra.ai = {"phase": 0.4, "radius": patrol, "enraged": false}
+		extra.ai = {
+			"phase": 0.4,
+			"radius": patrol,
+			"enraged": false,
+			"role": pdo_role,
+			"duty": pdo_duty,
+			"action": pdo_action,
+			"said_duty": false,
+			"role_authored": pdo_duty != "" or pdo_role != "patrol",
+		}
 		extra.cargo = {"scrap": 1}
 		actors.append(extra)
 	for entry in defs.system.get("haulers", []):
@@ -2435,7 +2574,22 @@ func _spawn_factions() -> void:
 			hauler.home = yard.pos
 		hauler.pos = hauler.home + Vector2.from_angle(phase) * orbit
 		hauler.rot = phase + PI * 0.5
-		hauler.ai = {"phase": phase, "radius": orbit, "enraged": false}
+		var haul_mob = haul_book.get(str(entry.get("id", "")), {})
+		if typeof(haul_mob) != TYPE_DICTIONARY:
+			haul_mob = {}
+		var haul_role := str(entry.get("role", haul_mob.get("role", "trader")))
+		var haul_duty := str(entry.get("duty", haul_mob.get("duty", "")))
+		var haul_action := str(entry.get("action", haul_mob.get("action", haul_role)))
+		hauler.ai = {
+			"phase": phase,
+			"radius": orbit,
+			"enraged": false,
+			"role": haul_role,
+			"duty": haul_duty,
+			"action": haul_action,
+			"said_duty": false,
+			"role_authored": haul_duty != "",
+		}
 		actors.append(hauler)
 	var pack_count := int(defs.system.pirates.count)
 	var gang := _pick_gang()
@@ -2453,8 +2607,33 @@ func _spawn_factions() -> void:
 		var actor = _blank_ship("skiff", ship_name, "agent:red_keel:%d" % i, "npc", "red_keel")
 		var ang = float(i) / float(maxi(pack_count, 1)) * TAU
 		var part: String = bolted[i % bolted.size()]
-		actor.home = pack_pos
-		actor.pos = pack_pos + Vector2.from_angle(ang) * (110.0 + float(i) * 36.0)
+		var role := ""
+		var duty := ""
+		var action := ""
+		var authored := false
+		if i < inline_roles.size() and str(inline_roles[i]) != "":
+			role = str(inline_roles[i])
+			authored = true
+			if i < inline_duties.size():
+				duty = str(inline_duties[i])
+			if i < inline_actions.size():
+				action = str(inline_actions[i])
+		elif i < pirate_rows.size() and typeof(pirate_rows[i]) == TYPE_DICTIONARY:
+			var row: Dictionary = pirate_rows[i]
+			role = str(row.get("role", ""))
+			duty = str(row.get("duty", ""))
+			action = str(row.get("action", ""))
+			authored = role != ""
+		if role == "":
+			role = str(roles[i % roles.size()])
+			authored = false
+		if action == "":
+			action = role
+		var pack_home: Vector2 = pack_pos
+		if authored and role == "claim_jumper":
+			pack_home = pocket_pos
+		actor.home = pack_home
+		actor.pos = pack_home + Vector2.from_angle(ang) * (110.0 + float(i) * 36.0)
 		actor.rot = ang
 		actor.modules = [part]
 		actor.module_hp = {part: 22.0}
@@ -2466,7 +2645,11 @@ func _spawn_factions() -> void:
 			"phase": ang,
 			"radius": 140.0 + float(i) * 28.0,
 			"enraged": false,
-			"role": roles[i % roles.size()],
+			"role": role,
+			"duty": duty,
+			"action": action,
+			"role_authored": authored,
+			"said_duty": false,
 			"chase": 0.0,
 			"fired_on_captain": false,
 		}

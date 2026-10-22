@@ -1,0 +1,13 @@
+{
+  "id": "authored_feedstock",
+  "title": "Clean Hands",
+  "kind": "authored",
+  "giver": "Glass Choir",
+  "summary": "Start: enter the system. The log opens Clean Hands and the helm marks Feedstock. Do: Close on Feedstock. The Fine Clerk orbits sterile ice. A dirty hold is a fine. The warden patrol hails before the guns. Finish: come inside Feedstock's shell. The Choir writes standing. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "feedstock",
+  "system_id": "HC-V1-R4-S5",
+  "mutations": [
+    "rumor_feedstock",
+    "glass_standing_up"
+  ]
+}

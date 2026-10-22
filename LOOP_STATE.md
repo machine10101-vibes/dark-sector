@@ -50,6 +50,7 @@ Player-visible what works now:
 - Hull paint keeps each keel's own color instead of a pale wash. Courier tanks wear bands and caps. The island stands taller with lit panes. Fleet craft grow role gear: a toothed harvest wheel, a probe dish on a boom, a dart spike, and a sting ammo drum. Ice stays deep blue. Combat math is unchanged.
 - Hull plates now show dark gutters. Courier tanks sit on saddles with hoop bands, end caps, and feed pipes. Accent livery runs the flanks. Barn cargo stacks taller. Harvest drones wear a larger toothed cutter. Combat math is unchanged.
 - Nickel and loose rocks are cratered stone with gold veins. Ice stays a blue berg. Stern bells are an engine cluster with lit throats. Barn cargo reads as lidded containers. Aegis clouds thin so the sea and land stay open. Combat math is unchanged.
+- The rest of the Helion chart is flyable. Stamped Ice, Second Copy, Fine Print, Pollinator Road, and Silo Dark are on the lanes. Patrols, haulers, and packs keep a job: range officer, bailiff, tug, herdsman, clerk, raider, kite, ambush, claim jumper. Each of those skies opens a slate job when you arrive. Close on the named body to finish it. Water Lease starts on Clock Ice and finishes at Towline with ice spall in the hold. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:

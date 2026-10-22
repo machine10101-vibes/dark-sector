@@ -1,0 +1,12 @@
+{
+  "id": "authored_station_hulk",
+  "title": "Hullweather",
+  "kind": "authored",
+  "giver": "Drift tender",
+  "summary": "Start: enter the system. The log opens Hullweather and the helm marks Station Hulk. Do: Close on Station Hulk. Derelicts the size of stations. Tender work is the living. Boarding is later. The compartment spill is the trash. Finish: come inside Station Hulk's shell. A drift rumor. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "station_hulk",
+  "system_id": "HC-V1-R6-S4",
+  "mutations": [
+    "rumor_station_hulk"
+  ]
+}
