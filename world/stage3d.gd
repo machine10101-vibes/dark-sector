@@ -280,15 +280,15 @@ varying vec3 local_nrm;
 uniform vec4 albedo : source_color = vec4(0.5, 0.55, 0.58, 1.0);
 uniform vec4 accent : source_color = vec4(0.0, 0.0, 0.0, 0.0);
 float seam_of(vec3 p) {
-	float sx = smoothstep(0.468, 0.5, abs(fract(p.x * 0.13) - 0.5));
-	float sz = smoothstep(0.466, 0.5, abs(fract(p.z * 0.2) - 0.5));
-	float sy = smoothstep(0.474, 0.5, abs(fract(p.y * 0.16) - 0.5));
-	float weld = smoothstep(0.484, 0.5, abs(fract(p.x * 0.13 + 0.5) - 0.5));
-	return max(max(sx, sz * 0.82), max(sy * 0.48, weld * 0.38));
+	float sx = smoothstep(0.488, 0.5, abs(fract(p.x * 0.09) - 0.5));
+	float sz = smoothstep(0.486, 0.5, abs(fract(p.z * 0.14) - 0.5));
+	float sy = smoothstep(0.49, 0.5, abs(fract(p.y * 0.11) - 0.5));
+	float weld = smoothstep(0.492, 0.5, abs(fract(p.x * 0.09 + 0.5) - 0.5));
+	return max(max(sx, sz * 0.7), max(sy * 0.35, weld * 0.28));
 }
 float plate_h(vec3 p) {
 	float seam = seam_of(p);
-	vec2 cell = floor(p.xz * vec2(0.13, 0.2));
+	vec2 cell = floor(p.xz * vec2(0.09, 0.14));
 	float id = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
 	float h = (0.08 + 0.28 * id) * (1.0 - seam);
 	float riv = seam * smoothstep(0.06, 0.0, abs(fract(p.x * 1.15) - 0.5)) * smoothstep(0.06, 0.0, abs(fract(p.z * 1.6) - 0.5));
@@ -310,14 +310,14 @@ void fragment() {
 	float hz = plate_h(local_pos + vec3(0.0, 0.0, 0.35));
 	vec3 tangent = abs(n.y) > 0.92 ? vec3(1.0, 0.0, 0.0) : normalize(cross(n, vec3(0.0, 1.0, 0.0)));
 	vec3 bitangent = normalize(cross(n, tangent));
-	vec3 bumped = normalize(n + tangent * (h - hx) * 2.4 + bitangent * (h - hz) * 2.4);
+	vec3 bumped = normalize(n + tangent * (h - hx) * 1.15 + bitangent * (h - hz) * 1.15);
 	vec3 world_n = normalize((MODEL_MATRIX * vec4(bumped, 0.0)).xyz);
 	NORMAL = normalize((VIEW_MATRIX * vec4(world_n, 0.0)).xyz);
 	float seam = clamp(seam_of(local_pos), 0.0, 1.0);
-	vec2 cell = floor(local_pos.xz * vec2(0.13, 0.2));
+	vec2 cell = floor(local_pos.xz * vec2(0.09, 0.14));
 	float id = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
 	vec3 col = albedo.rgb * (1.04 + 0.16 * id);
-	col = mix(col, col * vec3(0.16, 0.18, 0.2), seam * 0.82);
+	col = mix(col, col * vec3(0.55, 0.56, 0.54), seam * 0.48);
 	float edge_wear = smoothstep(0.12, 0.88, 1.0 - abs(n.y));
 	col = mix(col, mix(col, albedo.rgb * 1.18, 0.35), edge_wear * 0.28);
 	float flake = smoothstep(0.86, 0.98, fract(sin(dot(local_pos.xz, vec2(19.0, 47.0))) * 311.0));
@@ -560,8 +560,8 @@ void vertex() {
 	vec3 p = normalize(VERTEX);
 	float cube = max(max(abs(p.x), abs(p.y)), abs(p.z));
 	float hex = max(abs(p.x + p.z * 0.6), abs(p.y));
-	float face = mix(cube, hex, 0.4);
-	VERTEX += nrm * (0.1 - face * 0.08) * length(VERTEX);
+	float face = mix(cube, hex, 0.28);
+	VERTEX += nrm * (0.04 - face * 0.025) * length(VERTEX);
 	wnorm = normalize((MODEL_MATRIX * vec4(nrm, 0.0)).xyz);
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
@@ -569,17 +569,17 @@ void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 sun = normalize(vec3(0.35, 0.86, 0.22));
 	float ndl = clamp(dot(n, sun), 0.0, 1.0);
-	float crack = smoothstep(0.47, 0.5, abs(fract(n.y * 6.5 + n.x * 4.0 + seed) - 0.5));
-	float sheet = smoothstep(0.48, 0.5, abs(fract(n.x * 3.2 + n.z * 5.1 + seed * 1.7) - 0.5));
-	float facet = smoothstep(0.46, 0.5, abs(fract(n.z * 8.2 + n.y * 3.1 + seed * 2.2) - 0.5));
+	float crack = smoothstep(0.492, 0.5, abs(fract(wpos.x * 0.07 + seed) - 0.5));
+	float sheet = smoothstep(0.494, 0.5, abs(fract(wpos.z * 0.09 + seed * 1.7) - 0.5));
+	float facet = smoothstep(0.496, 0.5, abs(fract(wpos.y * 0.05 + seed * 2.2) - 0.5));
 	float grit = fract(sin(dot(n.xy, vec2(41.3, 17.7)) + seed) * 913.1);
 	vec3 deep = vec3(0.06, 0.26, 0.52);
 	vec3 face = vec3(0.48, 0.72, 0.88);
 	vec3 frost = vec3(0.78, 0.9, 0.98);
 	vec3 ice = mix(deep, face, 0.16 + 0.68 * ndl);
 	ice = mix(ice, vec3(0.36, 0.6, 0.78), grit * 0.22);
-	ice = mix(ice, deep * 0.42, max(crack, sheet * 0.7) * 0.88);
-	ice = mix(ice, face * 0.9, facet * 0.28);
+	ice = mix(ice, deep * 0.62, max(crack, sheet * 0.55) * 0.42);
+	ice = mix(ice, face * 0.92, facet * 0.16);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
 	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.7);
 	ice = mix(ice, frost, fres * 0.62);
@@ -4597,15 +4597,15 @@ func _pack_spine(root: Node3D) -> void:
 	var olive := Color("2c3a28")
 	for raw_side in [1.0, -1.0]:
 		var s := float(raw_side)
-		_kit(root, "Tray", Vector3(18.4, 0.72, 3.35), Vector3(0.0, 0.36, s * 4.85), olive)
-		_kit(root, "Lip", Vector3(18.0, 0.38, 0.22), Vector3(0.0, 0.78, s * 6.45), Color("1a1e18"))
+		_kit(root, "Tray", Vector3(22.4, 0.9, 4.4), Vector3(0.0, 0.42, s * 5.6), olive)
+		_kit(root, "Lip", Vector3(22.0, 0.46, 0.28), Vector3(0.0, 0.95, s * 7.7), Color("1a1e18"))
 		for i in 5:
-			var at := Vector3(-6.4 + float(i) * 3.2, 3.15, s * 4.85)
-			var cell := _cyl(root, "Cell", 1.55, 5.8, at, "y", Color("e8eef2"))
+			var at := Vector3(-8.0 + float(i) * 4.0, 4.15, s * 5.6)
+			var cell := _cyl(root, "Cell", 1.85, 7.6, at, "y", Color("e8eef2"))
 			cell.position = at
-			var cap := _cyl(root, "Cap", 0.72, 0.28, at + Vector3(0.0, 3.05, 0.0), "y", Color("8a3a32") if i % 2 == 0 else Color("1c1e22"))
-			cap.position = at + Vector3(0.0, 3.05, 0.0)
-		_kit(root, "Bus", Vector3(15.2, 0.18, 0.42), Vector3(0.0, 6.15, s * 4.85), Color("c47a32"))
+			var cap := _cyl(root, "Cap", 0.86, 0.36, at + Vector3(0.0, 3.95, 0.0), "y", Color("8a3a32") if i % 2 == 0 else Color("1c1e22"))
+			cap.position = at + Vector3(0.0, 3.95, 0.0)
+		_kit(root, "Bus", Vector3(18.4, 0.22, 0.5), Vector3(0.0, 8.05, s * 5.6), Color("c47a32"))
 	_cyl(root, "Pos", 0.38, 0.85, Vector3(7.6, 2.05, -4.55), "y", Color("d23b2a"))
 	_cyl(root, "Neg", 0.38, 0.85, Vector3(7.6, 2.05, 4.55), "y", Color("14161a"))
 	_kit(root, "Plus", Vector3(0.42, 0.12, 0.12), Vector3(7.6, 2.55, -4.55), Color("f2f2f2"))
@@ -5644,11 +5644,13 @@ func _mount_mast(holder: Node3D, class_id: String, nose: float, y: float, height
 	var metal := Color("c4b49a")
 	var dish := Color("c8e8e2")
 	if class_id == "anvil":
+		var dish_y := height * 2.32
+		var boom_len := maxf(dish_y - height, 18.0)
 		_kit(holder, "MountMastCollar", Vector3(10.0, 2.4, 10.0), Vector3(2.0, height * 0.86, 0.0), metal)
-		var boom := _cyl(holder, "MountMast", 1.7, 16.0, Vector3(2.0, height + 7.0, 0.0), "y", metal)
-		_rib_along(boom, 3, 1.7, 16.0)
+		var boom := _cyl(holder, "MountMast", 1.7, boom_len, Vector3(2.0, height + boom_len * 0.5, 0.0), "y", metal)
+		_rib_along(boom, 4, 1.7, boom_len)
 		_kit(holder, "MastBox", Vector3(3.8, 1.4, 3.8), Vector3(2.0, height * 0.95, 0.0), metal.darkened(0.22))
-		_lens(holder, "MountMastDish", 8.4, Vector3(2.0, height + 16.0, 0.0), dish)
+		_lens(holder, "MountMastDish", 12.6, Vector3(2.0, dish_y, 0.0), dish)
 	elif class_id == "kestrel":
 		_kit(holder, "MountMastCollar", Vector3(4.6, 1.8, 6.4), Vector3(2.0, y, 12.0), metal)
 		var boom := _cyl(holder, "MountMast", 0.85, 18.0, Vector3(10.0, y + 4.0, 18.0), "x", metal)
@@ -5662,12 +5664,12 @@ func _mount_mast(holder: Node3D, class_id: String, nose: float, y: float, height
 		_cyl(holder, "MountMast", 0.55, 12.0, crown_at + Vector3(0.0, 5.2, 0.0), "y", metal)
 	else:
 		_kit(holder, "MountMastCollar", Vector3(5.4, 2.2, 5.4), Vector3(nose - 8.0, height * 1.04, 0.0), metal)
-		var boom := _cyl(holder, "MountMast", 0.95, 18.0, Vector3(nose - 8.0, height + 8.4, 0.0), "y", metal)
-		_rib_along(boom, 4, 0.95, 18.0)
-		_cyl(holder, "MastStay", 0.32, 14.0, Vector3(nose - 8.0, height + 4.2, 2.2), "y", metal.darkened(0.18))
+		var boom := _cyl(holder, "MountMast", 1.15, 24.0, Vector3(nose - 8.0, height + 11.2, 0.0), "y", metal)
+		_rib_along(boom, 4, 1.15, 24.0)
+		_cyl(holder, "MastStay", 0.38, 18.0, Vector3(nose - 8.0, height + 6.2, 2.4), "y", metal.darkened(0.18))
 		_kit(holder, "MastBox", Vector3(3.4, 1.55, 2.4), Vector3(nose - 8.0, height * 1.12, 1.1), metal.darkened(0.28))
-		_cyl(holder, "MastLoom", 0.28, 8.0, Vector3(nose - 6.4, height + 2.2, 0.55), "y", Color("1c2024"))
-		_lens(holder, "MountMastDish", 7.4, Vector3(nose - 8.0, height + 18.2, 0.0), dish)
+		_cyl(holder, "MastLoom", 0.32, 10.0, Vector3(nose - 6.4, height + 2.8, 0.55), "y", Color("1c2024"))
+		_lens(holder, "MountMastDish", 12.4, Vector3(nose - 8.0, height + 24.2, 0.0), dish)
 
 
 func _mount_guns(holder: Node3D, class_id: String, y: float, height: float) -> void:
@@ -5705,10 +5707,10 @@ func _mount_guns(holder: Node3D, class_id: String, y: float, height: float) -> v
 	else:
 		var gun_z := _flank_z(class_id, 10.0, 2.8)
 		var gun_y := height * 0.58
-		_kit(holder, "MountGunP", Vector3(5.6, 3.2, 3.6), Vector3(10.0, gun_y, gun_z), metal)
-		_kit(holder, "MountGunS", Vector3(5.6, 3.2, 3.6), Vector3(10.0, gun_y, -gun_z), metal)
-		_dress_barrel(_cyl(holder, "MountBarrelP", 0.85, 18.0, Vector3(20.0, gun_y, gun_z), "x", bore), 18.0, 0.42, 0.85)
-		_dress_barrel(_cyl(holder, "MountBarrelS", 0.85, 18.0, Vector3(20.0, gun_y, -gun_z), "x", bore), 18.0, 0.42, 0.85)
+		_kit(holder, "MountGunP", Vector3(6.8, 3.8, 4.2), Vector3(10.0, gun_y, gun_z), metal)
+		_kit(holder, "MountGunS", Vector3(6.8, 3.8, 4.2), Vector3(10.0, gun_y, -gun_z), metal)
+		_dress_barrel(_cyl(holder, "MountBarrelP", 1.15, 22.0, Vector3(22.0, gun_y, gun_z), "x", bore), 22.0, 0.55, 1.15)
+		_dress_barrel(_cyl(holder, "MountBarrelS", 1.15, 22.0, Vector3(22.0, gun_y, -gun_z), "x", bore), 22.0, 0.55, 1.15)
 		_kit(holder, "GunFeedP", Vector3(3.4, 1.65, 1.8), Vector3(12.0, gun_y, gun_z), metal)
 		_kit(holder, "GunFeedS", Vector3(3.4, 1.65, 1.8), Vector3(12.0, gun_y, -gun_z), metal)
 		_kit(holder, "GunStrap", Vector3(2.2, 0.42, gun_z * 2.0), Vector3(10.0, gun_y + 0.85, 0.0), metal.darkened(0.12))
@@ -6075,15 +6077,15 @@ func _assemble_craft(node: Node3D, kind: String) -> void:
 func _dress_craft(node: Node3D, kind: String) -> void:
 	match kind:
 		"survey_probe":
-			_lens(node, "Dish", 8.4, Vector3(13.4, 2.85, 0.0), Color("d7e6ee"))
+			_lens(node, "Dish", 6.4, Vector3(11.4, 2.85, 0.0), Color("d7e6ee"))
 			var dish := node.get_node("Dish") as Node3D
 			dish.rotation.z = -PI * 0.5
-			_cyl(node, "Boom", 0.28, 10.4, Vector3(8.6, 2.85, 0.0), "x", Color("8a9698"))
-			_kit(node, "Bus", Vector3(4.6, 1.05, 1.55), Vector3(-0.6, 2.55, 0.0), Color("2a3438"))
-			_kit(node, "WingP", Vector3(8.8, 0.08, 6.8), Vector3(0.4, 2.15, 7.4), Color("1a5a78"))
-			_kit(node, "WingS", Vector3(8.8, 0.08, 6.8), Vector3(0.4, 2.15, -7.4), Color("1a5a78"))
-			_kit(node, "CellP", Vector3(7.6, 0.06, 5.6), Vector3(0.4, 2.24, 7.4), Color("2a8ab0"))
-			_kit(node, "CellS", Vector3(7.6, 0.06, 5.6), Vector3(0.4, 2.24, -7.4), Color("2a8ab0"))
+			_cyl(node, "Boom", 0.42, 8.6, Vector3(7.2, 2.85, 0.0), "x", Color("8a9698"))
+			_kit(node, "Bus", Vector3(4.6, 1.15, 1.65), Vector3(-0.6, 2.55, 0.0), Color("2a3438"))
+			_kit(node, "WingP", Vector3(9.6, 0.32, 8.2), Vector3(0.2, 2.15, 8.6), Color("1a5a78"))
+			_kit(node, "WingS", Vector3(9.6, 0.32, 8.2), Vector3(0.2, 2.15, -8.6), Color("1a5a78"))
+			_kit(node, "CellP", Vector3(8.2, 0.12, 6.8), Vector3(0.2, 2.38, 8.6), Color("2a8ab0"))
+			_kit(node, "CellS", Vector3(8.2, 0.12, 6.8), Vector3(0.2, 2.38, -8.6), Color("2a8ab0"))
 			_kit(node, "Radiator", Vector3(3.6, 0.12, 4.2), Vector3(-3.8, 2.35, 0.0), Color("3a3330"))
 			_cyl(node, "Antenna", 0.08, 4.6, Vector3(-2.2, 5.1, 0.0), "y", Color("c8d0d4"))
 		"harvest_drone":
@@ -6129,8 +6131,8 @@ func _dress_craft(node: Node3D, kind: String) -> void:
 			_craft_bell(node, "BellS", Vector3(-5.8, 1.55, -1.35), 0.55, 1.1)
 		"dart_drone":
 			_cyl(node, "Spike", 0.38, 16.4, Vector3(7.4, 2.15, 0.0), "x", Color("9fe8f4"))
-			_kit(node, "FinP", Vector3(8.4, 0.16, 5.2), Vector3(-0.8, 1.85, 6.2), Color("2a8aa0"))
-			_kit(node, "FinS", Vector3(8.4, 0.16, 5.2), Vector3(-0.8, 1.85, -6.2), Color("2a8aa0"))
+			_kit(node, "FinP", Vector3(8.4, 0.42, 5.6), Vector3(-0.8, 1.85, 6.4), Color("2a8aa0"))
+			_kit(node, "FinS", Vector3(8.4, 0.42, 5.6), Vector3(-0.8, 1.85, -6.4), Color("2a8aa0"))
 			_kit(node, "VaneP", Vector3(3.2, 2.15, 0.12), Vector3(-2.6, 3.15, 0.85), Color("163848"))
 			_kit(node, "VaneS", Vector3(3.2, 2.15, 0.12), Vector3(-2.6, 3.15, -0.85), Color("163848"))
 			_cyl(node, "GunN", 0.18, 6.4, Vector3(8.8, 1.85, 0.0), "x", Color("16181a"))
@@ -6150,8 +6152,8 @@ func _dress_craft(node: Node3D, kind: String) -> void:
 			_cyl(node, "GunS", 0.38, 7.4, Vector3(3.2, 3.25, -7.2), "x", Color("16181a"))
 			_kit(node, "PodP", Vector3(4.2, 1.25, 1.25), Vector3(1.8, 3.2, 7.2), Color("2a2420"))
 			_kit(node, "PodS", Vector3(4.2, 1.25, 1.25), Vector3(1.8, 3.2, -7.2), Color("2a2420"))
-			_kit(node, "WingP", Vector3(7.6, 0.14, 5.4), Vector3(-0.2, 2.55, 5.8), Color("8a3a18"))
-			_kit(node, "WingS", Vector3(7.6, 0.14, 5.4), Vector3(-0.2, 2.55, -5.8), Color("8a3a18"))
+			_kit(node, "WingP", Vector3(7.6, 0.36, 5.4), Vector3(-0.2, 2.55, 5.8), Color("8a3a18"))
+			_kit(node, "WingS", Vector3(7.6, 0.36, 5.4), Vector3(-0.2, 2.55, -5.8), Color("8a3a18"))
 			_craft_bell(node, "BellP", Vector3(-5.4, 1.65, 2.15), 1.05, 2.05)
 			_craft_bell(node, "BellS", Vector3(-5.4, 1.65, -2.15), 1.05, 2.05)
 			_kit(node, "Stripe", Vector3(6.8, 0.14, 1.05), Vector3(0.4, 4.45, 0.0), Color("f0b44a"))
@@ -6160,8 +6162,8 @@ func _dress_craft(node: Node3D, kind: String) -> void:
 			_kit(node, "Snout", Vector3(10.6, 1.25, 1.65), Vector3(6.8, 2.45, 0.0), Color("5a1824"))
 			_cyl(node, "Fang", 0.32, 7.4, Vector3(11.2, 2.85, 0.55), "x", Color("e8c8c4"))
 			_cyl(node, "FangS", 0.32, 7.4, Vector3(11.2, 2.85, -0.55), "x", Color("e8c8c4"))
-			_kit(node, "FinP", Vector3(5.4, 0.16, 4.15), Vector3(-1.0, 2.25, 5.6), Color("3a1018"))
-			_kit(node, "FinS", Vector3(5.4, 0.16, 4.15), Vector3(-1.0, 2.25, -5.6), Color("3a1018"))
+			_kit(node, "FinP", Vector3(5.4, 0.38, 4.15), Vector3(-1.0, 2.25, 5.6), Color("3a1018"))
+			_kit(node, "FinS", Vector3(5.4, 0.38, 4.15), Vector3(-1.0, 2.25, -5.6), Color("3a1018"))
 			_cyl(node, "GunV", 0.28, 6.2, Vector3(2.6, 1.25, 0.0), "x", Color("16181a"))
 			_kit(node, "Canopy", Vector3(2.65, 0.62, 1.25), Vector3(1.4, 4.25, 0.0), Color("2a1016"))
 		"lance_drone":
@@ -7498,8 +7500,8 @@ func _ice_mesh(seed: int, radius: float) -> ArrayMesh:
 		return _mesh_cache[key]
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var lat := 14
-	var lon := 20
+	var lat := 18
+	var lon := 26
 	var rng := RandomNumberGenerator.new()
 	rng.seed = absi(seed) + 71
 	var rads := PackedFloat32Array()
@@ -7507,11 +7509,11 @@ func _ice_mesh(seed: int, radius: float) -> ArrayMesh:
 	var wobble := 0.0
 	for yi in lat + 1:
 		for xi in lon:
-			wobble = 0.74 + rng.randf() * 0.4
+			wobble = 0.9 + rng.randf() * 0.16
 			if yi == 0 or yi == lat:
-				wobble = 0.8 + rng.randf() * 0.14
-			if (yi + xi) % 4 == 0:
-				wobble *= 0.84
+				wobble = 0.92 + rng.randf() * 0.08
+			if (yi + xi) % 5 == 0:
+				wobble *= 0.94
 			rads[yi * lon + xi] = wobble
 	var a := Vector3.ZERO
 	var b := Vector3.ZERO
@@ -7532,18 +7534,18 @@ func _ice_mesh(seed: int, radius: float) -> ArrayMesh:
 			if nrm.length_squared() < 0.0001:
 				nrm = d.normalized()
 			_rock_tri(st, b, c, d, nrm.normalized())
-	_add_rock_lobe(st, rng, radius * 0.52, Vector3(radius * 0.46, radius * 0.08, radius * 0.16))
-	_add_rock_lobe(st, rng, radius * 0.44, Vector3(-radius * 0.32, radius * 0.18, radius * 0.42))
-	_add_rock_lobe(st, rng, radius * 0.38, Vector3(radius * 0.12, -radius * 0.36, -radius * 0.34))
-	_add_rock_lobe(st, rng, radius * 0.34, Vector3(-radius * 0.44, -radius * 0.14, radius * 0.26))
-	_add_rock_lobe(st, rng, radius * 0.28, Vector3(radius * 0.36, radius * 0.28, -radius * 0.38))
-	_add_rock_lobe(st, rng, radius * 0.24, Vector3(-radius * 0.18, radius * 0.42, radius * 0.3))
-	for i in 3:
+	_add_rock_lobe(st, rng, radius * 0.58, Vector3(radius * 0.42, radius * 0.06, radius * 0.14), true)
+	_add_rock_lobe(st, rng, radius * 0.5, Vector3(-radius * 0.3, radius * 0.14, radius * 0.38), true)
+	_add_rock_lobe(st, rng, radius * 0.44, Vector3(radius * 0.1, -radius * 0.32, -radius * 0.3), true)
+	_add_rock_lobe(st, rng, radius * 0.4, Vector3(-radius * 0.4, -radius * 0.1, radius * 0.22), true)
+	_add_rock_lobe(st, rng, radius * 0.34, Vector3(radius * 0.32, radius * 0.24, -radius * 0.32), true)
+	_add_rock_lobe(st, rng, radius * 0.3, Vector3(-radius * 0.14, radius * 0.36, radius * 0.26), true)
+	for i in 2:
 		var shelf := Transform3D(
-			Basis(Vector3(rng.randf() - 0.5, 1.0, rng.randf() - 0.5).normalized(), rng.randf_range(-0.25, 0.25)),
-			Vector3(rng.randf_range(-0.22, 0.22), rng.randf_range(-0.12, 0.18), rng.randf_range(-0.22, 0.22)) * radius
+			Basis(Vector3.UP, rng.randf_range(-0.2, 0.2)).rotated(Vector3.RIGHT, rng.randf_range(-0.12, 0.12)),
+			Vector3(rng.randf_range(-0.12, 0.12), rng.randf_range(-0.06, 0.1), rng.randf_range(-0.12, 0.12)) * radius
 		)
-		_add_box(st, shelf, Vector3(radius * 0.72, radius * 0.16, radius * 0.5))
+		_add_box(st, shelf, Vector3(radius * 0.86, radius * 0.38, radius * 0.58))
 	st.index()
 	st.generate_normals()
 	var ice := st.commit()
@@ -7551,15 +7553,15 @@ func _ice_mesh(seed: int, radius: float) -> ArrayMesh:
 	return ice
 
 
-func _add_rock_lobe(st: SurfaceTool, rng: RandomNumberGenerator, radius: float, center: Vector3) -> void:
-	var lat := 5
-	var lon := 7
+func _add_rock_lobe(st: SurfaceTool, rng: RandomNumberGenerator, radius: float, center: Vector3, calm: bool = false) -> void:
+	var lat := 8 if calm else 5
+	var lon := 10 if calm else 7
 	var rads := PackedFloat32Array()
 	rads.resize((lat + 1) * lon)
 	var wobble := 0.0
 	for yi in lat + 1:
 		for xi in lon:
-			wobble = 0.4 + rng.randf() * 0.95
+			wobble = 0.86 + rng.randf() * 0.16 if calm else 0.4 + rng.randf() * 0.95
 			rads[yi * lon + xi] = wobble
 	var a := Vector3.ZERO
 	var b := Vector3.ZERO
@@ -7764,6 +7766,10 @@ func _dress_profile(holder: Node3D, class_id: String, height: float) -> void:
 		var gutter_x := tail + span * (0.2 + float(i) * 0.14)
 		_hardware(holder, "Gutter%d" % i, Vector3(0.38, height * 0.58, 0.28), Vector3(gutter_x, height * 0.48, chine_z * 0.92), Color("121618"))
 		_hardware(holder, "GutterS%d" % i, Vector3(0.38, height * 0.58, 0.28), Vector3(gutter_x, height * 0.48, -chine_z * 0.92), Color("121618"))
+	for i in 6:
+		var fin_x := tail + span * (0.22 + float(i) * 0.09)
+		var fin_z := chine_z * (0.28 if i % 2 == 0 else -0.28)
+		_hardware(holder, "DeckFin%d" % i, Vector3(span * 0.045, height * 0.28, maxf(chine_z * 0.42, 3.2)), Vector3(fin_x, height * 1.22, fin_z), Color("3a3330"))
 	_hardware(holder, "Transom", Vector3(1.55, height * 0.72, maxf(chine_z * 1.25, 6.4)), Vector3(tail + 0.9, height * 0.52, 0.0), Color("3e464c"))
 	var pane_i := 0
 	for i in 8:
