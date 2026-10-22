@@ -72,9 +72,9 @@ void fragment() {
 	float rim_c = smoothstep(0.58, 0.7, bowl) * (1.0 - crater);
 	terrain = mix(terrain, terrain * vec3(0.45, 0.42, 0.4), crater * land_w * 0.85);
 	terrain += vec3(0.18, 0.16, 0.13) * rim_c * land_w;
-	float mottled = fbm(wpos * 0.0055 + vec3(seed, 2.2, 0.4));
+	float mottled = fbm(wpos * 0.004 + vec3(seed, 2.2, 0.4));
 	float fleck = fbm(wpos * 0.016 + n * 3.0);
-	terrain *= 0.86 + 0.26 * mottled;
+	terrain *= 0.94 + 0.1 * mottled;
 	terrain = mix(terrain, terrain * vec3(0.76, 0.92, 0.7), fleck * land_w * 0.45);
 	float ridge_hi = fbm(n * 22.0 + vec3(seed * 0.8, 3.2, 0.5));
 	terrain = mix(terrain, terrain * vec3(0.82, 0.78, 0.7), ridge_hi * land_w * 0.35);
@@ -158,7 +158,7 @@ void fragment() {
 	float cloud = fbm(n * 3.6 + vec3(seed, spin, 0.6));
 	float wisps = fbm(n * 9.0 + wpos * 0.004 + vec3(spin, 1.2, seed));
 	float puff = fbm(wpos * 0.012 + vec3(seed, spin * 2.0, 0.4));
-	float cover = smoothstep(0.74, 0.94, cloud) * (0.14 + 0.2 * wisps);
+	float cover = smoothstep(0.82, 0.96, cloud) * (0.1 + 0.16 * wisps);
 	cover *= 0.42 + 0.2 * puff;
 	float dist = length(CAMERA_POSITION_WORLD - wpos);
 	float near = 1.0 - smoothstep(320.0, 1700.0, dist);
@@ -172,7 +172,7 @@ void fragment() {
 	float belly = smoothstep(0.2, -0.45, ndl);
 	ALBEDO = mix(shade, lit, day) + vec3(1.0) * silver * 0.22;
 	ALBEDO = mix(ALBEDO, shade * 0.62, belly * cover);
-	ALPHA = cover * (0.12 + 0.28 * day);
+	ALPHA = cover * (0.08 + 0.18 * day);
 }
 "
 
@@ -536,17 +536,17 @@ void fragment() {
 	col += mineral * fill * 0.22;
 	float bounce = clamp(dot(n, normalize(vec3(0.2, -0.35, -0.6))), 0.0, 1.0);
 	col += mineral * vec3(0.55, 0.48, 0.4) * bounce * 0.18;
-	float vein = smoothstep(0.46, 0.7, fbm(n * 9.0 + vec3(seed, 2.2, 0.5)));
+	float vein = smoothstep(0.62, 0.84, fbm(n * 7.0 + vec3(seed, 2.2, 0.5)));
 	vec3 ore = vein_color.rgb;
-	col = mix(col, ore, vein * 0.92);
-	float fleck = smoothstep(0.72, 0.9, noise3(n * 22.0 + vec3(seed * 3.0)));
-	col = mix(col, vec3(0.98, 0.86, 0.55), fleck * 0.7);
+	col = mix(col, ore, vein * 0.7);
+	float fleck = smoothstep(0.78, 0.94, noise3(n * 22.0 + vec3(seed * 3.0)));
+	col = mix(col, vec3(0.92, 0.78, 0.42), fleck * vein * 0.55);
 	float rim = pow(1.0 - ndl, 2.2);
-	col += mineral * rim * 0.18;
+	col += mineral * rim * 0.12;
 	ALBEDO = col;
-	ROUGHNESS = mix(mix(0.58, 0.9, cavity), 0.22, max(vein, fleck));
-	METALLIC = mix(0.1, 0.78, max(vein, fleck));
-	EMISSION = ore * vein * 0.52 + vec3(1.0, 0.82, 0.45) * fleck * 0.24;
+	ROUGHNESS = mix(mix(0.72, 0.94, cavity), 0.38, vein);
+	METALLIC = mix(0.04, 0.48, vein);
+	EMISSION = ore * vein * 0.22 + vec3(0.85, 0.62, 0.28) * fleck * vein * 0.12;
 }
 "
 
@@ -7381,38 +7381,36 @@ func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
 	var wobble := 0.0
 	for yi in lat + 1:
 		for xi in lon:
-			wobble = 0.36 + rng.randf() * 1.05
-			if (yi + xi) % 3 == 0:
-				wobble *= 0.55
+			wobble = 0.82 + rng.randf() * 0.22
 			if yi == 0 or yi == lat:
-				wobble = 0.72 + rng.randf() * 0.2
+				wobble = 0.9 + rng.randf() * 0.08
 			var dy := absi(yi - crater_y)
 			var dx := absi(xi - crater_x)
 			if dx > lon / 2:
 				dx = lon - dx
 			var ring := dy + dx
 			if ring <= 1:
-				wobble *= 0.38
+				wobble *= 0.62
 			elif ring == 2:
-				wobble *= 1.18
+				wobble *= 1.08
 			var dy2 := absi(yi - crater_y2)
 			var dx2 := absi(xi - crater_x2)
 			if dx2 > lon / 2:
 				dx2 = lon - dx2
 			var ring2 := dy2 + dx2
 			if ring2 <= 1:
-				wobble *= 0.5
+				wobble *= 0.7
 			elif ring2 == 2:
-				wobble *= 1.1
+				wobble *= 1.06
 			var dy3 := absi(yi - crater_y3)
 			var dx3 := absi(xi - crater_x3)
 			if dx3 > lon / 2:
 				dx3 = lon - dx3
 			var ring3 := dy3 + dx3
 			if ring3 <= 1:
-				wobble *= 0.42
+				wobble *= 0.66
 			elif ring3 == 2:
-				wobble *= 1.14
+				wobble *= 1.07
 			rads[yi * lon + xi] = wobble
 	var a := Vector3.ZERO
 	var b := Vector3.ZERO
@@ -7433,15 +7431,15 @@ func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
 			if nrm.length_squared() < 0.0001:
 				nrm = d.normalized()
 			_rock_tri(st, b, c, d, nrm.normalized())
-	_add_rock_lobe(st, rng, radius * 0.62, Vector3(radius * 0.58, radius * 0.1, radius * 0.16))
-	_add_rock_lobe(st, rng, radius * 0.5, Vector3(-radius * 0.34, radius * 0.2, radius * 0.52))
-	_add_rock_lobe(st, rng, radius * 0.34, Vector3(radius * 0.08, -radius * 0.46, -radius * 0.4))
-	_add_rock_lobe(st, rng, radius * 0.28, Vector3(-radius * 0.52, -radius * 0.18, radius * 0.28))
-	_add_rock_lobe(st, rng, radius * 0.22, Vector3(radius * 0.42, radius * 0.38, -radius * 0.36))
-	_add_rock_lobe(st, rng, radius * 0.2, Vector3(-radius * 0.18, -radius * 0.52, radius * 0.44))
-	_add_rock_lobe(st, rng, radius * 0.26, Vector3(radius * 0.22, radius * 0.48, radius * 0.4))
-	_add_rock_lobe(st, rng, radius * 0.18, Vector3(-radius * 0.46, radius * 0.32, -radius * 0.28))
-	_add_rock_lobe(st, rng, radius * 0.3, Vector3(radius * 0.5, -radius * 0.28, radius * 0.22))
+	_add_rock_lobe(st, rng, radius * 0.48, Vector3(radius * 0.55, radius * 0.08, radius * 0.12), true)
+	_add_rock_lobe(st, rng, radius * 0.4, Vector3(-radius * 0.32, radius * 0.16, radius * 0.46), true)
+	_add_rock_lobe(st, rng, radius * 0.32, Vector3(radius * 0.06, -radius * 0.4, -radius * 0.34), true)
+	_add_rock_lobe(st, rng, radius * 0.28, Vector3(-radius * 0.46, -radius * 0.12, radius * 0.22), true)
+	_add_rock_lobe(st, rng, radius * 0.24, Vector3(radius * 0.36, radius * 0.32, -radius * 0.3), true)
+	_add_rock_lobe(st, rng, radius * 0.22, Vector3(-radius * 0.14, -radius * 0.44, radius * 0.36), true)
+	_add_rock_lobe(st, rng, radius * 0.26, Vector3(radius * 0.18, radius * 0.4, radius * 0.34), true)
+	_add_rock_lobe(st, rng, radius * 0.2, Vector3(-radius * 0.4, radius * 0.26, -radius * 0.22), true)
+	_add_rock_lobe(st, rng, radius * 0.3, Vector3(radius * 0.42, -radius * 0.22, radius * 0.18), true)
 	st.index()
 	st.generate_normals()
 	var mesh := st.commit()
@@ -7943,7 +7941,19 @@ func _dress_industry(holder: Node3D, class_id: String, height: float) -> void:
 		holder.add_child(stack)
 	if hauler:
 		for i in 4:
-			_hardware(holder, "CargoMod%d" % i, Vector3(span * 0.145, height * 0.46, maxf(chine_z * 1.22, 7.0)), Vector3(tail + span * (0.22 + float(i) * 0.16), height * 1.18, 0.0), Color("8a7a62"))
+			var box_x := tail + span * (0.22 + float(i) * 0.16)
+			var box_w := span * 0.145
+			var box_h := height * 0.46
+			var box_d := maxf(chine_z * 1.22, 7.0)
+			var box_y := height * 1.18
+			_hardware(holder, "CargoMod%d" % i, Vector3(box_w, box_h, box_d), Vector3(box_x, box_y, 0.0), Color("8a7a62"))
+			_hardware(holder, "CargoLid%d" % i, Vector3(box_w * 0.96, 0.16, box_d * 0.96), Vector3(box_x, box_y + box_h * 0.5, 0.0), Color("c4a574"))
+			_hardware(holder, "CargoDoor%d" % i, Vector3(0.18, 0.1, box_d * 0.7), Vector3(box_x, box_y + box_h * 0.52, 0.0), Color("2a2420"))
+			_hardware(holder, "CargoBand%d" % i, Vector3(box_w * 0.98, 0.22, box_d * 0.08), Vector3(box_x, box_y, box_d * 0.46), Color("6a3a28"))
+			for corner in 4:
+				var sx := -1.0 if corner < 2 else 1.0
+				var sz := -1.0 if corner % 2 == 0 else 1.0
+				_hardware(holder, "CargoCast%d_%d" % [i, corner], Vector3(0.55, box_h * 0.55, 0.55), Vector3(box_x + sx * box_w * 0.46, box_y, sz * box_d * 0.46), Color("3a342c"))
 			_hardware(holder, "RibExtra%d" % i, Vector3(0.52, height * 0.68, maxf(chine_z * 2.0 + 0.8, 10.2)), Vector3(tail + span * (0.2 + float(i) * 0.16), height * 0.48, 0.0), Color("262c30"))
 		_hardware(holder, "LoadHatch", Vector3(span * 0.2, 0.32, maxf(chine_z * 1.4, 8.2)), Vector3(mid, height * 1.07, 0.0), Color("181c20"))
 	if combat:
@@ -8050,27 +8060,48 @@ func _dress_combat(holder: Node3D, class_id: String, height: float) -> void:
 	var shroud := MeshInstance3D.new()
 	shroud.name = "ThrusterShroud"
 	var ring := CylinderMesh.new()
-	ring.top_radius = height * 0.22
-	ring.bottom_radius = height * 0.28
-	ring.height = 2.4
-	ring.radial_segments = 10
+	ring.top_radius = height * 0.32
+	ring.bottom_radius = height * 0.4
+	ring.height = 3.4
+	ring.radial_segments = 16
 	shroud.mesh = ring
-	shroud.position = Vector3(tail + 0.8, height * 0.34, 0.0)
+	shroud.position = Vector3(tail + 0.2, height * 0.34, 0.0)
 	shroud.rotation.z = PI * 0.5
 	shroud.material_override = _hull_mat(Color("1a1612"))
 	holder.add_child(shroud)
 	for i in 4:
 		var cluster := MeshInstance3D.new()
 		cluster.name = "ClusterBell%d" % i
-		cluster.mesh = _bell_mesh(4.2, 0.32, 0.82)
+		var bell_len := 6.4
+		cluster.mesh = _bell_mesh(bell_len, 0.48, 1.45)
 		var ang := TAU * 0.25 * float(i) + 0.4
-		cluster.position = Vector3(tail - 0.15, height * 0.34 + cos(ang) * 1.35, sin(ang) * 1.55)
+		var spread := height * 0.14
+		var bell_at := Vector3(tail - 0.2, height * 0.34 + cos(ang) * spread, sin(ang) * spread)
+		cluster.position = bell_at
 		var iron := _metal(Color("181410"))
 		iron.emission_enabled = true
 		iron.emission = Color("c47a3a")
-		iron.emission_energy_multiplier = 0.12
+		iron.emission_energy_multiplier = 0.16
 		cluster.material_override = iron
 		holder.add_child(cluster)
+		var throat := MeshInstance3D.new()
+		throat.name = "ClusterThroat%d" % i
+		var disc := CylinderMesh.new()
+		disc.top_radius = 0.62
+		disc.bottom_radius = 0.38
+		disc.height = 0.22
+		disc.radial_segments = 12
+		throat.mesh = disc
+		throat.position = bell_at + Vector3(-bell_len * 0.92, 0.0, 0.0)
+		throat.rotation.z = PI * 0.5
+		var hot := StandardMaterial3D.new()
+		hot.albedo_color = Color("ffb060")
+		hot.emission_enabled = true
+		hot.emission = Color("ff7a28")
+		hot.emission_energy_multiplier = 1.6
+		hot.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		throat.material_override = hot
+		holder.add_child(throat)
 	for side in [1.0, -1.0]:
 		var tag := "P" if side > 0.0 else "S"
 		var vane := MeshInstance3D.new()
