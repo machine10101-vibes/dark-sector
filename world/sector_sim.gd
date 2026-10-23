@@ -1299,6 +1299,14 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 					away = Vector2.RIGHT
 				dest = actor.pos + away.normalized() * 420.0
 				_say_duty(actor)
+		elif action == "factor" or action == "clerk":
+			if player.alive and player.pos.distance_to(actor.pos) < 320.0:
+				var nose := Vector2.from_angle(player.rot)
+				var flank := Vector2(-nose.y, nose.x)
+				if flank.length() < 0.01:
+					flank = Vector2.DOWN
+				dest = player.pos + flank * 110.0
+				_say_duty(actor)
 		elif player.pos.distance_to(actor.pos) < 560.0:
 			_say_duty(actor)
 		_fly_ship(actor, dest, dt, false)
@@ -1328,6 +1336,19 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 				var ward := _nearest_civilian(actor, 1800.0)
 				if not ward.is_empty():
 					dest = ward.pos + Vector2(120.0, 90.0)
+					_say_duty(actor)
+			elif action == "range":
+				var bearing: float = float(actor.ai.get("phase", 0.0))
+				var along: float = sin(float(time) * 0.45 + bearing) * 240.0
+				dest = actor.home + Vector2.from_angle(bearing) * along
+				if player.alive and player.pos.distance_to(actor.pos) < 640.0 and heat_now < 12.0:
+					_say_duty(actor)
+			elif action == "bailiff":
+				var paper := _nearest_civilian(actor, 1800.0)
+				if not paper.is_empty():
+					dest = paper.pos + Vector2(-120.0, -90.0)
+					_say_duty(actor)
+				elif player.alive and player.pos.distance_to(actor.pos) < 640.0:
 					_say_duty(actor)
 			elif player.alive and player.pos.distance_to(actor.pos) < 640.0:
 				_say_duty(actor)
@@ -1808,6 +1829,16 @@ func _step_pirate(actor: Dictionary, dt: float) -> void:
 		else:
 			var side := Vector2(-offset.y, offset.x).normalized()
 			dest = actor.pos + side * 90.0
+	elif role == "interceptor" and bool(actor.ai.get("role_authored", false)):
+		if dist > 260.0:
+			dest = aim
+		elif dist < 200.0 and dist > 1.0:
+			dest = actor.pos - offset.normalized() * 220.0
+		else:
+			var band := Vector2(-offset.y, offset.x)
+			if band.length() < 1.0:
+				band = Vector2.UP
+			dest = actor.pos + band.normalized() * 180.0
 	elif dist < 150.0 and dist > 1.0:
 		dest = actor.pos - offset.normalized() * 40.0
 	var aligned := absf(wrapf((aim - actor.pos).angle() - actor.rot, -PI, PI)) < 0.42

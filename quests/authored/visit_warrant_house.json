@@ -3,9 +3,18 @@
   "title": "Post the Writ",
   "kind": "authored",
   "giver": "Helion Compact",
-  "summary": "Start: enter the system. The log opens Post the Writ and the helm marks Warrant House. Do: Close on Warrant House. The bailiff patrol reads a hold that lingers in the seized yard. Bailiff Holt names the next tow to Gyre. Finish: come inside Warrant House's shell. The Compact writes standing. Seized hulls still leave for the Swallow. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter Writ. The log opens Post the Writ and the helm marks Bailiff Holt. Do: come within 320 meters of Bailiff Holt. The clerk slides alongside and names the next tow to Gyre. The bailiff patrol takes the far side of the nearest civilian and reads the hold. Finish: after Holt is alongside, come inside Warrant House's shell. The Compact writes standing. Seized hulls still leave for the Swallow. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "warrant_house",
   "system_id": "HC-V1-R1-S3",
+  "prelude": [
+    {
+      "id": "alongside_holt",
+      "kind": "alongside",
+      "action": "clerk",
+      "range": 320,
+      "label": "Bailiff Holt"
+    }
+  ],
   "mutations": [
     "rumor_warrant_house",
     "compact_standing_up"

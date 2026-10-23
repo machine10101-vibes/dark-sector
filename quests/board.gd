@@ -469,6 +469,11 @@ static func _mark_for(sim, quest_id: String) -> Dictionary:
 		if body != "":
 			var system_id := str(quest.get("system_id", ""))
 			var label := _body_label(sim, system_id, body, title)
+			var here := system_id == "" or str(sim.defs.system.id) == system_id
+			if here:
+				var pending := _open_prelude(sim, quest, quest_id)
+				if not pending.is_empty():
+					return _prelude_point(sim, pending)
 			return _point(sim, system_id, "body", body, label)
 		if quest.has("route"):
 			var route: Array = quest.route
@@ -877,6 +882,114 @@ static func _template_done(sim, contract: Dictionary) -> bool:
 	return str(sim.defs.system.id) == str(contract.get("system_id", "")) and int(sim.player.cargo.get(need, 0)) > 0
 
 
+static func _prelude_rows(quest: Dictionary) -> Array:
+	var raw = quest.get("prelude", [])
+	if typeof(raw) != TYPE_ARRAY:
+		return []
+	return raw
+
+
+static func _prelude_flag(quest_id: String, step_id: String) -> String:
+	return "%s_%s" % [quest_id, step_id]
+
+
+static func _prelude_clear(sim, quest: Dictionary, quest_id: String) -> bool:
+	for raw in _prelude_rows(quest):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var step: Dictionary = raw
+		var flag := _prelude_flag(quest_id, str(step.get("id", "")))
+		if not bool(sim.quest_flags.get(flag, false)):
+			return false
+	return true
+
+
+static func _open_prelude(sim, quest: Dictionary, quest_id: String) -> Dictionary:
+	for raw in _prelude_rows(quest):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var step: Dictionary = raw
+		var flag := _prelude_flag(quest_id, str(step.get("id", "")))
+		if not bool(sim.quest_flags.get(flag, false)):
+			return step
+	return {}
+
+
+static func _prelude_met(sim, step: Dictionary) -> bool:
+	var reach: float = float(step.get("range", 0.0))
+	var kind := str(step.get("kind", "alongside"))
+	if kind == "sight":
+		var role := str(step.get("role", ""))
+		for actor in sim.actors:
+			if not bool(actor.get("alive", false)):
+				continue
+			if str(actor.ai.get("role", "")) != role:
+				continue
+			if sim.player.pos.distance_to(actor.home) <= reach:
+				return true
+		return false
+	var action := str(step.get("action", ""))
+	for actor in sim.actors:
+		if not bool(actor.get("alive", false)):
+			continue
+		if str(actor.ai.get("action", "")) != action:
+			continue
+		if sim.player.pos.distance_to(actor.pos) <= reach:
+			return true
+	return false
+
+
+static func _advance_prelude(sim, quest: Dictionary, quest_id: String) -> void:
+	var system_id := str(quest.get("system_id", ""))
+	if system_id != "" and str(sim.defs.system.id) != system_id:
+		return
+	for raw in _prelude_rows(quest):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var step: Dictionary = raw
+		var flag := _prelude_flag(quest_id, str(step.get("id", "")))
+		if bool(sim.quest_flags.get(flag, false)):
+			continue
+		if not _prelude_met(sim, step):
+			return
+		sim.quest_flags[flag] = true
+		sim.say("%s: %s." % [str(quest.get("title", quest_id)), str(step.get("label", "the step"))])
+		return
+
+
+static func _prelude_point(sim, step: Dictionary) -> Dictionary:
+	var kind := str(step.get("kind", "alongside"))
+	var label := str(step.get("label", "the step"))
+	var pos := Vector2.ZERO
+	if kind == "sight":
+		var role := str(step.get("role", ""))
+		for actor in sim.actors:
+			if not bool(actor.get("alive", false)):
+				continue
+			if str(actor.ai.get("role", "")) != role:
+				continue
+			pos = actor.home
+			break
+	else:
+		var action := str(step.get("action", ""))
+		for actor in sim.actors:
+			if not bool(actor.get("alive", false)):
+				continue
+			if str(actor.ai.get("action", "")) != action:
+				continue
+			pos = actor.pos
+			break
+	return {
+		"system_id": str(sim.defs.system.id),
+		"target_system": str(sim.defs.system.id),
+		"kind": "prelude",
+		"target_id": str(step.get("id", "")),
+		"label": label,
+		"x": pos.x,
+		"y": pos.y,
+	}
+
+
 static func _data_hooks(sim) -> void:
 	_note_open(sim)
 	var quests = sim.defs.get("quests", {})
@@ -895,9 +1008,11 @@ static func _data_hooks(sim) -> void:
 		if str(quest.get("body", "")) != "":
 			var system_id := str(quest.get("system_id", ""))
 			if system_id == "" or str(sim.defs.system.id) == system_id:
-				var rock = sim.planet(str(quest.body))
-				if rock != null and sim.player.pos.distance_to(rock.pos) < float(rock.radius) + 240.0:
-					hit = true
+				_advance_prelude(sim, quest, qid)
+				if _prelude_clear(sim, quest, qid):
+					var rock = sim.planet(str(quest.body))
+					if rock != null and sim.player.pos.distance_to(rock.pos) < float(rock.radius) + 240.0:
+						hit = true
 		if quest.has("route") and not hit:
 			var route: Array = quest.route
 			var step := int(sim.quest_flags.get("%s_step" % qid, 0))

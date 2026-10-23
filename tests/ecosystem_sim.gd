@@ -19,6 +19,8 @@ func _init() -> void:
 	_mobs()
 	_water_lease()
 	_print_yard()
+	_roles()
+	_steps()
 	_cue()
 	_guide()
 	if fails == 0:
@@ -188,6 +190,211 @@ func _print_yard() -> void:
 	sim.player.pos = yard.pos
 	QuestBoard.pulse(sim, 0.2)
 	check(str(sim.quest_flags.get("authored_print_yard", "")) == "done", "closing on Print Yard finishes Second Copy")
+
+
+func _fly(sim: SectorSim, actor: Dictionary, seconds: float) -> void:
+	var left: float = seconds
+	while left > 0.0:
+		var step: float = minf(0.25, left)
+		sim._step_npc(actor, step)
+		left -= step
+
+
+func _named(sim: SectorSim, ship_name: String) -> Dictionary:
+	for actor in sim.actors:
+		if str(actor.name) == ship_name:
+			return actor
+	return {}
+
+
+func _action(sim: SectorSim, action: String) -> Dictionary:
+	for actor in sim.actors:
+		if str(actor.ai.get("action", "")) == action and bool(actor.alive):
+			return actor
+	return {}
+
+
+func _roles() -> void:
+	var brass := make("vesper")
+	brass._arrive("HC-V1-R1-S2", "")
+	var officer := _action(brass, "range")
+	check(not officer.is_empty(), "a range cutter is on Brass Lantern")
+	var opened: float = officer.pos.distance_to(officer.home)
+	brass.player.pos = officer.home + Vector2(4000, 0)
+	brass.heat.helion_compact = 0.0
+	officer.rot = (officer.home - officer.pos).angle()
+	_fly(brass, officer, 2.4)
+	var closed: float = officer.pos.distance_to(officer.home)
+	var bearing := Vector2.from_angle(float(officer.ai.get("phase", 0.0)))
+	var lateral: float = absf((officer.pos - officer.home).cross(bearing))
+	check(closed < opened - 40.0, "the range cutter flies the line in through the yard (%.0f -> %.0f)" % [opened, closed])
+	check(lateral < 90.0, "the range cutter stays on the firing line")
+	check(bool(officer.ai.get("said_duty", false)) == false, "the range cutter stays quiet while the keel is far")
+	var hail := make("vesper")
+	hail._arrive("HC-V1-R1-S2", "")
+	var speaker := _action(hail, "range")
+	hail.player.pos = speaker.pos
+	hail.heat.helion_compact = 0.0
+	_fly(hail, speaker, 0.4)
+	check(bool(speaker.ai.get("said_duty", false)), "the range cutter hails inside 640 meters while the slate is cool")
+	var hot := make("vesper")
+	hot._arrive("HC-V1-R1-S2", "")
+	var quiet := _action(hot, "range")
+	hot.player.pos = quiet.pos
+	hot.heat.helion_compact = 20.0
+	_fly(hot, quiet, 0.4)
+	check(bool(quiet.ai.get("said_duty", false)) == false, "a hot slate keeps the range line from reading the duty")
+	var writ := make("anvil")
+	writ._arrive("HC-V1-R1-S3", "")
+	var bailiff := _action(writ, "bailiff")
+	var holt := _named(writ, "Bailiff Holt")
+	check(not bailiff.is_empty() and not holt.is_empty(), "Writ posts a bailiff and Bailiff Holt")
+	bailiff.pos = holt.pos + Vector2(480.0, 0.0)
+	bailiff.vel = Vector2.ZERO
+	var bench: Vector2 = holt.pos + Vector2(-120.0, -90.0)
+	bailiff.rot = (bench - bailiff.pos).angle()
+	var escort_bench: Vector2 = holt.pos + Vector2(120.0, 90.0)
+	var bench_open: float = bailiff.pos.distance_to(bench)
+	_fly(writ, bailiff, 2.8)
+	check(bailiff.pos.distance_to(bench) < bench_open - 20.0, "the bailiff takes the far side of the clerk")
+	check(bailiff.pos.distance_to(bench) < bailiff.pos.distance_to(escort_bench), "the bailiff does not sit the escort's shoulder")
+	check(bool(bailiff.ai.get("said_duty", false)), "the bailiff reads the hold")
+	var silo := make("kestrel")
+	silo._arrive("HC-V1-R5-S5", "")
+	var clerk := _named(silo, "Vault Clerk")
+	silo.player.pos = Vector2(7000, 7000)
+	silo.player.rot = 0.0
+	clerk.pos = silo.player.pos + Vector2(220.0, 0.0)
+	clerk.vel = Vector2.ZERO
+	var flank: Vector2 = silo.player.pos + Vector2(0.0, 110.0)
+	clerk.rot = (flank - clerk.pos).angle()
+	var flank_open: float = clerk.pos.distance_to(flank)
+	var clerk_y: float = clerk.pos.y
+	_fly(silo, clerk, 0.6)
+	var flank_after: float = clerk.pos.distance_to(flank)
+	check(flank_after < flank_open - 8.0, "the Vault Clerk slides alongside (%.0f -> %.0f)" % [flank_open, flank_after])
+	check(clerk.pos.y > clerk_y + 4.0, "the clerk takes the flank, not the tow nose")
+	check(bool(clerk.ai.get("said_duty", false)), "the Vault Clerk names the silo")
+	var guest := make("vesper")
+	guest._arrive("HC-V1-R3-S3", "")
+	var authored := _actor_role(guest, "interceptor")
+	check(not authored.is_empty(), "Guest Lamp posts an authored interceptor")
+	var park := Vector2(9000, 9000)
+	authored.home = park
+	authored.pos = park
+	authored.vel = Vector2.ZERO
+	authored.rot = PI
+	guest.player.pos = park + Vector2(180.0, 0.0)
+	guest.player.fight_cd = 0.0
+	var held: float = authored.pos.distance_to(guest.player.pos)
+	_fly(guest, authored, 1.2)
+	var widened: float = authored.pos.distance_to(guest.player.pos)
+	check(widened > held + 8.0, "an authored interceptor holds outside 200 meters (%.0f -> %.0f)" % [held, widened])
+	authored.pos = park
+	authored.vel = Vector2.ZERO
+	authored.rot = 0.0
+	guest.player.pos = park + Vector2(400.0, 0.0)
+	var far: float = authored.pos.distance_to(guest.player.pos)
+	_fly(guest, authored, 1.2)
+	var nearer: float = authored.pos.distance_to(guest.player.pos)
+	check(nearer < far - 8.0, "an authored interceptor closes from outside 260 meters (%.0f -> %.0f)" % [far, nearer])
+	var helion := make("kestrel")
+	var stock := {}
+	for actor in helion.actors:
+		if str(actor.team) == "red_keel" and str(actor.ai.get("role", "")) == "interceptor":
+			stock = actor
+	check(bool(stock.ai.get("role_authored", false)) == false, "Helion's interceptor stays on the old pack cycle")
+	var nest: Vector2 = stock.home + Vector2(400.0, 0.0)
+	stock.pos = nest
+	stock.vel = Vector2.ZERO
+	stock.rot = 0.0
+	helion.player.pos = nest + Vector2(180.0, 0.0)
+	helion.player.fight_cd = 0.0
+	var stock_open: float = stock.pos.distance_to(helion.player.pos)
+	_fly(helion, stock, 0.9)
+	var stock_after: float = stock.pos.distance_to(helion.player.pos)
+	check(stock_after < stock_open - 5.0, "a Helion interceptor still closes inside the old band (%.0f -> %.0f)" % [stock_open, stock_after])
+
+
+func _body_open(sim: SectorSim, quest_id: String, body_id: String) -> bool:
+	var rock = sim.planet(body_id)
+	if rock == null:
+		return false
+	sim.player.pos = rock.pos
+	QuestBoard.pulse(sim, 0.2)
+	return str(sim.quest_flags.get(quest_id, "")) != "done"
+
+
+func _steps() -> void:
+	var road := make("anvil")
+	road._arrive("HC-V1-R5-S3", "")
+	var lighter := _named(road, "Lighter Pilot")
+	check(QuestBoard.track(road, "authored_moth_lane") == "", "Track pins Pollinator Road")
+	var moth_line := QuestBoard.cue_line(road)
+	check(moth_line.contains("Lighter Pilot"), "the guide marks the Lighter Pilot before the tow is met")
+	check(_body_open(road, "authored_moth_lane", "moth_lane"), "Moth Lane's shell does not file Pollinator Road")
+	check(bool(road.quest_flags.get("authored_moth_lane_meet_lighter", false)) == false, "standing on Moth Lane does not meet the lighter")
+	road.player.pos = lighter.pos + Vector2(40.0, 0.0)
+	QuestBoard.pulse(road, 0.2)
+	check(bool(road.quest_flags.get("authored_moth_lane_meet_lighter", false)), "closing on the Lighter Pilot records the tow")
+	check(str(road.quest_flags.get("authored_moth_lane", "")) != "done", "the tow alone does not file Pollinator Road")
+	var met := QuestBoard.cue_line(road)
+	check(met.contains("Moth Lane"), "after the tow the guide marks Moth Lane")
+	var lane = road.planet("moth_lane")
+	road.player.pos = lane.pos
+	QuestBoard.pulse(road, 0.2)
+	check(str(road.quest_flags.get("authored_moth_lane", "")) == "done", "Moth Lane files Pollinator Road after the tow")
+	check(int(road.quest_flags.get("charter_standing", 0)) > 0, "Pollinator Road writes charter standing")
+	var school := make("vesper")
+	school._arrive("HC-V1-R2-S6", "")
+	var ambush := _actor_role(school, "ambush")
+	check(QuestBoard.track(school, "authored_expired_charter") == "", "Track pins Fine Print")
+	check(QuestBoard.cue_line(school).contains("school buoy"), "the guide marks the school buoy before the sight")
+	check(_body_open(school, "authored_expired_charter", "expired_charter"), "Expired Charter's shell does not file Fine Print")
+	school.player.pos = ambush.home + Vector2(80.0, 0.0)
+	QuestBoard.pulse(school, 0.2)
+	check(bool(school.quest_flags.get("authored_expired_charter_spring_sight", false)), "entering the ambush sight records the spring")
+	check(str(school.quest_flags.get("authored_expired_charter", "")) != "done", "the sight alone does not file Fine Print")
+	var charter = school.planet("expired_charter")
+	school.player.pos = charter.pos
+	QuestBoard.pulse(school, 0.2)
+	check(str(school.quest_flags.get("authored_expired_charter", "")) == "done", "Expired Charter files Fine Print after the sight")
+	var vault := make("anvil")
+	vault._arrive("HC-V1-R5-S5", "")
+	var keeper := _named(vault, "Vault Clerk")
+	check(_body_open(vault, "authored_night_vault", "night_vault"), "Night Vault's shell does not file Silo Dark")
+	vault.player.pos = keeper.pos + Vector2(40.0, 0.0)
+	QuestBoard.pulse(vault, 0.2)
+	check(bool(vault.quest_flags.get("authored_night_vault_alongside_clerk", false)), "coming alongside the Vault Clerk records the case")
+	check(str(vault.quest_flags.get("authored_night_vault", "")) != "done", "the clerk alone does not file Silo Dark")
+	var night = vault.planet("night_vault")
+	vault.player.pos = night.pos
+	QuestBoard.pulse(vault, 0.2)
+	check(str(vault.quest_flags.get("authored_night_vault", "")) == "done", "Night Vault files Silo Dark after the clerk")
+	var scales := make("vesper")
+	scales._arrive("HC-V1-R1-S2", "")
+	var range_cutter := _action(scales, "range")
+	check(_body_open(scales, "authored_lamp_yard", "lamp_yard"), "Lamp Yard's shell does not file Honest Scales")
+	scales.player.pos = range_cutter.pos + Vector2(40.0, 0.0)
+	QuestBoard.pulse(scales, 0.2)
+	check(bool(scales.quest_flags.get("authored_lamp_yard_range_line", false)), "closing on the range records the line")
+	check(str(scales.quest_flags.get("authored_lamp_yard", "")) != "done", "the range alone does not file Honest Scales")
+	var yard = scales.planet("lamp_yard")
+	scales.player.pos = yard.pos
+	QuestBoard.pulse(scales, 0.2)
+	check(str(scales.quest_flags.get("authored_lamp_yard", "")) == "done", "Lamp Yard files Honest Scales after the range")
+	var court := make("kestrel")
+	court._arrive("HC-V1-R1-S3", "")
+	var clerk_holt := _named(court, "Bailiff Holt")
+	check(_body_open(court, "authored_warrant_house", "warrant_house"), "Warrant House's shell does not file Post the Writ")
+	court.player.pos = clerk_holt.pos + Vector2(40.0, 0.0)
+	QuestBoard.pulse(court, 0.2)
+	check(bool(court.quest_flags.get("authored_warrant_house_alongside_holt", false)), "coming alongside Bailiff Holt records the tow")
+	check(str(court.quest_flags.get("authored_warrant_house", "")) != "done", "Holt alone does not file Post the Writ")
+	var house = court.planet("warrant_house")
+	court.player.pos = house.pos
+	QuestBoard.pulse(court, 0.2)
+	check(str(court.quest_flags.get("authored_warrant_house", "")) == "done", "Warrant House files Post the Writ after Holt")
 
 
 func _cue() -> void:

@@ -52,6 +52,7 @@ Player-visible what works now:
 - Nickel and loose rocks are cratered stone with gold veins. Ice stays a blue berg. Stern bells are an engine cluster with lit throats. Barn cargo reads as lidded containers. Aegis clouds thin so the sea and land stay open. Combat math is unchanged.
 - The rest of the Helion chart is flyable. Stamped Ice, Second Copy, Fine Print, Pollinator Road, and Silo Dark are on the lanes. Patrols, haulers, and packs keep a job: range officer, bailiff, tug, herdsman, clerk, raider, kite, ambush, claim jumper. Each of those skies opens a slate job when you arrive. Close on the named body to finish it. Water Lease starts on Clock Ice and finishes at Towline with ice spall in the hold. Combat math is unchanged.
 - Quests on the slate stay listed after you leave the system. Quests opens a guide: pin Track on a job and the helm line, the amber beam, and Approach follow that job's next step, with Start, Do, Finish, Reward, and Fail on the glass. Clear guide returns the helm to the live cue. A dock crate still owns the beam until it is delivered. Combat math is unchanged.
+- Patrols and haulers now fly the job the slate names. A range cutter runs a firing line through the yard and hails while the slate is cool. A bailiff takes the far side of the nearest civilian. A clerk or factor slides alongside inside 320 meters and reads the duty. An authored interceptor holds 200 to 260 meters. Helion's own pack still closes inside the old band. Pollinator Road files only after the Lighter Pilot is met inside 480 meters, then Moth Lane. Fine Print files only after the ambush sight at 520 meters, then Expired Charter. Silo Dark files only after the Vault Clerk is alongside, then Night Vault. Honest Scales files only after the gunnery range is met, then Lamp Yard. Post the Writ files only after Bailiff Holt is alongside, then Warrant House. In that system the guide points at the unfinished step. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -65,6 +66,13 @@ Open design decisions (max 5):
 Files touched:
 - craft/orders.gd
 - quests/board.gd
+- quests/authored/visit_moth_lane.json
+- quests/authored/visit_expired_charter.json
+- quests/authored/visit_night_vault.json
+- quests/authored/visit_lamp_yard.json
+- quests/authored/visit_warrant_house.json
+- world/sector_sim.gd
+- tests/ecosystem_sim.gd
 - quests/dock_board.gd
 - quests/log.gd
 - ui/helm_overlay.gd
