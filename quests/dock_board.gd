@@ -540,6 +540,7 @@ const ATTACK_SHOP := {
 	"wasp_drone": {"price": 48, "cap": 2},
 	"fang_drone": {"price": 56, "cap": 2},
 	"lance_drone": {"price": 88, "cap": 2},
+	"sentry_drone": {"price": 96, "cap": 1},
 	"fighter": {"price": FIGHTER_PRICE, "cap": FIGHTER_WING},
 }
 const KIT := {
@@ -572,6 +573,7 @@ const RECIPES := {
 	"wasp_drone": {"name": "Wasp", "need": {"aluminum_bar": 2, "salvage_parts": 1}},
 	"fang_drone": {"name": "Fang", "need": {"aluminum_bar": 2, "salvage_parts": 1}},
 	"lance_drone": {"name": "Lance", "need": {"aluminum_bar": 3, "salvage_parts": 1}},
+	"sentry_drone": {"name": "Sentry", "need": {"aluminum_bar": 2, "steel_bar": 1}},
 	"fighter": {"name": "Fighter", "need": {"aluminum_bar": 2, "salvage_parts": 1}},
 	"survey_probe": {"name": "Survey Probe", "need": {"ice_spall": 2, "raw_mass": 1}},
 	"harvest_drone": {"name": "Harvest Drone", "need": {"ice_spall": 2, "nickel_cinder": 1, "raw_mass": 1}},
@@ -594,6 +596,7 @@ static func recipe_ids() -> Array:
 		"wasp_drone",
 		"fang_drone",
 		"lance_drone",
+		"sentry_drone",
 		"fighter",
 		"survey_probe",
 		"harvest_drone",
@@ -765,7 +768,7 @@ static func paid_mount(sim, module_id: String) -> bool:
 
 
 static func attack_shop_ids() -> Array:
-	return ["dart_drone", "sting_drone", "wasp_drone", "fang_drone", "lance_drone", "fighter"]
+	return ["dart_drone", "sting_drone", "wasp_drone", "fang_drone", "lance_drone", "sentry_drone", "fighter"]
 
 
 static func kind_count(sim, def_id: String) -> int:

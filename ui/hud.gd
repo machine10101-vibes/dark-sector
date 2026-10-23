@@ -3281,6 +3281,9 @@ func _drone_shop_card(def_id: String, grid: GridContainer) -> void:
 	role.autowrap_mode = TextServer.AUTOWRAP_OFF
 	role.clip_text = true
 	box.add_child(role)
+	var duty := ThemeKit.label(str(spec.get("job", "")), 10, Color("8d826c"))
+	duty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(duty)
 	var stock := ThemeKit.label("%d GRT    %d/%d" % [price, owned, cap], 11, Color("d7e6c8"))
 	stock.autowrap_mode = TextServer.AUTOWRAP_OFF
 	stock.clip_text = true
@@ -3955,7 +3958,7 @@ func _launch(def_id: String) -> void:
 func _boat_id() -> String:
 	if Game.sim == null:
 		return ""
-	for def_id in ["fighter", "dart_drone", "sting_drone", "wasp_drone", "fang_drone", "lance_drone", "salvage_tender", "away_shuttle"]:
+	for def_id in ["fighter", "dart_drone", "sting_drone", "wasp_drone", "fang_drone", "lance_drone", "sentry_drone", "salvage_tender", "away_shuttle"]:
 		for item in Game.sim.craft:
 			if str(item.def_id) == def_id:
 				return def_id

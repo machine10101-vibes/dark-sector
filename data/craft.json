@@ -150,6 +150,27 @@
       "ttl": 1.2
     }
   },
+  "sentry_drone": {
+    "id": "sentry_drone",
+    "name": "Sentry",
+    "job": "Level 3 sentry. It holds a point aft of the keel and fires the lock. It does not chase.",
+    "role": "attack",
+    "level": 3,
+    "post": "Sentry",
+    "speed": 120,
+    "battery": 140,
+    "drain": 2.8,
+    "hp": 48,
+    "work": 0,
+    "radius": 11,
+    "gun": {
+      "damage": 9,
+      "cooldown": 0.72,
+      "speed": 640,
+      "range": 520,
+      "ttl": 1.2
+    }
+  },
   "lance_drone": {
     "id": "lance_drone",
     "name": "Lance",
@@ -174,7 +195,7 @@
   "livestock_lighter": {
     "id": "livestock_lighter",
     "name": "Livestock Lighter",
-    "job": "Moves a hold-kine between the keel and a claim pen. It is a barn with an engine.",
+    "job": "Moves a hold-kine between the keel and a claim pen. The pen, the stall, and the ramp ride with the engine.",
     "speed": 180,
     "battery": 120,
     "drain": 3.2,

@@ -3475,9 +3475,15 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 	var shapes: Array = Silhouette.shapes_of(sim.defs, ship.modules)
 	var layers: Array = Silhouette.layers_of(sim.defs, ship.modules)
 	var sockets: Array = _weapon_sockets(ship.get("modules", []))
-	var mesh_key := class_id + "|" + str(shapes) + "|" + str(layers.size()) + "|" + "|".join(sockets)
+	var post := ""
+	if class_id == "skiff" or class_id == "cutter":
+		var brain: Dictionary = ship.get("ai", {})
+		post = str(brain.get("role", ""))
+		if post == "":
+			post = str(brain.get("action", ""))
+	var mesh_key := class_id + "|" + str(shapes) + "|" + str(layers.size()) + "|" + "|".join(sockets) + "|" + post
 	if str(holder.get_meta("mesh_key", "")) != mesh_key:
-		_fill_ship(holder, class_id, shapes, layers, sockets)
+		_fill_ship(holder, class_id, shapes, layers, sockets, post)
 		holder.set_meta("mesh_key", mesh_key)
 	var hull: Dictionary = sim.defs.ships[class_id]
 	var hp := clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0)
@@ -3955,7 +3961,7 @@ func _ship_holder(key: String) -> Node3D:
 	return node
 
 
-func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array, sockets: Array = []) -> void:
+func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array, sockets: Array = [], post: String = "") -> void:
 	for child in holder.get_children():
 		holder.remove_child(child)
 		child.free()
@@ -3991,6 +3997,7 @@ func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array, 
 	_mount_catalog(holder, class_id, shapes, height, sockets)
 	_mount_sockets(holder, class_id, sockets)
 	_dress_volume(holder, class_id, height)
+	_dress_post(holder, class_id, post, height)
 
 
 func _mount_catalog(holder: Node3D, class_id: String, shapes: Array, height: float, sockets: Array = []) -> void:
@@ -6005,12 +6012,14 @@ func _craft_bell(node: Node3D, part_name: String, at: Vector3, mouth: float, len
 func _assemble_craft(node: Node3D, kind: String) -> void:
 	var poly := _craft_poly(kind)
 	var height := 3.6
-	if kind == "lance_drone" or kind == "harvest_drone" or kind == "salvage_tender":
+	if kind == "lance_drone" or kind == "harvest_drone" or kind == "salvage_tender" or kind == "livestock_lighter":
 		height = 4.6
 	elif kind == "survey_probe":
 		height = 2.2
 	elif kind == "dart_drone" or kind == "fang_drone":
 		height = 2.55
+	elif kind == "sentry_drone":
+		height = 3.2
 	var mesh := _hull_loft(poly, height)
 	if mesh == null:
 		mesh = _prism(poly, height, 0.78)
@@ -6055,7 +6064,7 @@ func _assemble_craft(node: Node3D, kind: String) -> void:
 	nozzle.material_override = burn
 	node.add_child(nozzle)
 	_craft_bell(node, "BellMain", Vector3(-6.2, height * 0.36, 0.0), 1.35, 2.45)
-	if kind != "survey_probe" and kind != "dart_drone":
+	if kind != "survey_probe" and kind != "dart_drone" and kind != "sentry_drone" and kind != "livestock_lighter":
 		var canopy := MeshInstance3D.new()
 		canopy.name = "Glass"
 		canopy.mesh = _canopy_mesh(2.8, 1.25, 1.15)
@@ -6175,6 +6184,20 @@ func _dress_craft(node: Node3D, kind: String) -> void:
 			_craft_bell(node, "BellP", Vector3(-6.2, 1.5, 2.05), 1.25, 2.45)
 			_craft_bell(node, "BellS", Vector3(-6.2, 1.5, -2.05), 1.25, 2.45)
 			_kit(node, "Canopy", Vector3(2.65, 0.65, 1.45), Vector3(1.15, 4.85, 0.0), Color("2a3038"))
+		"sentry_drone":
+			_kit(node, "Turret", Vector3(3.4, 2.4, 3.4), Vector3(0.6, 4.15, 0.0), Color("c8b46a"))
+			_cyl(node, "Barrel", 0.46, 12.4, Vector3(6.2, 4.35, 0.0), "x", Color("d8dde4"))
+			_kit(node, "Mantlet", Vector3(1.8, 1.5, 1.8), Vector3(3.4, 4.35, 0.0), Color("6a6840"))
+			_kit(node, "Base", Vector3(8.4, 1.15, 7.2), Vector3(-0.4, 1.15, 0.0), Color("4a5240"))
+			_craft_bell(node, "BellP", Vector3(-5.6, 1.2, 2.4), 0.85, 1.6)
+			_craft_bell(node, "BellS", Vector3(-5.6, 1.2, -2.4), 0.85, 1.6)
+		"livestock_lighter":
+			_kit(node, "Pen", Vector3(6.4, 2.6, 5.2), Vector3(-1.2, 3.4, 0.0), Color("c4b48a"))
+			_kit(node, "Stall", Vector3(2.4, 2.2, 2.2), Vector3(1.6, 3.2, 1.6), Color("8a6a38"))
+			_kit(node, "RailP", Vector3(6.2, 0.22, 0.22), Vector3(-1.2, 5.0, 2.5), Color("e8e0d0"))
+			_kit(node, "RailS", Vector3(6.2, 0.22, 0.22), Vector3(-1.2, 5.0, -2.5), Color("e8e0d0"))
+			_kit(node, "Ramp", Vector3(3.2, 0.18, 2.4), Vector3(-6.2, 1.15, 0.0), Color("6a5438"))
+			_kit(node, "Cab", Vector3(2.2, 1.4, 1.8), Vector3(3.4, 4.6, 0.0), Color("4a3a28"))
 		_:
 			_cyl(node, "GunP", 0.15, 3.8, Vector3(2.3, 3.05, 5.2), "x", Color("16181a"))
 			_cyl(node, "GunS", 0.15, 3.8, Vector3(2.3, 3.05, -5.2), "x", Color("16181a"))
@@ -6229,6 +6252,10 @@ func _craft_poly(kind: String) -> PackedVector2Array:
 			return PackedVector2Array([Vector2(14, 0), Vector2(3, 1.5), Vector2(-6, 2.2), Vector2(-6.5, 0), Vector2(-6, -2.2), Vector2(3, -1.5)])
 		"lance_drone":
 			return PackedVector2Array([Vector2(10, 0), Vector2(3, 3.2), Vector2(-6.5, 3.6), Vector2(-6.5, -3.6), Vector2(3, -3.2)])
+		"sentry_drone":
+			return PackedVector2Array([Vector2(6, 4.2), Vector2(2, 6.4), Vector2(-7, 6.2), Vector2(-7, -6.2), Vector2(2, -6.4), Vector2(6, -4.2)])
+		"livestock_lighter":
+			return PackedVector2Array([Vector2(7, 3.2), Vector2(2, 5.6), Vector2(-8, 5.2), Vector2(-8, -5.2), Vector2(2, -5.6), Vector2(7, -3.2)])
 		_:
 			return PackedVector2Array([Vector2(11, 0), Vector2(1, 2), Vector2(-3.5, 6), Vector2(-1.2, 0), Vector2(-3.5, -6), Vector2(1, -2)])
 
@@ -6253,6 +6280,10 @@ func _craft_color(kind: String) -> Color:
 			return Color("8a2030")
 		"lance_drone":
 			return Color("8a8e96")
+		"sentry_drone":
+			return Color("6e7a4a")
+		"livestock_lighter":
+			return Color("c4b48a")
 		_:
 			return Color("c4512c")
 
@@ -7660,6 +7691,46 @@ func _ice_sparks(ring: MeshInstance3D, mid: float, band: float) -> void:
 		chip.material_override = mat
 		chip.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		floe.add_child(chip)
+
+
+func _dress_post(holder: Node3D, class_id: String, post: String, height: float) -> void:
+	if post == "":
+		return
+	var nose := float(holder.get_meta("nose", 20.0))
+	var tail := float(holder.get_meta("tail", -12.0))
+	if class_id == "skiff":
+		if post == "interceptor":
+			_cyl(holder, "PostSpike", 0.55, 14.0, Vector3(nose + 4.0, height * 0.45, 0.0), "x", Color("d8e4ea"))
+			_cyl(holder, "PostGun", 0.28, 6.0, Vector3(nose * 0.4, height * 0.7, 1.4), "x", Color("16181a"))
+		elif post == "kite":
+			_kit(holder, "PostFinP", Vector3(10.0, 0.35, 8.0), Vector3(tail * 0.2, height * 0.4, 6.5), Color("8a3030"))
+			_kit(holder, "PostFinS", Vector3(10.0, 0.35, 8.0), Vector3(tail * 0.2, height * 0.4, -6.5), Color("8a3030"))
+		elif post == "raider":
+			_kit(holder, "PostClawP", Vector3(6.5, 0.7, 0.35), Vector3(nose * 0.55, height * 0.35, 4.2), Color("e4d8c4"))
+			_kit(holder, "PostClawS", Vector3(6.5, 0.7, 0.35), Vector3(nose * 0.55, height * 0.35, -4.2), Color("e4d8c4"))
+		elif post == "ambush":
+			_kit(holder, "PostBaffle", Vector3(8.0, 1.4, 6.0), Vector3(0.0, height * 0.2, 0.0), Color("121418"))
+		elif post == "claim_jumper":
+			_cyl(holder, "PostStake", 0.35, 9.0, Vector3(nose * 0.2, height * 0.9, 0.0), "y", Color("c8b48a"))
+			_nav_lamp(holder, "PostBeacon", Vector3(nose * 0.2, height * 1.35, 0.0), Color("e0a24a"), 1.1)
+	elif class_id == "cutter":
+		if post == "range":
+			_cyl(holder, "RangeRail", 0.42, maxf(nose * 0.9, 8.0), Vector3(nose * 0.35, height * 0.95, 0.0), "x", Color("d8dde4"))
+			_kit(holder, "RangeRest", Vector3(3.2, 0.8, 1.6), Vector3(nose * 0.2, height * 0.85, 0.0), Color("3a4248"))
+		elif post == "bailiff":
+			_kit(holder, "WritBoard", Vector3(0.4, 3.2, 4.4), Vector3(nose * 0.15, height * 1.15, 2.8), Color("e6dcc4"))
+			_nav_lamp(holder, "WritLamp", Vector3(nose * 0.45, height * 0.8, 0.0), Color("f0e2a0"), 0.9)
+		elif post == "escort":
+			_nav_lamp(holder, "EscortLamp", Vector3(nose * 0.3, height * 0.7, 3.2), Color("9fd0ff"), 0.85)
+			_kit(holder, "EscortWing", Vector3(6.0, 0.3, 3.2), Vector3(0.0, height * 0.35, 5.0), Color("3e5348"))
+		elif post == "factor" or post == "clerk":
+			_kit(holder, "ScalePan", Vector3(3.4, 0.28, 3.4), Vector3(nose * 0.25, height * 1.05, 0.0), Color("d8c48a"))
+			_cyl(holder, "ScalePost", 0.22, 2.4, Vector3(nose * 0.25, height * 0.85, 0.0), "y", Color("3a4248"))
+		elif post == "flee":
+			_craft_bell(holder, "FleeBellP", Vector3(tail, height * 0.35, 2.2), 0.7, 1.6)
+			_craft_bell(holder, "FleeBellS", Vector3(tail, height * 0.35, -2.2), 0.7, 1.6)
+		elif post == "patrol":
+			_cyl(holder, "WatchMast", 0.2, 6.5, Vector3(0.0, height * 1.3, 0.0), "y", Color("c8d0d4"))
 
 
 func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:

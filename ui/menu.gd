@@ -824,6 +824,8 @@ func _craft_word(craft_id: String) -> String:
 			return "fang"
 		"lance_drone":
 			return "lance"
+		"sentry_drone":
+			return "sentry"
 		_:
 			return craft_id
 

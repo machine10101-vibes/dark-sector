@@ -762,7 +762,7 @@ static func _fighter_quarry(sim, craft):
 	return sim.nearest_hostile(craft.pos, 1400.0)
 
 
-static func _attack_slot(seat: int, target: Vector2, lead: Vector2) -> Vector2:
+static func _attack_slot(seat: int, target: Vector2, lead: Vector2, kind: String = "") -> Vector2:
 	var approach: Vector2 = lead - target
 	if approach.length() < 1.0:
 		approach = Vector2.RIGHT
@@ -770,6 +770,14 @@ static func _attack_slot(seat: int, target: Vector2, lead: Vector2) -> Vector2:
 	var side := Vector2(-approach.y, approach.x)
 	var flank := 1.0 if seat % 2 == 0 else -1.0
 	var ring := 1 + int(seat / 2)
+	if kind == "dart_drone":
+		return target + approach * 36.0 + side * flank * 48.0
+	if kind == "sting_drone":
+		return target + side * flank * 200.0
+	if kind == "fang_drone":
+		return target + approach * 300.0 + side * flank * 36.0
+	if kind == "lance_drone":
+		return target + approach * 140.0 + side * flank * 22.0
 	return target + approach * (170.0 + float(ring) * 40.0) + side * flank * (80.0 + float(seat) * 24.0)
 
 
@@ -784,6 +792,9 @@ static func _step_hold(sim, craft, dt: float) -> void:
 
 
 static func _step_fighter(sim, craft, dt: float) -> void:
+	if str(craft.def_id) == "sentry_drone":
+		_step_sentry(sim, craft, dt)
+		return
 	if str(craft.state) == "returning" or float(craft.battery) <= 8.0:
 		craft.state = "returning"
 		_return_home(sim, craft, dt)
@@ -795,7 +806,7 @@ static func _step_fighter(sim, craft, dt: float) -> void:
 		var pose: Dictionary = escort_pose(sim, craft, seat)
 		_fly_safe(sim, craft, pose.pos, dt, catch)
 		return
-	var slot := _attack_slot(seat, hostile.pos, sim.player.pos)
+	var slot := _attack_slot(seat, hostile.pos, sim.player.pos, str(craft.def_id))
 	var on_station: bool = craft.pos.distance_to(slot) < 48.0
 	if on_station:
 		var aim: Vector2 = hostile.pos - craft.pos
@@ -806,6 +817,32 @@ static func _step_fighter(sim, craft, dt: float) -> void:
 		_fly_safe(sim, craft, slot, dt, float(craft.speed))
 	if craft.pos.distance_to(hostile.pos) < float(craft.gun.range) and _facing(craft, hostile.pos) < 0.5:
 		sim.try_fire(craft, craft.gun)
+
+
+static func _step_sentry(sim, craft, dt: float) -> void:
+	if str(craft.state) == "returning" or float(craft.battery) <= 8.0:
+		craft.state = "returning"
+		_return_home(sim, craft, dt)
+		return
+	var seat := _seat(sim, craft)
+	var nose := Vector2.from_angle(sim.player.rot)
+	var beam := Vector2(-nose.y, nose.x)
+	var flank := 1.0 if seat % 2 == 0 else -1.0
+	var anchor: Vector2 = sim.player.pos - nose * 70.0 + beam * flank * (90.0 + float(seat) * 28.0)
+	var catch: float = maxf(float(craft.speed), sim.player.vel.length() + 40.0)
+	var parked: float = _fly_safe(sim, craft, anchor, dt, catch)
+	var hostile = _fighter_quarry(sim, craft)
+	if hostile == null:
+		return
+	if parked < 48.0:
+		var aim: Vector2 = hostile.pos - craft.pos
+		if aim.length() > 1.0:
+			craft.rot = aim.angle()
+	var gun: Dictionary = craft.get("gun", {})
+	if gun.is_empty():
+		return
+	if craft.pos.distance_to(hostile.pos) < float(gun.get("range", 0.0)) and _facing(craft, hostile.pos) < 0.55:
+		sim.try_fire(craft, gun)
 
 
 static func _return_home(sim, craft, dt: float) -> void:
