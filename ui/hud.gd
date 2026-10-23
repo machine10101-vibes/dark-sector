@@ -59,6 +59,8 @@ var market_button: Button
 var quest_button: Button
 var probe_button: Button
 var board_box: VBoxContainer
+var quest_box: VBoxContainer
+var quest_sig := ""
 var market_box: VBoxContainer
 var board_sig := ""
 var market_sig := ""
@@ -416,7 +418,7 @@ func _process(_delta: float) -> void:
 	elif panel_kind == "heat":
 		panel_body.text = _heat_text()
 	elif panel_kind == "quest":
-		panel_body.text = _quest_text()
+		_fill_quests()
 	elif panel_kind == "claim":
 		panel_body.text = _claim_text()
 	elif panel_kind == "board":
@@ -666,6 +668,10 @@ func _build_panel() -> void:
 	board_box.visible = false
 	board_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	inner.add_child(board_box)
+	quest_box = VBoxContainer.new()
+	quest_box.visible = false
+	quest_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.add_child(quest_box)
 	market_box = VBoxContainer.new()
 	market_box.visible = false
 	market_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1261,7 +1267,9 @@ func _toggle(kind: String) -> void:
 		return
 	panel_kind = kind
 	panel.show()
-	panel_body.visible = kind in ["heat", "quest", "claim"]
+	panel_body.visible = kind in ["heat", "claim"]
+	if quest_box != null:
+		quest_box.visible = kind == "quest"
 	bay_box.visible = kind == "bay"
 	hangar_box.visible = kind == "hangar"
 	fleet_box.visible = kind == "fleet"
@@ -1297,7 +1305,8 @@ func _toggle(kind: String) -> void:
 			panel_body.text = _heat_text()
 		"quest":
 			panel_title.text = "Quest log"
-			panel_body.text = _quest_text()
+			quest_sig = ""
+			_fill_quests()
 		"board":
 			panel_title.text = "Helion Dock board"
 			board_sig = ""
@@ -3727,6 +3736,85 @@ func _heat_text() -> String:
 		])
 	blocks.append("Rule layers share one slate for a human agent or an NPC. Controller is a field, not a second health bar.")
 	return "\n\n".join(blocks)
+
+
+func _fill_quests() -> void:
+	if Game.sim == null or quest_box == null:
+		return
+	var sim = Game.sim
+	var entries: Array = QuestLog.entries(sim.defs, sim)
+	var pinned := str(sim.quest_flags.get("tracked_quest", ""))
+	var sig := "%s|%s|%d" % [str(sim.defs.system.id), pinned, int(sim.player.pos.length() / 40.0)]
+	for entry in entries:
+		sig += "|%s:%s:%s" % [str(entry.get("id", "")), str(entry.get("state", "")), str(entry.get("step", ""))]
+	if sig == quest_sig and quest_box.get_child_count() > 0:
+		return
+	quest_sig = sig
+	for child in quest_box.get_children():
+		child.queue_free()
+	var card: Dictionary = {}
+	if pinned != "":
+		card = QuestBoard.guide_card(sim, pinned)
+	quest_box.add_child(_board_line("GUIDE", 16, Color("d7e6c8")))
+	if card.is_empty():
+		quest_box.add_child(_board_line("No job is pinned. The helm follows the live cue.", 14))
+		var live := QuestBoard.cue_line(sim)
+		if live != "":
+			quest_box.add_child(_board_line("NEXT  %s" % live, 14, Color("cbb892")))
+	else:
+		quest_box.add_child(_board_line(str(card.get("title", pinned)), 16))
+		quest_box.add_child(_board_line(str(card.get("step", "")), 14, Color("cbb892")))
+		if str(card.get("start", "")) != "":
+			quest_box.add_child(_board_line("Start: %s" % str(card.start), 13))
+		if str(card.get("detail", "")) != "":
+			quest_box.add_child(_board_line("Do: %s" % str(card.detail), 13))
+		if str(card.get("finish", "")) != "":
+			quest_box.add_child(_board_line("Finish: %s" % str(card.finish), 13))
+		if str(card.get("reward", "")) != "":
+			quest_box.add_child(_board_line("Reward: %s" % str(card.reward), 13, Color("d7e6c8")))
+		if str(card.get("fail", "")) != "":
+			quest_box.add_child(_board_line("Fail: %s" % str(card.fail), 13, Color("8d826c")))
+		if DockBoard.slip_line(sim) != "":
+			quest_box.add_child(_board_line("A dock crate is out. The beam follows the crate until it is delivered. This pin stays.", 13, Color("cbb892")))
+		var clear := ThemeKit.button("Clear guide")
+		clear.pressed.connect(_pin_quest.bind(pinned))
+		quest_box.add_child(clear)
+	quest_box.add_child(_board_line("Pin a job. Approach and the amber beam follow it. A dock crate still owns the beam.", 13, Color("8d826c")))
+	var filed: Array = []
+	for entry in entries:
+		var state := str(entry.get("state", ""))
+		if state == "done" or state == "failed":
+			filed.append(entry)
+			continue
+		var qid := str(entry.get("id", ""))
+		quest_box.add_child(_board_line("%s  [%s]" % [str(entry.get("title", qid)), state], 15))
+		if str(entry.get("step", "")) != "":
+			quest_box.add_child(_board_line(str(entry.step), 13, Color("cbb892")))
+		var giver := str(entry.get("giver", ""))
+		if giver != "":
+			quest_box.add_child(_board_line("Giver: %s" % giver, 12, Color("8d826c")))
+		if str(entry.get("summary", "")) != "":
+			quest_box.add_child(_board_line(str(entry.summary), 13))
+		if qid != "" and qid != pinned:
+			var pin := ThemeKit.button("Track")
+			pin.pressed.connect(_pin_quest.bind(qid))
+			quest_box.add_child(pin)
+		quest_box.add_child(ThemeKit.label(" ", 6))
+	if not filed.is_empty():
+		quest_box.add_child(_board_line("FILED", 14, Color("8d826c")))
+		for entry in filed:
+			quest_box.add_child(_board_line("%s  [%s]" % [str(entry.get("title", "")), str(entry.get("state", ""))], 13, Color("8d826c")))
+
+
+func _pin_quest(quest_id: String) -> void:
+	if Game.sim == null:
+		return
+	var note := QuestBoard.track(Game.sim, quest_id)
+	if note != "":
+		Game.sim.say(note)
+	quest_sig = ""
+	if panel_kind == "quest":
+		_fill_quests()
 
 
 func _quest_text() -> String:

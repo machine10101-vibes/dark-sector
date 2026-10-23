@@ -318,7 +318,17 @@ func objectives_of(sim) -> Array:
 	if out.size() < 2 and beat != "done" and beat != "failed":
 		var spot := Vector2(float(focus.get("x", 0.0)), float(focus.get("y", 0.0)))
 		if spot != Vector2.ZERO and str(focus.get("kind", "")) != "keel":
-			out.append({"title": "Shakedown  ·  %s" % beat, "step": QuestBoard.cue_line(sim), "pos": spot, "label": str(focus.get("label", "mark"))})
+			var step_line := QuestBoard.cue_line(sim)
+			if str(sim.quest_flags.get("tracked_quest", "")) != "" and str(sim.quest_flags.get("tracked_quest", "")) != "authored_shakedown_01":
+				step_line = QuestBoard.shakedown_line(sim)
+			out.append({"title": "Shakedown  ·  %s" % beat, "step": step_line, "pos": spot, "label": str(focus.get("label", "mark"))})
+	var pinned := str(sim.quest_flags.get("tracked_quest", ""))
+	if pinned != "" and pinned != "authored_shakedown_01":
+		var card: Dictionary = QuestBoard.guide_card(sim, pinned)
+		if not card.is_empty() and bool(card.get("tracking", false)):
+			var at := Vector2(float(card.get("x", 0.0)), float(card.get("y", 0.0)))
+			if at != Vector2.ZERO:
+				out.append({"title": "Tracking  ·  %s" % str(card.get("title", pinned)), "step": str(card.get("step", "")), "pos": at, "label": str(card.get("where", "mark"))})
 	return out
 
 

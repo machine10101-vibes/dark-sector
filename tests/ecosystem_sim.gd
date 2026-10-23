@@ -20,6 +20,7 @@ func _init() -> void:
 	_water_lease()
 	_print_yard()
 	_cue()
+	_guide()
 	if fails == 0:
 		print("ECOSYSTEM PASS")
 	else:
@@ -199,3 +200,43 @@ func _cue() -> void:
 	ice._arrive("HC-V1-R2-S2", "")
 	var line := QuestBoard.cue_line(ice)
 	check(line.contains("Water Lease"), "from Towline the lease points at its lane")
+
+
+func _guide() -> void:
+	var sim := make("vesper")
+	sim.quest_flags.shakedown_beat = "done"
+	sim._arrive("HC-V1-R2-S5", "")
+	check(str(sim.quest_flags.get("authored_print_yard", "")) == "open", "Second Copy stays on the slate after arrival")
+	check(QuestBoard.cue_line(sim).begins_with("TRACK") == false, "an unpinned sky still uses the live cue")
+	check(QuestBoard.track(sim, "authored_print_yard") == "", "Track pins Second Copy")
+	var pinned := QuestBoard.cue_line(sim)
+	check(pinned.begins_with("TRACK"), "the helm names the pinned job")
+	check(pinned.contains("Second Copy"), "the pin names Second Copy")
+	check(pinned.contains("Print Yard"), "the pin names Print Yard")
+	check(QuestBoard.cue_aim(sim).length() > 8.0, "the pin aims the amber beam")
+	var card := QuestBoard.guide_card(sim, "authored_print_yard")
+	check(str(card.get("detail", "")).contains("ambush") or str(card.get("detail", "")).contains("Print"), "the guide names the local work")
+	check(str(card.get("finish", "")).contains("Print Yard"), "the guide states the finish")
+	check(str(card.get("reward", "")) != "", "the guide states the reward")
+	check(str(card.get("fail", "")) != "", "the guide states how it fails")
+	sim._arrive("HC-V1-R1-S1", "")
+	var kept := false
+	for row in QuestLog.entries(sim.defs, sim):
+		if str(row.get("id", "")) == "authored_print_yard" and str(row.get("state", "")) == "open":
+			kept = true
+			check(str(row.get("step", "")).contains("Print Yard") or str(row.get("step", "")).contains("Second Copy"), "the slate still names the next step from Helion")
+	check(kept, "Second Copy stays on the slate after you leave")
+	var away := QuestBoard.cue_line(sim)
+	check(away.begins_with("TRACK") and away.contains("Second Copy"), "the pin still guides from another system")
+	check(QuestBoard.track(sim, "authored_print_yard") == "", "tracking the same job clears the guide")
+	check(QuestBoard.cue_line(sim).begins_with("TRACK") == false, "a cleared guide returns the live cue")
+	var ice := make("anvil")
+	ice.quest_flags.shakedown_beat = "done"
+	ice.quest_flags.authored_tug_yard = "done"
+	ice._arrive("HC-V1-R2-S4", "")
+	QuestBoard.pulse(ice, 0.2)
+	ice._arrive("HC-V1-R2-S2", "")
+	check(QuestBoard.track(ice, "authored_water_lease") == "", "Track pins Water Lease")
+	var lease := QuestBoard.cue_line(ice)
+	check(lease.contains("Water Lease"), "the lease pin names itself at Towline")
+	check(lease.contains("ice spall") or lease.contains("Clock"), "the lease pin names the unfinished step")
