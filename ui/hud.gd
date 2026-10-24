@@ -2975,7 +2975,11 @@ func _buy_fighter() -> void:
 func _buy_drone(def_id: String) -> void:
 	if Game.sim == null:
 		return
-	var message := DockBoard.buy_drone(Game.sim, def_id)
+	var message := ""
+	if DockBoard.SUPPORT_SHOP.has(def_id):
+		message = DockBoard.buy_support(Game.sim, def_id)
+	else:
+		message = DockBoard.buy_drone(Game.sim, def_id)
 	if message != "":
 		Game.sim.say(message)
 	if panel_kind == "fleet":
@@ -3248,6 +3252,8 @@ func _build_fleet_shop() -> void:
 	fleet_box.add_child(shop)
 	for raw_id in DockBoard.attack_shop_ids():
 		_drone_shop_card(str(raw_id), shop)
+	for raw_id in DockBoard.support_shop_ids():
+		_drone_shop_card(str(raw_id), shop)
 	_pad_grid(shop)
 
 
@@ -3255,9 +3261,13 @@ func _drone_shop_card(def_id: String, grid: GridContainer) -> void:
 	var sim = Game.sim
 	var spec: Dictionary = sim.defs.craft.get(def_id, {})
 	var row: Dictionary = DockBoard.ATTACK_SHOP.get(def_id, {})
+	if row.is_empty():
+		row = DockBoard.SUPPORT_SHOP.get(def_id, {})
+	var support := DockBoard.SUPPORT_SHOP.has(def_id)
 	var price := int(row.get("price", 0))
 	var cap := int(row.get("cap", 0))
 	var owned := DockBoard.kind_count(sim, def_id)
+	var wing_full := (not support) and DockBoard.attack_count(sim) >= DockBoard.ATTACK_WING
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(118, 0)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -3292,12 +3302,12 @@ func _drone_shop_card(def_id: String, grid: GridContainer) -> void:
 	actions.add_theme_constant_override("separation", 4)
 	var buy := ThemeKit.slim_button("Buy")
 	buy.custom_minimum_size = Vector2(56, 32)
-	buy.disabled = not DockBoard.at_pad(sim) or owned >= cap or DockBoard.attack_count(sim) >= DockBoard.ATTACK_WING or DockBoard.purse(sim) < price
+	buy.disabled = not DockBoard.at_pad(sim) or owned >= cap or wing_full or DockBoard.purse(sim) < price
 	buy.pressed.connect(_buy_drone.bind(def_id))
 	actions.add_child(buy)
 	var make := ThemeKit.slim_button("Make")
 	make.custom_minimum_size = Vector2(56, 32)
-	make.disabled = not DockBoard.can_build(sim) or owned >= cap or DockBoard.attack_count(sim) >= DockBoard.ATTACK_WING or not DockBoard.can_afford(sim, def_id)
+	make.disabled = not DockBoard.can_build(sim) or owned >= cap or wing_full or not DockBoard.can_afford(sim, def_id)
 	make.pressed.connect(_make_item.bind(def_id))
 	actions.add_child(make)
 	box.add_child(actions)
@@ -3958,7 +3968,7 @@ func _launch(def_id: String) -> void:
 func _boat_id() -> String:
 	if Game.sim == null:
 		return ""
-	for def_id in ["fighter", "dart_drone", "sting_drone", "wasp_drone", "fang_drone", "lance_drone", "sentry_drone", "salvage_tender", "away_shuttle"]:
+	for def_id in ["fighter", "dart_drone", "sting_drone", "wasp_drone", "fang_drone", "lance_drone", "sentry_drone", "salvage_tender", "away_shuttle", "picket_drone"]:
 		for item in Game.sim.craft:
 			if str(item.def_id) == def_id:
 				return def_id

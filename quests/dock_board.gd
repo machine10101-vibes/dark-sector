@@ -555,6 +555,10 @@ const SUPPORT_CAP := {
 	"harvest_drone": 2,
 	"salvage_tender": 2,
 	"away_shuttle": 1,
+	"picket_drone": 1,
+}
+const SUPPORT_SHOP := {
+	"picket_drone": {"price": 36, "cap": 1},
 }
 const BARS := {
 	"aluminum_bar": {"name": "Aluminum bar"},
@@ -579,6 +583,7 @@ const RECIPES := {
 	"harvest_drone": {"name": "Harvest Drone", "need": {"ice_spall": 2, "nickel_cinder": 1, "raw_mass": 1}},
 	"salvage_tender": {"name": "Salvage Tender", "need": {"salvage_parts": 2, "hull_plate": 1}},
 	"away_shuttle": {"name": "Away Shuttle", "need": {"ice_spall": 1, "hull_plate": 1, "raw_mass": 2}},
+	"picket_drone": {"name": "Picket", "need": {"aluminum_bar": 1, "ice_spall": 1}},
 }
 
 
@@ -602,6 +607,7 @@ static func recipe_ids() -> Array:
 		"harvest_drone",
 		"salvage_tender",
 		"away_shuttle",
+		"picket_drone",
 	]
 
 
@@ -769,6 +775,31 @@ static func paid_mount(sim, module_id: String) -> bool:
 
 static func attack_shop_ids() -> Array:
 	return ["dart_drone", "sting_drone", "wasp_drone", "fang_drone", "lance_drone", "sentry_drone", "fighter"]
+
+
+static func support_shop_ids() -> Array:
+	return ["picket_drone"]
+
+
+static func buy_support(sim, def_id: String) -> String:
+	def_id = str(def_id)
+	if not SUPPORT_SHOP.has(def_id):
+		return "The pad does not sell that craft."
+	if not at_pad(sim):
+		return "Buy a picket at the Helion pad."
+	var row: Dictionary = SUPPORT_SHOP[def_id]
+	var price := int(row.price)
+	var cap := int(row.cap)
+	if kind_count(sim, def_id) >= cap:
+		return "The rack holds %d of that craft." % cap
+	if purse(sim) < price:
+		return "Purse is short of %d for a picket." % price
+	var craft: Dictionary = sim._make_craft(def_id, _craft_index(sim, def_id) + 1)
+	craft.pos = sim.player.pos
+	sim.craft.append(craft)
+	sim.quest_flags.purse = purse(sim) - price
+	sim.say("Bought %s for %d. Purse %d. Launch it from the hangar." % [craft.name, price, purse(sim)])
+	return ""
 
 
 static func kind_count(sim, def_id: String) -> int:

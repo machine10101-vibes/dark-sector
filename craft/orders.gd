@@ -65,6 +65,8 @@ static func launch(sim, def_id: String) -> String:
 		return _launch_tender(sim)
 	if def_id == "livestock_lighter":
 		return _launch_lighter(sim)
+	if def_id == "picket_drone":
+		return _launch_picket(sim)
 	var craft = _first_docked(sim, def_id)
 	if craft == null:
 		var any = _any_of(sim, def_id)
@@ -125,6 +127,8 @@ static func order(sim, uid: String, verb: String, node_id: String) -> String:
 		return _order_tender(sim, craft, node_id)
 	if str(craft.def_id) == "livestock_lighter":
 		return _order_lighter(sim, craft)
+	if str(craft.def_id) == "picket_drone":
+		return _order_picket(sim, craft, verb)
 	if str(craft.state) == "lost":
 		return "%s is lost. Rebuild it from returned mass." % craft.name
 	if is_attack(sim, str(craft.def_id)):
@@ -384,6 +388,8 @@ static func step(sim, craft, dt: float) -> void:
 					_step_lighter(sim, craft, dt)
 				"away_shuttle":
 					_step_shuttle(sim, craft, dt)
+				"picket_drone":
+					_step_picket(sim, craft, dt)
 	if str(craft.state) != "lost":
 		_hazards(sim, craft)
 	if float(craft.hp) <= 0.0 and str(craft.state) != "lost":
@@ -778,6 +784,8 @@ static func _attack_slot(seat: int, target: Vector2, lead: Vector2, kind: String
 		return target + approach * 300.0 + side * flank * 36.0
 	if kind == "lance_drone":
 		return target + approach * 140.0 + side * flank * 22.0
+	if kind == "wasp_drone":
+		return target - approach * 180.0 + side * flank * 90.0
 	return target + approach * (170.0 + float(ring) * 40.0) + side * flank * (80.0 + float(seat) * 24.0)
 
 
@@ -817,6 +825,54 @@ static func _step_fighter(sim, craft, dt: float) -> void:
 		_fly_safe(sim, craft, slot, dt, float(craft.speed))
 	if craft.pos.distance_to(hostile.pos) < float(craft.gun.range) and _facing(craft, hostile.pos) < 0.5:
 		sim.try_fire(craft, craft.gun)
+
+
+static func _launch_picket(sim) -> String:
+	var craft = _first_docked(sim, "picket_drone")
+	if craft == null:
+		var any = _any_of(sim, "picket_drone")
+		if any == null:
+			return "This keel has no Picket."
+		if str(any.state) == "lost":
+			return "%s is lost. Rebuild it from returned mass." % any.name
+		return "%s is already out." % any.name
+	return _order_picket(sim, craft, "launch")
+
+
+static func _order_picket(sim, craft, verb: String) -> String:
+	if verb != "launch" and verb != "escort":
+		return "That order is not on the board."
+	if str(craft.state) == "lost":
+		return "%s is lost. Rebuild it from returned mass." % craft.name
+	if str(craft.state) == "docked":
+		_depart(sim, craft, "")
+	craft.state = "escort"
+	craft.order = "picket"
+	craft.called_id = ""
+	sim.say("%s takes the bow." % craft.name)
+	sim.sfx("launch")
+	return ""
+
+
+static func _step_picket(sim, craft, dt: float) -> void:
+	if str(craft.state) == "returning" or float(craft.battery) <= 8.0:
+		craft.state = "returning"
+		_return_home(sim, craft, dt)
+		return
+	var nose := Vector2.from_angle(sim.player.rot)
+	var anchor: Vector2 = sim.player.pos + nose * 280.0
+	var catch: float = maxf(float(craft.speed), sim.player.vel.length() + 40.0)
+	_fly_safe(sim, craft, anchor, dt, catch)
+	var hostile = sim.nearest_hostile(craft.pos, 700.0)
+	if hostile == null:
+		craft.called_id = ""
+		return
+	var seen := str(hostile.get("agent_id", ""))
+	if seen == "" or seen == str(craft.get("called_id", "")):
+		return
+	craft.called_id = seen
+	var gap: float = craft.pos.distance_to(hostile.pos)
+	sim.say("%s — %s, %.0f m off the bow." % [craft.name, str(hostile.get("name", "a ship")), gap])
 
 
 static func _step_sentry(sim, craft, dt: float) -> void:

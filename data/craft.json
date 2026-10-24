@@ -45,6 +45,21 @@
     "work": 2.6,
     "radius": 10
   },
+  "picket_drone": {
+    "id": "picket_drone",
+    "name": "Picket",
+    "job": "Scout. It holds the bow and calls the first ship it sees. It does not shoot.",
+    "role": "scout",
+    "level": 1,
+    "post": "Picket",
+    "length_m": 9,
+    "speed": 340,
+    "battery": 160,
+    "drain": 2.2,
+    "hp": 14,
+    "work": 0,
+    "radius": 6
+  },
   "fighter": {
     "id": "fighter",
     "name": "Fighter",
@@ -111,7 +126,7 @@
   "wasp_drone": {
     "id": "wasp_drone",
     "name": "Wasp",
-    "job": "Level 2 striker. The pad's mid-weight attack drone. It forms, follows, and hits the lock.",
+    "job": "Level 2 striker. It sits on the far quarter, behind the lock, and hits from there.",
     "role": "attack",
     "level": 2,
     "post": "Striker",

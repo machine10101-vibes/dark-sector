@@ -1307,6 +1307,10 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 					flank = Vector2.DOWN
 				dest = player.pos + flank * 110.0
 				_say_duty(actor)
+		elif action == "trader" or action == "orbit":
+			dest = _freight_dest(actor)
+			if player.alive and player.pos.distance_to(actor.pos) < 560.0:
+				_say_duty(actor)
 		elif player.pos.distance_to(actor.pos) < 560.0:
 			_say_duty(actor)
 		_fly_ship(actor, dest, dt, false)
@@ -1383,6 +1387,29 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 		if str(actor.get("class_id", "")) != "cutter" and dist < 190.0:
 			dest = actor.pos - (target.pos - actor.pos).normalized() * 30.0
 	_fly_ship(actor, dest, dt, target != null)
+
+
+func _freight_dest(actor: Dictionary) -> Vector2:
+	var home: Vector2 = actor.home
+	var bearing: Vector2 = Vector2.RIGHT
+	var best := 0.0
+	var marks: Array = []
+	for body in planets:
+		marks.append(body.pos)
+	for gate in gates:
+		marks.append(gate.pos)
+	marks.append(pocket_pos)
+	for spot in marks:
+		var gap: Vector2 = Vector2(spot) - home
+		var dist := gap.length()
+		if dist > best and dist > 180.0:
+			best = dist
+			bearing = gap / dist
+	if best < 180.0:
+		bearing = Vector2.from_angle(float(actor.ai.get("phase", 0.4)))
+	var reach := float(actor.ai.get("radius", 400.0))
+	var trip := absf(sin(float(time) * 0.12 + float(actor.ai.get("phase", 0.0))))
+	return home + bearing * reach * trip
 
 
 func _fly_ship(ship: Dictionary, dest: Vector2, dt: float, aggressive: bool) -> void:

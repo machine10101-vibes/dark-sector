@@ -54,6 +54,7 @@ Player-visible what works now:
 - Quests on the slate stay listed after you leave the system. Quests opens a guide: pin Track on a job and the helm line, the amber beam, and Approach follow that job's next step, with Start, Do, Finish, Reward, and Fail on the glass. Clear guide returns the helm to the live cue. A dock crate still owns the beam until it is delivered. Combat math is unchanged.
 - Patrols and haulers now fly the job the slate names. A range cutter runs a firing line through the yard and hails while the slate is cool. A bailiff takes the far side of the nearest civilian. A clerk or factor slides alongside inside 320 meters and reads the duty. An authored interceptor holds 200 to 260 meters. Helion's own pack still closes inside the old band. Pollinator Road files only after the Lighter Pilot is met inside 480 meters, then Moth Lane. Fine Print files only after the ambush sight at 520 meters, then Expired Charter. Silo Dark files only after the Vault Clerk is alongside, then Night Vault. Honest Scales files only after the gunnery range is met, then Lamp Yard. Post the Writ files only after Bailiff Holt is alongside, then Warrant House. In that system the guide points at the unfinished step. Combat math is unchanged.
 - The wing now flies the post on the card. A Dart crosses the bow. A Sting holds the beam. A Fang keeps long range. A Lance stays in close. A Sentry holds a point aft of the keel and fires the lock without chasing. The pad sells one Sentry for 96 GRT, and Make spends two aluminum bars and one steel bar. The livestock lighter wears a pen, a stall, and a ramp. Pirate skiffs wear the job: spike, kite fins, raider claws, an ambush baffle, or a claim stake. Compact cutters wear a range rail, a writ board, an escort lamp, a clerk's scale, flee bells, or a watch mast. Combat math is unchanged.
+- A Wasp holds the far quarter, behind the lock. A Picket holds the bow, calls the first ship it sees, and does not shoot. The pad sells one for 36 GRT. Make spends one aluminum bar and one ice spall. Traders and orbiting haulers run a freight leg out along the lane to the far world and back, inside their own radius. A Barn or cutter on that job wears cargo cans, a tow boom, pen rails, or flee bells. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -88,5 +89,6 @@ Files touched:
 - data/materials.json
 - data/craft.json
 - tests/fleet_posts.gd
+- tests/lane_picket.gd
 - ui/menu.gd
 - LOOP_STATE.md
