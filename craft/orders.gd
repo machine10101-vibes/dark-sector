@@ -67,6 +67,8 @@ static func launch(sim, def_id: String) -> String:
 		return _launch_lighter(sim)
 	if def_id == "picket_drone":
 		return _launch_picket(sim)
+	if def_id == "manifest_drone":
+		return _launch_manifest(sim)
 	var craft = _first_docked(sim, def_id)
 	if craft == null:
 		var any = _any_of(sim, def_id)
@@ -129,6 +131,8 @@ static func order(sim, uid: String, verb: String, node_id: String) -> String:
 		return _order_lighter(sim, craft)
 	if str(craft.def_id) == "picket_drone":
 		return _order_picket(sim, craft, verb)
+	if str(craft.def_id) == "manifest_drone":
+		return _order_manifest(sim, craft, verb)
 	if str(craft.state) == "lost":
 		return "%s is lost. Rebuild it from returned mass." % craft.name
 	if is_attack(sim, str(craft.def_id)):
@@ -390,6 +394,8 @@ static func step(sim, craft, dt: float) -> void:
 					_step_shuttle(sim, craft, dt)
 				"picket_drone":
 					_step_picket(sim, craft, dt)
+				"manifest_drone":
+					_step_manifest(sim, craft, dt)
 	if str(craft.state) != "lost":
 		_hazards(sim, craft)
 	if float(craft.hp) <= 0.0 and str(craft.state) != "lost":
@@ -873,6 +879,96 @@ static func _step_picket(sim, craft, dt: float) -> void:
 	craft.called_id = seen
 	var gap: float = craft.pos.distance_to(hostile.pos)
 	sim.say("%s — %s, %.0f m off the bow." % [craft.name, str(hostile.get("name", "a ship")), gap])
+
+
+static func _launch_manifest(sim) -> String:
+	var craft = _first_docked(sim, "manifest_drone")
+	if craft == null:
+		var any = _any_of(sim, "manifest_drone")
+		if any == null:
+			return "This keel has no Manifest."
+		if str(any.state) == "lost":
+			return "%s is lost. Rebuild it from returned mass." % any.name
+		return "%s is already out." % any.name
+	return _order_manifest(sim, craft, "launch")
+
+
+static func _order_manifest(sim, craft, verb: String) -> String:
+	if verb != "launch" and verb != "escort":
+		return "That order is not on the board."
+	if str(craft.state) == "lost":
+		return "%s is lost. Rebuild it from returned mass." % craft.name
+	if str(craft.state) == "docked":
+		_depart(sim, craft, "")
+	craft.state = "escort"
+	craft.order = "manifest"
+	craft.read_id = ""
+	sim.say("%s goes to read a hold." % craft.name)
+	sim.sfx("launch")
+	return ""
+
+
+static func _step_manifest(sim, craft, dt: float) -> void:
+	if str(craft.state) == "returning" or float(craft.battery) <= 8.0:
+		craft.state = "returning"
+		_return_home(sim, craft, dt)
+		return
+	if str(craft.get("read_id", "")) != "":
+		craft.state = "returning"
+		craft.order = "return"
+		_return_home(sim, craft, dt)
+		return
+	var mark = _civilian_near(sim, sim.player.pos, 1600.0)
+	var catch: float = maxf(float(craft.speed), sim.player.vel.length() + 40.0)
+	if mark == null:
+		var nose := Vector2.from_angle(sim.player.rot)
+		var beam := Vector2(-nose.y, nose.x)
+		var anchor: Vector2 = sim.player.pos + beam * 140.0
+		_fly_safe(sim, craft, anchor, dt, catch)
+		return
+	_fly_safe(sim, craft, mark.pos, dt, catch)
+	if craft.pos.distance_to(mark.pos) > 220.0:
+		return
+	craft.read_id = str(mark.get("agent_id", ""))
+	sim.say("%s — %s. Hold: %s." % [craft.name, str(mark.get("name", "a ship")), _hold_line(sim, mark)])
+	craft.state = "returning"
+	craft.order = "return"
+	_return_home(sim, craft, dt)
+
+
+static func _civilian_near(sim, origin: Vector2, reach: float):
+	var best = null
+	var best_d := reach
+	for other in sim.actors:
+		if str(other.get("team", "")) != "civilian":
+			continue
+		if not bool(other.get("alive", true)):
+			continue
+		var dist: float = origin.distance_to(other.pos)
+		if dist < best_d:
+			best = other
+			best_d = dist
+	return best
+
+
+static func _hold_line(sim, actor) -> String:
+	var book: Dictionary = {}
+	var listed: Dictionary = actor.get("manifest", {})
+	if typeof(listed) == TYPE_DICTIONARY and not listed.is_empty():
+		book = listed
+	else:
+		var held: Dictionary = actor.get("cargo", {})
+		if typeof(held) == TYPE_DICTIONARY:
+			book = held
+	var bits: Array = []
+	for key in book.keys():
+		var count := int(book[key])
+		if count <= 0:
+			continue
+		bits.append("%s %d" % [sim.resource_name(str(key)), count])
+	if bits.is_empty():
+		return "the hold is empty"
+	return ", ".join(bits)
 
 
 static func _step_sentry(sim, craft, dt: float) -> void:

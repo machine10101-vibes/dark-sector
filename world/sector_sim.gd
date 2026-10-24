@@ -1389,6 +1389,18 @@ func _step_npc(actor: Dictionary, dt: float) -> void:
 	_fly_ship(actor, dest, dt, target != null)
 
 
+func _haul_manifest(job: String) -> Dictionary:
+	if job == "tow" or job == "tug":
+		return {"hull_plate": 2, "salvage_parts": 1}
+	if job == "herd" or job == "herdsman":
+		return {"fodder": 3, "milk_analogue": 1}
+	if job == "factor" or job == "clerk":
+		return {"aluminum_bar": 1, "ice_spall": 2}
+	if job == "flee":
+		return {"scrap": 1}
+	return {"ice_spall": 4, "copper_slag": 2}
+
+
 func _freight_dest(actor: Dictionary) -> Vector2:
 	var home: Vector2 = actor.home
 	var bearing: Vector2 = Vector2.RIGHT
@@ -2648,6 +2660,7 @@ func _spawn_factions() -> void:
 			"said_duty": false,
 			"role_authored": haul_duty != "",
 		}
+		hauler.manifest = _haul_manifest(haul_action)
 		actors.append(hauler)
 	var pack_count := int(defs.system.pirates.count)
 	var gang := _pick_gang()

@@ -60,6 +60,21 @@
     "work": 0,
     "radius": 6
   },
+  "manifest_drone": {
+    "id": "manifest_drone",
+    "name": "Manifest",
+    "job": "Cargo scan. It flies to the nearest hauler, reads the hold once, and comes home. It does not take the goods.",
+    "role": "scanner",
+    "level": 1,
+    "post": "Manifest",
+    "length_m": 11,
+    "speed": 300,
+    "battery": 140,
+    "drain": 2.4,
+    "hp": 16,
+    "work": 0,
+    "radius": 7
+  },
   "fighter": {
     "id": "fighter",
     "name": "Fighter",

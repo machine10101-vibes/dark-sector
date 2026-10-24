@@ -6022,6 +6022,8 @@ func _assemble_craft(node: Node3D, kind: String) -> void:
 		height = 3.2
 	elif kind == "picket_drone":
 		height = 2.4
+	elif kind == "manifest_drone":
+		height = 2.6
 	var mesh := _hull_loft(poly, height)
 	if mesh == null:
 		mesh = _prism(poly, height, 0.78)
@@ -6066,7 +6068,7 @@ func _assemble_craft(node: Node3D, kind: String) -> void:
 	nozzle.material_override = burn
 	node.add_child(nozzle)
 	_craft_bell(node, "BellMain", Vector3(-6.2, height * 0.36, 0.0), 1.35, 2.45)
-	if kind != "survey_probe" and kind != "dart_drone" and kind != "sentry_drone" and kind != "livestock_lighter" and kind != "picket_drone":
+	if kind != "survey_probe" and kind != "dart_drone" and kind != "sentry_drone" and kind != "livestock_lighter" and kind != "picket_drone" and kind != "manifest_drone":
 		var canopy := MeshInstance3D.new()
 		canopy.name = "Glass"
 		canopy.mesh = _canopy_mesh(2.8, 1.25, 1.15)
@@ -6192,6 +6194,11 @@ func _dress_craft(node: Node3D, kind: String) -> void:
 			_nav_lamp(node, "LampBow", Vector3(6.4, 2.4, 0.0), Color("9fd0ff"), 0.28)
 			_kit(node, "FinP", Vector3(5.2, 0.18, 3.4), Vector3(-0.6, 1.8, 3.6), Color("1a5a78"))
 			_kit(node, "FinS", Vector3(5.2, 0.18, 3.4), Vector3(-0.6, 1.8, -3.6), Color("1a5a78"))
+		"manifest_drone":
+			_kit(node, "Slate", Vector3(3.2, 2.4, 0.18), Vector3(1.2, 3.6, 0.0), Color("1c2428"))
+			_lens(node, "Reader", 1.6, Vector3(2.6, 3.6, 0.55), Color("9fd0c8"))
+			_nav_lamp(node, "LampScan", Vector3(4.2, 3.2, 0.0), Color("7dffc2"), 0.26)
+			_kit(node, "Clip", Vector3(0.35, 0.7, 1.4), Vector3(2.6, 4.7, 0.0), Color("c8b48a"))
 		"sentry_drone":
 			_kit(node, "Turret", Vector3(3.4, 2.4, 3.4), Vector3(0.6, 4.15, 0.0), Color("c8b46a"))
 			_cyl(node, "Barrel", 0.46, 12.4, Vector3(6.2, 4.35, 0.0), "x", Color("d8dde4"))
@@ -6262,6 +6269,8 @@ func _craft_poly(kind: String) -> PackedVector2Array:
 			return PackedVector2Array([Vector2(10, 0), Vector2(3, 3.2), Vector2(-6.5, 3.6), Vector2(-6.5, -3.6), Vector2(3, -3.2)])
 		"picket_drone":
 			return PackedVector2Array([Vector2(11, 0), Vector2(2, 1.4), Vector2(-6, 1.1), Vector2(-6, -1.1), Vector2(2, -1.4)])
+		"manifest_drone":
+			return PackedVector2Array([Vector2(8, 1.6), Vector2(3, 3.2), Vector2(-6, 2.8), Vector2(-6, -2.8), Vector2(3, -3.2), Vector2(8, -1.6)])
 		"sentry_drone":
 			return PackedVector2Array([Vector2(6, 4.2), Vector2(2, 6.4), Vector2(-7, 6.2), Vector2(-7, -6.2), Vector2(2, -6.4), Vector2(6, -4.2)])
 		"livestock_lighter":
@@ -6292,6 +6301,8 @@ func _craft_color(kind: String) -> Color:
 			return Color("8a8e96")
 		"picket_drone":
 			return Color("9fd0e8")
+		"manifest_drone":
+			return Color("8ea4a8")
 		"sentry_drone":
 			return Color("6e7a4a")
 		"livestock_lighter":

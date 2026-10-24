@@ -3968,7 +3968,7 @@ func _launch(def_id: String) -> void:
 func _boat_id() -> String:
 	if Game.sim == null:
 		return ""
-	for def_id in ["fighter", "dart_drone", "sting_drone", "wasp_drone", "fang_drone", "lance_drone", "sentry_drone", "salvage_tender", "away_shuttle", "picket_drone"]:
+	for def_id in ["fighter", "dart_drone", "sting_drone", "wasp_drone", "fang_drone", "lance_drone", "sentry_drone", "salvage_tender", "away_shuttle", "picket_drone", "manifest_drone"]:
 		for item in Game.sim.craft:
 			if str(item.def_id) == def_id:
 				return def_id
