@@ -1,0 +1,13 @@
+{
+  "id": "authored_marque_rock",
+  "title": "Letter",
+  "kind": "authored",
+  "giver": "Marchport",
+  "summary": "Start: enter the system. The log opens Letter and the helm marks Marque Rock. Do: Close on Marque Rock. Letters of marque expire here more often than they are honored. The law is red. Finish: come inside Marque Rock's shell. Red Keel heat rises. The letter is still expired. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "marque_rock",
+  "system_id": "HC-V1-R7-S2",
+  "mutations": [
+    "rumor_marque_rock",
+    "heat_red_keel"
+  ]
+}

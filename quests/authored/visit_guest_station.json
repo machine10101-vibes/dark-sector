@@ -1,0 +1,13 @@
+{
+  "id": "authored_guest_station",
+  "title": "Guest Lamp",
+  "kind": "authored",
+  "giver": "Orbital Municipal Navy",
+  "summary": "Start: enter the system. The log opens Guest Lamp and the helm marks Guest Station. Do: Close on Guest Station. The Lamp Host orbits the diplomacy lamp. Pickpockets work the vacuum lane. The navy escort stays with the host. Finish: come inside Guest Station's shell. The navy writes standing. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "guest_station",
+  "system_id": "HC-V1-R3-S3",
+  "mutations": [
+    "rumor_guest_station",
+    "municipal_standing_up"
+  ]
+}

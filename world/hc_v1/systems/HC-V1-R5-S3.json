@@ -1,0 +1,178 @@
+{
+  "id": "HC-V1-R5-S3",
+  "name": "Pollinator Road",
+  "seed": 52003,
+  "why_visit": "Lamp-moth traffic and a livestock lighter. The road is the herd, and one raider wants the pen.",
+  "law_color": "amber",
+  "status": "authored",
+  "region": "R5",
+  "star": {
+    "id": "hc-v1-r5-s3-star",
+    "name": "Pollen",
+    "class": "G",
+    "radius": 120,
+    "color": "#e6c56a"
+  },
+  "bodies": [
+    {
+      "id": "moth_lane",
+      "name": "Moth Lane",
+      "angle": 0.5,
+      "distance": 1550,
+      "radius": 90,
+      "color": "#d2c06a",
+      "blurb": "The pollinator road. Moths and a lighter share the lane.",
+      "legal": "Garden shard. Lamp-moth traffic has the right of way. A core is not this pocket.",
+      "air": "Warm dust. The moths like it.",
+      "face": "Pollen plate and lamp soot.",
+      "crust": "Soft garden crust.",
+      "life": "Lamp-moths in the lane. The herd is in the lighter.",
+      "ruins": "A lighter that spilled a pen and was not forgiven.",
+      "resource_id": "pollen_mass",
+      "resource_name": "Pollen mass",
+      "amount": 5,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "lamp_perch",
+      "name": "Lamp Perch",
+      "angle": 2.5,
+      "distance": 2200,
+      "radius": 48,
+      "color": "#f0e2a0",
+      "blurb": "Where the lamps rest between runs.",
+      "legal": "A perch moon for the moth lamps. Do not cut the lamps.",
+      "air": "Thin warm air.",
+      "face": "Lamp glass.",
+      "crust": "Perch stone.",
+      "life": "Moths. No crop until someone brings seed home.",
+      "ruins": "A cracked lamp, still glowing.",
+      "resource_id": "lamp_glass",
+      "resource_name": "Lamp glass",
+      "amount": 3,
+      "heat": "",
+      "moon": true,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "wing_scale",
+    "name": "Wing Scale",
+    "composition": "lamp-moth scale and perch glass shed along the pollinator road",
+    "radius": 2700,
+    "width": 160,
+    "count": 10,
+    "resource_id": "wing_scale",
+    "resource_name": "Wing scale",
+    "amount": 4,
+    "legal": "Moth scale. The road is amber. The lamps are not a belt.",
+    "heat": ""
+  },
+  "trash": {
+    "id": "dropped_pens",
+    "name": "Dropped Pens",
+    "origin": "Pens that slipped a lighter on the pollinator road and were never hauled back.",
+    "anchor": "moth_lane",
+    "angle": 1.2,
+    "distance": 560,
+    "count": 7,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 4,
+    "legal": "Dropped pens. The herd is gone. The lighter still runs.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "moth_pocket",
+    "name": "Perch Pocket",
+    "anchor": "moth_lane",
+    "angle": -0.9,
+    "distance": 420,
+    "radius": 200,
+    "plantable": false,
+    "why": "The moths use this pocket. It is not on the claim slate."
+  },
+  "gates": [
+    {
+      "id": "moth_from_soil",
+      "name": "First Soil",
+      "to": "HC-V1-R5-S1",
+      "arrive": "soil_to_moth",
+      "anchor": "moth_lane",
+      "angle": 2.7,
+      "distance": 1160,
+      "radius": 120,
+      "color": "amber"
+    }
+  ],
+  "pdo": {
+    "faction": "rimward_charter",
+    "count": 0,
+    "radius": 480,
+    "home": "moth_lane",
+    "role": "patrol",
+    "action": "patrol",
+    "duty": ""
+  },
+  "pirates": {
+    "count": 1,
+    "angle": 1.7,
+    "standoff": 820,
+    "roles": [
+      "raider"
+    ],
+    "actions": [
+      "raider"
+    ],
+    "duties": [
+      "Raider over Pollinator Road. Take the livestock lighter inside 1100 meters. The pen is the prize."
+    ]
+  },
+  "haulers": [
+    {
+      "id": "moth_tender",
+      "name": "Moth Tender",
+      "class_id": "anvil",
+      "home": "moth_lane",
+      "radius": 640,
+      "role": "herdsman",
+      "action": "herd",
+      "duty": "Moth Tender on Pollinator Road. Walk the perch pocket and keep the lamps with the herd."
+    },
+    {
+      "id": "lighter_pilot",
+      "name": "Lighter Pilot",
+      "class_id": "anvil",
+      "home": "moth_lane",
+      "radius": 820,
+      "role": "tug",
+      "action": "tow",
+      "duty": "Lighter Pilot on Pollinator Road. Hold the livestock tow. Come within 480 meters and the lighter matches your nose."
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "moth_lane",
+      "radius": 420
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": "Moth Lane"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "authored_false_mark",
+  "title": "Nameless Chart",
+  "kind": "authored",
+  "giver": "Drift tender",
+  "summary": "Start: enter the system. The log opens Nameless Chart and the helm marks False Mark. Do: Close on False Mark. The chart lies. False Rain moves. The jackpot body may be empty. Finish on the false mark anyway so the lie is on the slate. Finish: come inside False Mark's shell. A drift rumor. The map is still wrong. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "false_mark",
+  "system_id": "HC-V1-R6-S3",
+  "mutations": [
+    "rumor_false_mark"
+  ]
+}

@@ -4,6 +4,7 @@ var root: Control
 var helm_name: Label
 var helm_flight: Label
 var helm_zone: Label
+var helm_mark: Label
 var haul_cue: Label
 var helm_cargo: Label
 var helm_craft: Label
@@ -14,6 +15,11 @@ var panel_scroll: ScrollContainer
 var panel_title: Label
 var panel_body: Label
 var hangar_box: VBoxContainer
+var fleet_box: VBoxContainer
+var stock_box: VBoxContainer
+var stock_sig := ""
+var build_box: VBoxContainer
+var build_sig := ""
 var bay_box: VBoxContainer
 var dossier_box: VBoxContainer
 var pause_box: PanelContainer
@@ -23,6 +29,9 @@ var hangar_rows: Dictionary = {}
 var hangar_node := "aegis_prime"
 var hangar_target: Label
 var hangar_sig := ""
+var fleet_rows: Dictionary = {}
+var fleet_target: Label
+var fleet_sig := ""
 var bay_preview: Control
 var bay_detail: Label
 var bay_buttons: Dictionary = {}
@@ -46,20 +55,45 @@ var hint_label: Label
 var cast_button: Button
 var board_button: Button
 var dock_button: Button
+var market_button: Button
 var quest_button: Button
 var probe_button: Button
 var board_box: VBoxContainer
+var quest_box: VBoxContainer
+var quest_sig := ""
 var market_box: VBoxContainer
 var board_sig := ""
 var market_sig := ""
 var tag_edit: LineEdit
+var market_page := "desk"
+var market_filter := ""
+var market_item := ""
+var market_offer_qty := 1
+var market_offer_ask := 0
+var market_ask: Dictionary = {}
+var market_qty_vals: Dictionary = {}
+var market_repost: Dictionary = {}
+var market_buy_qty: Dictionary = {}
+var market_ask_labs: Dictionary = {}
+var market_qty_labs: Dictionary = {}
+var market_repost_labs: Dictionary = {}
+var market_buy_labs: Dictionary = {}
+var market_buy_btns: Dictionary = {}
+var market_list_btns: Dictionary = {}
 var market_purse: Label
 var market_hold: Label
+var market_tape: Label
+var market_live: Label
 var show_tag := false
 var action_scroll: ScrollContainer
 var action_row: HBoxContainer
 var primary_bar: PanelContainer
+var primary_col: VBoxContainer
 var primary_row: HBoxContainer
+var attack_scroll: ScrollContainer
+var attack_row: HBoxContainer
+var attack_buttons: Dictionary = {}
+var attack_sig := ""
 var log_card: PanelContainer
 var pad: Control
 var minimap: Control
@@ -126,6 +160,14 @@ func _ready() -> void:
 		_toggle("board")
 	)
 	root.add_child(board_button)
+	market_button = ThemeKit.button("Market", true)
+	market_button.visible = false
+	market_button.custom_minimum_size = Vector2(112, 48)
+	market_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	market_button.pressed.connect(func() -> void:
+		_toggle("market")
+	)
+	root.add_child(market_button)
 	_mount_primary()
 	stick_button = ThemeKit.button("Stick")
 	stick_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -209,25 +251,35 @@ func _layout_chrome(screen: Vector2) -> void:
 		if show_tag and screen.y < 430.0:
 			helm_flight.add_theme_font_size_override("font_size", 14)
 		else:
-			helm_flight.add_theme_font_size_override("font_size", 18)
+			helm_flight.add_theme_font_size_override("font_size", 16)
 	if helm_zone != null:
 		helm_zone.visible = not short
+	if helm_mark != null:
+		helm_mark.visible = not short and helm_mark.text != ""
 	if helm_cargo != null:
-		helm_cargo.visible = not compact
+		helm_cargo.visible = not compact and panel_kind == ""
 	if helm_craft != null:
-		helm_craft.visible = not compact
+		helm_craft.visible = not compact and panel_kind == ""
 	if haul_cue != null:
-		haul_cue.add_theme_font_size_override("font_size", 15 if short else 20)
-	var corner := 84.0
+		haul_cue.add_theme_font_size_override("font_size", 14 if short else 15)
+	var stacked_corners := screen.x < 820.0
+	var corner := 84.0 if stacked_corners else 76.0
+	var cluster := corner if stacked_corners else corner * 2.0 + 6.0
 	if hold_button != null:
-		hold_button.position = Vector2(screen.x - corner - 8.0, 8.0)
+		if stacked_corners:
+			hold_button.position = Vector2(screen.x - corner - 8.0, 8.0)
+		else:
+			hold_button.position = Vector2(screen.x - cluster - 8.0, 8.0)
 		hold_button.size = Vector2(corner, 40.0)
 	if stick_button != null:
-		stick_button.position = Vector2(screen.x - corner - 8.0, 52.0)
+		if stacked_corners:
+			stick_button.position = Vector2(screen.x - corner - 8.0, 52.0)
+		else:
+			stick_button.position = Vector2(screen.x - corner - 8.0, 8.0)
 		stick_button.size = Vector2(corner, 40.0)
-	var helm_w := screen.x - margin - corner - 16.0
+	var helm_w := screen.x - margin - cluster - 16.0
 	if not compact:
-		helm_w = minf(520.0, screen.x - 220.0)
+		helm_w = minf(348.0, screen.x - cluster - 24.0)
 		if panel != null and panel.visible:
 			helm_w = minf(helm_w, screen.x - 500.0)
 	helm_w = clampf(helm_w, 148.0, screen.x - margin * 2.0)
@@ -249,14 +301,14 @@ func _layout_chrome(screen: Vector2) -> void:
 		right = left + need
 	var bar_room := right - left
 	_size_primary(bar_room < 520.0)
-	var primary_h := 72.0
+	var primary_h := 50.0
 	if primary_bar != null:
-		primary_h = maxf(primary_bar.get_combined_minimum_size().y, 60.0)
-	var secondary_h := 48.0
-	var pad_top := screen.y - 8.0
+		primary_h = maxf(primary_bar.get_combined_minimum_size().y, 46.0)
+	var secondary_h := 38.0
+	var pad_top := screen.y - 6.0
 	if touch_on and pad != null and pad.has_method("band_top"):
 		pad_top = pad.band_top(screen, short)
-	var gap := 8.0
+	var gap := 4.0
 	var secondary_y := pad_top - secondary_h - gap
 	var primary_y := secondary_y - primary_h - gap
 	primary_y = maxf(primary_y, 72.0 if short else 96.0)
@@ -268,12 +320,18 @@ func _layout_chrome(screen: Vector2) -> void:
 		var primary_w := right - left
 		if not compact and not touch_on:
 			var hug := primary_row.get_combined_minimum_size().x + 28.0 if primary_row != null else primary_w
+			if attack_row != null:
+				hug = maxf(hug, attack_row.get_combined_minimum_size().x + 28.0)
 			primary_w = minf(primary_w, maxf(hug, 180.0))
 		primary_bar.position = Vector2(left, primary_y)
 		primary_bar.size = Vector2(maxf(primary_w, 120.0), primary_h)
 	if action_scroll != null:
+		var action_w := right - left
+		if not land_panel:
+			var cap := 720.0 if not compact else action_w
+			action_w = minf(action_w, _action_span(cap))
 		action_scroll.position = Vector2(left, secondary_y)
-		action_scroll.size = Vector2(maxf(right - left, 120.0), secondary_h)
+		action_scroll.size = Vector2(maxf(action_w, 120.0), secondary_h)
 	var status_top := 8.0
 	var room_bottom := primary_y - 8.0
 	if stat_hull != null:
@@ -286,7 +344,7 @@ func _layout_chrome(screen: Vector2) -> void:
 		status_card.position = Vector2(margin, status_top)
 		var want := 72.0
 		if helm_box != null:
-			want = helm_box.get_combined_minimum_size().y + 16.0
+			want = helm_box.get_combined_minimum_size().y + 8.0
 		var cap := maxf(72.0, room_bottom - status_top - 8.0)
 		status_card.size = Vector2(helm_w, minf(want, cap))
 		status_card.clip_contents = true
@@ -296,17 +354,17 @@ func _layout_chrome(screen: Vector2) -> void:
 	if banner != null:
 		var banner_y := status_bottom + 4.0
 		banner.position = Vector2(margin, banner_y)
-		banner.size = Vector2(helm_w, 28.0 if short else 32.0)
+		banner.size = Vector2(helm_w, 22.0 if short else 24.0)
 		banner.visible = banner.text != "" and banner_y + banner.size.y < room_bottom - 36.0
 	if log_card != null:
 		var log_y := status_bottom + 6.0
 		if banner != null and banner.visible:
 			log_y = banner.position.y + banner.size.y + 4.0
-		var log_cap := 44.0 if short else (64.0 if compact else 72.0)
+		var log_cap := 36.0 if short else (40.0 if compact else 44.0)
 		var log_room := room_bottom - 30.0 - log_y
 		var log_h := minf(log_cap, log_room)
 		log_card.position = Vector2(margin, log_y)
-		log_card.size = Vector2(helm_w if compact or short else minf(620.0, screen.x - margin * 2.0), maxf(log_h, 0.0))
+		log_card.size = Vector2(helm_w, maxf(log_h, 0.0))
 		if log_label != null and log_label.text == "":
 			log_card.visible = false
 		elif log_h < 28.0:
@@ -346,6 +404,12 @@ func _process(_delta: float) -> void:
 		dead_box.hide()
 	if panel_kind == "hangar":
 		_refresh_hangar()
+	elif panel_kind == "fleet":
+		_refresh_fleet()
+	elif panel_kind == "stock":
+		_refresh_stock()
+	elif panel_kind == "build":
+		_refresh_build()
 	elif panel_kind == "dossier":
 		dossier_timer -= _delta
 		if dossier_timer <= 0.0:
@@ -354,7 +418,7 @@ func _process(_delta: float) -> void:
 	elif panel_kind == "heat":
 		panel_body.text = _heat_text()
 	elif panel_kind == "quest":
-		panel_body.text = _quest_text()
+		_fill_quests()
 	elif panel_kind == "claim":
 		panel_body.text = _claim_text()
 	elif panel_kind == "board":
@@ -374,10 +438,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			_close_chat()
 			get_viewport().set_input_as_handled()
 		return
-	if tag_edit != null and is_instance_valid(tag_edit) and tag_edit.has_focus():
+	if _market_field_focused():
 		if key == KEY_ESCAPE:
-			tag_edit.release_focus()
-			Game.text_entry = false
+			_release_market_fields()
 			get_viewport().set_input_as_handled()
 		return
 	if key == KEY_ESCAPE:
@@ -407,15 +470,21 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_Y:
 			_say_result(QuestBoard.mark(Game.sim))
 		KEY_O:
-			_say_result(QuestBoard.accept(Game.sim))
+			_say_result(QuestBoard.try_take(Game.sim))
 		KEY_K:
 			_toggle("claim")
 		KEY_1, KEY_KP_1:
 			_launch("survey_probe")
 		KEY_2, KEY_KP_2:
-			_launch("harvest_drone")
+			_harvest_craft()
+		KEY_5, KEY_KP_5:
+			_plasma_cut()
+		KEY_6, KEY_KP_6:
+			_toggle("market")
 		KEY_3, KEY_KP_3:
 			_launch(_boat_id())
+		KEY_4, KEY_KP_4:
+			Game.tap("sweep", true)
 		KEY_R:
 			_repair()
 		KEY_L:
@@ -459,20 +528,20 @@ func _build_helm() -> void:
 	var status_panel := Panel.new()
 	status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	status_panel.add_theme_stylebox_override("panel", ThemeKit.glass(true))
+	status_panel.add_theme_stylebox_override("panel", ThemeKit.rail(true))
 	status_card.add_child(status_panel)
 	helm_box = VBoxContainer.new()
 	helm_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	helm_box.add_theme_constant_override("separation", 4)
 	helm_box.set_anchors_preset(Control.PRESET_FULL_RECT)
-	helm_box.offset_left = 12
-	helm_box.offset_top = 8
-	helm_box.offset_right = -12
-	helm_box.offset_bottom = -8
+	helm_box.offset_left = 10
+	helm_box.offset_top = 5
+	helm_box.offset_right = -8
+	helm_box.offset_bottom = -4
 	status_card.add_child(helm_box)
 	var box := helm_box
-	helm_name = ThemeKit.label("DARK SECTOR", 12, Color("7ed0dc"))
-	helm_flight = ThemeKit.label("", 18, Color("f2fbff"))
+	helm_name = ThemeKit.label("DARK SECTOR", 11, Color("5ee0f0"))
+	helm_flight = ThemeKit.label("", 18, Color("f4fcff"))
 	helm_zone = ThemeKit.label("", 13, Color("9fd4c8"))
 	helm_name.autowrap_mode = TextServer.AUTOWRAP_OFF
 	helm_flight.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -480,15 +549,19 @@ func _build_helm() -> void:
 	stats_grid = GridContainer.new()
 	stats_grid.columns = 4
 	stats_grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stats_grid.add_theme_constant_override("h_separation", 8)
-	stats_grid.add_theme_constant_override("v_separation", 6)
+	stats_grid.add_theme_constant_override("h_separation", 4)
+	stats_grid.add_theme_constant_override("v_separation", 2)
 	box.add_child(helm_name)
 	box.add_child(helm_flight)
 	box.add_child(stats_grid)
 	stat_hull = _chip("HULL", false)
 	stat_speed = _chip("0 m/s", true)
 	stat_heat = _chip("HEAT", false)
-	stat_purse = _chip("PURSE 0", true)
+	stat_purse = _chip("GRT 0", true)
+	helm_mark = ThemeKit.label("", 13, Color("9be7d0"))
+	helm_mark.autowrap_mode = TextServer.AUTOWRAP_OFF
+	helm_mark.clip_text = true
+	box.add_child(helm_mark)
 	box.add_child(helm_zone)
 	haul_cue = ThemeKit.label("", 18, Color("ffd27a"))
 	haul_cue.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -505,7 +578,7 @@ func _build_helm() -> void:
 	root.add_child(banner)
 	log_card = PanelContainer.new()
 	log_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	log_card.add_theme_stylebox_override("panel", ThemeKit.glass(false))
+	log_card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
 	root.add_child(log_card)
 	log_label = ThemeKit.label("", 13, Color("d5e4e8"))
 	log_label.clip_text = true
@@ -517,8 +590,8 @@ func _chip(text: String, strong: bool) -> Label:
 	var chip := PanelContainer.new()
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chip.add_theme_stylebox_override("panel", ThemeKit.chip_box(strong))
-	var lab := ThemeKit.label(text, 16 if strong else 13, Color("f4fcff") if strong else Color("c5d6dc"))
+	chip.add_theme_stylebox_override("panel", ThemeKit.slim_chip(strong))
+	var lab := ThemeKit.label(text, 13 if strong else 12, Color("f4fcff") if strong else Color("c5d6dc"))
 	lab.autowrap_mode = TextServer.AUTOWRAP_OFF
 	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	chip.add_child(lab)
@@ -531,6 +604,7 @@ func _build_panel() -> void:
 	panel.visible = false
 	panel.clip_contents = true
 	panel.custom_minimum_size = Vector2(420, 400)
+	panel.add_theme_stylebox_override("panel", ThemeKit.rail(true))
 	root.add_child(panel)
 	var margin := MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -543,7 +617,7 @@ func _build_panel() -> void:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 8)
 	box.add_child(head)
-	panel_title = ThemeKit.label("", 20, Color("e6d7bf"))
+	panel_title = ThemeKit.label("", 18, Color("c8f4ff"))
 	panel_title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	panel_title.clip_text = true
 	panel_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -576,6 +650,17 @@ func _build_panel() -> void:
 	hangar_box = VBoxContainer.new()
 	hangar_box.visible = false
 	inner.add_child(hangar_box)
+	fleet_box = VBoxContainer.new()
+	fleet_box.visible = false
+	inner.add_child(fleet_box)
+	stock_box = VBoxContainer.new()
+	stock_box.visible = false
+	stock_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.add_child(stock_box)
+	build_box = VBoxContainer.new()
+	build_box.visible = false
+	build_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.add_child(build_box)
 	dossier_box = VBoxContainer.new()
 	dossier_box.visible = false
 	inner.add_child(dossier_box)
@@ -583,6 +668,10 @@ func _build_panel() -> void:
 	board_box.visible = false
 	board_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	inner.add_child(board_box)
+	quest_box = VBoxContainer.new()
+	quest_box.visible = false
+	quest_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.add_child(quest_box)
 	market_box = VBoxContainer.new()
 	market_box.visible = false
 	market_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -610,7 +699,7 @@ func _build_pause() -> void:
 func _build_dead() -> void:
 	dead_box = _center_card("The ship is a wreck")
 	dead_box.visible = false
-	var note := ThemeKit.label("The wreck keeps your name and some of the hold. The layout stays. You wake at the dock.", 14)
+	var note := ThemeKit.label("Insurance pays a cut of the hull. The wreck keeps your name and some of the hold. The layout stays. You wake at the dock.", 14)
 	note.custom_minimum_size = Vector2(360, 0)
 	var load := ThemeKit.button("Read the log")
 	load.pressed.connect(_load)
@@ -628,7 +717,7 @@ func _size_primary(is_compact: bool) -> void:
 	if cast_button != null:
 		cast_button.text = "Cast" if is_compact else "Cast off"
 		cast_button.add_theme_font_size_override("font_size", 14 if is_compact else 16)
-	for node in [cast_button, dock_button, board_button, quest_button, probe_button]:
+	for node in [cast_button, dock_button, board_button, market_button, quest_button, probe_button]:
 		if node == null:
 			continue
 		var button := node as Button
@@ -642,15 +731,32 @@ func _size_primary(is_compact: bool) -> void:
 func _mount_primary() -> void:
 	primary_bar = PanelContainer.new()
 	primary_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	primary_bar.add_theme_stylebox_override("panel", ThemeKit.glass(true))
+	primary_bar.add_theme_stylebox_override("panel", ThemeKit.rail(true))
 	root.add_child(primary_bar)
+	primary_col = VBoxContainer.new()
+	primary_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	primary_col.add_theme_constant_override("separation", 4)
+	primary_bar.add_child(primary_col)
+	attack_scroll = ScrollContainer.new()
+	attack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	attack_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	attack_scroll.focus_mode = Control.FOCUS_NONE
+	attack_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
+	attack_scroll.custom_minimum_size = Vector2(0, 34)
+	primary_col.add_child(attack_scroll)
+	attack_row = HBoxContainer.new()
+	attack_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	attack_row.add_theme_constant_override("separation", 5)
+	attack_scroll.add_child(attack_row)
 	primary_row = HBoxContainer.new()
 	primary_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	primary_row.add_theme_constant_override("separation", 8)
-	primary_bar.add_child(primary_row)
+	primary_col.add_child(primary_row)
+	_fill_attacks(_weapon_catalog())
 	_reparent(cast_button)
 	_reparent(dock_button)
 	_reparent(board_button)
+	_reparent(market_button)
 	quest_button = ThemeKit.button("Quests", true)
 	quest_button.custom_minimum_size = Vector2(112, 48)
 	quest_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -661,12 +767,138 @@ func _mount_primary() -> void:
 	probe_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	probe_button.pressed.connect(func() -> void: _launch("survey_probe"))
 	primary_row.add_child(probe_button)
+	for node in primary_row.get_children():
+		if node is Button:
+			_sharpen(node)
 
 
 func _reparent(node: Control) -> void:
 	if node.get_parent() != null:
 		node.get_parent().remove_child(node)
 	primary_row.add_child(node)
+
+
+func _weapon_catalog() -> Array:
+	if Game.sim == null:
+		return [{
+			"socket": "nose",
+			"name": "Main turret",
+			"family": "bullet",
+			"short": "TURRET",
+		}]
+	return HelmCombat.weapon_rows(Game.sim, Game.sim.player)
+
+
+func _refresh_attacks() -> void:
+	if attack_row == null:
+		return
+	var rows := _weapon_catalog()
+	var bits: PackedStringArray = PackedStringArray()
+	for raw in rows:
+		var row: Dictionary = raw
+		bits.append("%s:%s" % [str(row.socket), str(row.name)])
+	var sig := "|".join(bits)
+	if sig != attack_sig:
+		attack_sig = sig
+		_fill_attacks(rows)
+	var armed := ""
+	if Game.sim != null:
+		armed = str(Game.sim.player.get("engage", ""))
+	var short := compact or get_viewport().get_visible_rect().size.y < 520.0
+	for raw in rows:
+		var row: Dictionary = raw
+		var socket := str(row.socket)
+		if not attack_buttons.has(socket):
+			continue
+		var button: Button = attack_buttons[socket]
+		button.text = str(row.short) if short else str(row.name)
+		_tint_attack(button, str(row.family), armed == socket)
+
+
+func _fill_attacks(rows: Array) -> void:
+	for child in attack_row.get_children():
+		attack_row.remove_child(child)
+		child.queue_free()
+	attack_buttons.clear()
+	var tag := ThemeKit.label("ATTACK", 10, Color("5ee0f0"))
+	tag.autowrap_mode = TextServer.AUTOWRAP_OFF
+	tag.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tag.custom_minimum_size = Vector2(0, 0)
+	attack_row.add_child(tag)
+	var short := compact or get_viewport().get_visible_rect().size.y < 520.0
+	for raw in rows:
+		var row: Dictionary = raw
+		var title := str(row.short) if short else str(row.name)
+		var button := ThemeKit.slim_button(title)
+		button.custom_minimum_size = Vector2(70 if short else 92, 32)
+		button.pressed.connect(_press_attack.bind(str(row.socket), str(row.name)))
+		attack_row.add_child(button)
+		_sharpen(button)
+		_tint_attack(button, str(row.family), false)
+		attack_buttons[str(row.socket)] = button
+	if attack_scroll != null:
+		var need := 0.0
+		var gap := float(attack_row.get_theme_constant("separation"))
+		for child in attack_row.get_children():
+			need += (child as Control).get_combined_minimum_size().x + gap
+		attack_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if need > 420.0 else ScrollContainer.SCROLL_MODE_SHOW_NEVER
+
+
+func _press_attack(socket: String, gun_name: String) -> void:
+	if Game.sim == null:
+		return
+	var lock := str(Game.sim.player.get("lock_id", ""))
+	if lock == "":
+		Game.sim.say("Lock a ship first.")
+		return
+	var armed := str(Game.sim.player.get("engage", ""))
+	if armed == socket:
+		Game.tap("engage", {"socket": "", "lock": lock, "name": gun_name})
+		return
+	Game.tap("engage", {"socket": socket, "lock": lock, "name": gun_name})
+
+
+func _tint_attack(button: Button, family: String, armed: bool) -> void:
+	var ink := Color("e8b36a")
+	var edge := Color(0.86, 0.68, 0.32, 0.7)
+	match family:
+		"laser":
+			ink = Color("7ed0dc")
+			edge = Color(0.45, 0.86, 0.92, 0.78)
+		"missile":
+			ink = Color("f0c27a")
+			edge = Color(0.9, 0.72, 0.32, 0.78)
+		"pd":
+			ink = Color("9be7d0")
+			edge = Color(0.45, 0.86, 0.7, 0.78)
+		"bullet":
+			ink = Color("e8b36a")
+			edge = Color(0.86, 0.68, 0.32, 0.7)
+		_:
+			ink = Color("c5d6dc")
+			edge = Color(0.45, 0.8, 0.88, 0.5)
+	if armed:
+		ThemeKit.paint(button, true)
+		button.add_theme_font_size_override("font_size", 13)
+		button.add_theme_color_override("font_color", ink.lerp(Color.WHITE, 0.4))
+		for state in ["normal", "hover", "pressed"]:
+			var lit := button.get_theme_stylebox(state, "Button") as StyleBoxFlat
+			if lit == null:
+				continue
+			lit.border_width_left = 3
+			lit.border_color = edge
+			lit.set_corner_radius_all(2)
+		return
+	button.add_theme_color_override("font_color", ink)
+	button.add_theme_font_size_override("font_size", 12)
+	for state in ["normal", "hover", "pressed"]:
+		var box := button.get_theme_stylebox(state, "Button") as StyleBoxFlat
+		if box == null:
+			continue
+		box.border_width_left = 2
+		box.border_color = edge
+		box.set_corner_radius_all(2)
 
 
 func _build_actions() -> void:
@@ -682,12 +914,24 @@ func _build_actions() -> void:
 	action_scroll.add_child(action_row)
 	_group("COMBAT")
 	_action("Lock", func() -> void: Game.tap("lock_cycle", 1))
+	_action("Engage", _hud_engage)
 	_action("Stop", func() -> void: Game.tap("order", {"kind": "stop"}))
+	_action("Form", func() -> void: _fleet_order("form"))
+	_action("Attack", func() -> void: _fleet_order("attack"))
+	_action("Recall", func() -> void: _fleet_order("recall"))
 	_group("SHIP")
 	_action("Ship", func() -> void: _toggle("bay"))
+	_action("Fleet", func() -> void: _toggle("fleet"))
+	_action("Stock", func() -> void: _toggle("stock"))
+	_action("Make", func() -> void: _toggle("build"))
+	_action("Market", func() -> void: _toggle("market"))
+	_action("Harvest", _harvest_craft)
+	_action("Salvage", _salvage_wreck)
+	_action("Bolt", _bolt_stock)
+	_action("Plasma", _plasma_cut)
 	_action("Weld", _repair)
 	_action("Hangar", func() -> void: _toggle("hangar"))
-	_action("Harvest", func() -> void: _launch("harvest_drone"))
+	_action("Return", _recall_craft)
 	_action("Boat", func() -> void: _launch(_boat_id()))
 	_group("SURVEY")
 	_action("Scan", func() -> void: _toggle("dossier"))
@@ -699,15 +943,16 @@ func _build_actions() -> void:
 	_action("Take", func() -> void:
 		if Game.sim == null:
 			return
-		_say_result(QuestBoard.accept(Game.sim))
+		_say_result(QuestBoard.try_take(Game.sim))
 	)
+	_action("Approach", _approach_job)
+	_action("Sweep", func() -> void: Game.tap("sweep", true))
 	_action("Site", func() -> void:
 		if Game.sim == null:
 			return
 		_say_result(Game.sim.enter_site())
 	)
 	_group("DOCK")
-	_action("Market", func() -> void: _toggle("market"))
 	_action("Lane", func() -> void:
 		if Game.sim == null:
 			return
@@ -718,13 +963,49 @@ func _build_actions() -> void:
 	_action("Flag", func() -> void: Game.tap("flag", true))
 	_action("Heat", func() -> void: _toggle("heat"))
 	_action("Claim", func() -> void: _toggle("claim"))
+	_action("Walk", _walk_pocket)
+	_action("Plant", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.try_plant(Game.sim))
+	)
+	_action("Core", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.try_make_core(Game.sim))
+	)
+	_action("Tend", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.tend(Game.sim))
+	)
+	_action("Feed", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.feed(Game.sim))
+	)
+	_action("Haul", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.haul(Game.sim))
+	)
+	_action("Pen", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.fit_pen(Game.sim))
+	)
+	_action("Turret", func() -> void:
+		if Game.sim == null:
+			return
+		_say_result(Homestead.toggle_turret(Game.sim))
+	)
 	_action("Crack", func() -> void: Game.tap("crack", true))
 	_group("COMMS")
 	_action("Chat", _toggle_chat)
 
 
 func _group(text: String) -> void:
-	var tag := ThemeKit.label(text, 10, Color("6fa6b2"))
+	var tag := ThemeKit.label(text, 10, Color("5ee0f0"))
 	tag.autowrap_mode = TextServer.AUTOWRAP_OFF
 	tag.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -737,10 +1018,39 @@ func _group(text: String) -> void:
 	action_row.add_child(tag)
 
 
+func _action_span(limit: float) -> float:
+	if action_row == null:
+		return limit
+	var x := 0.0
+	var last := 80.0
+	var gap := float(action_row.get_theme_constant("separation"))
+	for child in action_row.get_children():
+		var node := child as Control
+		var w := node.get_combined_minimum_size().x
+		if x + w > limit and last > 120.0:
+			return last
+		x += w
+		last = x
+		x += gap
+	return minf(last, limit)
+
+
+func _sharpen(node: Button) -> void:
+	for state in ["normal", "hover", "pressed"]:
+		var box := node.get_theme_stylebox(state, "Button") as StyleBoxFlat
+		if box == null:
+			continue
+		var copy := box.duplicate() as StyleBoxFlat
+		copy.set_corner_radius_all(2)
+		copy.content_margin_left = 10
+		copy.content_margin_right = 10
+		copy.content_margin_top = 4
+		copy.content_margin_bottom = 4
+		node.add_theme_stylebox_override(state, copy)
+
+
 func _action(text: String, call: Callable) -> void:
-	var node := ThemeKit.button(text, false)
-	node.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	node.custom_minimum_size = Vector2(84, 44)
+	var node := ThemeKit.slim_button(text)
 	node.pressed.connect(call)
 	action_row.add_child(node)
 
@@ -770,7 +1080,7 @@ func _center_card(title: String) -> PanelContainer:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
 	card.add_child(box)
-	box.add_child(ThemeKit.label(title, 22, Color("e6d7bf")))
+	box.add_child(ThemeKit.label(title, 22, Color("c8f4ff")))
 	return card
 
 
@@ -834,8 +1144,16 @@ func _refresh_helm() -> void:
 	elif stage == "fine" or stage == "hail":
 		heat_color = Color("f0c36a")
 	stat_heat.add_theme_color_override("font_color", heat_color)
-	stat_purse.text = "PURSE  %d" % DockBoard.purse(sim)
+	stat_purse.text = "GRT  %d" % DockBoard.purse(sim)
 	stat_purse.add_theme_color_override("font_color", Color("f0d48a"))
+	if helm_mark != null:
+		var mark_line := _mark_line(sim)
+		helm_mark.text = mark_line
+		helm_mark.visible = mark_line != "" and screen.y >= 520.0
+		if mark_line.begins_with("LOCK"):
+			helm_mark.add_theme_color_override("font_color", Color("f0a0a0"))
+		else:
+			helm_mark.add_theme_color_override("font_color", Color("9be7d0"))
 	var place := "Moored" if moored else ScaleFrame.layer_name(int(sim.layer))
 	var dock_word := ""
 	if moored == false and str(sim.defs.system.id) == "HC-V1-R1-S1" and int(sim.layer) == ScaleFrame.BAND and sim.beacon_pos != Vector2.ZERO:
@@ -844,7 +1162,7 @@ func _refresh_helm() -> void:
 	helm_zone.text = "%s  ·  %s  ·  %s%s%s" % [place, zoom_word, law_name, dock_word, link_word]
 	helm_zone.add_theme_color_override("font_color", Law.color_of(law_name))
 	if haul_cue != null:
-		var cue := DockBoard.slip_line(sim)
+		var cue := QuestBoard.cue_line(sim)
 		haul_cue.text = cue
 		haul_cue.visible = cue != ""
 	var repair := ""
@@ -854,19 +1172,20 @@ func _refresh_helm() -> void:
 	if not gate.is_empty():
 		repair += "  ·  %s" % str(gate.name)
 	helm_cargo.text = _cargo_line(sim, stats) + repair
-	helm_cargo.visible = not compact
+	helm_cargo.visible = not compact and panel_kind == ""
 	helm_craft.text = _craft_line(sim)
-	helm_craft.visible = not compact
+	helm_craft.visible = not compact and panel_kind == ""
 	var bits: Array = []
 	for line in sim.lines:
 		bits.append(str(line.text))
-	var keep := 2 if compact else 3
+	var keep := 2
 	if bits.size() > keep:
 		bits = bits.slice(0, keep)
 	log_label.text = "\n".join(bits)
 	log_label.max_lines_visible = keep
 	if log_card != null:
 		log_card.visible = log_label.text != "" and log_card.size.y >= 28.0
+	_refresh_attacks()
 	if screen.x >= 64.0:
 		_layout_chrome(screen)
 
@@ -881,28 +1200,65 @@ func _mass_line(stats: Dictionary) -> String:
 	return "mass %.0f t" % mass
 
 
+func _mark_line(sim) -> String:
+	var lock = HelmCombat.find_unit(sim, str(sim.player.get("lock_id", "")))
+	if lock != null:
+		var gap: float = sim.player.pos.distance_to(lock.pos)
+		var name := str(lock.get("callsign", lock.get("name", "contact")))
+		return "LOCK  %s  ·  %d m" % [name, int(gap)]
+	var place = HelmHarvest.marked(sim)
+	if place != null:
+		var gap: float = sim.player.pos.distance_to(place.pos)
+		var word := "ready" if HelmHarvest.ready(sim, place) else "scan"
+		return "MARK  %s  ·  %d m  ·  %s" % [str(place.name), int(gap), word]
+	var order = sim.player.get("order", {})
+	if typeof(order) == TYPE_DICTIONARY and str(order.get("kind", "")) == "approach":
+		var label := str(order.get("label", ""))
+		if label != "":
+			return "MARK  %s" % label
+	return ""
+
+
 func _cargo_line(sim, stats: Dictionary) -> String:
+	var used := Fit.cargo_used(sim.player)
+	var cap := int(stats.cargo_cap)
 	if sim.player.cargo.is_empty():
-		return "Hold empty.  0/%d" % int(stats.cargo_cap)
+		return "HOLD  0/%d" % cap
 	var parts: Array = []
+	var seen := 0
 	for id in sim.player.cargo.keys():
-		parts.append("%s ×%d" % [sim.resource_name(str(id)), int(sim.player.cargo[id])])
-	return "%s    %d/%d" % ["   ".join(parts), Fit.cargo_used(sim.player), int(stats.cargo_cap)]
+		if seen >= 2:
+			parts.append("+%d" % (sim.player.cargo.size() - 2))
+			break
+		parts.append("%s ×%d" % [_short_stock(sim, str(id)), int(sim.player.cargo[id])])
+		seen += 1
+	return "HOLD  %d/%d  ·  %s" % [used, cap, "  ".join(parts)]
+
+
+func _short_stock(sim, id: String) -> String:
+	var name := str(sim.resource_name(id))
+	var cut := name.find(" ")
+	if cut > 0:
+		return name.substr(0, cut)
+	return name
 
 
 func _craft_line(sim) -> String:
-	var bits: Array = []
 	if sim.hangar_down():
-		bits.append("Hangar down — craft cannot come aboard")
+		return "HANGAR down"
+	var out := 0
+	var live := ""
 	for item in sim.craft:
-		if str(item.state) == "docked":
+		if str(item.state) == "docked" or str(item.state) == "lost":
 			continue
-		bits.append("%s %s" % [item.name, item.state])
-	if bits.is_empty():
-		return "Hangar sealed. Craft are aboard."
-	if sim.hangar_down() and bits.size() == 1:
-		return str(bits[0])
-	return "   ".join(bits)
+		out += 1
+		if live == "":
+			live = "%s %s" % [item.name, item.state]
+	if out == 0:
+		return "CRAFT  sealed"
+	if out == 1:
+		return "CRAFT  %s" % live
+	return "CRAFT  %d out  ·  %s" % [out, live]
 
 
 func _toggle(kind: String) -> void:
@@ -911,9 +1267,16 @@ func _toggle(kind: String) -> void:
 		return
 	panel_kind = kind
 	panel.show()
-	panel_body.visible = kind in ["heat", "quest", "claim"]
+	panel_body.visible = kind in ["heat", "claim"]
+	if quest_box != null:
+		quest_box.visible = kind == "quest"
 	bay_box.visible = kind == "bay"
 	hangar_box.visible = kind == "hangar"
+	fleet_box.visible = kind == "fleet"
+	if stock_box != null:
+		stock_box.visible = kind == "stock"
+	if build_box != null:
+		build_box.visible = kind == "build"
 	dossier_box.visible = kind == "dossier"
 	board_box.visible = kind == "board"
 	if market_box != null:
@@ -925,6 +1288,15 @@ func _toggle(kind: String) -> void:
 		"hangar":
 			panel_title.text = "Hangar"
 			_build_hangar()
+		"fleet":
+			panel_title.text = "Fleet"
+			_build_fleet()
+		"stock":
+			panel_title.text = "Inventory"
+			_build_stock()
+		"build":
+			panel_title.text = "Make"
+			_build_make()
 		"dossier":
 			panel_title.text = "Scan dossier"
 			_fill_dossier()
@@ -933,13 +1305,14 @@ func _toggle(kind: String) -> void:
 			panel_body.text = _heat_text()
 		"quest":
 			panel_title.text = "Quest log"
-			panel_body.text = _quest_text()
+			quest_sig = ""
+			_fill_quests()
 		"board":
 			panel_title.text = "Helion Dock board"
 			board_sig = ""
 			_fill_board()
 		"market":
-			panel_title.text = "Helion market"
+			panel_title.text = "EXCHANGE"
 			_fill_market()
 		"claim":
 			panel_title.text = "Homestead"
@@ -948,9 +1321,7 @@ func _toggle(kind: String) -> void:
 
 
 func _close_panel() -> void:
-	if tag_edit != null and is_instance_valid(tag_edit):
-		tag_edit.release_focus()
-	Game.text_entry = false
+	_release_market_fields()
 	panel_kind = ""
 	panel.hide()
 	_fit()
@@ -965,11 +1336,11 @@ func _place_minimap(screen: Vector2, primary_y: float, short: bool) -> void:
 		return
 	var top := stick_button.position.y + stick_button.size.y + 6.0
 	var room := primary_y - 8.0 - top
-	var want := 156.0
+	var want := 118.0
 	if compact:
-		want = 104.0
+		want = 96.0
 	if short:
-		want = 88.0
+		want = 80.0
 	var side := minf(want, room)
 	var right := screen.x - 8.0
 	var left_limit := 8.0
@@ -1028,7 +1399,7 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 	if panel_scroll != null:
 		panel_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 		panel_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	if panel_kind == "bay" and not compact:
+	if (panel_kind == "bay" or panel_kind == "stock" or panel_kind == "fleet" or panel_kind == "market" or panel_kind == "build") and not compact:
 		# Fitting glass sits in the open helm: right of the status card, above
 		# the tank capsule, and clear of Hold and Stick.
 		var left := 360.0
@@ -1041,33 +1412,61 @@ func _place_panel(screen: Vector2, primary_y: float, short: bool, pad_top: float
 			right = minf(right, stick_button.position.x - 8.0)
 		var top := 16.0
 		var bottom := screen.y - 160.0
-		if overlay != null:
+		if panel_kind == "bay" and overlay != null:
 			var cap: Control = overlay.get("capsule")
 			if cap != null and cap.visible:
 				bottom = minf(bottom, cap.position.y - 8.0)
 		panel.custom_minimum_size = Vector2(0, 0)
 		panel.position = Vector2(left, top)
-		panel.size = Vector2(maxf(480.0, right - left), maxf(280.0, bottom - top))
-		_fit_ship_pane()
+		var tall := 280.0
+		if panel_kind == "stock" or panel_kind == "fleet" or panel_kind == "market" or panel_kind == "build":
+			tall = 420.0
+		panel.size = Vector2(maxf(480.0, right - left), maxf(tall, bottom - top))
+		if panel_kind == "bay":
+			_fit_ship_pane()
+		elif panel_kind == "fleet":
+			_fit_fleet_pane()
+		elif panel_kind == "market":
+			_fit_market_pane()
+		elif panel_kind == "build":
+			_fit_build_pane()
+		else:
+			_fit_stock_pane()
 		return
-	var side := 460.0
+	var side := 400.0
 	if compact:
 		panel.custom_minimum_size = Vector2(0, 0)
 		panel.position = Vector2(8, screen.y * 0.22)
 		panel.size = Vector2(screen.x - 16.0, screen.y * 0.5)
 	else:
 		panel.custom_minimum_size = Vector2(420, 400)
-		panel.position = Vector2(screen.x - side - 16.0, 16)
-		panel.size = Vector2(side, screen.y - 150.0)
+		var right := screen.x - 16.0
+		if hold_button != null and hold_button.visible:
+			right = minf(right, hold_button.position.x - 8.0)
+		if stick_button != null and stick_button.visible:
+			right = minf(right, stick_button.position.x - 8.0)
+		var left_limit := 360.0
+		if status_card != null and status_card.size.x > 40.0:
+			left_limit = status_card.position.x + status_card.size.x + 12.0
+		var room := right - left_limit
+		var width := side
+		if room < side:
+			width = maxf(280.0, room)
+		if room < 280.0:
+			width = maxf(200.0, right - 16.0)
+		var bottom := primary_y - 120.0
+		panel.position = Vector2(right - width, 16)
+		panel.size = Vector2(width, maxf(280.0, bottom - 16.0))
 
 
 func _place_board_button(_is_compact: bool) -> void:
-	if board_button == null:
-		return
 	var at := false
 	if Game.sim != null and Game.mode == "sector":
 		at = DockBoard.at_pad(Game.sim)
-	board_button.visible = at
+	if board_button != null:
+		board_button.visible = at
+	if market_button != null:
+		market_button.visible = at
 
 
 func _fill_board() -> void:
@@ -1084,11 +1483,11 @@ func _fill_board() -> void:
 	board_sig = sig
 	for child in board_box.get_children():
 		child.queue_free()
-	var where := "Stand the Helion pad to take a slip. Pay lands in the purse."
+	var where := "Stand the Helion pad to take a slip. Pay lands in GRT."
 	if DockBoard.at_pad(sim):
-		where = "You are on the Helion pad. Take a slip. Pay lands in the purse."
+		where = "You are on the Helion pad. Take a slip. Pay lands in GRT."
 	board_box.add_child(_flat(where, 14, Color("cbb892")))
-	board_box.add_child(_flat("Purse %d" % DockBoard.purse(sim), 16, Color("d7e6c8")))
+	board_box.add_child(_flat("GRT %d" % DockBoard.purse(sim), 16, Color("d7e6c8")))
 	var market := ThemeKit.button("Market")
 	market.pressed.connect(func() -> void: _toggle("market"))
 	board_box.add_child(market)
@@ -1109,42 +1508,755 @@ func _fill_market() -> void:
 	if Game.sim == null or market_box == null:
 		return
 	var sim = Game.sim
-	var focused := tag_edit != null and is_instance_valid(tag_edit) and tag_edit.has_focus()
+	var focused := _market_field_focused()
 	var draft := ""
 	if tag_edit != null and is_instance_valid(tag_edit):
 		draft = tag_edit.text
-	if market_box.get_child_count() > 0 and (focused or draft != DockBoard.tag_of(sim)):
+	if market_box.get_child_count() > 0 and focused:
 		_paint_market(sim)
 		return
-	var sig := "%s|%d|%d|%s" % [DockBoard.at_pad(sim), DockBoard.purse(sim), DockBoard.holding(sim), DockBoard.tag_of(sim)]
+	if tag_edit != null and is_instance_valid(tag_edit) and draft != DockBoard.tag_of(sim):
+		_paint_market(sim)
+		return
+	var page := market_page
+	if page == "board" or page == "list":
+		page = "desk"
+		market_page = "desk"
+	var sig := "%s|%s|%s|%d|%d|%s|%s|%s|%d|%d" % [page, market_item, HelmMarket.on_pad(sim, sim.player), DockBoard.purse(sim), DockBoard.holding(sim), DockBoard.tag_of(sim), _cargo_sig(), HelmMarket.board_sig(sim), market_offer_qty, market_offer_ask]
 	if sig == market_sig and market_box.get_child_count() > 0:
 		return
 	market_sig = sig
 	for child in market_box.get_children():
 		child.queue_free()
 	tag_edit = null
-	var where := "The Helion market stands on the pad."
-	if DockBoard.at_pad(sim):
-		where = "Glasswheat on the Helion pad. Buy %d. Sell %d." % [DockBoard.BUY_PRICE, DockBoard.SELL_PRICE]
-	market_box.add_child(_flat(where, 14, Color("cbb892")))
-	market_purse = _flat("Purse %d" % DockBoard.purse(sim), 16, Color("d7e6c8"))
+	market_ask_labs.clear()
+	market_qty_labs.clear()
+	market_repost_labs.clear()
+	market_buy_labs.clear()
+	market_buy_btns.clear()
+	market_list_btns.clear()
+	market_tape = null
+	market_live = null
+	market_hold = null
+	market_purse = _flat(HelmMarket.desk_line(sim, sim.player), 15, Color("f0d48a"))
 	market_box.add_child(market_purse)
-	market_hold = _flat("Glasswheat in the hold  %d" % DockBoard.holding(sim), 15)
+	if page == "desk" or page == "tape":
+		market_tape = _flat(HelmMarket.tape_line(sim), 13, Color("cbb892"))
+		market_box.add_child(market_tape)
+	market_box.add_child(_market_tabs())
+	match page:
+		"buy":
+			_fill_buy(sim)
+		"sell":
+			_fill_sell(sim)
+		"yard":
+			_fill_yard(sim)
+		"tape":
+			_fill_tape(sim)
+		_:
+			_fill_desk(sim)
+	_fit_market_pane()
+
+
+func _market_tabs() -> Control:
+	var rail := HBoxContainer.new()
+	rail.add_theme_constant_override("separation", 6)
+	rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var page := market_page
+	if page == "board" or page == "list" or page == "buy" or page == "sell":
+		page = "desk"
+	for spec in [["desk", "Exchange"], ["tape", "Last"], ["yard", "Yard"]]:
+		var id := str(spec[0])
+		var btn := ThemeKit.slim_toggle(str(spec[1]), page == id)
+		btn.custom_minimum_size = Vector2(80, 32)
+		btn.pressed.connect(_set_market_page.bind(id))
+		rail.add_child(btn)
+	return rail
+
+
+func _market_filters(sim) -> Control:
+	var rail := HBoxContainer.new()
+	rail.add_theme_constant_override("separation", 6)
+	rail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var all := ThemeKit.slim_toggle("All", market_filter == "")
+	all.custom_minimum_size = Vector2(48, 32)
+	all.pressed.connect(_set_market_filter.bind(""))
+	rail.add_child(all)
+	for raw_id in HelmMarket.board_items(sim):
+		var item_id := str(raw_id)
+		var btn := ThemeKit.slim_toggle(HelmMarket.short_name(sim, item_id), market_filter == item_id)
+		btn.custom_minimum_size = Vector2(56, 32)
+		btn.pressed.connect(_set_market_filter.bind(item_id))
+		rail.add_child(btn)
+	return rail
+
+
+func _set_market_page(page: String) -> void:
+	market_page = page
+	if page == "desk" or page == "yard" or page == "tape":
+		market_item = ""
+	market_sig = ""
+	_fill_market()
+
+
+func _open_buy() -> void:
+	market_page = "buy"
+	market_item = ""
+	market_offer_qty = 1
+	market_offer_ask = 0
+	market_sig = ""
+	_fill_market()
+
+
+func _open_sell(item_id: String = "") -> void:
+	market_page = "sell"
+	market_item = item_id
+	market_offer_qty = 1
+	market_offer_ask = 0
+	if item_id != "" and Game.sim != null:
+		var skip := str(Game.sim.player.get("agent_id", ""))
+		market_offer_ask = HelmMarket.guide_price(Game.sim, item_id, skip)
+		var held := int(Game.sim.player.cargo.get(item_id, 0))
+		market_offer_qty = 1 if held <= 0 else HelmMarket.clip_count(1, held)
+	market_sig = ""
+	_fill_market()
+
+
+func _item_span() -> Vector2:
+	return Vector2(64, 60) if compact else Vector2(88, 80)
+
+
+func _item_glass(id: String, span: Vector2 = Vector2.ZERO) -> Control:
+	var glass := StockGlass.new()
+	glass.stock_id = id
+	glass.custom_minimum_size = _item_span() if span == Vector2.ZERO else span
+	glass.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	glass.call_deferred("show_stock", id)
+	return glass
+
+
+func _item_pick(sim, item_id: String, selected: bool, side: String, extra: String = "") -> Control:
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", ThemeKit.slim_chip(selected))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 3)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(col)
+	col.add_child(_item_glass(item_id))
+	var word := HelmMarket.short_name(sim, item_id)
+	if extra != "":
+		word = "%s  %s" % [word, extra]
+	var btn := ThemeKit.slim_toggle(word, selected)
+	btn.custom_minimum_size = Vector2(56, 32)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.pressed.connect(_pick_market_item.bind(item_id, side))
+	col.add_child(btn)
+	return card
+
+
+func _desk_cols() -> int:
+	if compact:
+		return 2
+	return 3
+
+
+func _fill_desk(sim) -> void:
+	var mine := str(sim.player.get("agent_id", ""))
+	var slots: Array = HelmMarket.own_desk(sim, mine)
+	var waiting: Array = []
+	var grid := GridContainer.new()
+	grid.columns = _desk_cols()
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	market_box.add_child(grid)
+	for i in slots.size():
+		var raw = slots[i]
+		var row: Dictionary = raw if typeof(raw) == TYPE_DICTIONARY else {}
+		if HelmMarket.can_collect(row):
+			waiting.append(row)
+		grid.add_child(_slot_card(sim, i, row))
+	_fill_collect_box(sim, waiting)
+
+
+func _fill_collect_box(sim, waiting: Array) -> void:
+	market_box.add_child(_section("Collect"))
+	if waiting.is_empty():
+		market_box.add_child(_flat("Nothing waiting. Fills land here.", 12, Color("8d826c")))
+		return
+	for raw in waiting:
+		var row: Dictionary = raw
+		var item_id := str(row.get("item", ""))
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", 8)
+		line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(_item_glass(item_id, Vector2(48, 44)))
+		var crates := int(row.get("collect_item", 0))
+		var coins := int(row.get("collect_coins", 0))
+		var words: PackedStringArray = PackedStringArray()
+		if crates > 0:
+			words.append("%s ×%d" % [sim.resource_name(item_id), crates])
+		if coins > 0:
+			words.append("%d GRT" % coins)
+		var lab := _flat("  ".join(words), 13, Color("d7e6c8"))
+		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(lab)
+		var take := ThemeKit.slim_button("Collect")
+		take.custom_minimum_size = Vector2(72, 32)
+		take.pressed.connect(_collect_offer.bind(str(row.id)))
+		line.add_child(take)
+		market_box.add_child(line)
+	var all := ThemeKit.button("Collect all")
+	all.pressed.connect(_collect_all)
+	market_box.add_child(all)
+
+
+func _slot_card(sim, index: int, row: Dictionary) -> Control:
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var hot := not row.is_empty()
+	var side := str(row.get("side", "sell"))
+	card.add_theme_stylebox_override("panel", ThemeKit.slim_chip(hot and side == "buy"))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(col)
+	col.add_child(_flat("SLOT  %d" % (index + 1), 11, Color("5ee0f0")))
+	if row.is_empty():
+		col.add_child(_flat("Empty", 13, Color("8d826c")))
+		var pair := HBoxContainer.new()
+		pair.add_theme_constant_override("separation", 6)
+		var buy := ThemeKit.slim_button("Buy")
+		buy.custom_minimum_size = Vector2(64, 32)
+		buy.pressed.connect(_open_buy)
+		var sell := ThemeKit.slim_button("Sell")
+		sell.custom_minimum_size = Vector2(64, 32)
+		sell.pressed.connect(_open_sell.bind(""))
+		if not HelmMarket.on_pad(sim, sim.player):
+			buy.disabled = true
+			sell.disabled = true
+		pair.add_child(buy)
+		pair.add_child(sell)
+		col.add_child(pair)
+		return card
+	var item_id := str(row.get("item", ""))
+	var body := HBoxContainer.new()
+	body.add_theme_constant_override("separation", 8)
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(_item_glass(item_id))
+	var meta := VBoxContainer.new()
+	meta.add_theme_constant_override("separation", 2)
+	meta.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(meta)
+	var filled := HelmMarket.offer_filled(row)
+	var want := HelmMarket.offer_want(row)
+	var ink := Color("7ed0dc") if side == "buy" else Color("f0d48a")
+	meta.add_child(_flat("%s  %s" % [side.to_upper(), sim.resource_name(item_id)], 13, ink))
+	meta.add_child(_flat("%d / %d  ·  %d GRT" % [filled, want, HelmMarket.unit_price(row)], 12, Color("cbb892")))
+	var track := ProgressBar.new()
+	track.min_value = 0
+	track.max_value = maxi(1, want)
+	track.value = filled
+	track.show_percentage = false
+	track.custom_minimum_size = Vector2(0, 8)
+	track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	meta.add_child(track)
+	col.add_child(body)
+	var pair := HBoxContainer.new()
+	pair.add_theme_constant_override("separation", 6)
+	if HelmMarket.can_collect(row):
+		var take := ThemeKit.slim_button("Collect")
+		take.custom_minimum_size = Vector2(72, 32)
+		take.pressed.connect(_collect_offer.bind(str(row.id)))
+		pair.add_child(take)
+	if int(row.get("count", 0)) > 0 or HelmMarket.can_collect(row):
+		var abort := ThemeKit.slim_button("Abort")
+		abort.custom_minimum_size = Vector2(64, 32)
+		if not HelmMarket.on_pad(sim, sim.player):
+			abort.disabled = true
+		abort.pressed.connect(_pull_listing.bind(str(row.id)))
+		pair.add_child(abort)
+	if pair.get_child_count() > 0:
+		col.add_child(pair)
+	return card
+
+
+func _fill_buy(sim) -> void:
+	var back := ThemeKit.slim_button("Back")
+	back.custom_minimum_size = Vector2(72, 32)
+	back.pressed.connect(_set_market_page.bind("desk"))
+	market_box.add_child(back)
+	market_box.add_child(_section("Buy offer"))
+	var skip := str(sim.player.get("agent_id", ""))
+	var picks := GridContainer.new()
+	picks.columns = _inv_cols()
+	picks.add_theme_constant_override("h_separation", 6)
+	picks.add_theme_constant_override("v_separation", 6)
+	picks.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for raw_id in HelmMarket.catalog():
+		var item_id := str(raw_id)
+		picks.add_child(_item_pick(sim, item_id, market_item == item_id, "buy"))
+	market_box.add_child(picks)
+	if market_item == "":
+		market_box.add_child(_flat("Pick a good.", 13, Color("8d826c")))
+		return
+	_ensure_offer(sim, market_item, skip, 99)
+	var quote := HelmMarket.quote_line(sim, market_item, skip)
+	var head := str(sim.resource_name(market_item))
+	if quote != "":
+		head = "%s    %s" % [head, quote]
+	market_box.add_child(_flat(head, 14, Color("e7f3f6")))
+	market_box.add_child(_flat("Guide  %d GRT" % HelmMarket.guide_price(sim, market_item, skip), 13, Color("cbb892")))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.add_child(_step_row("_offer", "qty", market_offer_qty, 1, HelmMarket.COUNT_MAX, ""))
+	row.add_child(_step_row("_offer", "ask", market_offer_ask, HelmMarket.PRICE_MIN, HelmMarket.PRICE_MAX, " GRT"))
+	var down := ThemeKit.slim_button("-5%")
+	down.custom_minimum_size = Vector2(48, 32)
+	down.pressed.connect(_nudge_offer_pct.bind(-5))
+	var up := ThemeKit.slim_button("+5%")
+	up.custom_minimum_size = Vector2(48, 32)
+	up.pressed.connect(_nudge_offer_pct.bind(5))
+	row.add_child(down)
+	row.add_child(up)
+	market_box.add_child(row)
+	var total := market_offer_ask * market_offer_qty
+	market_box.add_child(_flat("Pays  %d GRT  ·  leftover refunds to Collect." % total, 12, Color("8eb8c0")))
+	var confirm := ThemeKit.button("Confirm offer")
+	var block := ""
+	if not HelmMarket.on_pad(sim, sim.player):
+		block = "On pad"
+	elif HelmMarket.coins(sim, sim.player) < total:
+		block = "Need %d" % total
+	elif not HelmMarket.has_slot(sim, sim.player):
+		block = "Slots full"
+	if block != "":
+		confirm.text = block
+		confirm.disabled = true
+	confirm.pressed.connect(_confirm_buy)
+	market_box.add_child(confirm)
+
+
+func _fill_sell(sim) -> void:
+	var back := ThemeKit.slim_button("Back")
+	back.custom_minimum_size = Vector2(72, 32)
+	back.pressed.connect(_set_market_page.bind("desk"))
+	market_box.add_child(back)
+	market_box.add_child(_section("Sell offer"))
+	var skip := str(sim.player.get("agent_id", ""))
+	var cargo: Dictionary = sim.player.cargo
+	var any := false
+	var picks := GridContainer.new()
+	picks.columns = _inv_cols()
+	picks.add_theme_constant_override("h_separation", 6)
+	picks.add_theme_constant_override("v_separation", 6)
+	picks.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var keys: Array = cargo.keys()
+	keys.sort()
+	for raw_id in keys:
+		var item_id := str(raw_id)
+		if not HelmMarket.listable(item_id):
+			continue
+		var held := int(cargo[item_id])
+		if held <= 0:
+			continue
+		any = true
+		picks.add_child(_item_pick(sim, item_id, market_item == item_id, "sell", "×%d" % held))
+	if not any:
+		market_box.add_child(_flat("Harvest a seam, then sell it here on the pad.", 13, Color("8d826c")))
+		return
+	market_box.add_child(picks)
+	if market_item == "" or int(cargo.get(market_item, 0)) <= 0:
+		market_box.add_child(_flat("Pick a crate.", 13, Color("8d826c")))
+		return
+	var held := int(cargo[market_item])
+	_ensure_offer(sim, market_item, skip, held)
+	var quote := HelmMarket.quote_line(sim, market_item, skip)
+	var head := "%s  ×%d" % [sim.resource_name(market_item), held]
+	if quote != "":
+		head = "%s    %s" % [head, quote]
+	market_box.add_child(_flat(head, 14, Color("e7f3f6")))
+	market_box.add_child(_flat("Guide  %d GRT" % HelmMarket.guide_price(sim, market_item, skip), 13, Color("cbb892")))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.add_child(_step_row("_offer", "qty", market_offer_qty, 1, held, ""))
+	row.add_child(_step_row("_offer", "ask", market_offer_ask, HelmMarket.PRICE_MIN, HelmMarket.PRICE_MAX, " GRT"))
+	var all := ThemeKit.slim_button("All")
+	all.custom_minimum_size = Vector2(48, 32)
+	all.pressed.connect(_qty_all.bind("_offer", held))
+	row.add_child(all)
+	market_box.add_child(row)
+	market_box.add_child(_flat("Posts %d for %d GRT. The crate leaves the hold." % [market_offer_qty, market_offer_ask * market_offer_qty], 12, Color("8eb8c0")))
+	var confirm := ThemeKit.button("Confirm offer")
+	var block := HelmMarket.list_block(sim, sim.player, market_item, market_offer_ask, market_offer_qty)
+	if block != "":
+		confirm.text = block
+		confirm.disabled = true
+	confirm.pressed.connect(_confirm_sell)
+	market_box.add_child(confirm)
+
+
+func _pick_market_item(item_id: String, side: String) -> void:
+	market_item = item_id
+	market_offer_qty = 1
+	market_offer_ask = 0
+	if Game.sim != null:
+		var skip := str(Game.sim.player.get("agent_id", ""))
+		market_offer_ask = HelmMarket.guide_price(Game.sim, item_id, skip)
+		if side == "sell":
+			var held := int(Game.sim.player.cargo.get(item_id, 0))
+			market_offer_qty = HelmMarket.clip_count(1, maxi(1, held))
+	market_sig = ""
+	_fill_market()
+
+
+func _ensure_offer(sim, item_id: String, skip: String, cap: int) -> void:
+	if market_offer_ask <= 0:
+		market_offer_ask = HelmMarket.guide_price(sim, item_id, skip)
+	market_offer_ask = HelmMarket.clip_price(market_offer_ask)
+	market_offer_qty = HelmMarket.clip_count(market_offer_qty, cap)
+	market_ask["_offer"] = market_offer_ask
+	market_qty_vals["_offer"] = market_offer_qty
+
+
+func _nudge_offer_pct(delta: int) -> void:
+	var next := int(round(float(market_offer_ask) * (1.0 + float(delta) / 100.0)))
+	if next == market_offer_ask:
+		next = market_offer_ask + (1 if delta > 0 else -1)
+	market_offer_ask = HelmMarket.clip_price(next)
+	market_ask["_offer"] = market_offer_ask
+	market_sig = ""
+	_fill_market()
+
+
+func _confirm_buy() -> void:
+	if Game.sim == null or market_item == "":
+		return
+	var price := HelmMarket.clip_price(market_offer_ask)
+	var count := HelmMarket.clip_count(market_offer_qty)
+	if _is_market_host():
+		var message := HelmMarket.buy_offer(Game.sim, Game.sim.player, market_item, price, count)
+		if message != "":
+			Game.sim.say(message)
+	else:
+		Game.tap("buy_offer", {"item": market_item, "price": price, "count": count})
+	market_page = "desk"
+	market_item = ""
+	market_sig = ""
+	_fill_market()
+
+
+func _confirm_sell() -> void:
+	if Game.sim == null or market_item == "":
+		return
+	market_ask[market_item] = market_offer_ask
+	market_qty_vals[market_item] = market_offer_qty
+	_list_item(market_item)
+	market_page = "desk"
+	market_item = ""
+	market_sig = ""
+	_fill_market()
+
+
+func _collect_offer(listing_id: String) -> void:
+	if Game.sim == null:
+		return
+	if _is_market_host():
+		var message := HelmMarket.collect_offer(Game.sim, Game.sim.player, listing_id)
+		if message != "":
+			Game.sim.say(message)
+	else:
+		Game.tap("collect", listing_id)
+	market_sig = ""
+	_fill_market()
+
+
+func _collect_all() -> void:
+	if Game.sim == null:
+		return
+	if _is_market_host():
+		var message := HelmMarket.collect_all(Game.sim, Game.sim.player)
+		if message != "":
+			Game.sim.say(message)
+	else:
+		Game.tap("collect", "all")
+	market_sig = ""
+	_fill_market()
+
+
+func _set_market_filter(item_id: String) -> void:
+	if market_filter == item_id:
+		market_filter = ""
+	else:
+		market_filter = item_id
+	market_sig = ""
+	_fill_market()
+
+
+func _keep_item(row: Dictionary) -> bool:
+	if market_filter == "":
+		return true
+	return str(row.get("item", "")) == market_filter
+
+
+func _fill_listings(sim, mine_only: bool = false) -> void:
+	var mine := str(sim.player.get("agent_id", ""))
+	var board: Dictionary = HelmMarket.split_board(sim, mine)
+	var stall: Array = board.stall
+	var pad: Array = board.pad
+	var own: Array = board.mine
+	if mine_only:
+		market_box.add_child(_section("Your slips"))
+		var shown := 0
+		for raw in own:
+			if not _keep_item(raw):
+				continue
+			market_box.add_child(_slip_card(sim, raw, "mine"))
+			shown += 1
+		if shown == 0:
+			market_box.add_child(_flat("No slip of yours is on the stall.", 13, Color("8d826c")))
+		return
+	var stall_n := 0
+	market_box.add_child(_section("Stall"))
+	for raw in stall:
+		if not _keep_item(raw):
+			continue
+		market_box.add_child(_slip_card(sim, raw, "buy"))
+		stall_n += 1
+	var pad_n := 0
+	for raw in pad:
+		if _keep_item(raw):
+			pad_n += 1
+	if pad_n > 0:
+		market_box.add_child(_section("On the pad"))
+		for raw in pad:
+			if not _keep_item(raw):
+				continue
+			market_box.add_child(_slip_card(sim, raw, "buy"))
+	var own_n := 0
+	for raw in own:
+		if _keep_item(raw):
+			own_n += 1
+	if own_n > 0:
+		market_box.add_child(_section("Your slips"))
+		for raw in own:
+			if not _keep_item(raw):
+				continue
+			market_box.add_child(_slip_card(sim, raw, "mine"))
+	if stall_n + pad_n + own_n == 0:
+		if market_filter == "":
+			market_box.add_child(_flat("No slips on the board.", 13, Color("8d826c")))
+		else:
+			market_box.add_child(_flat("No %s on the board." % HelmMarket.short_name(sim, market_filter), 13, Color("8d826c")))
+
+
+func _slip_card(sim, raw, kind: String) -> Control:
+	var row: Dictionary = raw
+	var item_id := str(row.get("item", ""))
+	var count := maxi(1, int(row.get("count", 1)))
+	var ask := HelmMarket.unit_price(row)
+	var who := str(row.get("seller_name", "Keel"))
+	var title := str(sim.resource_name(item_id))
+	if count > 1:
+		title = "%s  ×%d" % [title, count]
+	var best := HelmMarket.best_ask(sim, item_id)
+	var mark := "%d GRT" % ask
+	if best > 0 and ask == best:
+		mark = "BEST  %d GRT" % ask
+	var meta := "%s · %s" % [mark, who]
+	if count > 1:
+		meta = "%s each · %s" % [mark, who]
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", ThemeKit.slim_chip(false))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(col)
+	col.add_child(_flat(title, 14, Color("e7f3f6")))
+	col.add_child(_flat(meta, 12, Color("cbb892")))
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 6)
+	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if kind == "mine":
+		var listing_id := str(row.id)
+		if not market_repost.has(listing_id):
+			market_repost[listing_id] = ask
+		line.add_child(_step_row(listing_id, "repost", int(market_repost[listing_id]), HelmMarket.PRICE_MIN, HelmMarket.PRICE_MAX, " GRT"))
+		var set_ask := ThemeKit.slim_button("Set")
+		set_ask.custom_minimum_size = Vector2(52, 32)
+		set_ask.pressed.connect(_reprice_listing.bind(listing_id))
+		line.add_child(set_ask)
+		var pull := ThemeKit.slim_button("Pull")
+		pull.custom_minimum_size = Vector2(56, 32)
+		if not HelmMarket.on_pad(sim, sim.player):
+			pull.disabled = true
+			pull.text = "On pad"
+		pull.pressed.connect(_pull_listing.bind(listing_id))
+		line.add_child(pull)
+	else:
+		var listing_id := str(row.id)
+		var take := count
+		if count > 1:
+			if not market_buy_qty.has(listing_id):
+				market_buy_qty[listing_id] = 1
+			market_buy_qty[listing_id] = HelmMarket.clip_count(market_buy_qty[listing_id], count)
+			take = int(market_buy_qty[listing_id])
+			line.add_child(_step_row(listing_id, "buy", take, 1, count, ""))
+		var buy := ThemeKit.slim_button("Buy")
+		buy.custom_minimum_size = Vector2(72, 32)
+		buy.pressed.connect(_buy_listing.bind(listing_id, -1))
+		market_buy_btns[listing_id] = buy
+		_paint_buy_button(listing_id, row, take)
+		line.add_child(buy)
+	col.add_child(line)
+	return card
+
+
+func _fill_list_hold(sim) -> void:
+	market_box.add_child(_section("List a crate"))
+	var any := false
+	var cargo: Dictionary = sim.player.cargo
+	var keys: Array = cargo.keys()
+	keys.sort()
+	var skip := str(sim.player.get("agent_id", ""))
+	for raw_id in keys:
+		var item_id := str(raw_id)
+		if not HelmMarket.listable(item_id):
+			continue
+		var held := int(cargo[item_id])
+		if held <= 0:
+			continue
+		any = true
+		if not market_ask.has(item_id):
+			market_ask[item_id] = HelmMarket.default_ask(sim, item_id, skip)
+		if not market_qty_vals.has(item_id):
+			market_qty_vals[item_id] = 1
+		market_qty_vals[item_id] = HelmMarket.clip_count(market_qty_vals[item_id], held)
+		var quote := HelmMarket.quote_line(sim, item_id, skip)
+		var head := "%s  ×%d" % [sim.resource_name(item_id), held]
+		if quote != "":
+			head = "%s    %s" % [head, quote]
+		var card := PanelContainer.new()
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.add_theme_stylebox_override("panel", ThemeKit.slim_chip(false))
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 4)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.add_child(col)
+		col.add_child(_flat(head, 14, Color("e7f3f6")))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(_step_row(item_id, "ask", int(market_ask[item_id]), HelmMarket.PRICE_MIN, HelmMarket.PRICE_MAX, " GRT"))
+		row.add_child(_step_row(item_id, "qty", int(market_qty_vals[item_id]), 1, held, ""))
+		var all := ThemeKit.slim_button("All")
+		all.custom_minimum_size = Vector2(48, 32)
+		all.pressed.connect(_qty_all.bind(item_id, held))
+		row.add_child(all)
+		var list := ThemeKit.slim_button("List")
+		list.custom_minimum_size = Vector2(72, 32)
+		list.pressed.connect(_list_item.bind(item_id))
+		market_list_btns[item_id] = list
+		_paint_list_button(item_id)
+		row.add_child(list)
+		col.add_child(row)
+		var take := int(market_qty_vals[item_id])
+		var ask := int(market_ask[item_id])
+		col.add_child(_flat("Posts %d for %d GRT." % [take, ask * take], 12, Color("8eb8c0")))
+		market_box.add_child(card)
+	if not any:
+		market_box.add_child(_flat("Harvest a seam, then list it here on the pad.", 13, Color("8d826c")))
+
+
+func _fill_tape(sim) -> void:
+	market_box.add_child(_section("Last fills"))
+	if sim.market_tape.is_empty():
+		market_box.add_child(_flat("No tick yet. A fill writes the guide.", 13, Color("8d826c")))
+		return
+	for raw in sim.market_tape:
+		var row: Dictionary = raw
+		var item_id := str(row.get("item", ""))
+		var line := HBoxContainer.new()
+		line.add_theme_constant_override("separation", 8)
+		line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(_item_glass(item_id, Vector2(48, 44)))
+		var count := maxi(1, int(row.get("count", 1)))
+		var word := "%s  ×%d   %d GRT" % [sim.resource_name(item_id), count, int(row.get("price", 0))]
+		var lab := _flat(word, 13, Color("e7f3f6"))
+		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.add_child(lab)
+		market_box.add_child(line)
+
+
+func _fill_yard(sim) -> void:
+	market_hold = _flat("Glasswheat in the hold  %d" % DockBoard.holding(sim), 13, Color("8d826c"))
 	market_box.add_child(market_hold)
-	var buy := ThemeKit.button("Buy glasswheat")
+	var shop := GridContainer.new()
+	shop.columns = _inv_cols()
+	shop.add_theme_constant_override("h_separation", 6)
+	shop.add_theme_constant_override("v_separation", 6)
+	shop.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var wheat := PanelContainer.new()
+	wheat.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wheat.add_theme_stylebox_override("panel", ThemeKit.slim_chip(false))
+	var wheat_box := VBoxContainer.new()
+	wheat_box.add_theme_constant_override("separation", 3)
+	wheat.add_child(wheat_box)
+	wheat_box.add_child(_item_glass("glasswheat"))
+	wheat_box.add_child(_flat("glasswheat", 12, Color("c8f4ff")))
+	var wheat_row := HBoxContainer.new()
+	wheat_row.add_theme_constant_override("separation", 4)
+	var buy := ThemeKit.slim_button("Buy 12")
+	buy.custom_minimum_size = Vector2(64, 32)
 	buy.pressed.connect(_buy_good)
-	market_box.add_child(buy)
-	var sell := ThemeKit.button("Sell glasswheat")
+	var sell := ThemeKit.slim_button("Sell 8")
+	sell.custom_minimum_size = Vector2(64, 32)
 	sell.pressed.connect(_sell_good)
-	market_box.add_child(sell)
-	market_box.add_child(_flat("Yard. One mount is a first slip.", 14, Color("cbb892")))
+	wheat_row.add_child(buy)
+	wheat_row.add_child(sell)
+	wheat_box.add_child(wheat_row)
+	shop.add_child(wheat)
+	for stock_id in HelmHarvest.stock_ids():
+		var held := int(sim.player.cargo.get(stock_id, 0))
+		var pay := HelmHarvest.stock_price(stock_id)
+		var card := PanelContainer.new()
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.add_theme_stylebox_override("panel", ThemeKit.slim_chip(false))
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 3)
+		card.add_child(box)
+		box.add_child(_item_glass(str(stock_id)))
+		var name := "%s  ×%d" % [HelmMarket.short_name(sim, str(stock_id)), held]
+		box.add_child(_flat(name, 12, Color("c8f4ff")))
+		var sell_stock := ThemeKit.slim_button("Sell %d" % pay)
+		sell_stock.custom_minimum_size = Vector2(72, 32)
+		sell_stock.pressed.connect(_sell_stock.bind(str(stock_id)))
+		box.add_child(sell_stock)
+		shop.add_child(card)
+	market_box.add_child(shop)
+	var wing := DockBoard.fighter_count(sim)
+	var buy_fighter := ThemeKit.button("Fighter  %d" % DockBoard.FIGHTER_PRICE)
+	buy_fighter.pressed.connect(_buy_fighter)
+	market_box.add_child(buy_fighter)
+	market_box.add_child(_flat("Wing %d/%d. They form up, follow, and attack." % [wing, DockBoard.FIGHTER_WING], 13, Color("8d826c")))
+	market_box.add_child(_section("Yard kits"))
 	for kit_id in ["gun_sponson", "laser_bank", "missile_rack", "iron_belt", "splinter_pack"]:
 		var kit: Dictionary = DockBoard.KIT[kit_id]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
 		var label := "%s  %d" % [str(kit.name), int(kit.price)]
 		var buy_kit := ThemeKit.button(label)
 		buy_kit.pressed.connect(_buy_kit.bind(kit_id))
-		market_box.add_child(buy_kit)
-	market_box.add_child(_flat("Corp tag", 14, Color("cbb892")))
+		row.add_child(buy_kit)
+		var make_kit := ThemeKit.slim_button("Make")
+		make_kit.custom_minimum_size = Vector2(64, 32)
+		make_kit.pressed.connect(_make_item.bind(kit_id))
+		row.add_child(make_kit)
+		market_box.add_child(row)
+		market_box.add_child(_flat(DockBoard.recipe_line(sim, kit_id), 12, Color("8d826c")))
+	market_box.add_child(_section("Corp tag"))
 	tag_edit = LineEdit.new()
 	tag_edit.name = "CorpTag"
 	tag_edit.placeholder_text = "Corp tag"
@@ -1164,6 +2276,202 @@ func _fill_market() -> void:
 	market_box.add_child(set_tag)
 
 
+func _step_row(key: String, kind: String, value: int, lo: int, hi: int, suffix: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	var down := ThemeKit.slim_button("-")
+	down.custom_minimum_size = Vector2(32, 32)
+	down.pressed.connect(_nudge_market.bind(key, kind, -1, lo, hi, suffix))
+	var lab := _flat("%d%s" % [value, suffix], 13, Color("d7e6c8"))
+	lab.custom_minimum_size = Vector2(52 if suffix != "" else 28, 0)
+	lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	match kind:
+		"ask":
+			market_ask_labs[key] = lab
+		"qty":
+			market_qty_labs[key] = lab
+		"buy":
+			market_buy_labs[key] = lab
+		_:
+			market_repost_labs[key] = lab
+	var up := ThemeKit.slim_button("+")
+	up.custom_minimum_size = Vector2(32, 32)
+	up.pressed.connect(_nudge_market.bind(key, kind, 1, lo, hi, suffix))
+	row.add_child(down)
+	row.add_child(lab)
+	row.add_child(up)
+	return row
+
+
+func _nudge_market(key: String, kind: String, delta: int, lo: int, hi: int, suffix: String) -> void:
+	var store: Dictionary = market_repost
+	var labs: Dictionary = market_repost_labs
+	if kind == "ask":
+		store = market_ask
+		labs = market_ask_labs
+	elif kind == "qty":
+		store = market_qty_vals
+		labs = market_qty_labs
+	elif kind == "buy":
+		store = market_buy_qty
+		labs = market_buy_labs
+	var next := clampi(int(store.get(key, lo)) + delta, lo, hi)
+	store[key] = next
+	if key == "_offer":
+		if kind == "ask":
+			market_offer_ask = next
+		elif kind == "qty":
+			market_offer_qty = next
+	if labs.has(key) and labs[key] != null and is_instance_valid(labs[key]):
+		(labs[key] as Label).text = "%d%s" % [next, suffix]
+	if kind == "buy":
+		_paint_buy_button(key)
+	elif kind == "ask" or kind == "qty":
+		_paint_list_button(key)
+
+
+func _qty_all(item_id: String, held: int) -> void:
+	var next := HelmMarket.clip_count(held, held)
+	market_qty_vals[item_id] = next
+	if item_id == "_offer":
+		market_offer_qty = next
+	if market_qty_labs.has(item_id) and market_qty_labs[item_id] != null and is_instance_valid(market_qty_labs[item_id]):
+		(market_qty_labs[item_id] as Label).text = str(next)
+	_paint_list_button(item_id)
+
+
+func _market_field_focused() -> bool:
+	return tag_edit != null and is_instance_valid(tag_edit) and tag_edit.has_focus()
+
+
+func _release_market_fields() -> void:
+	if tag_edit != null and is_instance_valid(tag_edit):
+		tag_edit.release_focus()
+	Game.text_entry = false
+
+
+func _is_market_host() -> bool:
+	return Game.link == null or str(Game.link.role) != "client"
+
+
+func _list_item(item_id: String) -> void:
+	if Game.sim == null:
+		return
+	var price := HelmMarket.clip_price(market_ask.get(item_id, HelmMarket.ask_price(item_id)))
+	var held := int(Game.sim.player.cargo.get(item_id, 0))
+	var count := HelmMarket.clip_count(market_qty_vals.get(item_id, 1), held)
+	if _is_market_host():
+		var message := HelmMarket.list_item(Game.sim, Game.sim.player, item_id, price, count)
+		if message != "":
+			Game.sim.say(message)
+	else:
+		Game.tap("list", {"item": item_id, "price": price, "count": count})
+	if int(Game.sim.player.cargo.get(item_id, 0)) <= 0:
+		market_ask.erase(item_id)
+		market_qty_vals.erase(item_id)
+	market_sig = ""
+	_fill_market()
+
+
+func _buy_listing(listing_id: String, take: int = 0) -> void:
+	if Game.sim == null:
+		return
+	var want := take
+	if want < 0:
+		var row: Dictionary = HelmMarket.find_listing(Game.sim, listing_id)
+		var have := maxi(1, int(row.get("count", 1)))
+		want = int(market_buy_qty.get(listing_id, 1 if have > 1 else 0))
+		if have <= 1:
+			want = 0
+	if _is_market_host():
+		var message := HelmMarket.buy_listing(Game.sim, Game.sim.player, listing_id, want)
+		if message != "":
+			Game.sim.say(message)
+	else:
+		Game.tap("buy_listing", {"id": listing_id, "take": want})
+	market_buy_qty.erase(listing_id)
+	market_sig = ""
+	_fill_market()
+
+
+func _reprice_listing(listing_id: String) -> void:
+	if Game.sim == null:
+		return
+	var price := HelmMarket.clip_price(market_repost.get(listing_id, HelmMarket.PRICE_MIN))
+	if _is_market_host():
+		var message := HelmMarket.reprice_listing(Game.sim, Game.sim.player, listing_id, price)
+		if message != "":
+			Game.sim.say(message)
+	else:
+		Game.tap("reprice", {"id": listing_id, "price": price})
+	market_sig = ""
+	_fill_market()
+
+
+func _pull_listing(listing_id: String) -> void:
+	if Game.sim == null:
+		return
+	if _is_market_host():
+		var message := HelmMarket.pull_listing(Game.sim, Game.sim.player, listing_id)
+		if message != "":
+			Game.sim.say(message)
+	else:
+		Game.tap("pull_listing", listing_id)
+	market_sig = ""
+	_fill_market()
+
+
+func _paint_buy_button(listing_id: String, row: Dictionary = {}, take: int = -1) -> void:
+	if not market_buy_btns.has(listing_id):
+		return
+	var buy: Button = market_buy_btns[listing_id]
+	if buy == null or not is_instance_valid(buy) or Game.sim == null:
+		return
+	var slip: Dictionary = row
+	if slip.is_empty():
+		slip = HelmMarket.find_listing(Game.sim, listing_id)
+	if slip.is_empty():
+		buy.disabled = true
+		buy.text = "Gone"
+		return
+	var have := maxi(1, int(slip.get("count", 1)))
+	var want := take
+	if want < 0:
+		want = int(market_buy_qty.get(listing_id, 1 if have > 1 else 0))
+		if have <= 1:
+			want = 0
+	var block := HelmMarket.buy_block(Game.sim, Game.sim.player, slip, want)
+	var cost := HelmMarket.slip_cost(slip, want)
+	if block != "":
+		buy.text = block
+		buy.disabled = true
+		buy.custom_minimum_size = Vector2(80, 32)
+	else:
+		buy.text = "Buy %d" % cost
+		buy.disabled = false
+		buy.custom_minimum_size = Vector2(80, 32)
+
+
+func _paint_list_button(item_id: String) -> void:
+	if not market_list_btns.has(item_id):
+		return
+	var list: Button = market_list_btns[item_id]
+	if list == null or not is_instance_valid(list) or Game.sim == null:
+		return
+	var price := HelmMarket.clip_price(market_ask.get(item_id, HelmMarket.ask_price(item_id)))
+	var held := int(Game.sim.player.cargo.get(item_id, 0))
+	var count := HelmMarket.clip_count(market_qty_vals.get(item_id, 1), held)
+	var block := HelmMarket.list_block(Game.sim, Game.sim.player, item_id, price, count)
+	if block != "":
+		list.text = block
+		list.disabled = true
+		list.custom_minimum_size = Vector2(80, 32)
+	else:
+		list.text = "List"
+		list.disabled = false
+		list.custom_minimum_size = Vector2(72, 32)
+
+
 func _focus_tag(event: InputEvent) -> void:
 	if tag_edit == null or not (event is InputEventMouseButton):
 		return
@@ -1177,12 +2485,24 @@ func _focus_tag(event: InputEvent) -> void:
 
 func _paint_market(sim) -> void:
 	if market_purse != null and is_instance_valid(market_purse):
-		market_purse.text = "Purse %d" % DockBoard.purse(sim)
+		market_purse.text = HelmMarket.desk_line(sim, sim.player)
 	if market_hold != null and is_instance_valid(market_hold):
 		market_hold.text = "Glasswheat in the hold  %d" % DockBoard.holding(sim)
-	var where := "The Helion market stands on the pad."
-	if DockBoard.at_pad(sim):
-		where = "Glasswheat on the Helion pad. Buy %d. Sell %d." % [DockBoard.BUY_PRICE, DockBoard.SELL_PRICE]
+	if market_tape != null and is_instance_valid(market_tape):
+		market_tape.text = HelmMarket.tape_line(sim)
+	if market_live != null and is_instance_valid(market_live):
+		market_live.text = HelmMarket.depth_line(sim)
+	var where := "Stand the Helion pad. Buy or sell into a slot. Collect when it fills."
+	if HelmMarket.on_pad(sim, sim.player):
+		match market_page:
+			"buy":
+				where = "Search a good. Set qty and GRT. Confirm posts the buy offer."
+			"sell":
+				where = "Pick a crate. Set qty and GRT. Confirm posts the sell offer."
+			"yard":
+				where = "Instant pad rates. One crate, one GRT pay."
+			_:
+				where = "Empty slot: Buy or Sell. A live slot Collects or Aborts."
 	if market_box.get_child_count() > 0 and market_box.get_child(0) is Label:
 		(market_box.get_child(0) as Label).text = where
 
@@ -1201,6 +2521,22 @@ func _flat(text: String, size: int, color: Color = Color("e7f3f6")) -> Label:
 	node.autowrap_mode = TextServer.AUTOWRAP_OFF
 	node.clip_text = true
 	return node
+
+
+func _section(text: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var tick := ColorRect.new()
+	tick.custom_minimum_size = Vector2(3, 14)
+	tick.color = Color("3ec8d8")
+	tick.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(tick)
+	var lab := _flat(text.to_upper(), 12, Color("5ee0f0"))
+	lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(lab)
+	return row
 
 
 func _buy_good() -> void:
@@ -1632,6 +2968,27 @@ func _on_bolt(module_id: String) -> void:
 		bay_preview.queue_redraw()
 
 
+func _buy_fighter() -> void:
+	_buy_drone("fighter")
+
+
+func _buy_drone(def_id: String) -> void:
+	if Game.sim == null:
+		return
+	var message := ""
+	if DockBoard.SUPPORT_SHOP.has(def_id):
+		message = DockBoard.buy_support(Game.sim, def_id)
+	else:
+		message = DockBoard.buy_drone(Game.sim, def_id)
+	if message != "":
+		Game.sim.say(message)
+	if panel_kind == "fleet":
+		_build_fleet()
+	market_sig = ""
+	if panel_kind == "market":
+		_fill_market()
+
+
 func _buy_kit(kit_id: String) -> void:
 	if Game.sim == null:
 		return
@@ -1639,6 +2996,29 @@ func _buy_kit(kit_id: String) -> void:
 	if note != "":
 		Game.sim.say(note)
 	_refresh_bay_text()
+	_refresh_make_panels()
+
+
+func _make_item(product_id: String) -> void:
+	if Game.sim == null:
+		return
+	var note := DockBoard.fabricate(Game.sim, product_id)
+	if note != "":
+		Game.sim.say(note)
+	_refresh_bay_text()
+	_refresh_make_panels()
+
+
+func _refresh_make_panels() -> void:
+	market_sig = ""
+	if panel_kind == "fleet":
+		_build_fleet()
+	if panel_kind == "market":
+		_fill_market()
+	if panel_kind == "stock":
+		_build_stock()
+	if panel_kind == "build":
+		_build_make()
 
 
 func _cycle_load(kind: String) -> void:
@@ -1694,35 +3074,578 @@ func _build_hangar() -> void:
 		block.add_child(ThemeKit.label(str(spec.job), 13, Color("8d826c")))
 		var state := ThemeKit.label("", 14, Color("d7e6c8"))
 		block.add_child(state)
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		var uid := str(item.uid)
-		var parked := str(item.def_id) in ["fighter", "salvage_tender"]
-		var lost := str(item.state) == "lost"
-		if lost:
-			var rebuild := ThemeKit.button("Rebuild")
-			rebuild.pressed.connect(_order_uid.bind(uid, "rebuild"))
-			row.add_child(rebuild)
-			block.add_child(ThemeKit.label("Loss is permanent until rebuild spends 1 raw mass.", 13, Color("c4512c")))
-		elif parked:
-			block.add_child(ThemeKit.label("Parked. It stays in the rack this slice.", 13, Color("8d826c")))
-		elif str(item.def_id) == "survey_probe":
-			row.add_child(_order_button("Launch", uid, "launch"))
-			row.add_child(_order_button("Orbit", uid, "orbit"))
-			row.add_child(_order_button("Scan", uid, "scan"))
-			row.add_child(_order_button("Return", uid, "return"))
-		elif str(item.def_id) == "harvest_drone":
-			row.add_child(_order_button("Launch", uid, "launch"))
-			row.add_child(_order_button("Return", uid, "return"))
-		else:
-			row.add_child(_order_button("Launch", uid, "launch"))
-			row.add_child(_order_button("Return", uid, "return"))
-		if row.get_child_count() > 0:
-			block.add_child(row)
+		_append_craft_orders(block, item)
 		hangar_box.add_child(block)
-		hangar_rows[uid] = state
+		hangar_rows[str(item.uid)] = state
 	hangar_sig = _craft_sig()
 	_refresh_hangar()
+
+
+func _append_craft_orders(block: VBoxContainer, item, slim: bool = false) -> void:
+	var row: Container = GridContainer.new() if slim else HBoxContainer.new()
+	if slim:
+		(row as GridContainer).columns = 2
+		row.add_theme_constant_override("h_separation", 4)
+		row.add_theme_constant_override("v_separation", 4)
+	else:
+		row.add_theme_constant_override("separation", 8)
+	var uid := str(item.uid)
+	var parked := str(item.def_id) == "salvage_tender"
+	var lost := str(item.state) == "lost"
+	if lost:
+		var rebuild := _slim_order("Rebuild", uid, "rebuild") if slim else ThemeKit.button("Rebuild")
+		if not slim:
+			rebuild.pressed.connect(_order_uid.bind(uid, "rebuild"))
+		row.add_child(rebuild)
+		block.add_child(ThemeKit.label("Loss is permanent until rebuild spends 1 raw mass.", 13, Color("c4512c")))
+	elif CraftOrders.is_attack(Game.sim, str(item.def_id)):
+		row.add_child(_craft_action("Launch", uid, "launch", slim))
+		row.add_child(_craft_action("Attack", uid, "attack", slim))
+		row.add_child(_craft_action("Return", uid, "return", slim))
+	elif parked:
+		block.add_child(ThemeKit.label("Parked. It stays in the rack this slice.", 13, Color("8d826c")))
+	elif str(item.def_id) == "survey_probe":
+		row.add_child(_craft_action("Launch", uid, "launch", slim))
+		row.add_child(_craft_action("Orbit", uid, "orbit", slim))
+		row.add_child(_craft_action("Scan", uid, "scan", slim))
+		row.add_child(_craft_action("Harvest", uid, "cut", slim))
+		row.add_child(_craft_action("Return", uid, "return", slim))
+	elif str(item.def_id) == "harvest_drone":
+		row.add_child(_craft_action("Launch", uid, "launch", slim))
+		row.add_child(_craft_action("Return", uid, "return", slim))
+	else:
+		row.add_child(_craft_action("Launch", uid, "launch", slim))
+		row.add_child(_craft_action("Return", uid, "return", slim))
+	if row.get_child_count() > 0:
+		block.add_child(row)
+
+
+func _craft_action(text: String, uid: String, verb: String, slim: bool) -> Button:
+	if slim:
+		return _slim_order(text, uid, verb)
+	return _order_button(text, uid, verb)
+
+
+func _slim_order(text: String, uid: String, verb: String) -> Button:
+	var button := ThemeKit.slim_button(text)
+	button.custom_minimum_size = Vector2(56, 32)
+	button.pressed.connect(_order_uid.bind(uid, verb))
+	return button
+
+
+func _inv_cols() -> int:
+	if compact:
+		return 3
+	return 4
+
+
+func _inv_grid() -> GridContainer:
+	var grid := GridContainer.new()
+	grid.columns = _inv_cols()
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	return grid
+
+
+func _pad_grid(grid: GridContainer) -> void:
+	var cols := maxi(1, grid.columns)
+	if grid.get_child_count() == 0:
+		for _i in cols:
+			grid.add_child(_empty_slot())
+		return
+	while grid.get_child_count() % cols != 0:
+		grid.add_child(_empty_slot())
+
+
+func _empty_slot() -> Control:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(118, 148)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
+	card.modulate = Color(1, 1, 1, 0.38)
+	var pad := Control.new()
+	pad.custom_minimum_size = Vector2(108, 132)
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(pad)
+	return card
+
+
+func _build_fleet() -> void:
+	for child in fleet_box.get_children():
+		child.queue_free()
+	fleet_rows = {}
+	var sim = Game.sim
+	fleet_box.add_child(ThemeKit.label("Wing orders cover every attack drone and fighter. Ships already outside and drones still on the rack take orders here too.", 13, Color("8d826c")))
+	var wing := HBoxContainer.new()
+	wing.add_theme_constant_override("separation", 8)
+	var form := ThemeKit.button("Form")
+	form.pressed.connect(_fleet_order.bind("form"))
+	wing.add_child(form)
+	var attack := ThemeKit.button("Attack")
+	attack.pressed.connect(_fleet_order.bind("attack"))
+	wing.add_child(attack)
+	var recall := ThemeKit.button("Recall")
+	recall.pressed.connect(_fleet_order.bind("recall"))
+	wing.add_child(recall)
+	fleet_box.add_child(wing)
+	fleet_target = ThemeKit.label("", 14, Color("d7e6c8"))
+	fleet_box.add_child(fleet_target)
+	var picks := HBoxContainer.new()
+	picks.add_theme_constant_override("separation", 8)
+	for place in sim.nodes:
+		var pick := ThemeKit.button(str(place.name))
+		pick.pressed.connect(_pick_node.bind(str(place.id)))
+		picks.add_child(pick)
+	fleet_box.add_child(picks)
+	_build_fleet_shop()
+	if sim.craft.is_empty():
+		fleet_box.add_child(ThemeKit.label("This keel has an empty rack.", 14, Color("8d826c")))
+		fleet_sig = _craft_sig()
+		_refresh_fleet()
+		_fit_fleet_pane()
+		return
+	var outside: Array = []
+	var rack: Array = []
+	for item in sim.craft:
+		if str(item.state) != "docked" and str(item.state) != "lost":
+			outside.append(item)
+		else:
+			rack.append(item)
+	fleet_box.add_child(ThemeKit.label("OUTSIDE", 15, Color("e6d7bf")))
+	if outside.is_empty():
+		fleet_box.add_child(ThemeKit.label("Nothing is flying. Launch from the rack.", 13, Color("8d826c")))
+	else:
+		var flying := _inv_grid()
+		fleet_box.add_child(flying)
+		for item in outside:
+			_fleet_card(item, flying)
+		_pad_grid(flying)
+	fleet_box.add_child(ThemeKit.label("ON THE RACK", 15, Color("e6d7bf")))
+	if rack.is_empty():
+		fleet_box.add_child(ThemeKit.label("The rack is clear.", 13, Color("8d826c")))
+	else:
+		var parked := _inv_grid()
+		fleet_box.add_child(parked)
+		for item in rack:
+			_fleet_card(item, parked)
+		_pad_grid(parked)
+	fleet_sig = _craft_sig()
+	_refresh_fleet()
+	_fit_fleet_pane()
+
+
+func _build_fleet_shop() -> void:
+	var sim = Game.sim
+	if sim == null or fleet_box == null:
+		return
+	var held := DockBoard.attack_count(sim)
+	fleet_box.add_child(ThemeKit.label("PAD RACK", 15, Color("e6d7bf")))
+	if DockBoard.at_pad(sim):
+		fleet_box.add_child(ThemeKit.label("Buy with GRT or Make from aluminum bars. Wing %d/%d. Form and Attack cover every attack drone." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
+	elif DockBoard.can_build(sim):
+		fleet_box.add_child(ThemeKit.label("The claim can Make a drone from aluminum bars. Wing %d/%d." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
+	else:
+		fleet_box.add_child(ThemeKit.label("Moor at Helion to buy, or Make at a planted claim. Wing %d/%d." % [held, DockBoard.ATTACK_WING], 13, Color("8d826c")))
+	var shop := _inv_grid()
+	fleet_box.add_child(shop)
+	for raw_id in DockBoard.attack_shop_ids():
+		_drone_shop_card(str(raw_id), shop)
+	for raw_id in DockBoard.support_shop_ids():
+		_drone_shop_card(str(raw_id), shop)
+	_pad_grid(shop)
+
+
+func _drone_shop_card(def_id: String, grid: GridContainer) -> void:
+	var sim = Game.sim
+	var spec: Dictionary = sim.defs.craft.get(def_id, {})
+	var row: Dictionary = DockBoard.ATTACK_SHOP.get(def_id, {})
+	if row.is_empty():
+		row = DockBoard.SUPPORT_SHOP.get(def_id, {})
+	var support := DockBoard.SUPPORT_SHOP.has(def_id)
+	var price := int(row.get("price", 0))
+	var cap := int(row.get("cap", 0))
+	var owned := DockBoard.kind_count(sim, def_id)
+	var wing_full := (not support) and DockBoard.attack_count(sim) >= DockBoard.ATTACK_WING
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(118, 0)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(box)
+	var glass := CraftGlass.new()
+	glass.craft_kind = def_id
+	glass.custom_minimum_size = Vector2(108, 100)
+	glass.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(glass)
+	glass.call_deferred("show_craft", def_id)
+	var title := ThemeKit.label(str(spec.get("name", def_id)), 13, Color("c8f4ff"))
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.clip_text = true
+	box.add_child(title)
+	var post := "L%d  %s" % [int(spec.get("level", 1)), str(spec.get("post", "Attack"))]
+	var role := ThemeKit.label(post, 11, Color("8d826c"))
+	role.autowrap_mode = TextServer.AUTOWRAP_OFF
+	role.clip_text = true
+	box.add_child(role)
+	var duty := ThemeKit.label(str(spec.get("job", "")), 10, Color("8d826c"))
+	duty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(duty)
+	var stock := ThemeKit.label("%d GRT    %d/%d" % [price, owned, cap], 11, Color("d7e6c8"))
+	stock.autowrap_mode = TextServer.AUTOWRAP_OFF
+	stock.clip_text = true
+	box.add_child(stock)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 4)
+	var buy := ThemeKit.slim_button("Buy")
+	buy.custom_minimum_size = Vector2(56, 32)
+	buy.disabled = not DockBoard.at_pad(sim) or owned >= cap or wing_full or DockBoard.purse(sim) < price
+	buy.pressed.connect(_buy_drone.bind(def_id))
+	actions.add_child(buy)
+	var make := ThemeKit.slim_button("Make")
+	make.custom_minimum_size = Vector2(56, 32)
+	make.disabled = not DockBoard.can_build(sim) or owned >= cap or wing_full or not DockBoard.can_afford(sim, def_id)
+	make.pressed.connect(_make_item.bind(def_id))
+	actions.add_child(make)
+	box.add_child(actions)
+	var cost := ThemeKit.label(DockBoard.recipe_line(sim, def_id), 10, Color("8d826c"))
+	cost.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(cost)
+	grid.add_child(card)
+
+
+func _fleet_card(item, grid: GridContainer) -> void:
+	var spec: Dictionary = Game.sim.defs.craft[item.def_id]
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(118, 0)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(box)
+	var kind := str(item.def_id)
+	var glass := CraftGlass.new()
+	glass.craft_kind = kind
+	glass.custom_minimum_size = Vector2(108, 100)
+	glass.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(glass)
+	glass.call_deferred("show_craft", kind)
+	var title := ThemeKit.label(str(item.name), 13, Color("c8f4ff"))
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.clip_text = true
+	box.add_child(title)
+	var job := ThemeKit.label(str(spec.job), 11, Color("8d826c"))
+	job.autowrap_mode = TextServer.AUTOWRAP_OFF
+	job.clip_text = true
+	box.add_child(job)
+	var state := ThemeKit.label("", 12, Color("d7e6c8"))
+	state.autowrap_mode = TextServer.AUTOWRAP_OFF
+	state.clip_text = true
+	box.add_child(state)
+	_append_craft_orders(box, item, true)
+	grid.add_child(card)
+	fleet_rows[str(item.uid)] = state
+
+
+func _build_stock() -> void:
+	if stock_box == null:
+		return
+	for child in stock_box.get_children():
+		stock_box.remove_child(child)
+		child.queue_free()
+	stock_sig = _cargo_sig()
+	var sim = Game.sim
+	if sim == null:
+		stock_box.add_child(ThemeKit.label("No hold to read.", 14, Color("8d826c")))
+		return
+	var stats: Dictionary = Fit.stats(sim.defs, sim.player)
+	var used := Fit.cargo_used(sim.player)
+	var cap := int(stats.cargo_cap)
+	var head := ThemeKit.label("The hold.  %d/%d" % [used, cap], 16, Color("e6d7bf"))
+	head.autowrap_mode = TextServer.AUTOWRAP_OFF
+	stock_box.add_child(head)
+	stock_box.add_child(ThemeKit.label("Each square is a crate. Smelt ore into bars, list it, sell it for GRT, or Make a kit, gun, or fleet ship.", 13, Color("8d826c")))
+	var to_make := ThemeKit.slim_button("Make")
+	to_make.custom_minimum_size = Vector2(72, 32)
+	to_make.pressed.connect(func() -> void: _toggle("build"))
+	stock_box.add_child(to_make)
+	var cargo: Dictionary = sim.player.cargo
+	var ids: Array = []
+	for key in cargo.keys():
+		if int(cargo[key]) > 0:
+			ids.append(str(key))
+	ids.sort()
+	var grid := _inv_grid()
+	stock_box.add_child(grid)
+	for id in ids:
+		grid.add_child(_stock_card(str(id), int(cargo[id])))
+	_pad_grid(grid)
+	_fit_stock_pane()
+
+
+func _stock_card(id: String, count: int) -> Control:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(118, 0)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(box)
+	var glass := StockGlass.new()
+	glass.stock_id = id
+	glass.custom_minimum_size = Vector2(108, 100)
+	glass.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(glass)
+	glass.call_deferred("show_stock", id)
+	var sim = Game.sim
+	var name := id
+	if sim != null:
+		name = sim.resource_name(id)
+	var title := ThemeKit.label("%s  ×%d" % [name, count], 13, Color("c8f4ff"))
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.clip_text = true
+	box.add_child(title)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 4)
+	if HelmMarket.listable(id):
+		var list := ThemeKit.slim_button("List")
+		list.custom_minimum_size = Vector2(52, 32)
+		list.pressed.connect(_stock_open_list.bind(id))
+		actions.add_child(list)
+	if HelmHarvest.stock_price(id) > 0:
+		var sell := ThemeKit.slim_button("Sell %d" % HelmHarvest.stock_price(id))
+		sell.custom_minimum_size = Vector2(68, 32)
+		sell.pressed.connect(_sell_stock.bind(id))
+		actions.add_child(sell)
+	if actions.get_child_count() > 0:
+		box.add_child(actions)
+	return card
+
+
+func _stock_open_list(id: String) -> void:
+	_open_sell(id)
+	if panel_kind == "market":
+		_fit()
+		return
+	_toggle("market")
+
+
+func _stock_line(id: String, count: int) -> Control:
+	var sim = Game.sim
+	var name := id
+	if sim != null:
+		name = sim.resource_name(id)
+	var row := ThemeKit.label("%s    ×%d" % [name, count], 14, Color("cbb892"))
+	row.autowrap_mode = TextServer.AUTOWRAP_OFF
+	return row
+
+
+func _is_raw_stock(id: String) -> bool:
+	if Game.sim == null:
+		return false
+	var book: Dictionary = Game.sim._material_book()
+	return book.has(id)
+
+
+func _cargo_sig() -> String:
+	if Game.sim == null:
+		return ""
+	var bits: PackedStringArray = PackedStringArray()
+	var cargo: Dictionary = Game.sim.player.cargo
+	var keys: Array = cargo.keys()
+	keys.sort()
+	for key in keys:
+		bits.append("%s:%d" % [str(key), int(cargo[key])])
+	return "|".join(bits)
+
+
+func _refresh_stock() -> void:
+	if Game.sim == null or stock_box == null:
+		return
+	if _cargo_sig() != stock_sig:
+		_build_stock()
+
+
+func _build_make() -> void:
+	if build_box == null:
+		return
+	for child in build_box.get_children():
+		build_box.remove_child(child)
+		child.queue_free()
+	build_sig = _cargo_sig()
+	var sim = Game.sim
+	if sim == null:
+		build_box.add_child(ThemeKit.label("No keel to make from.", 14, Color("8d826c")))
+		return
+	var where := "Moor at Helion, or stand a planted claim, then Make."
+	if DockBoard.at_pad(sim):
+		where = "The Helion pad smelts ore into bars, then Makes kits, guns, and fleet ships."
+	elif DockBoard.can_build(sim):
+		where = "The claim shop smelts ore into bars, then Makes kits, guns, and fleet ships."
+	build_box.add_child(ThemeKit.label(where, 13, Color("8d826c")))
+	build_box.add_child(ThemeKit.label("HOLD  %s" % _hold_brief(sim), 13, Color("d7e6c8")))
+	var grid := _inv_grid()
+	build_box.add_child(grid)
+	for product_id in DockBoard.recipe_ids():
+		grid.add_child(_make_card(str(product_id)))
+	_pad_grid(grid)
+	_fit_build_pane()
+
+
+func _hold_brief(sim) -> String:
+	var bits: Array = []
+	for id in HelmHarvest.stock_ids():
+		var held := int(sim.player.cargo.get(id, 0))
+		if held <= 0:
+			continue
+		bits.append("%s ×%d" % [HelmMarket.short_name(sim, str(id)), held])
+	if bits.is_empty():
+		return "empty"
+	return "  ".join(bits)
+
+
+func _make_card(product_id: String) -> Control:
+	var sim = Game.sim
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(118, 0)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", ThemeKit.rail(false))
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_child(box)
+	if sim != null and sim.defs.craft.has(product_id):
+		var glass := CraftGlass.new()
+		glass.craft_kind = product_id
+		glass.custom_minimum_size = Vector2(108, 100)
+		glass.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		box.add_child(glass)
+		glass.call_deferred("show_craft", product_id)
+	else:
+		var stock_id := _recipe_face(product_id)
+		var glass := StockGlass.new()
+		glass.stock_id = stock_id
+		glass.custom_minimum_size = Vector2(108, 100)
+		glass.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		box.add_child(glass)
+		glass.call_deferred("show_stock", stock_id)
+	var title := ThemeKit.label(DockBoard.recipe_name(product_id), 13, Color("c8f4ff"))
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.clip_text = true
+	box.add_child(title)
+	var cost := ThemeKit.label(DockBoard.recipe_line(sim, product_id), 10, Color("8d826c"))
+	cost.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(cost)
+	var make := ThemeKit.slim_button("Make")
+	make.custom_minimum_size = Vector2(64, 32)
+	make.disabled = sim == null or not DockBoard.can_build(sim) or not DockBoard.can_afford(sim, product_id)
+	make.pressed.connect(_make_item.bind(product_id))
+	box.add_child(make)
+	return card
+
+
+func _recipe_face(product_id: String) -> String:
+	if HelmHarvest.stock_price(product_id) > 0:
+		return product_id
+	var need: Dictionary = DockBoard.recipe_need(product_id)
+	if need.has("steel_bar"):
+		return "steel_bar"
+	if need.has("aluminum_bar"):
+		return "aluminum_bar"
+	for id in HelmHarvest.stock_ids():
+		if need.has(id):
+			return str(id)
+	return "raw_mass"
+
+
+func _refresh_build() -> void:
+	if Game.sim == null or build_box == null:
+		return
+	if _cargo_sig() != build_sig:
+		_build_make()
+
+
+func _fit_build_pane() -> void:
+	if panel_kind != "build" or build_box == null or panel == null:
+		return
+	build_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	build_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+
+func _fit_stock_pane() -> void:
+	if panel_kind != "stock" or stock_box == null or panel == null:
+		return
+	stock_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stock_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+
+func _fit_market_pane() -> void:
+	if panel_kind != "market" or market_box == null or panel == null:
+		return
+	market_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	market_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+
+func _fit_fleet_pane() -> void:
+	if panel_kind != "fleet" or fleet_box == null or panel == null:
+		return
+	fleet_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fleet_box.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+
+
+func _hud_engage() -> void:
+	if overlay != null and overlay.has_method("_engage_lock"):
+		overlay.call("_engage_lock")
+		return
+	if Game.sim == null:
+		return
+	var lock := str(Game.sim.player.get("lock_id", ""))
+	if lock == "":
+		Game.sim.say("Lock a ship first.")
+		return
+	var socket := str(Game.sim.player.get("engage", ""))
+	if socket == "":
+		socket = "nose"
+	Game.tap("engage", {"socket": socket, "lock": lock, "name": "Main gun"})
+
+
+func _fleet_order(verb: String) -> void:
+	if Game.sim == null:
+		return
+	var message := CraftOrders.fleet(Game.sim, verb)
+	if message != "":
+		Game.sim.say(message)
+	if panel_kind == "fleet":
+		_build_fleet()
+
+
+func _refresh_fleet() -> void:
+	var sim = Game.sim
+	if sim == null:
+		return
+	var sig := _craft_sig()
+	if sig != fleet_sig:
+		_build_fleet()
+		return
+	if fleet_target != null:
+		var place = sim.survey_node(hangar_node)
+		var name := hangar_node if place == null else str(place.name)
+		fleet_target.text = "Orders use %s." % name
+	for item in sim.craft:
+		var state: Label = fleet_rows.get(str(item.uid))
+		if state == null:
+			continue
+		var hp := int(item.hp)
+		var bat := int(item.battery)
+		var extra := ""
+		if str(item.order) != "":
+			extra = "    %s" % str(item.order)
+		state.text = "%s%s    hp %d    battery %d" % [item.state, extra, hp, bat]
 
 
 func _craft_sig() -> String:
@@ -1742,8 +3665,11 @@ func _order_button(text: String, uid: String, verb: String) -> Button:
 
 func _pick_node(node_id: String) -> void:
 	hangar_node = node_id
+	HelmHarvest.mark(Game.sim, node_id)
 	if panel_kind == "hangar":
 		_build_hangar()
+	elif panel_kind == "fleet":
+		_build_fleet()
 
 
 func _order_uid(uid: String, verb: String) -> void:
@@ -1754,6 +3680,8 @@ func _order_uid(uid: String, verb: String) -> void:
 		Game.sim.say(message)
 	if panel_kind == "hangar":
 		_build_hangar()
+	elif panel_kind == "fleet":
+		_build_fleet()
 
 
 func _refresh_hangar() -> void:
@@ -1823,8 +3751,90 @@ func _heat_text() -> String:
 	return "\n\n".join(blocks)
 
 
+func _fill_quests() -> void:
+	if Game.sim == null or quest_box == null:
+		return
+	var sim = Game.sim
+	var entries: Array = QuestLog.entries(sim.defs, sim)
+	var pinned := str(sim.quest_flags.get("tracked_quest", ""))
+	var sig := "%s|%s|%d" % [str(sim.defs.system.id), pinned, int(sim.player.pos.length() / 40.0)]
+	for entry in entries:
+		sig += "|%s:%s:%s" % [str(entry.get("id", "")), str(entry.get("state", "")), str(entry.get("step", ""))]
+	if sig == quest_sig and quest_box.get_child_count() > 0:
+		return
+	quest_sig = sig
+	for child in quest_box.get_children():
+		child.queue_free()
+	var card: Dictionary = {}
+	if pinned != "":
+		card = QuestBoard.guide_card(sim, pinned)
+	quest_box.add_child(_board_line("GUIDE", 16, Color("d7e6c8")))
+	if card.is_empty():
+		quest_box.add_child(_board_line("No job is pinned. The helm follows the live cue.", 14))
+		var live := QuestBoard.cue_line(sim)
+		if live != "":
+			quest_box.add_child(_board_line("NEXT  %s" % live, 14, Color("cbb892")))
+	else:
+		quest_box.add_child(_board_line(str(card.get("title", pinned)), 16))
+		quest_box.add_child(_board_line(str(card.get("step", "")), 14, Color("cbb892")))
+		if str(card.get("start", "")) != "":
+			quest_box.add_child(_board_line("Start: %s" % str(card.start), 13))
+		if str(card.get("detail", "")) != "":
+			quest_box.add_child(_board_line("Do: %s" % str(card.detail), 13))
+		if str(card.get("finish", "")) != "":
+			quest_box.add_child(_board_line("Finish: %s" % str(card.finish), 13))
+		if str(card.get("reward", "")) != "":
+			quest_box.add_child(_board_line("Reward: %s" % str(card.reward), 13, Color("d7e6c8")))
+		if str(card.get("fail", "")) != "":
+			quest_box.add_child(_board_line("Fail: %s" % str(card.fail), 13, Color("8d826c")))
+		if DockBoard.slip_line(sim) != "":
+			quest_box.add_child(_board_line("A dock crate is out. The beam follows the crate until it is delivered. This pin stays.", 13, Color("cbb892")))
+		var clear := ThemeKit.button("Clear guide")
+		clear.pressed.connect(_pin_quest.bind(pinned))
+		quest_box.add_child(clear)
+	quest_box.add_child(_board_line("Pin a job. Approach and the amber beam follow it. A dock crate still owns the beam.", 13, Color("8d826c")))
+	var filed: Array = []
+	for entry in entries:
+		var state := str(entry.get("state", ""))
+		if state == "done" or state == "failed":
+			filed.append(entry)
+			continue
+		var qid := str(entry.get("id", ""))
+		quest_box.add_child(_board_line("%s  [%s]" % [str(entry.get("title", qid)), state], 15))
+		if str(entry.get("step", "")) != "":
+			quest_box.add_child(_board_line(str(entry.step), 13, Color("cbb892")))
+		var giver := str(entry.get("giver", ""))
+		if giver != "":
+			quest_box.add_child(_board_line("Giver: %s" % giver, 12, Color("8d826c")))
+		if str(entry.get("summary", "")) != "":
+			quest_box.add_child(_board_line(str(entry.summary), 13))
+		if qid != "" and qid != pinned:
+			var pin := ThemeKit.button("Track")
+			pin.pressed.connect(_pin_quest.bind(qid))
+			quest_box.add_child(pin)
+		quest_box.add_child(ThemeKit.label(" ", 6))
+	if not filed.is_empty():
+		quest_box.add_child(_board_line("FILED", 14, Color("8d826c")))
+		for entry in filed:
+			quest_box.add_child(_board_line("%s  [%s]" % [str(entry.get("title", "")), str(entry.get("state", ""))], 13, Color("8d826c")))
+
+
+func _pin_quest(quest_id: String) -> void:
+	if Game.sim == null:
+		return
+	var note := QuestBoard.track(Game.sim, quest_id)
+	if note != "":
+		Game.sim.say(note)
+	quest_sig = ""
+	if panel_kind == "quest":
+		_fill_quests()
+
+
 func _quest_text() -> String:
 	var blocks: Array = []
+	var next := QuestBoard.cue_line(Game.sim)
+	if next != "":
+		blocks.append("NEXT  %s" % next)
 	for entry in QuestLog.entries(Game.sim.defs, Game.sim):
 		var where := ""
 		if str(entry.get("where", "")) != "":
@@ -1887,6 +3897,66 @@ func _repair() -> void:
 		Game.sim.say(message)
 
 
+func _harvest_craft() -> void:
+	if Game.sim == null:
+		return
+	var message := HelmHarvest.send_craft(Game.sim)
+	if message != "":
+		Game.sim.say(message)
+
+
+func _salvage_wreck() -> void:
+	if Game.sim == null:
+		return
+	var message := CraftOrders.salvage(Game.sim)
+	if message != "":
+		Game.sim.say(message)
+
+
+func _recall_craft() -> void:
+	if Game.sim == null:
+		return
+	_say_result(CraftOrders.try_recall_working(Game.sim))
+
+
+func _walk_pocket() -> void:
+	if Game.sim == null:
+		return
+	_say_result(CraftOrders.try_walk(Game.sim))
+
+
+func _bolt_stock() -> void:
+	if Game.sim == null:
+		return
+	_say_result(QuestBoard.try_bolt(Game.sim))
+
+
+func _approach_job() -> void:
+	if Game.sim == null:
+		return
+	_say_result(QuestBoard.try_approach(Game.sim))
+
+
+func _plasma_cut(node_id: String = "") -> void:
+	if Game.sim == null:
+		return
+	Game.tap("cut", {"node": node_id})
+
+
+func _sell_stock(id: String) -> void:
+	if Game.sim == null:
+		return
+	var message := DockBoard.sell_stock(Game.sim, id)
+	if message != "":
+		Game.sim.say(message)
+	market_sig = ""
+	stock_sig = ""
+	if panel_kind == "market":
+		_fill_market()
+	if panel_kind == "stock":
+		_build_stock()
+
+
 func _launch(def_id: String) -> void:
 	if def_id == "" or Game.sim == null:
 		return
@@ -1898,7 +3968,7 @@ func _launch(def_id: String) -> void:
 func _boat_id() -> String:
 	if Game.sim == null:
 		return ""
-	for def_id in ["fighter", "salvage_tender", "away_shuttle"]:
+	for def_id in ["fighter", "dart_drone", "sting_drone", "wasp_drone", "fang_drone", "lance_drone", "sentry_drone", "salvage_tender", "away_shuttle", "picket_drone", "manifest_drone"]:
 		for item in Game.sim.craft:
 			if str(item.def_id) == def_id:
 				return def_id
@@ -1935,23 +4005,196 @@ func _menu() -> void:
 
 
 class ShipGlass extends Control:
+	var _view: SubViewportContainer
+	var _vp: SubViewport
+	var _cam: Camera3D
+	var _stage: Node3D
+	var _pivot: Node3D
+	var _holder: Node3D
+	var _chrome: Control
+	var _mesh_key := ""
+	var _extent := Vector3(40, 16, 16)
+
+	class _GlassChrome extends Control:
+		func _draw() -> void:
+			var host := get_parent()
+			if host != null and host.has_method("_paint_chrome"):
+				host.call("_paint_chrome", self)
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_view = SubViewportContainer.new()
+		_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_view.stretch = true
+		var mask := Shader.new()
+		mask.code = "shader_type canvas_item;\nvoid fragment() {\n\tCOLOR = texture(TEXTURE, UV);\n\tvec2 p = UV - vec2(0.5);\n\tif (dot(p, p) > 0.25) {\n\t\tCOLOR.a = 0.0;\n\t}\n}\n"
+		var plate := ShaderMaterial.new()
+		plate.shader = mask
+		_view.material = plate
+		add_child(_view)
+		_vp = SubViewport.new()
+		_vp.name = "HullView"
+		_vp.own_world_3d = true
+		_vp.world_3d = World3D.new()
+		_vp.transparent_bg = false
+		_vp.handle_input_locally = false
+		_vp.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+		_vp.size = Vector2i(360, 360)
+		_view.add_child(_vp)
+		var env := WorldEnvironment.new()
+		var world := Environment.new()
+		world.background_mode = Environment.BG_COLOR
+		world.background_color = Color(0.012, 0.02, 0.03)
+		world.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		world.ambient_light_color = Color(0.62, 0.68, 0.78)
+		world.ambient_light_energy = 0.55
+		world.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		world.glow_enabled = true
+		world.glow_intensity = 0.35
+		world.glow_strength = 0.65
+		world.glow_bloom = 0.1
+		env.environment = world
+		_vp.add_child(env)
+		var sun := DirectionalLight3D.new()
+		sun.light_color = Color("fff0d4")
+		sun.light_energy = 2.4
+		sun.shadow_enabled = false
+		sun.rotation_degrees = Vector3(-48.0, -32.0, 0.0)
+		_vp.add_child(sun)
+		var fill := DirectionalLight3D.new()
+		fill.light_color = Color(0.7, 0.78, 0.92)
+		fill.light_energy = 0.9
+		fill.shadow_enabled = false
+		fill.rotation_degrees = Vector3(18.0, 148.0, 0.0)
+		_vp.add_child(fill)
+		_cam = Camera3D.new()
+		_cam.name = "HullEye"
+		_cam.current = true
+		_cam.fov = 28.0
+		_cam.near = 0.2
+		_cam.far = 4000.0
+		_vp.add_child(_cam)
+		_stage = preload("res://world/stage3d.gd").new()
+		_stage.name = "HullStage"
+		_stage.set("portrait_mode", true)
+		_vp.add_child(_stage)
+		_stage.set_process(false)
+		_pivot = Node3D.new()
+		_pivot.name = "Turn"
+		_stage.add_child(_pivot)
+		_holder = Node3D.new()
+		_holder.name = "Hull"
+		_pivot.add_child(_holder)
+		_chrome = _GlassChrome.new()
+		_chrome.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_chrome.set_anchors_preset(Control.PRESET_FULL_RECT)
+		add_child(_chrome)
+		resized.connect(_place_view)
+
 	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.008, 0.016, 0.022, 0.72))
+
+	func _process(_delta: float) -> void:
+		if not is_visible_in_tree() or Game.sim == null:
+			return
+		if size.x > 8.0 and _view != null and _view.size.x < 8.0:
+			_place_view()
+		_sync_hull()
+		if _pivot != null:
+			_pivot.rotation.y = 0.62 + sin(Time.get_ticks_msec() * 0.0004) * 0.16
+		if _stage != null and _holder != null and _stage.has_method("_pulse_lamps"):
+			_stage.call("_pulse_lamps", _holder)
+
+	func _place_view() -> void:
+		var radius := minf(size.x, size.y) * 0.34
+		var center := size * 0.5 + Vector2(0, 8)
+		var span := maxf(radius * 2.0, 8.0)
+		_view.position = center - Vector2(span, span) * 0.5
+		_view.size = Vector2(span, span)
+		_frame_camera()
+
+	func _sync_hull() -> void:
+		if _stage == null or Game.sim == null:
+			return
+		var ship: Dictionary = Game.sim.player
+		var class_id := str(ship.get("class_id", "vesper"))
+		var modules: Array = ship.get("modules", [])
+		var key := class_id
+		for module_id in modules:
+			key += "|" + str(module_id)
+		if key == _mesh_key and _holder.get_child_count() > 0:
+			return
+		_mesh_key = key
+		var shapes: Array = Silhouette.shapes_of(Game.sim.defs, modules)
+		var layers: Array = Silhouette.layers_of(Game.sim.defs, modules)
+		var sockets: Array = _stage.call("_weapon_sockets", modules)
+		_stage.call("_fill_ship", _holder, class_id, shapes, layers, sockets)
+		if Game.sim.defs.ships.has(class_id):
+			var hull: Dictionary = Game.sim.defs.ships[class_id]
+			var body := Color(str(hull.get("color", "#888888")))
+			var accent := Color(str(hull.get("accent", "#d7e6c8")))
+			for child in _holder.get_children():
+				var part := str(child.name)
+				if not bool(_stage.call("_hull_part", part)):
+					continue
+				var tone := body
+				if part == "Deck":
+					tone = body.lightened(0.16)
+				elif part.begins_with("Trim"):
+					tone = accent
+				_stage.call("_paint_hull", child, tone, accent)
+		var bounds := _local_bounds(_holder)
+		_extent = bounds.size
+		_holder.position = -bounds.get_center()
+		_frame_camera()
+		if _chrome != null:
+			_chrome.queue_redraw()
+
+	func _frame_camera() -> void:
+		if _cam == null:
+			return
+		var frame := _view.size if _view != null and _view.size.x > 8.0 else Vector2(360, 360)
+		var aspect := maxf(frame.x / maxf(frame.y, 1.0), 0.4)
+		var v_fov := deg_to_rad(_cam.fov)
+		var h_fov := 2.0 * atan(tan(v_fov * 0.5) * aspect)
+		var half_w := maxf(_extent.x, _extent.z) * 0.42
+		var half_h := maxf(_extent.y, 8.0) * 0.48
+		var dist := maxf(half_w / maxf(tan(h_fov * 0.5), 0.05), half_h / maxf(tan(v_fov * 0.5), 0.05))
+		dist *= 1.2
+		var eye := Vector3(-0.42, 0.36, 0.95).normalized() * dist
+		_cam.position = eye
+		_cam.look_at(Vector3.ZERO, Vector3.UP)
+
+	func _local_bounds(holder: Node3D) -> AABB:
+		var acc := AABB()
+		var any := false
+		var into := holder.global_transform.affine_inverse()
+		for node in holder.find_children("*", "MeshInstance3D", true, false):
+			var mesh_node := node as MeshInstance3D
+			if mesh_node.mesh == null:
+				continue
+			var part := str(mesh_node.name)
+			if part.begins_with("Exhaust") or part == "Wake":
+				continue
+			var box: AABB = into * mesh_node.global_transform * mesh_node.get_aabb()
+			if any:
+				acc = acc.merge(box)
+			else:
+				acc = box
+				any = true
+		if not any:
+			return AABB(Vector3(-20, -8, -8), Vector3(40, 16, 16))
+		return acc
+
+	func _paint_chrome(ci: CanvasItem) -> void:
 		if Game.sim == null or size.x < 8.0 or size.y < 8.0:
 			return
 		var ship: Dictionary = Game.sim.player
 		var hull: Dictionary = Game.sim.defs.ships[str(ship.class_id)]
 		var accent := Color(str(hull.accent))
-		var body := Color(str(hull.color))
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.008, 0.016, 0.022, 0.72))
 		var center := size * 0.5 + Vector2(0, 8)
 		var radius := minf(size.x, size.y) * 0.34
-		_corner_brackets(accent)
-		draw_circle(center, radius * 1.05, Color(0.03, 0.07, 0.09, 0.45))
-		var grid := Color(0.45, 0.72, 0.84, 0.1)
-		var step := radius * 0.28
-		for i in range(-4, 5):
-			_grid_chord(center, radius * 0.92, true, float(i) * step, grid)
-			_grid_chord(center, radius * 0.92, false, float(i) * step, grid)
+		_corner_brackets(ci, accent)
 		var tick := Color(0.62, 0.78, 0.84, 0.55)
 		var tick_long := Color(0.86, 0.78, 0.52, 0.9)
 		for i in 72:
@@ -1959,42 +4202,23 @@ class ShipGlass extends Control:
 			var dir := Vector2(cos(ang), sin(ang))
 			var major := i % 6 == 0
 			var inner := radius - (9.0 if major else 4.0)
-			draw_line(center + dir * inner, center + dir * radius, tick_long if major else tick, 1.4 if major else 1.0)
-		draw_arc(center, radius, 0.0, TAU, 96, Color(0.72, 0.86, 0.92, 0.85), 1.6, true)
-		draw_arc(center, radius * 0.78, 0.0, TAU, 80, Color(0.45, 0.64, 0.72, 0.35), 1.0, true)
-		draw_arc(center, radius * 0.46, 0.0, TAU, 64, Color(0.45, 0.64, 0.72, 0.22), 1.0, true)
-		var gap := radius * 0.16
-		var arm := radius * 0.42
-		var hair := Color(0.7, 0.84, 0.9, 0.28)
-		draw_line(center + Vector2(gap, 0), center + Vector2(arm, 0), hair, 1.0)
-		draw_line(center + Vector2(-arm, 0), center + Vector2(-gap, 0), hair, 1.0)
-		draw_line(center + Vector2(0, gap), center + Vector2(0, arm), hair, 1.0)
-		draw_line(center + Vector2(0, -arm), center + Vector2(0, -gap), hair, 1.0)
-		var shapes: Array = Silhouette.shapes_of(Game.sim.defs, ship.modules)
-		var layers: Array = Silhouette.layers_of(Game.sim.defs, ship.modules)
-		var geom := Silhouette.parts(str(ship.class_id), shapes, layers)
-		var bounds := _hull_bounds(geom)
-		var span := maxf(bounds.size.x, bounds.size.y)
-		var plan_scale := (radius * 1.35) / maxf(span, 1.0)
-		var mid := bounds.position + bounds.size * 0.5
-		var rot := -PI * 0.5
-		var origin := center - mid.rotated(rot) * plan_scale
-		var hp := clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0)
-		Silhouette.draw(self, origin, rot, str(ship.class_id), shapes, plan_scale, body, accent, hp, false, layers)
-		_draw_marks(center, radius * 1.12, hull, ship, accent)
+			ci.draw_line(center + dir * inner, center + dir * radius, tick_long if major else tick, 1.4 if major else 1.0)
+		ci.draw_arc(center, radius, 0.0, TAU, 96, Color(0.72, 0.86, 0.92, 0.85), 1.6, true)
+		ci.draw_arc(center, radius * 0.78, 0.0, TAU, 80, Color(0.45, 0.64, 0.72, 0.35), 1.0, true)
+		_draw_marks(ci, center, radius * 1.12, hull, ship, accent)
 		var font := ThemeDB.fallback_font
 		if font == null:
 			return
 		var title := str(hull.callsign)
 		var title_size := 18
 		var title_w := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size).x
-		draw_string(font, Vector2(center.x - title_w * 0.5, 22.0), title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size, Color("f4ecdf"))
+		ci.draw_string(font, Vector2(center.x - title_w * 0.5, 22.0), title, HORIZONTAL_ALIGNMENT_LEFT, -1, title_size, Color("f4ecdf"))
 		var rule := minf(title_w, size.x * 0.36)
-		draw_line(Vector2(center.x - rule * 0.5, 28.0), Vector2(center.x + rule * 0.5, 28.0), Color(accent.r, accent.g, accent.b, 0.9), 1.2)
+		ci.draw_line(Vector2(center.x - rule * 0.5, 28.0), Vector2(center.x + rule * 0.5, 28.0), Color(accent.r, accent.g, accent.b, 0.9), 1.2)
 		var klass := str(hull.get("class_name", ""))
 		var class_size := 12
 		var class_w := font.get_string_size(klass, HORIZONTAL_ALIGNMENT_LEFT, -1, class_size).x
-		draw_string(font, Vector2(center.x - class_w * 0.5, 44.0), klass, HORIZONTAL_ALIGNMENT_LEFT, -1, class_size, Color("c4a46a"))
+		ci.draw_string(font, Vector2(center.x - class_w * 0.5, 44.0), klass, HORIZONTAL_ALIGNMENT_LEFT, -1, class_size, Color("c4a46a"))
 		var mounts := Fit.mounts(Game.sim.defs, ship)
 		var words: PackedStringArray = PackedStringArray()
 		for mount in mounts:
@@ -2005,9 +4229,9 @@ class ShipGlass extends Control:
 		if fit_w > size.x - 16.0 and words.size() > 1:
 			fit_line = "%d mounts fitted" % words.size()
 			fit_w = font.get_string_size(fit_line, HORIZONTAL_ALIGNMENT_LEFT, -1, fit_size).x
-		draw_string(font, Vector2(center.x - fit_w * 0.5, size.y - 14.0), fit_line, HORIZONTAL_ALIGNMENT_LEFT, -1, fit_size, Color("d7e6ea"))
+		ci.draw_string(font, Vector2(center.x - fit_w * 0.5, size.y - 14.0), fit_line, HORIZONTAL_ALIGNMENT_LEFT, -1, fit_size, Color("d7e6ea"))
 
-	func _corner_brackets(accent: Color) -> void:
+	func _corner_brackets(ci: CanvasItem, accent: Color) -> void:
 		var col := Color(accent.r, accent.g, accent.b, 0.85)
 		var arm := 14.0
 		var inset := 8.0
@@ -2021,20 +4245,10 @@ class ShipGlass extends Control:
 		for i in corners.size():
 			var at: Vector2 = corners[i]
 			var sign: Vector2 = signs[i]
-			draw_line(at, at + Vector2(sign.x * arm, 0), col, 1.3)
-			draw_line(at, at + Vector2(0, sign.y * arm), col, 1.3)
+			ci.draw_line(at, at + Vector2(sign.x * arm, 0), col, 1.3)
+			ci.draw_line(at, at + Vector2(0, sign.y * arm), col, 1.3)
 
-	func _grid_chord(center: Vector2, radius: float, horizontal: bool, offset: float, color: Color) -> void:
-		var reach_sq := radius * radius - offset * offset
-		if reach_sq <= 1.0:
-			return
-		var reach := sqrt(reach_sq)
-		if horizontal:
-			draw_line(center + Vector2(-reach, offset), center + Vector2(reach, offset), color, 1.0)
-		else:
-			draw_line(center + Vector2(offset, -reach), center + Vector2(offset, reach), color, 1.0)
-
-	func _draw_marks(center: Vector2, radius: float, hull: Dictionary, ship: Dictionary, accent: Color) -> void:
+	func _draw_marks(ci: CanvasItem, center: Vector2, radius: float, hull: Dictionary, ship: Dictionary, accent: Color) -> void:
 		var marks: Array = []
 		var used: Dictionary = {}
 		for module_id in ship.modules:
@@ -2052,9 +4266,9 @@ class ShipGlass extends Control:
 			var ang := -PI * 0.5 + TAU * (float(i) + 0.5) / float(count)
 			var at := center + Vector2(cos(ang), sin(ang)) * radius
 			var mod: Dictionary = marks[i]
-			_mark_glyph(at, not mod.is_empty(), str(mod.get("family", "")), accent)
+			_mark_glyph(ci, at, not mod.is_empty(), str(mod.get("family", "")), accent)
 
-	func _mark_glyph(at: Vector2, fitted: bool, family: String, accent: Color) -> void:
+	func _mark_glyph(ci: CanvasItem, at: Vector2, fitted: bool, family: String, accent: Color) -> void:
 		var s := 5.5
 		if not fitted:
 			var open := PackedVector2Array([
@@ -2064,51 +4278,279 @@ class ShipGlass extends Control:
 				at + Vector2(-s, 0),
 				at + Vector2(0, -s),
 			])
-			draw_polyline(open, Color(0.62, 0.8, 0.88, 0.8), 1.2, true)
+			ci.draw_polyline(open, Color(0.62, 0.8, 0.88, 0.8), 1.2, true)
 			return
 		var ink := accent
 		ink.a = 0.95
 		match family:
 			"offense":
-				draw_colored_polygon(PackedVector2Array([
+				ci.draw_colored_polygon(PackedVector2Array([
 					at + Vector2(0, -s),
 					at + Vector2(s * 0.85, s * 0.7),
 					at + Vector2(-s * 0.85, s * 0.7),
 				]), ink)
 			"hangar":
-				draw_arc(at, s * 0.75, 0.0, TAU, 16, ink, 1.6, true)
-				draw_circle(at, 1.6, ink)
+				ci.draw_arc(at, s * 0.75, 0.0, TAU, 16, ink, 1.6, true)
+				ci.draw_circle(at, 1.6, ink)
 			"farm":
-				draw_line(at + Vector2(-s, 0), at + Vector2(s, 0), ink, 1.6)
-				draw_line(at + Vector2(0, -s), at + Vector2(0, s), ink, 1.6)
+				ci.draw_line(at + Vector2(-s, 0), at + Vector2(s, 0), ink, 1.6)
+				ci.draw_line(at + Vector2(0, -s), at + Vector2(0, s), ink, 1.6)
 			"claim":
-				draw_rect(Rect2(at - Vector2(s * 0.55, s * 0.55), Vector2(s * 1.1, s * 1.1)), ink, false, 1.5)
+				ci.draw_rect(Rect2(at - Vector2(s * 0.55, s * 0.55), Vector2(s * 1.1, s * 1.1)), ink, false, 1.5)
 			_:
-				draw_colored_polygon(PackedVector2Array([
+				ci.draw_colored_polygon(PackedVector2Array([
 					at + Vector2(0, -s),
 					at + Vector2(s, 0),
 					at + Vector2(0, s),
 					at + Vector2(-s, 0),
 				]), ink)
 
-	func _hull_bounds(geom: Dictionary) -> Rect2:
-		var lo := Vector2(1.0e9, 1.0e9)
-		var hi := Vector2(-1.0e9, -1.0e9)
-		var lists: Array = [geom.hull]
-		lists.append_array(geom.extras)
-		for poly in lists:
-			for point in poly:
-				lo.x = minf(lo.x, point.x)
-				lo.y = minf(lo.y, point.y)
-				hi.x = maxf(hi.x, point.x)
-				hi.y = maxf(hi.y, point.y)
-		for circle in geom.circles:
-			var c := Vector2(float(circle.x), float(circle.y))
-			var rad := float(circle.r)
-			lo.x = minf(lo.x, c.x - rad)
-			lo.y = minf(lo.y, c.y - rad)
-			hi.x = maxf(hi.x, c.x + rad)
-			hi.y = maxf(hi.y, c.y + rad)
-		if hi.x < lo.x:
-			return Rect2(Vector2.ZERO, Vector2(40, 16))
-		return Rect2(lo, hi - lo)
+
+class StockGlass extends Control:
+	var stock_id := ""
+	var _view: SubViewportContainer
+	var _vp: SubViewport
+	var _cam: Camera3D
+	var _stage: Node3D
+	var _pivot: Node3D
+	var _chunk: MeshInstance3D
+	var _extent := 20.0
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clip_contents = true
+		_view = SubViewportContainer.new()
+		_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_view.stretch = true
+		add_child(_view)
+		_vp = SubViewport.new()
+		_vp.name = "StockView"
+		_vp.own_world_3d = true
+		_vp.world_3d = World3D.new()
+		_vp.transparent_bg = false
+		_vp.handle_input_locally = false
+		_vp.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+		_vp.size = Vector2i(180, 180)
+		_view.add_child(_vp)
+		var env := WorldEnvironment.new()
+		var world := Environment.new()
+		world.background_mode = Environment.BG_COLOR
+		world.background_color = Color(0.035, 0.05, 0.062)
+		world.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		world.ambient_light_color = Color(0.72, 0.78, 0.88)
+		world.ambient_light_energy = 0.95
+		world.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		env.environment = world
+		_vp.add_child(env)
+		_cam = Camera3D.new()
+		_cam.name = "StockEye"
+		_cam.current = true
+		_cam.fov = 32.0
+		_cam.near = 0.2
+		_cam.far = 800.0
+		_vp.add_child(_cam)
+		_stage = preload("res://world/stage3d.gd").new()
+		_stage.name = "StockStage"
+		_stage.set("portrait_mode", true)
+		_vp.add_child(_stage)
+		_stage.set_process(false)
+		_stage.call("ensure_stock_shaders")
+		var kick := DirectionalLight3D.new()
+		kick.light_color = Color(0.85, 0.92, 1.0)
+		kick.light_energy = 0.7
+		kick.shadow_enabled = false
+		kick.rotation_degrees = Vector3(22.0, 128.0, 0.0)
+		_vp.add_child(kick)
+		_pivot = Node3D.new()
+		_pivot.name = "Turn"
+		_stage.add_child(_pivot)
+		_chunk = MeshInstance3D.new()
+		_chunk.name = "Stock"
+		_pivot.add_child(_chunk)
+		resized.connect(_place_view)
+		if stock_id != "":
+			_sync_chunk()
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.008, 0.016, 0.022, 0.88))
+
+	func _process(_delta: float) -> void:
+		if not is_visible_in_tree():
+			return
+		if size.x > 8.0 and _view != null and _view.size.x < 8.0:
+			_place_view()
+		if _pivot != null:
+			_pivot.rotation.y = 0.4 + float(Time.get_ticks_msec()) * 0.00055
+			_pivot.rotation.x = 0.18
+
+	func _place_view() -> void:
+		if _view == null:
+			return
+		_view.position = Vector2.ZERO
+		_view.size = size
+		_frame_camera()
+
+	func show_stock(id: String) -> void:
+		stock_id = id
+		_sync_chunk()
+
+	func _sync_chunk() -> void:
+		if _stage == null or _chunk == null or stock_id == "":
+			return
+		var tint := Color("8a6238")
+		var vein := Color("f0a04a")
+		if Game.sim != null:
+			var book: Dictionary = Game.sim._material_book()
+			if book.has(stock_id):
+				var row: Dictionary = book[stock_id]
+				tint = Color(str(row.get("tint", "#8a6238")))
+				vein = Color(str(row.get("vein", "#f0a04a")))
+		var seed: int = absi(stock_id.hash()) % 80 + 3
+		_stage.call("dress_stock", _chunk, stock_id, tint, vein, seed)
+		var box := AABB(Vector3(-10, -10, -10), Vector3(20, 20, 20))
+		if _chunk.mesh != null:
+			box = _chunk.get_aabb()
+		_chunk.position = -box.get_center()
+		_extent = maxf(box.size.x, maxf(box.size.y, box.size.z))
+		_frame_camera()
+
+	func _frame_camera() -> void:
+		if _cam == null:
+			return
+		var dist := maxf(_extent * 1.55, 36.0)
+		_cam.position = Vector3(-0.62, 0.48, 0.78).normalized() * dist
+		if _cam.is_inside_tree():
+			_cam.look_at(Vector3.ZERO, Vector3.UP)
+
+
+class CraftGlass extends Control:
+	var craft_kind := ""
+	var _view: SubViewportContainer
+	var _vp: SubViewport
+	var _cam: Camera3D
+	var _stage: Node3D
+	var _pivot: Node3D
+	var _holder: Node3D
+	var _extent := 22.0
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clip_contents = true
+		_view = SubViewportContainer.new()
+		_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_view.stretch = true
+		add_child(_view)
+		_vp = SubViewport.new()
+		_vp.name = "CraftView"
+		_vp.own_world_3d = true
+		_vp.world_3d = World3D.new()
+		_vp.transparent_bg = false
+		_vp.handle_input_locally = false
+		_vp.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE
+		_vp.size = Vector2i(180, 180)
+		_view.add_child(_vp)
+		var env := WorldEnvironment.new()
+		var world := Environment.new()
+		world.background_mode = Environment.BG_COLOR
+		world.background_color = Color(0.028, 0.04, 0.054)
+		world.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		world.ambient_light_color = Color(0.7, 0.76, 0.86)
+		world.ambient_light_energy = 0.85
+		world.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+		env.environment = world
+		_vp.add_child(env)
+		_cam = Camera3D.new()
+		_cam.name = "CraftEye"
+		_cam.current = true
+		_cam.fov = 30.0
+		_cam.near = 0.2
+		_cam.far = 800.0
+		_vp.add_child(_cam)
+		_stage = preload("res://world/stage3d.gd").new()
+		_stage.name = "CraftStage"
+		_stage.set("portrait_mode", true)
+		_vp.add_child(_stage)
+		_stage.set_process(false)
+		var kick := DirectionalLight3D.new()
+		kick.light_color = Color("fff0d4")
+		kick.light_energy = 1.6
+		kick.shadow_enabled = false
+		kick.rotation_degrees = Vector3(-38.0, -28.0, 0.0)
+		_vp.add_child(kick)
+		var fill := DirectionalLight3D.new()
+		fill.light_color = Color(0.7, 0.8, 0.94)
+		fill.light_energy = 0.7
+		fill.shadow_enabled = false
+		fill.rotation_degrees = Vector3(16.0, 142.0, 0.0)
+		_vp.add_child(fill)
+		_pivot = Node3D.new()
+		_pivot.name = "Turn"
+		_stage.add_child(_pivot)
+		resized.connect(_place_view)
+		if craft_kind != "":
+			_sync_craft()
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.008, 0.016, 0.022, 0.88))
+
+	func _process(_delta: float) -> void:
+		if not is_visible_in_tree():
+			return
+		if size.x > 8.0 and _view != null and _view.size.x < 8.0:
+			_place_view()
+		if _pivot != null:
+			_pivot.rotation.y = 0.55 + float(Time.get_ticks_msec()) * 0.00048
+			_pivot.rotation.x = 0.22
+
+	func _place_view() -> void:
+		if _view == null:
+			return
+		_view.position = Vector2.ZERO
+		_view.size = size
+		_frame_camera()
+
+	func show_craft(kind: String) -> void:
+		craft_kind = kind
+		_sync_craft()
+
+	func _sync_craft() -> void:
+		if _stage == null or _pivot == null or craft_kind == "":
+			return
+		if _holder != null:
+			_holder.queue_free()
+			_holder = null
+		_holder = _stage.call("pose_craft", craft_kind)
+		_pivot.add_child(_holder)
+		var box := _local_bounds(_holder)
+		_holder.position = -box.get_center()
+		_extent = maxf(box.size.x, maxf(box.size.y, box.size.z))
+		_frame_camera()
+
+	func _local_bounds(holder: Node3D) -> AABB:
+		var acc := AABB()
+		var any := false
+		var into := holder.global_transform.affine_inverse()
+		for node in holder.find_children("*", "MeshInstance3D", true, false):
+			var mesh_node := node as MeshInstance3D
+			if mesh_node.mesh == null:
+				continue
+			var part := str(mesh_node.name)
+			if part.begins_with("Exhaust") or part == "Wake":
+				continue
+			var box: AABB = into * mesh_node.global_transform * mesh_node.get_aabb()
+			if any:
+				acc = acc.merge(box)
+			else:
+				acc = box
+				any = true
+		if not any:
+			return AABB(Vector3(-10, -6, -6), Vector3(20, 12, 12))
+		return acc
+
+	func _frame_camera() -> void:
+		if _cam == null:
+			return
+		var dist := maxf(_extent * 1.7, 28.0)
+		_cam.position = Vector3(-0.58, 0.42, 0.82).normalized() * dist
+		if _cam.is_inside_tree():
+			_cam.look_at(Vector3.ZERO, Vector3.UP)

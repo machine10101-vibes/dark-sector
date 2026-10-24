@@ -1,0 +1,171 @@
+{
+  "id": "HC-V1-R5-S5",
+  "name": "Silo Dark",
+  "seed": 52005,
+  "why_visit": "Seed-vault wrecks in a night gyre. The orchard stock is still in the dark, and an ambush keeps it.",
+  "law_color": "amber",
+  "status": "authored",
+  "region": "R5",
+  "star": {
+    "id": "hc-v1-r5-s5-star",
+    "name": "Silo",
+    "class": "M",
+    "radius": 120,
+    "color": "#c47a55"
+  },
+  "bodies": [
+    {
+      "id": "night_vault",
+      "name": "Night Vault",
+      "angle": 1.0,
+      "distance": 1600,
+      "radius": 100,
+      "color": "#6a5348",
+      "blurb": "The dark silo. The vault door is open and the lights are not.",
+      "legal": "A seed vault that lost its lights. The stock is in the wrecks. The pocket is not a claim.",
+      "air": "Cold stored air, leaking.",
+      "face": "Vault plate and night soil.",
+      "crust": "Seed stone under the door.",
+      "life": "Night-orchard stock, dormant.",
+      "ruins": "The vault log, last line a power cut.",
+      "resource_id": "seed_case",
+      "resource_name": "Seed case",
+      "amount": 6,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "orchard_dark",
+      "name": "Orchard Dark",
+      "angle": 3.0,
+      "distance": 2300,
+      "radius": 58,
+      "color": "#3e342c",
+      "blurb": "A dark orchard. The rows are still marked.",
+      "legal": "The night orchard moon. Nothing grows until a lamp is brought.",
+      "air": "None.",
+      "face": "Black soil and dead lamps.",
+      "crust": "Orchard crust.",
+      "life": "Dormant stock. No moths.",
+      "ruins": "A lamp post with no lamp.",
+      "resource_id": "night_soil",
+      "resource_name": "Night soil",
+      "amount": 4,
+      "heat": "",
+      "moon": true,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "seed_hulls",
+    "name": "Seed Hulls",
+    "composition": "split seed cases and vault bolts shaken out of the night silo",
+    "radius": 2750,
+    "width": 160,
+    "count": 12,
+    "resource_id": "seed_hull",
+    "resource_name": "Seed hull",
+    "amount": 5,
+    "legal": "Seed hulls from the vault. Amber law. The ambush thinks they are paid.",
+    "heat": ""
+  },
+  "trash": {
+    "id": "opened_silos",
+    "name": "Opened Silos",
+    "origin": "Seed vaults cracked in the dark and left spinning when the power cut.",
+    "anchor": "night_vault",
+    "angle": 0.7,
+    "distance": 600,
+    "count": 11,
+    "spread": 140,
+    "resource_id": "salvage_parts",
+    "resource_name": "Keel salvage",
+    "amount": 7,
+    "legal": "Opened silos. Salvage is there. So is the ambush.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "silo_pocket",
+    "name": "Dark Pocket",
+    "anchor": "night_vault",
+    "angle": -1.2,
+    "distance": 460,
+    "radius": 190,
+    "plantable": false,
+    "why": "The vault pocket is dark. It is not on the claim slate."
+  },
+  "gates": [
+    {
+      "id": "silo_from_soil",
+      "name": "First Soil",
+      "to": "HC-V1-R5-S1",
+      "arrive": "soil_to_silo",
+      "anchor": "night_vault",
+      "angle": 2.5,
+      "distance": 1220,
+      "radius": 120,
+      "color": "amber"
+    }
+  ],
+  "pdo": {
+    "faction": "rimward_charter",
+    "count": 0,
+    "radius": 480,
+    "home": "night_vault",
+    "role": "patrol",
+    "action": "patrol",
+    "duty": ""
+  },
+  "pirates": {
+    "count": 2,
+    "angle": 1.4,
+    "standoff": 780,
+    "roles": [
+      "ambush",
+      "raider"
+    ],
+    "actions": [
+      "ambush",
+      "raider"
+    ],
+    "duties": [
+      "Ambush over Silo Dark. Hold the vault buoy. Close when a keel enters 520 meters.",
+      "Raider over Silo Dark. Take the vault clerk's hull. The seed cases are the second cut."
+    ]
+  },
+  "haulers": [
+    {
+      "id": "vault_clerk",
+      "name": "Vault Clerk",
+      "class_id": "cutter",
+      "home": "night_vault",
+      "radius": 700,
+      "role": "factor",
+      "action": "factor",
+      "duty": "Vault Clerk at Silo Dark. Come alongside and the clerk names which silo still has a case."
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "night_vault",
+      "radius": 420
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": "Night Vault"
+}

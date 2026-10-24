@@ -1,5 +1,7 @@
 extends Node
 
+const Steer = preload("res://world/helm_steer.gd")
+
 var defs: Dictionary = {}
 var sim: SectorSim
 var link: ListenLink
@@ -23,18 +25,28 @@ var text_entry := false
 var map_open := false
 ## Seconds of thrust after the Cast off control, so one click leaves the pad.
 var cast_pulse := 0.0
-## Local-space eye: "orbit" (external, middle-drag turns it), "chase", or
-## "tactical" (the old near-vertical board). The berth always frames the collar.
+## Local-space eye: "orbit" (external, middle-drag turns it),
+## "chase", or "tactical" (the old near-vertical board). The berth always
+## frames the collar.
 var cam_mode := "orbit"
 var cam_yaw := PI
 var cam_pitch := 0.74
 const CAM_MODES := ["orbit", "chase", "tactical"]
+## Own units boxed or clicked on the helm. Empty means the keel takes a move.
+var picked: Array = []
 
 
 func cycle_camera() -> String:
 	var at := CAM_MODES.find(cam_mode)
 	cam_mode = str(CAM_MODES[(at + 1) % CAM_MODES.size()])
 	return cam_mode
+
+
+func look_cam(dx: float, dy: float) -> void:
+	var next: Dictionary = Steer.apply_look(cam_yaw, cam_pitch, dx, dy)
+	cam_yaw = float(next.yaw)
+	cam_pitch = float(next.pitch)
+	cam_mode = str(next.mode)
 
 
 func _ready() -> void:
@@ -61,6 +73,7 @@ func begin_new(class_id: String) -> void:
 	zoom = 0.58
 	paused = false
 	map_open = false
+	picked = []
 	mode = "sector"
 
 
@@ -74,6 +87,7 @@ func begin_host(class_id: String) -> String:
 	zoom = 0.58
 	paused = false
 	map_open = false
+	picked = []
 	link = ListenLink.new()
 	var err := link.open_host()
 	if err != "":
@@ -113,6 +127,7 @@ func begin_join(class_id: String, address: String) -> String:
 	zoom = 0.58
 	paused = false
 	map_open = false
+	picked = []
 	mode = "sector"
 	sim.say("Joining %s. The host keeps the world." % address)
 	return ""

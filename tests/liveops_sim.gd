@@ -90,6 +90,18 @@ func _content() -> void:
 	check(str(defs.templates.unpaid_tow.get("uses", "")) == "trash", "unpaid tow uses a trash origin")
 	check(defs.quests.has("authored_glass_coda"), "glass coda is an authored short")
 	check(defs.quests.has("authored_stolen_coda"), "stolen coda is an authored short")
+	var hymn_cue := make("vesper")
+	hymn_cue.quest_flags.shakedown_beat = "done"
+	hymn_cue.quest_flags.did_cull = true
+	hymn_cue._arrive("HC-V1-R4-S4", "")
+	check(QuestBoard.cue_line(hymn_cue).contains("Ash Hymn"), "Ash Hymn names itself on the helm")
+	check(QuestBoard.cue_aim(hymn_cue).length() > 8.0, "Ash Hymn aims the amber beam")
+	var hymn_seen := false
+	for row in QuestLog.entries(hymn_cue.defs, hymn_cue):
+		if str(row.get("id", "")) == "authored_ash_hymn":
+			hymn_seen = true
+			check(str(row.get("state", "")) == "open", "Ash Hymn is open in that system")
+	check(hymn_seen, "the log shows Ash Hymn in that system")
 	var nameless: Dictionary = defs.systems["HC-V1-R6-S3"]
 	check(str(nameless.get("stream", {}).get("id", "")) == "false_rain", "False Rain is on Nameless Chart")
 	var clock: Dictionary = defs.systems["HC-V1-R6-S2"]

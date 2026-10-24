@@ -134,6 +134,8 @@ static func _baseline() -> Dictionary:
 		"system": helion,
 		"systems": chart,
 		"factions": Serde.load_json("res://data/factions.json"),
+		"gangs": Serde.load_json("res://data/gangs.json"),
+		"materials": Serde.load_json("res://data/materials.json"),
 		"quests": Serde.load_json("res://data/quests.json"),
 		"crops": {},
 		"animals": {},

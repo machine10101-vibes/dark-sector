@@ -1,0 +1,22 @@
+{
+  "id": "authored_lamp_yard",
+  "title": "Honest Scales",
+  "kind": "authored",
+  "giver": "Helion Compact",
+  "summary": "Start: enter Brass Lantern. The log opens Honest Scales and the helm marks the gunnery range. Do: come within 280 meters of a range cutter. The range flies a firing line through Lamp Yard and hails inside 640 meters while the slate is cool. The Scale Clerk slides alongside inside 320 meters and weighs fuel and ammo in public. Finish: after the range is met, come inside Lamp Yard's shell. The Compact writes standing and a rumor. The grain delivery is a separate contract. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "lamp_yard",
+  "system_id": "HC-V1-R1-S2",
+  "prelude": [
+    {
+      "id": "range_line",
+      "kind": "alongside",
+      "action": "range",
+      "range": 280,
+      "label": "the gunnery range"
+    }
+  ],
+  "mutations": [
+    "rumor_lamp_yard",
+    "compact_standing_up"
+  ]
+}

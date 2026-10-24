@@ -1,0 +1,13 @@
+{
+  "id": "authored_red_sail",
+  "title": "Twin Wake",
+  "kind": "authored",
+  "giver": "Black Sail",
+  "summary": "Start: enter the system. The log opens Twin Wake and the helm marks Red Sail. Do: Close on Red Sail. Two clans. The black sail is the other body. Pick a side by being here. Both will remember. Finish: come inside Red Sail's shell. Black Sail heat rises. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "red_sail",
+  "system_id": "HC-V1-R8-S4",
+  "mutations": [
+    "rumor_red_sail",
+    "heat_black_sail"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "authored_expired_charter",
+  "title": "Fine Print",
+  "kind": "authored",
+  "giver": "Rimward Charter",
+  "summary": "Start: enter Fine Print. The log opens the job and the helm marks the school buoy. Do: enter the ambush sight, 520 meters of the school buoy. The ambush holds until a keel crosses that line. A kite keeps 340 to 460 meters. The Expired Clerk runs when the pack closes inside 640 meters, and a raider takes that clerk. Finish: after the sight is sprung, come inside Expired Charter's shell. The Charter writes standing. Wreck rights stay red. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "expired_charter",
+  "system_id": "HC-V1-R2-S6",
+  "prelude": [
+    {
+      "id": "spring_sight",
+      "kind": "sight",
+      "role": "ambush",
+      "range": 520,
+      "label": "the school buoy"
+    }
+  ],
+  "mutations": [
+    "rumor_clause_school",
+    "charter_standing_up"
+  ]
+}

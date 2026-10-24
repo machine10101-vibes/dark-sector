@@ -1,0 +1,12 @@
+{
+  "id": "authored_clock_rock",
+  "title": "Clockstream",
+  "kind": "authored",
+  "giver": "Drift tender",
+  "summary": "Start: enter the system. The log opens Clockstream and the helm marks Clock Rock. Do: Close on Clock Rock. The meteor stream has a period. A probe that sits in the window becomes Missed Windows. Do not park in the vector. Finish: come inside Clock Rock's shell. A drift rumor. The window still kills a parked probe. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "clock_rock",
+  "system_id": "HC-V1-R6-S2",
+  "mutations": [
+    "rumor_clock_rock"
+  ]
+}

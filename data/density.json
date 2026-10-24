@@ -971,6 +971,17 @@
           "distance": 1400,
           "radius": 120,
           "color": "amber"
+        },
+        {
+          "id": "lease_to_fine",
+          "name": "Fine Print",
+          "to": "HC-V1-R2-S6",
+          "arrive": "fine_from_lease",
+          "anchor": "tallyrock",
+          "angle": 4.1,
+          "distance": 1480,
+          "radius": 120,
+          "color": "amber"
         }
       ],
       "pdo": {
@@ -1141,6 +1152,28 @@
           "anchor": "tug_yard",
           "angle": 0.7,
           "distance": 1400,
+          "radius": 120,
+          "color": "amber"
+        },
+        {
+          "id": "towline_to_ice",
+          "name": "Clock Lane",
+          "to": "HC-V1-R2-S4",
+          "arrive": "ice_from_towline",
+          "anchor": "tug_yard",
+          "angle": 1.9,
+          "distance": 1320,
+          "radius": 120,
+          "color": "amber"
+        },
+        {
+          "id": "towline_to_copy",
+          "name": "Print Lane",
+          "to": "HC-V1-R2-S5",
+          "arrive": "copy_from_towline",
+          "anchor": "tug_yard",
+          "angle": 4.4,
+          "distance": 1380,
           "radius": 120,
           "color": "amber"
         }

@@ -20,6 +20,9 @@ func _init() -> void:
 		"quests": Serde.load_json("res://data/quests.json"),
 	}
 	_data()
+	_cue()
+	_bolt_and_meet()
+	_wreck_salvage()
 	_shakedown("vesper", true)
 	_shakedown("anvil", true)
 	_shakedown("kestrel", false)
@@ -57,6 +60,103 @@ func _data() -> void:
 	check(quest.success_mutations.has("blueprint"), "success mutations are on the quest")
 	check(quest.failure_mutations.has("rumor_shakedown_fail"), "failure mutations are on the quest")
 	check(quest.beats.size() == 7, "shakedown has seven beats")
+
+
+func _cue() -> void:
+	var sim := make("kestrel")
+	check(QuestBoard.cue_line(sim).contains("Cast off"), "a moored keel names Cast off")
+	sim.player.moored = false
+	sim.player.pos += Vector2(80, 0)
+	QuestBoard.pulse(sim, 0.1)
+	check(QuestBoard.cue_line(sim).contains("Aegis Prime"), "the scan beat names Aegis on the helm")
+	check(QuestBoard.cue_aim(sim).length() > 8.0, "the scan beat aims the amber beam")
+	var log: Array = QuestLog.entries(defs, sim)
+	var dormant := 0
+	for row in log:
+		if str(row.get("state", "")) == "dormant":
+			dormant += 1
+	check(dormant == 0, "the quest log hides dormant authored shorts")
+	var pad := make("vesper")
+	check(QuestBoard.try_take(pad) == "", "Take files the first pad slip")
+	check(DockBoard.state(pad, "dock_scan") == "active", "Take opens the Aegis scan")
+	var aimed := false
+	for craft in pad.craft:
+		if str(craft.def_id) == "survey_probe" and str(craft.target) == "aegis_prime" and str(craft.state) != "docked":
+			aimed = true
+	check(aimed, "Take scan sends the probe to Aegis Prime")
+	check(CraftOrders.try_recall_working(pad) == "", "Return recalls the scan probe")
+	var recalled := false
+	for craft in pad.craft:
+		if str(craft.def_id) == "survey_probe" and str(craft.state) == "returning":
+			recalled = true
+	check(recalled, "Return turns the probe for the keel")
+	var offered := make("vesper")
+	offered.contracts = []
+	QuestBoard.refresh(offered)
+	check(QuestBoard.try_take(offered) == "", "Take still accepts a contract first")
+	check(str(offered.contracts[0].state) == "active", "an offered contract beats the pad slip")
+	check(DockBoard.state(offered, "dock_scan") == "open", "a contract Take leaves the scan slip")
+
+
+func _bolt_and_meet() -> void:
+	var sim := make("vesper")
+	sim.quest_flags.shakedown_beat = "module"
+	check(sim.player.yard.has("sensor_mast"), "Needle keeps a mast in the yard")
+	check(QuestBoard.try_bolt(sim) == "", "Bolt installs from the helm")
+	check(sim.player.modules.has("sensor_mast"), "Bolt takes the mast")
+	QuestBoard.pulse(sim, 0.1)
+	check(str(sim.quest_flags.shakedown_beat) == "pirate", "Bolt advances the module beat")
+	check(QuestBoard.cue_line(sim).contains("Red Keel"), "the pirate beat names the pack")
+	check(QuestBoard.try_approach(sim) == "", "Approach takes the Red Keel mark")
+	var order = sim.player.get("order", {})
+	check(typeof(order) == TYPE_DICTIONARY and str(order.get("kind", "")) == "approach", "Approach is an approach order")
+	check(str(order.get("label", "")).contains("Red Keel"), "Approach names the pack")
+	check(QuestBoard.try_approach(make("vesper")).contains("Cast off"), "a moored keel is told to Cast off")
+
+
+func _wreck_salvage() -> void:
+	var sim := make("kestrel")
+	sim.player.moored = false
+	sim.wrecks.append({
+		"id": "wreck_test",
+		"agent_id": "npc",
+		"controller": "npc",
+		"team": "red_keel",
+		"class_id": "cutter",
+		"pos": sim.player.pos + Vector2(40, 0),
+		"cargo": {},
+		"stripped": false,
+		"name": "Test wreck",
+		"born": 0.0,
+		"insured": false,
+		"rights": false,
+		"value": 10,
+	})
+	check(CraftOrders.salvage(sim, "wreck_test") == "", "a close wreck strips from the helm")
+	check(int(sim.player.cargo.get("salvage_parts", 0)) >= 1, "the wreck leaves keel salvage")
+	check(CraftOrders.salvage(sim, "wreck_test") != "", "a stripped wreck refuses a second take")
+	var hold = sim.survey_node("seized_hold")
+	check(hold != null, "Seized Hold is a trash field")
+	if hold != null:
+		sim.player.pos = hold.pos
+		sim.deposits["seized_hold"] = 1
+		var before := int(sim.player.cargo.get("salvage_parts", 0))
+		check(CraftOrders.salvage(sim, "seized_hold") == "", "a close trash field strips from the helm")
+		check(int(sim.player.cargo.get("salvage_parts", 0)) > before, "the field leaves keel salvage")
+		check(CraftOrders.salvage(sim, "seized_hold") != "", "a stripped field refuses a second take")
+	var closed := make("vesper")
+	check(CraftOrders.try_walk(closed) != "", "the Unlet stays closed")
+	var soil := make("vesper")
+	soil._arrive("HC-V1-R5-S1", "")
+	soil.player.pos = soil.pocket_pos
+	check(CraftOrders.try_walk(soil) == "", "Walk surveys Quiet Hollow")
+	check(bool(soil.claim.surveyed), "Walk marks the pocket walked")
+	check(CraftOrders.try_walk(soil) != "", "a walked pocket refuses a second Walk")
+	var lane := make("vesper")
+	lane.quest_flags.shakedown_beat = "claim"
+	lane.player.moored = false
+	check(CraftOrders.launch(lane, "survey_probe") == "", "a claim-beat probe launches")
+	check(QuestBoard.cue_line(lane).contains("Return"), "claim beat names Return while a probe is out")
 
 
 func _shakedown(class_id: String, legal: bool) -> void:
@@ -148,6 +248,15 @@ func _contracts() -> void:
 	pirates.contracts = []
 	var cull := QuestBoard.refresh(pirates)
 	check(cull == "systemic_cull", "a living pirate pack offers a cull contract")
+	pirates.quest_flags.shakedown_beat = "done"
+	pirates.player.moored = false
+	pirates.player.pos += Vector2(80, 0)
+	check(QuestBoard.cue_line(pirates).contains("Take or Approach"), "an offered cull names Take or Approach")
+	check(QuestBoard.try_approach(pirates) == "", "Approach takes the cull")
+	check(str(pirates.contracts[0].state) == "active", "Approach accepts the offer")
+	var pack_order = pirates.player.get("order", {})
+	var pack_aim := Vector2(float(pack_order.get("x", 0.0)), float(pack_order.get("y", 0.0)))
+	check(pack_aim.distance_to(pirates.pack_pos) < 80.0, "Approach flies the pack, not the pad")
 	var lost := make("vesper")
 	lost.contracts = []
 	lost.craft[0].state = "lost"
@@ -155,6 +264,10 @@ func _contracts() -> void:
 	var recover := QuestBoard.refresh(lost)
 	check(recover == "systemic_recover", "a lost craft offers a recover contract")
 	check(QuestBoard.accept(lost) == "", "the recover contract can be taken")
+	lost.quest_flags.shakedown_beat = "done"
+	var recover_mark: Dictionary = QuestBoard.focus(lost)
+	var recover_aim := Vector2(float(recover_mark.get("x", 0.0)), float(recover_mark.get("y", 0.0)))
+	check(recover_aim.distance_to(lost.craft[0].pos) < 8.0, "recover aims at the lost craft")
 	QuestBoard.pulse(lost, 0.2)
 	check(str(lost.contracts[0].state) == "done", "standing on the wreck parts finishes recover")
 	check(int(lost.player.cargo.get("salvage_parts", 0)) > 0, "recover puts wreck parts in the hold")
@@ -194,8 +307,11 @@ func _contracts() -> void:
 	var held := QuestBoard.refresh(defend)
 	check(held == "systemic_defend", "a planted claim offers a defend contract")
 	QuestBoard.accept(defend)
-	defend.contracts[0].pocket_time = 47.5
+	defend.quest_flags.shakedown_beat = "done"
 	defend.player.pos = defend.pocket_pos
+	check(QuestBoard.cue_line(defend).contains("hold"), "the defend cue names the hold")
+	check(QuestBoard.cue_line(defend).contains("48"), "the defend cue names the timer")
+	defend.contracts[0].pocket_time = 47.5
 	QuestBoard.pulse(defend, 1.0)
 	check(str(defend.contracts[0].state) == "done", "staying through the raid timer holds the hollow")
 	var deliver := _to_claim("anvil")

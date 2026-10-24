@@ -1,5 +1,7 @@
 extends SceneTree
 
+const Steer = preload("res://world/helm_steer.gd")
+
 var fails := 0
 
 
@@ -115,6 +117,62 @@ func _run() -> void:
 	var typed: Dictionary = view._cmd(0.05)
 	check(bool(typed.get("boost", false)) == false, "typing does not boost")
 	game.text_entry = false
+	var yaw0 := float(game.cam_yaw)
+	var pitch0 := float(game.cam_pitch)
+	game.cam_mode = "chase"
+	game.look_cam(24.0, 10.0)
+	check(str(game.cam_mode) == "orbit", "look drag takes orbit")
+	check(float(game.cam_yaw) != yaw0, "look drag turns the yaw")
+	check(float(game.cam_pitch) != pitch0, "look drag tips the pitch")
+	check(Steer.gesture(Vector2.ZERO, Vector2(12, 0), false, true, false) == "box", "a click-drag on empty sky is a box pick")
+	check(Steer.box_hits(Steer.box_of(Vector2(0, 0), Vector2(30, 20)), [
+		{"id": "a", "at": Vector2(12, 8), "rad": 8.0},
+		{"id": "b", "at": Vector2(90, 90), "rad": 8.0},
+	]).size() == 1, "a box pick takes the units inside")
+	var glass: Control = load("res://ui/helm_overlay.gd").new()
+	root.add_child(glass)
+	check(glass.mouse_filter == Control.MOUSE_FILTER_STOP, "the helm glass takes the pointer")
+	await process_frame
+	var bodies: Array = glass.own_bodies(sim)
+	var keel_on := false
+	var wing := 0
+	var wing_pos := Vector2.ZERO
+	for raw in bodies:
+		var row: Dictionary = raw
+		if str(row.get("id", "")) == str(sim.player.get("agent_id", "")):
+			keel_on = true
+		else:
+			wing += 1
+			wing_pos = row.pos
+	check(keel_on, "the keel sits in the pick list")
+	check(wing >= 1, "racked wing units sit in the pick list")
+	check(wing_pos.distance_to(sim.player.pos) > 40.0, "racked wing sits off the keel where you can box it")
+	var down := InputEventMouseButton.new()
+	down.button_index = MOUSE_BUTTON_LEFT
+	down.pressed = true
+	down.position = Vector2(40, 40)
+	glass._gui_input(down)
+	check(bool((glass.get("_lmb") as Dictionary).get("on", false)), "a press on the glass starts a pick")
+	var move := InputEventMouseMotion.new()
+	move.position = Vector2(160, 120)
+	glass._input(move)
+	check(bool((glass.get("_lmb") as Dictionary).get("drag", false)), "a hold-drag on the glass is a box")
+	var lift := InputEventMouseButton.new()
+	lift.button_index = MOUSE_BUTTON_LEFT
+	lift.pressed = false
+	lift.position = Vector2(160, 120)
+	glass._input(lift)
+	check(bool((glass.get("_lmb") as Dictionary).get("on", false)) == false, "a release ends the box")
+	var racked = null
+	for item in sim.craft:
+		if str(item.get("state", "")) == "docked":
+			racked = item
+			break
+	if racked != null:
+		var hold: Vector2 = Vector2(sim.player.pos) + Vector2(380.0, 40.0)
+		check(CraftOrders.hold_at(sim, str(racked.uid), hold) == "", "a boxed racked unit takes a click-move")
+		check(str(racked.get("state", "")) != "docked", "the click-move launches the boxed unit")
+		check(str(racked.get("order", "")) == "hold", "the launched unit holds the clicked point")
 
 	var boat := str(CraftOrders.launch(sim, ""))
 	check(boat.contains("no boat"), "Boat on an empty rack says so")

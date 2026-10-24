@@ -1,0 +1,22 @@
+{
+  "id": "authored_moth_lane",
+  "title": "Pollinator Road",
+  "kind": "authored",
+  "giver": "Homestead",
+  "summary": "Start: enter Pollinator Road. The log opens the job and the helm marks the Lighter Pilot. Do: come within 480 meters of the Lighter Pilot. The tow matches your nose and reads the livestock duty. The Moth Tender walks the perch pocket. A raider takes that lighter inside 1100 meters. Finish: after the lighter is met, come inside Moth Lane's shell. The Charter writes standing. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "moth_lane",
+  "system_id": "HC-V1-R5-S3",
+  "prelude": [
+    {
+      "id": "meet_lighter",
+      "kind": "alongside",
+      "action": "tow",
+      "range": 480,
+      "label": "Lighter Pilot"
+    }
+  ],
+  "mutations": [
+    "rumor_moth_lane",
+    "charter_standing_up"
+  ]
+}
