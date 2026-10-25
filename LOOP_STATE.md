@@ -57,6 +57,7 @@ Player-visible what works now:
 - A Wasp holds the far quarter, behind the lock. A Picket holds the bow, calls the first ship it sees, and does not shoot. The pad sells one for 36 GRT. Make spends one aluminum bar and one ice spall. Traders and orbiting haulers run a freight leg out along the lane to the far world and back, inside their own radius. A Barn or cutter on that job wears cargo cans, a tow boom, pen rails, or flee bells. Combat math is unchanged.
 - A Manifest reads the nearest hauler and comes home. It names the hold and leaves the goods aboard. The pad sells one for 44 GRT. Make spends one aluminum bar and one copper slag. A trader carries ice and copper. A clerk carries a bar and ice. A tug carries plate and salvage. A herdsman carries fodder and milk. The wreck of that hull stays empty. Combat math is unchanged.
 - A Hawser takes a wreck by the collar and brings it alongside, inside the salvage ring. It leaves the hold on the wreck. The tender still waits until a wreck or a seized field is inside 720 m. The pad sells one Hawser for 52 GRT. Make spends one aluminum bar and one hull plate. On Form, a Dart sits ahead, a Sting holds the beam, a Fang holds the far beam, a Lance stays on the near bow, and a Wasp holds the far quarter. A fighter keeps the screen. Combat math is unchanged.
+- A Red Keel skiff carries a 24 GRT bounty. The captain's guns, or a wing credited to the captain, pay that bounty into the purse and the helm says the new total. The lock line and the target card name the bounty while the skiff is still flying. A Compact cutter posts no bounty, and a civilian wreck pays none. The slate still remembers the pack and still fines a cutter. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -95,4 +96,7 @@ Files touched:
 - tests/manifest_hold.gd
 - tests/hawser_tow.gd
 - ui/menu.gd
+- data/ships.json
+- tests/bounty_slate.gd
+- ui/helm_overlay.gd
 - LOOP_STATE.md

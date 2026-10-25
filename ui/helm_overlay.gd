@@ -1663,7 +1663,11 @@ func _draw_card(pane: Control) -> void:
 	pane.draw_rect(Rect2(Vector2(0, 10), Vector2(2, 36)), col)
 	var hull: Dictionary = sim.defs.ships.get(str(target.get("class_id", "")), {})
 	_clip_text(pane, Vector2(10, 16), w - 96.0, str(target.get("name", "Target")), 14, Color("f4fcff"))
-	_text(Vector2(10, 30), "%s  ·  %s" % [str(hull.get("class_name", "")), str(mark.word)], 10, Color(col, 0.9), pane)
+	var class_line := "%s  ·  %s" % [str(hull.get("class_name", "")), str(mark.word)]
+	var posted := int(hull.get("bounty", 0))
+	if posted > 0:
+		class_line += "  ·  bounty %d" % posted
+	_text(Vector2(10, 30), class_line, 10, Color(col, 0.9), pane)
 	var dist: float = p.pos.distance_to(target.pos)
 	_text_right(pane, w - 10.0, 16.0, _dist_word(dist), 14, Color("f4fcff"))
 	var gun: Dictionary = Fit.stats(sim.defs, p).gun

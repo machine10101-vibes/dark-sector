@@ -1989,12 +1989,47 @@ func _kill(unit: Dictionary, attacker: String) -> void:
 		if gang_name != "":
 			pack = gang_name
 		say("%s will remember %s." % [pack, unit.name])
+		_pay_bounty(unit, attacker)
 	elif str(unit.team) == _pdo_id():
 		Ownership.add_heat(self, _pdo_id(), 36.0, "killed_patrol", attacker)
 		pdo_alert = true
 		banner = "%s: \"Patrol blood. The lane is closed to you.\"" % _pdo_name()
 		banner_t = 0.0
 		say("A Compact cutter is gone. The slate does not forget.")
+
+
+func bounty_of(unit: Dictionary) -> int:
+	var ships: Dictionary = defs.get("ships", {})
+	var hull: Dictionary = ships.get(str(unit.get("class_id", "")), {})
+	return int(hull.get("bounty", 0))
+
+
+func lock_caption(unit: Dictionary) -> String:
+	var gap: float = player.pos.distance_to(unit.pos)
+	var name := str(unit.get("callsign", unit.get("name", "contact")))
+	var posted := bounty_of(unit)
+	if posted > 0:
+		return "LOCK  %s  ·  %d m  ·  bounty %d" % [name, int(gap), posted]
+	return "LOCK  %s  ·  %d m" % [name, int(gap)]
+
+
+## A posted hull bounty pays the captain who breaks that keel.
+## Wing shots share the captain's agent id, so they collect the same purse.
+## A patrol, a civilian, and a packmate's kill stay off the slate.
+func _pay_bounty(unit: Dictionary, attacker: String) -> void:
+	if str(unit.get("team", "")) != "red_keel":
+		return
+	var killer = human_by_agent(attacker)
+	if killer == null:
+		return
+	if str(killer.get("agent_id", "")) != str(player.get("agent_id", "")):
+		return
+	var amount := bounty_of(unit)
+	if amount <= 0:
+		return
+	var next := DockBoard.purse(self) + amount
+	quest_flags.purse = next
+	say("Bounty %d on %s. Purse %d." % [amount, str(unit.get("name", "contact")), next])
 
 
 func _split_cargo(unit: Dictionary) -> Dictionary:

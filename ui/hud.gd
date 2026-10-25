@@ -1203,9 +1203,7 @@ func _mass_line(stats: Dictionary) -> String:
 func _mark_line(sim) -> String:
 	var lock = HelmCombat.find_unit(sim, str(sim.player.get("lock_id", "")))
 	if lock != null:
-		var gap: float = sim.player.pos.distance_to(lock.pos)
-		var name := str(lock.get("callsign", lock.get("name", "contact")))
-		return "LOCK  %s  ·  %d m" % [name, int(gap)]
+		return sim.lock_caption(lock)
 	var place = HelmHarvest.marked(sim)
 	if place != null:
 		var gap: float = sim.player.pos.distance_to(place.pos)
