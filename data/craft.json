@@ -75,6 +75,21 @@
     "work": 0,
     "radius": 7
   },
+  "hawser_drone": {
+    "id": "hawser_drone",
+    "name": "Hawser",
+    "job": "Tow. It takes a wreck by the collar and brings it alongside. It leaves the hold on the wreck.",
+    "role": "tractor",
+    "level": 1,
+    "post": "Hawser",
+    "length_m": 14,
+    "speed": 220,
+    "battery": 150,
+    "drain": 2.6,
+    "hp": 24,
+    "work": 0,
+    "radius": 9
+  },
   "fighter": {
     "id": "fighter",
     "name": "Fighter",

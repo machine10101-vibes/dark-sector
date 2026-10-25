@@ -557,10 +557,12 @@ const SUPPORT_CAP := {
 	"away_shuttle": 1,
 	"picket_drone": 1,
 	"manifest_drone": 1,
+	"hawser_drone": 1,
 }
 const SUPPORT_SHOP := {
 	"picket_drone": {"price": 36, "cap": 1},
 	"manifest_drone": {"price": 44, "cap": 1},
+	"hawser_drone": {"price": 52, "cap": 1},
 }
 const BARS := {
 	"aluminum_bar": {"name": "Aluminum bar"},
@@ -587,6 +589,7 @@ const RECIPES := {
 	"away_shuttle": {"name": "Away Shuttle", "need": {"ice_spall": 1, "hull_plate": 1, "raw_mass": 2}},
 	"picket_drone": {"name": "Picket", "need": {"aluminum_bar": 1, "ice_spall": 1}},
 	"manifest_drone": {"name": "Manifest", "need": {"aluminum_bar": 1, "copper_slag": 1}},
+	"hawser_drone": {"name": "Hawser", "need": {"aluminum_bar": 1, "hull_plate": 1}},
 }
 
 
@@ -612,6 +615,7 @@ static func recipe_ids() -> Array:
 		"away_shuttle",
 		"picket_drone",
 		"manifest_drone",
+		"hawser_drone",
 	]
 
 
@@ -782,7 +786,7 @@ static func attack_shop_ids() -> Array:
 
 
 static func support_shop_ids() -> Array:
-	return ["picket_drone", "manifest_drone"]
+	return ["picket_drone", "manifest_drone", "hawser_drone"]
 
 
 static func buy_support(sim, def_id: String) -> String:

@@ -830,6 +830,8 @@ func _craft_word(craft_id: String) -> String:
 			return "picket"
 		"manifest_drone":
 			return "manifest"
+		"hawser_drone":
+			return "hawser"
 		_:
 			return craft_id
 

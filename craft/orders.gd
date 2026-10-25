@@ -69,6 +69,8 @@ static func launch(sim, def_id: String) -> String:
 		return _launch_picket(sim)
 	if def_id == "manifest_drone":
 		return _launch_manifest(sim)
+	if def_id == "hawser_drone":
+		return _launch_hawser(sim)
 	var craft = _first_docked(sim, def_id)
 	if craft == null:
 		var any = _any_of(sim, def_id)
@@ -133,6 +135,8 @@ static func order(sim, uid: String, verb: String, node_id: String) -> String:
 		return _order_picket(sim, craft, verb)
 	if str(craft.def_id) == "manifest_drone":
 		return _order_manifest(sim, craft, verb)
+	if str(craft.def_id) == "hawser_drone":
+		return _order_hawser(sim, craft, verb)
 	if str(craft.state) == "lost":
 		return "%s is lost. Rebuild it from returned mass." % craft.name
 	if is_attack(sim, str(craft.def_id)):
@@ -396,6 +400,8 @@ static func step(sim, craft, dt: float) -> void:
 					_step_picket(sim, craft, dt)
 				"manifest_drone":
 					_step_manifest(sim, craft, dt)
+				"hawser_drone":
+					_step_hawser(sim, craft, dt)
 	if str(craft.state) != "lost":
 		_hazards(sim, craft)
 	if float(craft.hp) <= 0.0 and str(craft.state) != "lost":
@@ -684,7 +690,9 @@ static func _escort_offset(sim, craft, index: int, t: float) -> Vector2:
 	var nose := Vector2.from_angle(float(sim.player.rot))
 	var side := Vector2(-nose.y, nose.x)
 	var local := Vector2.RIGHT * span * 2.0
-	if is_attack(sim, kind):
+	if kind == "dart_drone" or kind == "sting_drone" or kind == "fang_drone" or kind == "lance_drone" or kind == "wasp_drone":
+		local = _wing_station(kind, nose, side, span, slot, t, phase)
+	elif is_attack(sim, kind):
 		var flank := 1.0 if index % 2 == 0 else -1.0
 		var wobble := t * 0.85 + phase
 		var along := span * (0.15 + 0.55 * sin(wobble))
@@ -969,6 +977,106 @@ static func _hold_line(sim, actor) -> String:
 	if bits.is_empty():
 		return "the hold is empty"
 	return ", ".join(bits)
+
+
+static func _wing_station(kind: String, nose: Vector2, side: Vector2, span: float, slot: float, t: float, phase: float) -> Vector2:
+	var wobble := sin(t * 0.9 + phase) * span * 0.16
+	var seat := span * slot * 0.12
+	if kind == "dart_drone":
+		return nose * span * 2.6 + side * (span * 0.7 + seat) + side * wobble
+	if kind == "sting_drone":
+		return side * (span * 2.85 + seat) + nose * wobble
+	if kind == "fang_drone":
+		return side * (-span * 2.55 - seat) + nose * (-span * 0.4 + wobble)
+	if kind == "lance_drone":
+		return nose * span * 2.15 + side * (-span * 0.5 - seat) + side * wobble
+	return side * (span * 3.15 + seat) + nose * (-span * 1.2 + wobble)
+
+
+static func _launch_hawser(sim) -> String:
+	var craft = _first_docked(sim, "hawser_drone")
+	if craft == null:
+		var any = _any_of(sim, "hawser_drone")
+		if any == null:
+			return "This keel has no Hawser."
+		if str(any.state) == "lost":
+			return "%s is lost. Rebuild it from returned mass." % any.name
+		return "%s is already out." % any.name
+	return _order_hawser(sim, craft, "launch")
+
+
+static func _order_hawser(sim, craft, verb: String) -> String:
+	if verb != "launch" and verb != "escort":
+		return "That order is not on the board."
+	if str(craft.state) == "lost":
+		return "%s is lost. Rebuild it from returned mass." % craft.name
+	if str(craft.state) == "docked":
+		_depart(sim, craft, "")
+	craft.state = "escort"
+	craft.order = "hawser"
+	craft.tow_id = ""
+	craft.said_tow = ""
+	sim.say("%s goes for a wreck." % craft.name)
+	sim.sfx("launch")
+	return ""
+
+
+static func _step_hawser(sim, craft, dt: float) -> void:
+	if str(craft.state) == "returning" or float(craft.battery) <= 8.0:
+		craft.state = "returning"
+		_return_home(sim, craft, dt)
+		return
+	var wreck = null
+	var pinned := str(craft.get("tow_id", ""))
+	if pinned != "":
+		wreck = sim.wreck_by_id(pinned)
+		if wreck == null or bool(wreck.get("stripped", false)):
+			craft.state = "returning"
+			craft.order = "return"
+			_return_home(sim, craft, dt)
+			return
+	else:
+		wreck = _wreck_near(sim, sim.player.pos, 1600.0)
+	var catch: float = maxf(float(craft.speed), sim.player.vel.length() + 30.0)
+	if wreck == null:
+		var nose := Vector2.from_angle(sim.player.rot)
+		var anchor: Vector2 = sim.player.pos - nose * 160.0
+		_fly_safe(sim, craft, anchor, dt, catch)
+		return
+	craft.tow_id = str(wreck.get("id", ""))
+	var gap: float = wreck.pos.distance_to(sim.player.pos)
+	if gap <= 120.0:
+		if str(craft.get("said_tow", "")) != str(craft.tow_id):
+			craft.said_tow = str(craft.tow_id)
+			sim.say("%s — %s is alongside." % [craft.name, str(wreck.get("name", "the wreck"))])
+		craft.state = "returning"
+		craft.order = "return"
+		_return_home(sim, craft, dt)
+		return
+	var collar: float = craft.pos.distance_to(wreck.pos)
+	_fly_safe(sim, craft, wreck.pos, dt, catch)
+	if collar > 80.0:
+		return
+	var pull: Vector2 = sim.player.pos - wreck.pos
+	var span: float = pull.length()
+	if span < 1.0:
+		return
+	var step: float = minf(110.0 * dt, span - 110.0)
+	if step > 0.0:
+		wreck.pos += pull / span * step
+
+
+static func _wreck_near(sim, origin: Vector2, reach: float):
+	var best = null
+	var best_d := reach
+	for wreck in sim.wrecks:
+		if bool(wreck.get("stripped", false)):
+			continue
+		var dist: float = origin.distance_to(wreck.pos)
+		if dist < best_d:
+			best = wreck
+			best_d = dist
+	return best
 
 
 static func _step_sentry(sim, craft, dt: float) -> void:

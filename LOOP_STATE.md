@@ -56,6 +56,7 @@ Player-visible what works now:
 - The wing now flies the post on the card. A Dart crosses the bow. A Sting holds the beam. A Fang keeps long range. A Lance stays in close. A Sentry holds a point aft of the keel and fires the lock without chasing. The pad sells one Sentry for 96 GRT, and Make spends two aluminum bars and one steel bar. The livestock lighter wears a pen, a stall, and a ramp. Pirate skiffs wear the job: spike, kite fins, raider claws, an ambush baffle, or a claim stake. Compact cutters wear a range rail, a writ board, an escort lamp, a clerk's scale, flee bells, or a watch mast. Combat math is unchanged.
 - A Wasp holds the far quarter, behind the lock. A Picket holds the bow, calls the first ship it sees, and does not shoot. The pad sells one for 36 GRT. Make spends one aluminum bar and one ice spall. Traders and orbiting haulers run a freight leg out along the lane to the far world and back, inside their own radius. A Barn or cutter on that job wears cargo cans, a tow boom, pen rails, or flee bells. Combat math is unchanged.
 - A Manifest reads the nearest hauler and comes home. It names the hold and leaves the goods aboard. The pad sells one for 44 GRT. Make spends one aluminum bar and one copper slag. A trader carries ice and copper. A clerk carries a bar and ice. A tug carries plate and salvage. A herdsman carries fodder and milk. The wreck of that hull stays empty. Combat math is unchanged.
+- A Hawser takes a wreck by the collar and brings it alongside, inside the salvage ring. It leaves the hold on the wreck. The tender still waits until a wreck or a seized field is inside 720 m. The pad sells one Hawser for 52 GRT. Make spends one aluminum bar and one hull plate. On Form, a Dart sits ahead, a Sting holds the beam, a Fang holds the far beam, a Lance stays on the near bow, and a Wasp holds the far quarter. A fighter keeps the screen. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -92,5 +93,6 @@ Files touched:
 - tests/fleet_posts.gd
 - tests/lane_picket.gd
 - tests/manifest_hold.gd
+- tests/hawser_tow.gd
 - ui/menu.gd
 - LOOP_STATE.md
