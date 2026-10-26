@@ -2754,7 +2754,6 @@ func _spawn_factions() -> void:
 			ship_name = str(names[i])
 		elif gang_name != "":
 			ship_name = "%s %d" % [gang_name, i + 1]
-		var actor = _blank_ship("skiff", ship_name, "agent:red_keel:%d" % i, "npc", "red_keel")
 		var ang = float(i) / float(maxi(pack_count, 1)) * TAU
 		var part: String = bolted[i % bolted.size()]
 		var role := ""
@@ -2779,6 +2778,10 @@ func _spawn_factions() -> void:
 			authored = false
 		if action == "":
 			action = role
+		var hull_id := "skiff"
+		if authored and role == "raider":
+			hull_id = "brig"
+		var actor = _blank_ship(hull_id, ship_name, "agent:red_keel:%d" % i, "npc", "red_keel")
 		var pack_home: Vector2 = pack_pos
 		if authored and role == "claim_jumper":
 			pack_home = pocket_pos

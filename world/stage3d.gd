@@ -3476,7 +3476,7 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 	var layers: Array = Silhouette.layers_of(sim.defs, ship.modules)
 	var sockets: Array = _weapon_sockets(ship.get("modules", []))
 	var post := ""
-	if class_id == "skiff" or class_id == "cutter" or class_id == "anvil":
+	if class_id == "skiff" or class_id == "brig" or class_id == "cutter" or class_id == "anvil":
 		var brain: Dictionary = ship.get("ai", {})
 		post = str(brain.get("role", ""))
 		if post == "":
@@ -3811,7 +3811,7 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	elif class_id == "alidade":
 		deck = Vector3(2.0, height * 0.72, 0.0)
 		deck_size = Vector3(15.0, 5.6, 9.6)
-	elif class_id == "cutter" or class_id == "skiff":
+	elif class_id == "cutter" or class_id == "skiff" or class_id == "brig":
 		deck = Vector3(6.0, height, 0.0)
 		deck_size = Vector3(9.0, 6.2, 5.4)
 	var bridge := MeshInstance3D.new()
@@ -6859,6 +6859,10 @@ func _hull_paint(class_id: String, deck: bool = false) -> ShaderMaterial:
 		paint = Color("8a98a0") if deck else Color("6a7880")
 		trim = Color("8ec8ff")
 		trim.a = 0.48
+	elif class_id == "brig":
+		paint = Color("6a4038") if deck else Color("5c2a22")
+		trim = Color("e0a24a")
+		trim.a = 0.55
 	return _hull_mat(paint, trim)
 
 
@@ -7732,9 +7736,11 @@ func _dress_post(holder: Node3D, class_id: String, post: String, height: float) 
 		return
 	var nose := float(holder.get_meta("nose", 20.0))
 	var tail := float(holder.get_meta("tail", -12.0))
-	if class_id == "skiff":
+	if class_id == "skiff" or class_id == "brig":
 		_kit(holder, "BountyPlate", Vector3(2.4, 1.6, 0.18), Vector3(nose * 0.15, height * 1.15, 0.0), Color("e0a24a"))
 		_nav_lamp(holder, "BountyLamp", Vector3(nose * 0.15, height * 1.45, 0.0), Color("e0a24a"), 0.7)
+		if class_id == "brig":
+			_cyl(holder, "BrigSpine", 0.48, maxf(nose * 0.9, 12.0), Vector3(0.0, height * 0.62, 0.0), "x", Color("2a2420"))
 		if post == "interceptor":
 			_cyl(holder, "PostSpike", 0.55, 14.0, Vector3(nose + 4.0, height * 0.45, 0.0), "x", Color("d8e4ea"))
 			_cyl(holder, "PostGun", 0.28, 6.0, Vector3(nose * 0.4, height * 0.7, 1.4), "x", Color("16181a"))
