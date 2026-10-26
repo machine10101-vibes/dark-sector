@@ -116,6 +116,54 @@ static func escort_blurb(sim) -> String:
 	return "Fly out to the Compact cutter and come back to the pad. Pay %d." % ESCORT_PAY
 
 
+static func wanted(sim) -> Array:
+	var rows: Array = []
+	if sim == null:
+		return rows
+	for actor in sim.actors:
+		if str(actor.get("team", "")) != "red_keel":
+			continue
+		if not bool(actor.get("alive", false)):
+			continue
+		var pay := int(sim.bounty_of(actor))
+		if pay <= 0:
+			continue
+		var brain = actor.get("ai", {})
+		var role := ""
+		if typeof(brain) == TYPE_DICTIONARY:
+			role = str(brain.get("role", ""))
+		rows.append({
+			"id": str(actor.get("agent_id", "")),
+			"name": str(actor.get("name", "Skiff")),
+			"role": role,
+			"bounty": pay,
+		})
+	rows.sort_custom(func(a, b): return str(a.get("name", "")) < str(b.get("name", "")))
+	return rows
+
+
+static func mark_warrant(sim, agent_id: String) -> String:
+	if sim == null or sim.player.is_empty():
+		return "No keel on the pad."
+	for actor in sim.actors:
+		if str(actor.get("agent_id", "")) != agent_id:
+			continue
+		if str(actor.get("team", "")) != "red_keel" or not bool(actor.get("alive", false)):
+			break
+		var pay := int(sim.bounty_of(actor))
+		if pay <= 0:
+			return "That hull posts no bounty."
+		var ship_name := str(actor.get("name", "Skiff"))
+		sim.say("Warrant on %s. Bounty %d." % [ship_name, pay])
+		HelmCombat.set_order(sim, sim.player, {
+			"kind": "approach",
+			"target": agent_id,
+			"label": "Warrant %s" % ship_name,
+		})
+		return ""
+	return "That warrant is already off the board."
+
+
 static func take(sim, job_id: String) -> String:
 	if not at_pad(sim):
 		return "The board is at the Helion Dock pad."

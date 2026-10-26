@@ -2013,6 +2013,50 @@ func lock_caption(unit: Dictionary) -> String:
 	return "LOCK  %s  ·  %d m" % [name, int(gap)]
 
 
+func ordered_wreck():
+	var order = player.get("order", {})
+	if typeof(order) != TYPE_DICTIONARY:
+		return null
+	if str(order.get("kind", "")) != "approach":
+		return null
+	var wreck = wreck_by_id(str(order.get("target", "")))
+	if wreck == null or bool(wreck.get("stripped", false)):
+		return null
+	return wreck
+
+
+func wreck_hold(wreck: Dictionary) -> String:
+	var cargo: Dictionary = wreck.get("cargo", {})
+	var bits: PackedStringArray = PackedStringArray()
+	for key in cargo.keys():
+		var count := int(cargo[key])
+		if count <= 0:
+			continue
+		bits.append("%s ×%d" % [resource_name(str(key)), count])
+	if bits.is_empty():
+		return "hold empty"
+	return ", ".join(bits)
+
+
+func wreck_strip(wreck: Dictionary) -> String:
+	var cargo: Dictionary = wreck.get("cargo", {})
+	var extra := ""
+	for key in cargo.keys():
+		if int(cargo[key]) <= 0:
+			continue
+		extra = resource_name(str(key))
+		break
+	if extra == "":
+		return "strip keel salvage"
+	return "strip keel salvage and %s" % extra
+
+
+func wreck_caption(wreck: Dictionary) -> String:
+	var gap: float = player.pos.distance_to(wreck.pos)
+	var name := str(wreck.get("name", "keel"))
+	return "WRECK  %s  ·  %d m  ·  %s  ·  %s" % [name, int(gap), wreck_hold(wreck), wreck_strip(wreck)]
+
+
 ## A posted hull bounty pays the captain who breaks that keel.
 ## Wing shots share the captain's agent id, so they collect the same purse.
 ## A patrol, a civilian, and a packmate's kill stay off the slate.

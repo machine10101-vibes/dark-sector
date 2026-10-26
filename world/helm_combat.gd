@@ -753,6 +753,17 @@ static func _order_goal(sim, order: Dictionary) -> Dictionary:
 	return {"ok": false}
 
 
+## A warrant filed on the pad has to survive the mooring ticks.
+## The stick still clears it. The keel does not fly until it casts off.
+static func _warrant_moored(unit: Dictionary) -> bool:
+	if not bool(unit.get("moored", false)):
+		return false
+	var order: Dictionary = unit.get("order", {})
+	if str(order.get("kind", "")) != "approach":
+		return false
+	return str(order.get("label", "")).begins_with("Warrant ")
+
+
 static func manual_input(cmd: Dictionary) -> bool:
 	return absf(float(cmd.get("thrust", 0.0))) > 0.15 \
 		or float(cmd.get("retro", 0.0)) > 0.15 \
@@ -768,6 +779,8 @@ static func steer(sim, unit: Dictionary, cmd: Dictionary, stats: Dictionary) -> 
 	if order.is_empty():
 		return cmd
 	if manual_input(cmd) or int(sim.layer) != ScaleFrame.BAND or bool(unit.get("moored", false)):
+		if bool(unit.get("moored", false)) and not manual_input(cmd) and int(sim.layer) == ScaleFrame.BAND and _warrant_moored(unit):
+			return cmd
 		if manual_input(cmd) and _is_local(sim, unit):
 			sim.say("Helm back in hand.")
 		unit.order = {}

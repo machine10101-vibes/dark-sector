@@ -162,7 +162,9 @@ func _place() -> void:
 
 	var locked := str(sim.player.get("lock_id", "")) != ""
 	var marked = HelmHarvest.marked(sim)
-	card.visible = band and (locked or marked != null)
+	var wreck = sim.ordered_wreck()
+	var wreck_up: bool = wreck != null
+	card.visible = band and (locked or marked != null or wreck_up)
 	var card_h := 108.0 if locked else 72.0
 	if card.visible:
 		var lo := 8.0
@@ -1655,6 +1657,10 @@ func _draw_card(pane: Control) -> void:
 	var target = HelmCombat.find_unit(sim, str(p.get("lock_id", "")))
 	_plate(pane, true)
 	if target == null:
+		var wreck = sim.ordered_wreck()
+		if wreck != null:
+			_draw_wreck_card(pane, sim, wreck)
+			return
 		_draw_mark_card(pane, sim, p)
 		return
 	var mark := standing(sim, target)
@@ -1664,6 +1670,9 @@ func _draw_card(pane: Control) -> void:
 	var hull: Dictionary = sim.defs.ships.get(str(target.get("class_id", "")), {})
 	_clip_text(pane, Vector2(10, 16), w - 96.0, str(target.get("name", "Target")), 14, Color("f4fcff"))
 	var class_line := "%s  ·  %s" % [str(hull.get("class_name", "")), str(mark.word)]
+	var brain = target.get("ai", {})
+	if typeof(brain) == TYPE_DICTIONARY and str(brain.get("role", "")) != "":
+		class_line += "  ·  %s" % str(brain.get("role", ""))
 	var posted := int(hull.get("bounty", 0))
 	if posted > 0:
 		class_line += "  ·  bounty %d" % posted
@@ -1714,6 +1723,17 @@ func _draw_card(pane: Control) -> void:
 		button.add_theme_color_override("font_color", Color("9be7d0") if on else Color("c5d6dc"))
 	(order_buttons["orbit"] as Button).text = "Orbit %d" % int(ORBIT_RANGES[_orbit_pick])
 	(order_buttons["keep"] as Button).text = "Keep %d" % int(KEEP_RANGES[_keep_pick])
+
+
+func _draw_wreck_card(pane: Control, sim, wreck: Dictionary) -> void:
+	var w := pane.size.x
+	var col := Color("d7c48a")
+	pane.draw_rect(Rect2(Vector2(0, 10), Vector2(2, 36)), col)
+	_clip_text(pane, Vector2(10, 16), w - 96.0, "Wreck · %s" % str(wreck.get("name", "keel")), 14, Color("f4fcff"))
+	var dist: float = sim.player.pos.distance_to(wreck.pos)
+	_text_right(pane, w - 10.0, 16.0, _dist_word(dist), 14, Color("f4fcff"))
+	_text(Vector2(10, 32), sim.wreck_hold(wreck), 10, Color("d5e4e8"), pane)
+	_text(Vector2(10, 48), sim.wreck_strip(wreck), 10, col, pane)
 
 
 func _draw_mark_card(pane: Control, sim, p: Dictionary) -> void:

@@ -58,6 +58,7 @@ Player-visible what works now:
 - A Manifest reads the nearest hauler and comes home. It names the hold and leaves the goods aboard. The pad sells one for 44 GRT. Make spends one aluminum bar and one copper slag. A trader carries ice and copper. A clerk carries a bar and ice. A tug carries plate and salvage. A herdsman carries fodder and milk. The wreck of that hull stays empty. Combat math is unchanged.
 - A Hawser takes a wreck by the collar and brings it alongside, inside the salvage ring. It leaves the hold on the wreck. The tender still waits until a wreck or a seized field is inside 720 m. The pad sells one Hawser for 52 GRT. Make spends one aluminum bar and one hull plate. On Form, a Dart sits ahead, a Sting holds the beam, a Fang holds the far beam, a Lance stays on the near bow, and a Wasp holds the far quarter. A fighter keeps the screen. Combat math is unchanged.
 - A Red Keel skiff carries a 24 GRT bounty. The captain's guns, or a wing credited to the captain, pay that bounty into the purse and the helm says the new total. The lock line and the target card name the bounty while the skiff is still flying. A Compact cutter posts no bounty, and a civilian wreck pays none. The slate still remembers the pack and still fines a cutter. Combat math is unchanged.
+- The Helion board lists every living Red Keel skiff as a warrant: name, job, and the 24 GRT bounty. Mark files that warrant. It stays on the helm while the keel is moored, and it flies once you cast off. A stick input clears it the way any other order does. The skiff wears an amber bounty plate and lamp. A wreck you approach names the hold and the one crate a strip takes, plus keel salvage. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -99,4 +100,6 @@ Files touched:
 - data/ships.json
 - tests/bounty_slate.gd
 - ui/helm_overlay.gd
+- world/helm_combat.gd
+- tests/wreck_warrant.gd
 - LOOP_STATE.md

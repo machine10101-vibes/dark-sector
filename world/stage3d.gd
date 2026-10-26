@@ -7733,6 +7733,8 @@ func _dress_post(holder: Node3D, class_id: String, post: String, height: float) 
 	var nose := float(holder.get_meta("nose", 20.0))
 	var tail := float(holder.get_meta("tail", -12.0))
 	if class_id == "skiff":
+		_kit(holder, "BountyPlate", Vector3(2.4, 1.6, 0.18), Vector3(nose * 0.15, height * 1.15, 0.0), Color("e0a24a"))
+		_nav_lamp(holder, "BountyLamp", Vector3(nose * 0.15, height * 1.45, 0.0), Color("e0a24a"), 0.7)
 		if post == "interceptor":
 			_cyl(holder, "PostSpike", 0.55, 14.0, Vector3(nose + 4.0, height * 0.45, 0.0), "x", Color("d8e4ea"))
 			_cyl(holder, "PostGun", 0.28, 6.0, Vector3(nose * 0.4, height * 0.7, 1.4), "x", Color("16181a"))

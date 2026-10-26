@@ -1204,12 +1204,20 @@ func _mark_line(sim) -> String:
 	var lock = HelmCombat.find_unit(sim, str(sim.player.get("lock_id", "")))
 	if lock != null:
 		return sim.lock_caption(lock)
+	var wreck = sim.ordered_wreck()
+	if wreck != null:
+		return sim.wreck_caption(wreck)
+	var order = sim.player.get("order", {})
+	if typeof(order) == TYPE_DICTIONARY and str(order.get("kind", "")) == "approach":
+		var warrant := str(order.get("label", ""))
+		if warrant.begins_with("Warrant "):
+			return "MARK  %s" % warrant
 	var place = HelmHarvest.marked(sim)
 	if place != null:
 		var gap: float = sim.player.pos.distance_to(place.pos)
 		var word := "ready" if HelmHarvest.ready(sim, place) else "scan"
 		return "MARK  %s  ·  %d m  ·  %s" % [str(place.name), int(gap), word]
-	var order = sim.player.get("order", {})
+	order = sim.player.get("order", {})
 	if typeof(order) == TYPE_DICTIONARY and str(order.get("kind", "")) == "approach":
 		var label := str(order.get("label", ""))
 		if label != "":
@@ -1473,6 +1481,11 @@ func _fill_board() -> void:
 	var sim = Game.sim
 	var sig := "%s|%d" % [DockBoard.at_pad(sim), DockBoard.purse(sim)]
 	var row: Dictionary = {}
+	var posted_rows: Array = DockBoard.wanted(sim)
+	var warrant: Dictionary = {}
+	for posted in posted_rows:
+		warrant = posted
+		sig += "|%s:%d" % [str(warrant.get("id", "")), int(warrant.get("bounty", 0))]
 	for job in DockBoard.jobs(sim):
 		row = job
 		sig += "|%s:%s:%s" % [str(row.id), str(row.state), str(row.blurb)]
@@ -1500,6 +1513,23 @@ func _fill_board() -> void:
 			take.pressed.connect(_take_dock_job.bind(job_id))
 			board_box.add_child(take)
 		board_box.add_child(ThemeKit.label(" ", 8))
+	board_box.add_child(_board_line("WANTED", 16))
+	if posted_rows.is_empty():
+		board_box.add_child(_board_line("No skiff bounty in this sky.", 13, Color("8d826c")))
+	else:
+		for i in posted_rows.size():
+			warrant = posted_rows[i]
+			var agent := str(warrant.get("id", ""))
+			var ship_name := str(warrant.get("name", "Skiff"))
+			var role := str(warrant.get("role", ""))
+			var pay := int(warrant.get("bounty", 0))
+			var word := "%s    bounty %d" % [ship_name, pay]
+			if role != "":
+				word = "%s    %s    bounty %d" % [ship_name, role, pay]
+			board_box.add_child(_board_line(word, 15))
+			var mark_btn := ThemeKit.button("Mark %s" % ship_name)
+			mark_btn.pressed.connect(_mark_warrant.bind(agent))
+			board_box.add_child(mark_btn)
 
 
 func _fill_market() -> void:
@@ -2565,6 +2595,15 @@ func _apply_tag() -> void:
 	tag_edit.release_focus()
 	market_sig = ""
 	_fill_market()
+
+
+func _mark_warrant(agent_id: String) -> void:
+	if Game.sim == null:
+		return
+	var message := DockBoard.mark_warrant(Game.sim, agent_id)
+	if message != "":
+		Game.sim.say(message)
+	board_sig = ""
 
 
 func _take_dock_job(job_id: String) -> void:
