@@ -1,0 +1,13 @@
+{
+  "id": "authored_cadet_yard",
+  "title": "Cadet Watch",
+  "kind": "authored",
+  "giver": "Helion Compact",
+  "summary": "Start: enter the system. The log opens Cadet Watch and the helm marks Cadet Yard. Do: Close on Cadet Yard. The training patrol hails paint rounds before live guns. The ice ring is a counted cut and the salvage is bad on purpose. Finish: come inside Cadet Yard's shell. The Compact writes standing. A shot in the green still goes on the slate. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "cadet_yard",
+  "system_id": "HC-V1-R1-S4",
+  "mutations": [
+    "rumor_cadet_yard",
+    "compact_standing_up"
+  ]
+}

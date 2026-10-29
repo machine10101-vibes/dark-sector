@@ -147,15 +147,130 @@
         "ruins": "Hull names scraped at inspection.",
         "legal": "Compact seized property."
       }
+    },
+    {
+      "id": "cinder_reach",
+      "name": "Cinder Reach",
+      "kind": "belt",
+      "anchor": "aegis_prime",
+      "angle": 0.9,
+      "distance": 1500,
+      "radius": 90,
+      "legal_title": "Compact lease, limited harvest",
+      "heat": "lease",
+      "resource": {
+        "id": "nickel_cinder",
+        "name": "Nickel cinder",
+        "amount": 8
+      },
+      "layers": {
+        "orbit": "A flank field of nickel cinder off the Helion pad. The rocks are loose.",
+        "atmosphere": "None. Open vacuum between the stones.",
+        "surface": "Pitted nickel and bright ore seams.",
+        "crust": "No crust. The seam is the rock itself.",
+        "biosign": "None. Cold metal.",
+        "ruins": "Lease paint on a few cut faces.",
+        "legal": "Compact lease, limited harvest."
+      }
+    },
+    {
+      "id": "lease_gravel",
+      "name": "Lease Gravel",
+      "kind": "gravel",
+      "anchor": "aegis_prime",
+      "angle": -0.6,
+      "distance": 1400,
+      "radius": 70,
+      "legal_title": "Compact lease, limited harvest",
+      "heat": "lease",
+      "origin": "Gravel shaken off the ice lease. It crosses the pad flank on a timer.",
+      "resource": {
+        "id": "ice_spall",
+        "name": "Ice spall",
+        "amount": 5
+      },
+      "layers": {
+        "orbit": "A timed gravel stream that still crosses the pad sky.",
+        "atmosphere": "None. The chips are in vacuum.",
+        "surface": "Hot faces, cold backs, ore still in the stone.",
+        "crust": "No crust. Moving mass.",
+        "biosign": "None.",
+        "ruins": "None. The stream replaces itself.",
+        "legal": "Compact lease, limited harvest."
+      }
+    },
+    {
+      "id": "copper_slag",
+      "name": "Copper Slag",
+      "kind": "seam",
+      "anchor": "aegis_prime",
+      "angle": 1.2,
+      "distance": 1400,
+      "radius": 70,
+      "legal_title": "Compact lease, limited harvest",
+      "heat": "lease",
+      "resource": {
+        "id": "copper_slag",
+        "name": "Copper slag",
+        "amount": 5
+      },
+      "layers": {
+        "orbit": "A green seam on the Unlet bearing, off the Helion pad.",
+        "atmosphere": "None. Open vacuum.",
+        "surface": "Copper heart under green slag.",
+        "crust": "No crust. The seam is the rock.",
+        "biosign": "None.",
+        "ruins": "A cut face with lease paint.",
+        "legal": "Compact lease, limited harvest."
+      }
+    },
+    {
+      "id": "hull_plate",
+      "name": "Hull Plate",
+      "kind": "seam",
+      "anchor": "aegis_prime",
+      "angle": 1.6,
+      "distance": 1300,
+      "radius": 80,
+      "legal_title": "Compact lease, limited harvest",
+      "heat": "lease",
+      "resource": {
+        "id": "hull_plate",
+        "name": "Hull plate",
+        "amount": 4
+      },
+      "layers": {
+        "orbit": "Torn plate riding with the seized hold, still stock.",
+        "atmosphere": "None. Vacuum and paint flakes.",
+        "surface": "Ribs, skin, and a snapped spar.",
+        "crust": "No crust. Hollow plate.",
+        "biosign": "None living.",
+        "ruins": "A bow number scraped off.",
+        "legal": "Compact lease, limited harvest."
+      }
     }
   ],
   "belt": {
-    "id": "none",
-    "name": "",
-    "radius": 1,
-    "width": 0,
-    "count": 0,
-    "composition": "no belt at the dock"
+    "id": "cinder_reach",
+    "name": "Cinder Reach",
+    "local": true,
+    "anchor": "aegis_prime",
+    "radius": 460,
+    "width": 150,
+    "count": 14,
+    "composition": "nickel cinder and lease spall cut from the Aegis ring and parked off the pad"
+  },
+  "stream": {
+    "id": "lease_gravel",
+    "name": "Lease Gravel",
+    "local": true,
+    "anchor": "aegis_prime",
+    "distance": 200,
+    "vector": 0.4,
+    "period": 12,
+    "span": 110,
+    "speed": 14,
+    "origin": "Gravel shaken off the ice lease. It crosses the pad flank on a timer."
   },
   "trash": {
     "id": "seized_hold",
@@ -172,7 +287,7 @@
     "name": "The Unlet",
     "anchor": "aegis_prime",
     "angle": -1.15,
-    "distance": 1180,
+    "distance": 1860,
     "radius": 260,
     "plantable": false,
     "why": "Marked on the chart. Compact law keeps it empty."
@@ -186,7 +301,7 @@
   "zones": {
     "green": {
       "anchor": "aegis_prime",
-      "radius": 980
+      "radius": 1650
     },
     "amber": {
       "anchor": "nest",
@@ -221,7 +336,7 @@
       "arrive": "soil_lane",
       "anchor": "aegis_prime",
       "angle": 0.4,
-      "distance": 1300,
+      "distance": 1970,
       "radius": 140,
       "color": "green"
     },
@@ -232,7 +347,7 @@
       "arrive": "brass_from_dock",
       "anchor": "aegis_prime",
       "angle": 1.35,
-      "distance": 1550,
+      "distance": 2220,
       "radius": 120,
       "color": "green"
     },
@@ -243,7 +358,7 @@
       "arrive": "writ_from_dock",
       "anchor": "aegis_prime",
       "angle": 2.2,
-      "distance": 1680,
+      "distance": 2350,
       "radius": 120,
       "color": "green"
     }

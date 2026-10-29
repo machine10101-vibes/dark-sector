@@ -1,0 +1,174 @@
+{
+  "id": "HC-V1-R2-S6",
+  "name": "Fine Print",
+  "seed": 22006,
+  "why_visit": "Charters that expire mid-job. The ambush school sits where the paper runs out.",
+  "law_color": "red",
+  "status": "authored",
+  "region": "R2",
+  "star": {
+    "id": "hc-v1-r2-s6-star",
+    "name": "Gutter Clause",
+    "class": "Gutter",
+    "radius": 120,
+    "color": "#a84838"
+  },
+  "bodies": [
+    {
+      "id": "expired_charter",
+      "name": "Expired Charter",
+      "angle": 0.9,
+      "distance": 1500,
+      "radius": 96,
+      "color": "#a85a42",
+      "blurb": "The expired charter world. The stamp is a hole.",
+      "legal": "A charter that already expired. Wreck rights. The school shoots the slow reader.",
+      "air": "None. The office vented when the paper died.",
+      "face": "Burned clause and open wreck rights.",
+      "crust": "Charter iron, no longer binding.",
+      "life": "None the school will admit.",
+      "ruins": "The clause that ended at mid-burn.",
+      "resource_id": "clause_ash",
+      "resource_name": "Clause ash",
+      "amount": 4,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "ambush_school",
+      "name": "Ambush School",
+      "angle": 2.6,
+      "distance": 2100,
+      "radius": 64,
+      "color": "#6e3428",
+      "blurb": "Where the pack learns to wait.",
+      "legal": "The school moon. Students hold the buoy and close when a keel enters the sight.",
+      "air": "None.",
+      "face": "Drill pits and expired stamps.",
+      "crust": "School rock.",
+      "life": "None.",
+      "ruins": "A student's first wreck, left as the lesson.",
+      "resource_id": "drill_plate",
+      "resource_name": "Drill plate",
+      "amount": 5,
+      "heat": "",
+      "moon": true,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "clause_rubble",
+    "name": "Clause Rubble",
+    "composition": "burned charter foil and school plate from expired jobs",
+    "radius": 2700,
+    "width": 160,
+    "count": 11,
+    "resource_id": "clause_foil",
+    "resource_name": "Clause foil",
+    "amount": 4,
+    "legal": "Expired foil. Red law. The rubble is wreck rights.",
+    "heat": ""
+  },
+  "trash": {
+    "id": "mid_job",
+    "name": "Mid Job",
+    "origin": "Haulers cut off when the charter expired before the tow was reeled in.",
+    "anchor": "expired_charter",
+    "angle": 1.3,
+    "distance": 580,
+    "count": 9,
+    "spread": 140,
+    "resource_id": "scrap",
+    "resource_name": "Scrap",
+    "amount": 5,
+    "legal": "Mid-job wrecks. The school keeps them as targets.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "clause_pocket",
+    "name": "Clause Pocket",
+    "anchor": "expired_charter",
+    "angle": -0.6,
+    "distance": 440,
+    "radius": 170,
+    "plantable": false,
+    "why": "The clause is dead. A core would be the next lesson."
+  },
+  "gates": [
+    {
+      "id": "fine_from_lease",
+      "name": "Lease",
+      "to": "HC-V1-R2-S1",
+      "arrive": "lease_to_fine",
+      "anchor": "expired_charter",
+      "angle": 2.8,
+      "distance": 1240,
+      "radius": 120,
+      "color": "amber"
+    }
+  ],
+  "pdo": {
+    "faction": "rimward_charter",
+    "count": 0,
+    "radius": 480,
+    "home": "expired_charter",
+    "role": "patrol",
+    "action": "patrol",
+    "duty": ""
+  },
+  "pirates": {
+    "count": 3,
+    "angle": 1.6,
+    "standoff": 740,
+    "roles": [
+      "ambush",
+      "kite",
+      "raider"
+    ],
+    "actions": [
+      "ambush",
+      "kite",
+      "raider"
+    ],
+    "duties": [
+      "Ambush over Fine Print. Hold the school buoy. Close when a keel enters 520 meters.",
+      "Kite over Fine Print. Keep the flank at 340 to 460 meters and punish a straight run.",
+      "Raider over Fine Print. Take the clerk's hull first. The captain is the second prize."
+    ]
+  },
+  "haulers": [
+    {
+      "id": "expired_clerk",
+      "name": "Expired Clerk",
+      "class_id": "cutter",
+      "home": "expired_charter",
+      "radius": 680,
+      "role": "flee",
+      "action": "flee",
+      "duty": "Expired Clerk at Fine Print. The paper died mid-job. Run when the pack closes inside 640 meters."
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "expired_charter",
+      "radius": 0
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": "Expired Charter"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "authored_first_stamp",
+  "title": "Broken Charter",
+  "kind": "authored",
+  "giver": "Homestead",
+  "summary": "Start: enter the system. The log opens Broken Charter and the helm marks First Stamp. Do: Close on First Stamp. Two papers name the same hollow. Read the first stamp. The second stamp is the other body and the argument. Finish: come inside First Stamp's shell. The Charter writes standing. Planting starts the dispute. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "first_stamp",
+  "system_id": "HC-V1-R5-S4",
+  "mutations": [
+    "rumor_first_stamp",
+    "charter_standing_up"
+  ]
+}

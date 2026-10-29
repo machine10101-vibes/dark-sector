@@ -1,0 +1,13 @@
+{
+  "id": "authored_print_yard",
+  "title": "Second Copy",
+  "kind": "authored",
+  "giver": "Rimward Charter",
+  "summary": "Start: enter the system. The log opens Second Copy and the helm marks Print Yard. Do: Close on Print Yard. An ambush skiff holds the bad copies until you enter 520 meters. The Print Factor reads which copy is yours if you come alongside. Finish: come inside Print Yard's shell. The Charter writes standing. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "print_yard",
+  "system_id": "HC-V1-R2-S5",
+  "mutations": [
+    "rumor_print_yard",
+    "charter_standing_up"
+  ]
+}

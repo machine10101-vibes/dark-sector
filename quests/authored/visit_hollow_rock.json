@@ -1,0 +1,13 @@
+{
+  "id": "authored_hollow_rock",
+  "title": "Deep Hold",
+  "kind": "authored",
+  "giver": "Black Sail",
+  "summary": "Start: enter the system. The log opens Deep Hold and the helm marks Hollow Rock. Do: Close on Hollow Rock. The Den Keeper orbits the hidden dock. The outer rock is the lie. Finish: come inside Hollow Rock's shell. Black Sail heat rises. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "hollow_rock",
+  "system_id": "HC-V1-R8-S5",
+  "mutations": [
+    "rumor_hollow_rock",
+    "heat_black_sail"
+  ]
+}

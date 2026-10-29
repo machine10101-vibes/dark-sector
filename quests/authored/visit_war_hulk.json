@@ -1,0 +1,13 @@
+{
+  "id": "authored_war_hulk",
+  "title": "War Hulk",
+  "kind": "authored",
+  "giver": "Drift tender",
+  "summary": "Start: enter the system. The log opens War Hulk and the helm marks War Hulk. Do: Close on War Hulk. An ambush holds inside the Swallow until you enter 520 meters. A kite circles the teeth. The Swallow recovery is the separate salvage short. Finish: come inside War Hulk's shell. The slate grants one keel salvage. With that salvage aboard, the Swallow recovery can file. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "war_hulk",
+  "system_id": "HC-V1-R6-S1",
+  "mutations": [
+    "rumor_war_hulk",
+    "salvage_grant"
+  ]
+}

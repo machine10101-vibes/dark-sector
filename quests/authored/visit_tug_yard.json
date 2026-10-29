@@ -1,0 +1,13 @@
+{
+  "id": "authored_tug_yard",
+  "title": "Tow the Yard",
+  "kind": "authored",
+  "giver": "Rimward Charter",
+  "summary": "Start: enter the system. The log opens Tow the Yard and the helm marks Tug Yard. Do: Close on Tug Yard. The Tug Factor matches your nose inside 480 meters and holds the tow. The escort contract is the separate arrival. Finish: come inside Tug Yard's shell. The Charter writes standing. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "tug_yard",
+  "system_id": "HC-V1-R2-S2",
+  "mutations": [
+    "rumor_tug_yard",
+    "charter_standing_up"
+  ]
+}

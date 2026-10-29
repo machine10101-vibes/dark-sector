@@ -1,0 +1,13 @@
+{
+  "id": "authored_dead_hollow",
+  "title": "Claimwake",
+  "kind": "authored",
+  "giver": "Marchport",
+  "summary": "Start: enter the system. The log opens Claimwake and the helm marks Dead Hollow. Do: Close on Dead Hollow. Dead homesteads. Reclaim is the pocket on the claim slate. Strip is the other choice. The law is red. Finish: come inside Dead Hollow's shell. Red Keel heat rises. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "dead_hollow",
+  "system_id": "HC-V1-R7-S5",
+  "mutations": [
+    "rumor_dead_hollow",
+    "heat_red_keel"
+  ]
+}

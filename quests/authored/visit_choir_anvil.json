@@ -1,0 +1,13 @@
+{
+  "id": "authored_choir_anvil",
+  "title": "Ore Choir",
+  "kind": "authored",
+  "giver": "Rimward Charter",
+  "summary": "Start: enter the system. The log opens Ore Choir and the helm marks Choir Anvil. Do: Close on Choir Anvil. A claim jumper sits the rim pocket and chases a keel that enters it. A kite holds the belt flank. The Choir Hauler orbits the anvil. Finish: come inside Choir Anvil's shell. The Charter writes standing. The belt is a lease, not a gift. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "choir_anvil",
+  "system_id": "HC-V1-R2-S3",
+  "mutations": [
+    "rumor_choir_anvil",
+    "charter_standing_up"
+  ]
+}

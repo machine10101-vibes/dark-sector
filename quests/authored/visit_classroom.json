@@ -1,0 +1,13 @@
+{
+  "id": "authored_classroom",
+  "title": "No Witness",
+  "kind": "authored",
+  "giver": "Marchport",
+  "summary": "Start: enter the system. The log opens No Witness and the helm marks Classroom. Do: Close on Classroom. Open wreck rights. An interceptor closes, a kite keeps range, and a raider takes whatever is flying. Nobody writes it down. Finish: come inside Classroom's shell. Red Keel heat rises. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "classroom",
+  "system_id": "HC-V1-R7-S6",
+  "mutations": [
+    "rumor_classroom",
+    "heat_red_keel"
+  ]
+}
