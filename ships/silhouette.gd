@@ -73,6 +73,12 @@ static func parts(class_id: String, shapes: Array, layers: Array = []) -> Dictio
 				Vector2(28, 0), Vector2(8, 11), Vector2(-8, 12), Vector2(-22, 7),
 				Vector2(-22, -7), Vector2(-8, -12), Vector2(8, -11)
 			])
+		"yawl":
+			hull = PackedVector2Array([
+				Vector2(34, 0), Vector2(16, 2.4), Vector2(2, 5), Vector2(-6, 16),
+				Vector2(-14, 5), Vector2(-24, 2.2), Vector2(-24, -2.2), Vector2(-14, -5),
+				Vector2(-6, -16), Vector2(2, -5), Vector2(16, -2.4)
+			])
 		"cutter":
 			hull = PackedVector2Array([
 				Vector2(30, 0), Vector2(8, 10), Vector2(-18, 12), Vector2(-24, 0),
@@ -171,7 +177,7 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 		_paint_ram(ci, xf, scale, worn, accent)
 	elif class_id == "alidade":
 		_paint_kite(ci, xf, scale, worn, accent)
-	elif class_id == "cutter" or class_id == "skiff" or class_id == "brig":
+	elif class_id == "cutter" or class_id == "skiff" or class_id == "brig" or class_id == "yawl":
 		_paint_small(ci, xf, scale, worn, accent)
 	_paint_lights(ci, xf, scale, class_id)
 	_rim(ci, pts, lit, accent.lightened(0.2), 1.35)
@@ -531,6 +537,10 @@ static func _paint_lights(ci: CanvasItem, xf: Transform2D, scale: float, class_i
 			nose_x = 10.0
 			nose_y = 4.0
 			tail_x = -12.0
+		"yawl":
+			nose_x = 14.0
+			nose_y = 3.0
+			tail_x = -16.0
 		"cutter":
 			nose_x = 8.0
 			nose_y = 3.6
