@@ -70,7 +70,7 @@ func _run() -> void:
 		elif str(actor.class_id) == "skiff":
 			light += 1
 	check(not heavy.is_empty() and str(heavy.class_id) == "brig", "Fine Print's raider is a brig")
-	check(light == 1, "the ambush stays a skiff")
+	check(light == 0, "Fine Print's kite and ambush leave the skiff")
 	if heavy.is_empty():
 		return
 	var ship_name := str(heavy.name)

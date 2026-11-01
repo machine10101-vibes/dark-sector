@@ -96,7 +96,7 @@ func _run() -> void:
 	print_sky.hold_npc = true
 	var saw_yawl := false
 	var saw_brig := false
-	var saw_skiff := false
+	var saw_lugger := false
 	for actor in print_sky.actors:
 		if str(actor.team) != "red_keel":
 			continue
@@ -104,9 +104,9 @@ func _run() -> void:
 			saw_yawl = true
 		elif str(actor.ai.role) == "raider" and str(actor.class_id) == "brig":
 			saw_brig = true
-		elif str(actor.ai.role) == "ambush" and str(actor.class_id) == "skiff":
-			saw_skiff = true
-	check(saw_yawl and saw_brig and saw_skiff, "Fine Print keeps a yawl, a brig, and a skiff")
+		elif str(actor.ai.role) == "ambush" and str(actor.class_id) == "lugger":
+			saw_lugger = true
+	check(saw_yawl and saw_brig and saw_lugger, "Fine Print keeps a yawl, a brig, and a lugger")
 	var stage: Node = load("res://world/stage3d.gd").new()
 	root.add_child(stage)
 	var mesh := Node3D.new()

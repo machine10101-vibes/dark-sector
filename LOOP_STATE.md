@@ -61,6 +61,7 @@ Player-visible what works now:
 - The Helion board lists every living Red Keel skiff as a warrant: name, job, and the 24 GRT bounty. Mark files that warrant. It stays on the helm while the keel is moored, and it flies once you cast off. A stick input clears it the way any other order does. The skiff wears an amber bounty plate and lamp. A wreck you approach names the hold and the one crate a strip takes, plus keel salvage. Combat math is unchanged.
 - An authored raider flies a Red Keel brig. The hull is longer than a skiff, wears a spine, a bounty plate, and the raider claws, and posts 64 GRT. The gun is a turret. Helion's own pack stays on skiffs, and the slate still remembers the pack. The warrant board names the brig with the job and the bounty. Combat math is unchanged.
 - An authored kite flies a Red Keel yawl. The hull is a long dart with a pale spar, a bounty plate, and the kite fins, and posts 36 GRT. The gun is a beam. Helion's own pack stays on skiffs, and the slate still remembers the pack. The warrant board names the yawl with the job and the bounty. Combat math is unchanged.
+- An authored ambush flies a Red Keel lugger. The hull is short and wide, wears a cowl, a short maw, a bounty plate, and the ambush baffle, and posts 48 GRT. The gun is a close turret and the shot drops. Helion's own pack stays on skiffs, and the slate still remembers the pack. The warrant board names the lugger with the job and the bounty. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -108,4 +109,5 @@ Files touched:
 - ships/silhouette.gd
 - tests/brig_warrant.gd
 - tests/yawl_warrant.gd
+- tests/lugger_warrant.gd
 - LOOP_STATE.md
