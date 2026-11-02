@@ -132,14 +132,33 @@ static func wanted(sim) -> Array:
 		var role := ""
 		if typeof(brain) == TYPE_DICTIONARY:
 			role = str(brain.get("role", ""))
+		var hull_word := ""
+		var class_id := str(actor.get("class_id", ""))
+		if sim.defs != null and sim.defs.ships.has(class_id):
+			hull_word = str(sim.defs.ships[class_id].get("callsign", ""))
 		rows.append({
 			"id": str(actor.get("agent_id", "")),
 			"name": str(actor.get("name", "Skiff")),
 			"role": role,
+			"hull": hull_word,
 			"bounty": pay,
 		})
 	rows.sort_custom(func(a, b): return str(a.get("name", "")) < str(b.get("name", "")))
 	return rows
+
+
+static func warrant_line(row: Dictionary) -> String:
+	var ship_name := str(row.get("name", "Skiff"))
+	var hull := str(row.get("hull", ""))
+	var role := str(row.get("role", ""))
+	var pay := int(row.get("bounty", 0))
+	if hull != "" and role != "":
+		return "%s    %s    %s    bounty %d" % [ship_name, hull, role, pay]
+	if role != "":
+		return "%s    %s    bounty %d" % [ship_name, role, pay]
+	if hull != "":
+		return "%s    %s    bounty %d" % [ship_name, hull, pay]
+	return "%s    bounty %d" % [ship_name, pay]
 
 
 static func mark_warrant(sim, agent_id: String) -> String:

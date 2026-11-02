@@ -1515,18 +1515,13 @@ func _fill_board() -> void:
 		board_box.add_child(ThemeKit.label(" ", 8))
 	board_box.add_child(_board_line("WANTED", 16))
 	if posted_rows.is_empty():
-		board_box.add_child(_board_line("No skiff bounty in this sky.", 13, Color("8d826c")))
+		board_box.add_child(_board_line("No posted bounty in this sky.", 13, Color("8d826c")))
 	else:
 		for i in posted_rows.size():
 			warrant = posted_rows[i]
 			var agent := str(warrant.get("id", ""))
 			var ship_name := str(warrant.get("name", "Skiff"))
-			var role := str(warrant.get("role", ""))
-			var pay := int(warrant.get("bounty", 0))
-			var word := "%s    bounty %d" % [ship_name, pay]
-			if role != "":
-				word = "%s    %s    bounty %d" % [ship_name, role, pay]
-			board_box.add_child(_board_line(word, 15))
+			board_box.add_child(_board_line(DockBoard.warrant_line(warrant), 15))
 			var mark_btn := ThemeKit.button("Mark %s" % ship_name)
 			mark_btn.pressed.connect(_mark_warrant.bind(agent))
 			board_box.add_child(mark_btn)
