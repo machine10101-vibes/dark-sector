@@ -63,6 +63,7 @@ Player-visible what works now:
 - An authored kite flies a Red Keel yawl. The hull is a long dart with a pale spar, a bounty plate, and the kite fins, and posts 36 GRT. The gun is a beam. Helion's own pack stays on skiffs, and the slate still remembers the pack. The warrant board names the yawl with the job and the bounty. Combat math is unchanged.
 - An authored ambush flies a Red Keel lugger. The hull is short and wide, wears a cowl, a short maw, a bounty plate, and the ambush baffle, and posts 48 GRT. The gun is a close turret and the shot drops. Helion's own pack stays on skiffs, and the slate still remembers the pack. The warrant board names the lugger with the job and the bounty. Combat math is unchanged.
 - An authored interceptor flies a Red Keel pinnace. The hull is a thin chase boat, wears a ram, a bounty plate, and the interceptor spike, and posts 40 GRT. The gun is a fast turret that lives in the 200 to 260 meter band. Helion's own pack stays on skiffs, and the slate still remembers the pack. The warrant board names the hull, the job, and the bounty. Combat math is unchanged.
+- An authored claim jumper flies a Red Keel ketch. The hull is a squat claim boat, wears ore bins, a bounty plate, and the claim stake, and posts 52 GRT. The gun is a short wide turret that lives inside the pocket. Helion's own pack stays on skiffs, and the slate still remembers the pack. The warrant board names the hull, the job, and the bounty. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — more HC-V1 authored hooks, art loop Gate 2+ on three starters
 Blocked by:
@@ -114,4 +115,5 @@ Files touched:
 - quests/dock_board.gd
 - ui/hud.gd
 - tests/pinnace_warrant.gd
+- tests/ketch_warrant.gd
 - LOOP_STATE.md

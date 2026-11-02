@@ -91,6 +91,12 @@ static func parts(class_id: String, shapes: Array, layers: Array = []) -> Dictio
 				Vector2(-22, 1.6), Vector2(-22, -1.6), Vector2(-8, -3), Vector2(4, -4.5),
 				Vector2(18, -3)
 			])
+		"ketch":
+			hull = PackedVector2Array([
+				Vector2(20, 0), Vector2(14, 9), Vector2(2, 13), Vector2(-10, 12),
+				Vector2(-20, 8), Vector2(-24, 3), Vector2(-24, -3), Vector2(-20, -8),
+				Vector2(-10, -12), Vector2(2, -13), Vector2(14, -9)
+			])
 		"cutter":
 			hull = PackedVector2Array([
 				Vector2(30, 0), Vector2(8, 10), Vector2(-18, 12), Vector2(-24, 0),
@@ -189,7 +195,7 @@ static func draw(ci: CanvasItem, origin: Vector2, rot: float, class_id: String, 
 		_paint_ram(ci, xf, scale, worn, accent)
 	elif class_id == "alidade":
 		_paint_kite(ci, xf, scale, worn, accent)
-	elif class_id == "cutter" or class_id == "skiff" or class_id == "brig" or class_id == "yawl" or class_id == "lugger" or class_id == "pinnace":
+	elif class_id == "cutter" or class_id == "skiff" or class_id == "brig" or class_id == "yawl" or class_id == "lugger" or class_id == "pinnace" or class_id == "ketch":
 		_paint_small(ci, xf, scale, worn, accent)
 	_paint_lights(ci, xf, scale, class_id)
 	_rim(ci, pts, lit, accent.lightened(0.2), 1.35)
@@ -561,6 +567,10 @@ static func _paint_lights(ci: CanvasItem, xf: Transform2D, scale: float, class_i
 			nose_x = 16.0
 			nose_y = 2.2
 			tail_x = -14.0
+		"ketch":
+			nose_x = 8.0
+			nose_y = 6.0
+			tail_x = -16.0
 		"cutter":
 			nose_x = 8.0
 			nose_y = 3.6

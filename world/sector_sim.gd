@@ -2787,6 +2787,8 @@ func _spawn_factions() -> void:
 			hull_id = "lugger"
 		elif authored and role == "interceptor":
 			hull_id = "pinnace"
+		elif authored and role == "claim_jumper":
+			hull_id = "ketch"
 		var actor = _blank_ship(hull_id, ship_name, "agent:red_keel:%d" % i, "npc", "red_keel")
 		var pack_home: Vector2 = pack_pos
 		if authored and role == "claim_jumper":
