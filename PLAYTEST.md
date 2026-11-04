@@ -138,3 +138,15 @@ Headless host, same sim as Host the dock. It listens on 24565 and keeps `user://
 ```bash
 godot --headless --path . --script res://scripts/headless_host.gd
 ```
+
+## Ready — meet, then the shell
+
+Lane the chart. One keel. Quests, then Track.
+
+1. **Second Copy.** Arrive. Enter Print Yard. The job stays open. Come within 320 m of the Print Factor. The helm says the factor is met. Enter Print Yard again. The log files Second Copy and the Charter writes standing.
+2. **Tow the Yard.** Arrive at Towline. Enter Tug Yard. The job stays open. Come within 480 m of the Tug Factor. The helm says the tug is met. Enter Tug Yard again. The log files Tow the Yard.
+3. **Ore Choir.** Arrive. Enter Choir Anvil. The job stays open. Come within 400 m of the claim jumper's rim pocket. The helm says the pocket is seen. Enter Choir Anvil again. The log files Ore Choir. Water Lease still finishes at Towline only when ice spall is in the hold.
+
+```bash
+godot --headless --path . --script res://tests/ecosystem_sim.gd
+```

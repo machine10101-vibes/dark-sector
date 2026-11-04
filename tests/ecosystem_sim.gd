@@ -180,16 +180,25 @@ func _print_yard() -> void:
 			check(str(row.get("giver", "")) == "Rimward Charter", "Second Copy names its giver")
 			check(str(row.get("summary", "")).contains("Finish:"), "Second Copy states the finish")
 	check(seen, "Second Copy is open in the log")
-	var yard = sim.planet("print_yard")
-	check(yard != null, "Print Yard is a body")
-	if yard == null:
-		return
-	sim.player.pos = yard.pos + Vector2(float(yard.radius) + 400.0, 0.0)
+	check(str(sim.quest_flags.get("authored_print_yard", "")) != "done", "arrival does not file Second Copy")
+	var factor := _named(sim, "Print Factor")
+	check(not factor.is_empty(), "Second Copy posts a Print Factor")
+	check(QuestBoard.track(sim, "authored_print_yard") == "", "Track pins Second Copy on the factor")
+	check(QuestBoard.cue_line(sim).contains("Print Factor"), "the guide marks the Print Factor before the meet")
+	check(_body_open(sim, "authored_print_yard", "print_yard"), "Print Yard's shell does not file Second Copy")
+	check(bool(sim.quest_flags.get("authored_print_yard_meet_factor", false)) == false, "standing on Print Yard does not meet the factor")
+	sim.player.pos = factor.pos + Vector2(40.0, 0.0)
 	QuestBoard.pulse(sim, 0.2)
-	check(str(sim.quest_flags.get("authored_print_yard", "")) != "done", "Second Copy stays open outside the shell")
+	check(bool(sim.quest_flags.get("authored_print_yard_meet_factor", false)), "coming alongside the Print Factor records the copy")
+	check(_said(sim, "Second Copy: Print Factor."), "the helm names the Print Factor")
+	check(str(sim.quest_flags.get("authored_print_yard", "")) != "done", "the factor alone does not file Second Copy")
+	check(QuestBoard.cue_line(sim).contains("Print Yard"), "after the factor the guide marks Print Yard")
+	var yard = sim.planet("print_yard")
 	sim.player.pos = yard.pos
 	QuestBoard.pulse(sim, 0.2)
-	check(str(sim.quest_flags.get("authored_print_yard", "")) == "done", "closing on Print Yard finishes Second Copy")
+	check(str(sim.quest_flags.get("authored_print_yard", "")) == "done", "Print Yard files Second Copy after the factor")
+	check(int(sim.quest_flags.get("charter_standing", 0)) > 0, "Second Copy writes charter standing")
+	check(bool(sim.quest_flags.get("rumor_print_yard", false)), "Second Copy writes the print rumor")
 
 
 func _fly(sim: SectorSim, actor: Dictionary, seconds: float) -> void:
@@ -198,6 +207,13 @@ func _fly(sim: SectorSim, actor: Dictionary, seconds: float) -> void:
 		var step: float = minf(0.25, left)
 		sim._step_npc(actor, step)
 		left -= step
+
+
+func _said(sim: SectorSim, text: String) -> bool:
+	for row in sim.lines:
+		if str(row.get("text", "")) == text:
+			return true
+	return false
 
 
 func _named(sim: SectorSim, ship_name: String) -> Dictionary:
@@ -395,6 +411,44 @@ func _steps() -> void:
 	court.player.pos = house.pos
 	QuestBoard.pulse(court, 0.2)
 	check(str(court.quest_flags.get("authored_warrant_house", "")) == "done", "Warrant House files Post the Writ after Holt")
+	var towline := make("anvil")
+	towline._arrive("HC-V1-R2-S2", "")
+	var tug := _named(towline, "Tug Factor")
+	check(not tug.is_empty(), "Towline posts a Tug Factor")
+	check(QuestBoard.track(towline, "authored_tug_yard") == "", "Track pins Tow the Yard")
+	check(QuestBoard.cue_line(towline).contains("Tug Factor"), "the guide marks the Tug Factor before the tow")
+	check(_body_open(towline, "authored_tug_yard", "tug_yard"), "Tug Yard's shell does not file Tow the Yard")
+	check(bool(towline.quest_flags.get("authored_tug_yard_meet_tug", false)) == false, "standing on Tug Yard does not meet the tug")
+	towline.player.pos = tug.pos + Vector2(40.0, 0.0)
+	QuestBoard.pulse(towline, 0.2)
+	check(bool(towline.quest_flags.get("authored_tug_yard_meet_tug", false)), "coming alongside the Tug Factor records the tow")
+	check(_said(towline, "Tow the Yard: Tug Factor."), "the helm names the Tug Factor")
+	check(str(towline.quest_flags.get("authored_tug_yard", "")) != "done", "the tug alone does not file Tow the Yard")
+	check(QuestBoard.cue_line(towline).contains("Tug Yard"), "after the tug the guide marks Tug Yard")
+	var bollard = towline.planet("tug_yard")
+	towline.player.pos = bollard.pos
+	QuestBoard.pulse(towline, 0.2)
+	check(str(towline.quest_flags.get("authored_tug_yard", "")) == "done", "Tug Yard files Tow the Yard after the tug")
+	check(int(towline.quest_flags.get("charter_standing", 0)) > 0, "Tow the Yard writes charter standing")
+	var choir := make("kestrel")
+	choir._arrive("HC-V1-R2-S3", "")
+	var jumper := _actor_role(choir, "claim_jumper")
+	check(not jumper.is_empty(), "Ore Choir's claim jumper is the pocket mark")
+	check(QuestBoard.track(choir, "authored_choir_anvil") == "", "Track pins Ore Choir")
+	check(QuestBoard.cue_line(choir).contains("rim pocket"), "the guide marks the rim pocket before the sight")
+	check(_body_open(choir, "authored_choir_anvil", "choir_anvil"), "Choir Anvil's shell does not file Ore Choir")
+	check(bool(choir.quest_flags.get("authored_choir_anvil_see_pocket", false)) == false, "standing on Choir Anvil does not see the pocket")
+	choir.player.pos = jumper.home + Vector2(80.0, 0.0)
+	QuestBoard.pulse(choir, 0.2)
+	check(bool(choir.quest_flags.get("authored_choir_anvil_see_pocket", false)), "entering the rim pocket records the sight")
+	check(_said(choir, "Ore Choir: the rim pocket."), "the helm names the rim pocket")
+	check(str(choir.quest_flags.get("authored_choir_anvil", "")) != "done", "the pocket alone does not file Ore Choir")
+	check(QuestBoard.cue_line(choir).contains("Choir Anvil"), "after the pocket the guide marks Choir Anvil")
+	var anvil = choir.planet("choir_anvil")
+	choir.player.pos = anvil.pos
+	QuestBoard.pulse(choir, 0.2)
+	check(str(choir.quest_flags.get("authored_choir_anvil", "")) == "done", "Choir Anvil files Ore Choir after the pocket")
+	check(int(choir.quest_flags.get("charter_standing", 0)) > 0, "Ore Choir writes charter standing")
 
 
 func _cue() -> void:
@@ -419,7 +473,7 @@ func _guide() -> void:
 	var pinned := QuestBoard.cue_line(sim)
 	check(pinned.begins_with("TRACK"), "the helm names the pinned job")
 	check(pinned.contains("Second Copy"), "the pin names Second Copy")
-	check(pinned.contains("Print Yard"), "the pin names Print Yard")
+	check(pinned.contains("Print Factor"), "the pin names the Print Factor before the shell")
 	check(QuestBoard.cue_aim(sim).length() > 8.0, "the pin aims the amber beam")
 	var card := QuestBoard.guide_card(sim, "authored_print_yard")
 	check(str(card.get("detail", "")).contains("ambush") or str(card.get("detail", "")).contains("Print"), "the guide names the local work")
