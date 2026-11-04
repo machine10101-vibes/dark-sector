@@ -259,6 +259,8 @@ func _contacts(sim) -> Array:
 			"id": str(row.id),
 			"name": str(unit.get("name", "Contact")),
 			"kind": str(hull.get("class_name", unit.get("class_id", ""))),
+			"hull": str(hull.get("callsign", "")),
+			"bounty": int(hull.get("bounty", 0)),
 			"dist": float(row.dist),
 			"color": WARN_C if locking else mark.color,
 			"word": word,
@@ -277,6 +279,8 @@ func _contacts(sim) -> Array:
 			"id": str(wreck.id),
 			"name": "Wreck · %s" % str(wreck.get("name", "keel")),
 			"kind": "salvage",
+			"hull": "",
+			"bounty": 0,
 			"dist": gap,
 			"color": Color("d7c48a") if yours else Color("a9b4b8"),
 			"word": "your wreck" if yours else "wreck",
@@ -340,6 +344,22 @@ func _dist_word(meters: float) -> String:
 	if meters >= 1000.0:
 		return "%.1f km" % (meters / 1000.0)
 	return "%d m" % int(meters)
+
+
+## The contacts row names the hull when the standing word is only a color.
+## A posted bounty sits on that hull. Law, a lock, and a live order keep their words.
+func contact_tag(row: Dictionary, order: Dictionary) -> String:
+	if str(order.get("target", "")) == str(row.get("id", "")):
+		return str(order.get("kind", row.get("word", "")))
+	var hull_word := str(row.get("hull", ""))
+	var standing_word := str(row.get("word", ""))
+	if hull_word != "" and not bool(row.get("locking", false)) and not bool(row.get("wreck", false)):
+		if standing_word == "hostile" or standing_word == "neutral" or standing_word == "contact":
+			var posted := int(row.get("bounty", 0))
+			if posted > 0:
+				return "%s %d" % [hull_word, posted]
+			return hull_word
+	return standing_word
 
 
 # Input --------------------------------------------------------------------
@@ -1638,11 +1658,16 @@ func _draw_overview(pane: Control) -> void:
 			pane.draw_polyline(PackedVector2Array([glyph + Vector2(0, -5), glyph + Vector2(5, 0), glyph + Vector2(0, 5), glyph + Vector2(-5, 0), glyph + Vector2(0, -5)]), col, 1.4, true)
 		else:
 			pane.draw_colored_polygon(PackedVector2Array([glyph + Vector2(6, 0), glyph + Vector2(-4, -5), glyph + Vector2(-4, 5)]), col)
-		_clip_text(pane, Vector2(28, y + 14), pane.size.x - 118.0, str(row.name), 11, Color("e7f3f6"))
-		var tag := str(row.word)
-		if str(order.get("target", "")) == str(row.id):
-			tag = str(order.get("kind", tag))
-		_text_right(pane, pane.size.x - 52.0, y + 14, tag, 10, Color(col, 0.85))
+		var tag := contact_tag(row, order)
+		var tag_w := 0.0
+		if _font != null:
+			tag_w = _font.get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 10).x
+		var name_w := pane.size.x - 52.0 - tag_w - 8.0 - 28.0
+		_clip_text(pane, Vector2(28, y + 14), maxf(36.0, name_w), str(row.name), 11, Color("e7f3f6"))
+		var tag_col := Color(col, 0.85)
+		if int(row.get("bounty", 0)) > 0 and tag.find(str(row.get("hull", ""))) == 0:
+			tag_col = Color("e0a24a")
+		_text_right(pane, pane.size.x - 52.0, y + 14, tag, 10, tag_col)
 		_text_right(pane, pane.size.x - 8.0, y + 14, _dist_word(float(row.dist)), 11, Color("c5d6dc"))
 		y += 20.0
 	if _rows.is_empty():
