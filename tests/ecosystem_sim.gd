@@ -457,6 +457,11 @@ func _hooks() -> void:
 	_meet_shell("anvil", "HC-V1-R5-S4", "authored_first_stamp", "first_stamp", "Stamp Clerk", "meet_clerk", "First Stamp", "Broken Charter: Stamp Clerk.", "charter_standing", "rumor_first_stamp")
 	_meet_shell("kestrel", "HC-V1-R3-S3", "authored_guest_station", "guest_station", "Lamp Host", "meet_host", "Guest Station", "Guest Lamp: Lamp Host.", "municipal_standing", "rumor_guest_station")
 	_meet_shell("vesper", "HC-V1-R5-S2", "authored_hot_face", "hot_face", "Weather Shepherd", "meet_shepherd", "Hot Face", "Two Weathers: Weather Shepherd.", "charter_standing", "rumor_hot_face")
+	_meet_shell("anvil", "HC-V1-R3-S2", "authored_algae_stack", "algae_stack", "Shift Boss", "meet_boss", "Algae Stack", "Lower Stack: Shift Boss.", "municipal_standing", "rumor_algae_stack")
+	_meet_shell("kestrel", "HC-V1-R4-S5", "authored_feedstock", "feedstock", "Fine Clerk", "meet_clerk", "Feedstock", "Clean Hands: Fine Clerk.", "glass_standing", "rumor_feedstock")
+	_meet_shell("vesper", "HC-V1-R3-S4", "authored_garden_moon", "garden_moon", "Orbit Clerk", "meet_clerk", "Garden Moon", "Not Ours: Orbit Clerk.", "municipal_standing", "rumor_garden_moon")
+	_meet_shell("anvil", "HC-V1-R3-S6", "authored_night_market", "night_market", "Night Broker", "meet_broker", "Night Market", "After Hours: Night Broker.", "municipal_standing", "rumor_night_market")
+	_meet_shell("kestrel", "HC-V1-R4-S6", "authored_research_shard", "research_shard", "License Warden", "meet_warden", "Research Shard", "The Exception: License Warden.", "glass_standing", "rumor_research_shard")
 
 
 func _meet_shell(ship: String, system_id: String, quest_id: String, body_id: String, who: String, step_id: String, shell_name: String, said: String, standing: String, rumor: String) -> void:

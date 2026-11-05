@@ -150,6 +150,11 @@ Lane the chart. One keel. Quests, then Track.
 5. **Broken Charter.** Arrive. Enter First Stamp. The job stays open. Come within 320 m of the Stamp Clerk. Enter First Stamp again. The Charter writes standing.
 6. **Guest Lamp.** Arrive. Enter Guest Station. The job stays open. Come within 320 m of the Lamp Host. Enter Guest Station again. The navy writes standing.
 7. **Two Weathers.** Arrive. Enter Hot Face. The job stays open. Come within 320 m of the Weather Shepherd. Enter Hot Face again. The Charter writes standing. The terminator pocket is still the claim slot.
+8. **Lower Stack.** Enter Algae Stack. The job stays open. Come within 320 m of the Shift Boss. Enter Algae Stack again. The navy writes standing.
+9. **Clean Hands.** Enter Feedstock. The job stays open. Come within 320 m of the Fine Clerk at Fine Office. Enter Feedstock again. The Choir writes standing.
+10. **Not Ours.** Enter Garden Moon. The job stays open. Come within 320 m of the Orbit Clerk. Enter Garden Moon again. The navy writes standing. The jurisdiction route is still its own run.
+11. **After Hours.** Enter Night Market. The job stays open. Come within 320 m of the Night Broker. Enter Night Market again. The navy writes standing.
+12. **The Exception.** Enter Research Shard. The job stays open. Come within 320 m of the License Warden. Enter Research Shard again. The Choir writes standing.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd

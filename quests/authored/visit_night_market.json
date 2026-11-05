@@ -3,9 +3,18 @@
   "title": "After Hours",
   "kind": "authored",
   "giver": "Orbital Municipal Navy",
-  "summary": "Start: enter the system. The log opens After Hours and the helm marks Night Market. Do: Close on Night Market. The Night Broker keeps the amber window after the navy goes home. The escort, if it is still up, stays with the broker. Finish: come inside Night Market's shell. The navy writes standing. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter After Hours. The log opens the job and the helm marks the Night Broker. Do: come within 320 meters of the Night Broker. The broker slides alongside and keeps the amber window after the navy goes home. An ambush holds the buoy until 520 meters. A kite keeps the flank. Finish: after the broker is met, come inside Night Market's shell. The navy writes standing. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "night_market",
   "system_id": "HC-V1-R3-S6",
+  "prelude": [
+    {
+      "id": "meet_broker",
+      "kind": "alongside",
+      "action": "factor",
+      "range": 320,
+      "label": "Night Broker"
+    }
+  ],
   "mutations": [
     "rumor_night_market",
     "municipal_standing_up"
