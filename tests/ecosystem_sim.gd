@@ -21,6 +21,7 @@ func _init() -> void:
 	_print_yard()
 	_roles()
 	_steps()
+	_hooks()
 	_cue()
 	_guide()
 	if fails == 0:
@@ -449,6 +450,41 @@ func _steps() -> void:
 	QuestBoard.pulse(choir, 0.2)
 	check(str(choir.quest_flags.get("authored_choir_anvil", "")) == "done", "Choir Anvil files Ore Choir after the pocket")
 	check(int(choir.quest_flags.get("charter_standing", 0)) > 0, "Ore Choir writes charter standing")
+
+
+func _hooks() -> void:
+	_meet_shell("vesper", "HC-V1-R1-S5", "authored_bonded_loft", "bonded_loft", "Bond Factor", "meet_factor", "Bonded Loft", "Bonded Loft: Bond Factor.", "compact_standing", "rumor_bonded_loft")
+	_meet_shell("anvil", "HC-V1-R5-S4", "authored_first_stamp", "first_stamp", "Stamp Clerk", "meet_clerk", "First Stamp", "Broken Charter: Stamp Clerk.", "charter_standing", "rumor_first_stamp")
+	_meet_shell("kestrel", "HC-V1-R3-S3", "authored_guest_station", "guest_station", "Lamp Host", "meet_host", "Guest Station", "Guest Lamp: Lamp Host.", "municipal_standing", "rumor_guest_station")
+	_meet_shell("vesper", "HC-V1-R5-S2", "authored_hot_face", "hot_face", "Weather Shepherd", "meet_shepherd", "Hot Face", "Two Weathers: Weather Shepherd.", "charter_standing", "rumor_hot_face")
+
+
+func _meet_shell(ship: String, system_id: String, quest_id: String, body_id: String, who: String, step_id: String, shell_name: String, said: String, standing: String, rumor: String) -> void:
+	var sim := make(ship)
+	sim._arrive(system_id, "")
+	var actor := _named(sim, who)
+	check(not actor.is_empty(), "%s posts %s" % [shell_name, who])
+	if actor.is_empty():
+		return
+	check(QuestBoard.track(sim, quest_id) == "", "Track pins %s" % who)
+	check(QuestBoard.cue_line(sim).contains(who), "the guide marks %s before the shell" % who)
+	check(_body_open(sim, quest_id, body_id), "%s's shell does not file the job" % shell_name)
+	var flag := "%s_%s" % [quest_id, step_id]
+	check(bool(sim.quest_flags.get(flag, false)) == false, "standing on %s does not meet %s" % [shell_name, who])
+	sim.player.pos = actor.pos + Vector2(40.0, 0.0)
+	QuestBoard.pulse(sim, 0.2)
+	check(bool(sim.quest_flags.get(flag, false)), "coming alongside %s records the meet" % who)
+	check(_said(sim, said), "the helm names %s" % who)
+	check(str(sim.quest_flags.get(quest_id, "")) != "done", "%s alone does not file the job" % who)
+	var after := QuestBoard.cue_line(sim)
+	check(after.contains(shell_name), "after %s the guide marks %s" % [who, shell_name])
+	check(after.contains(who) == false, "after the meet the guide leaves %s" % who)
+	var rock = sim.planet(body_id)
+	sim.player.pos = rock.pos
+	QuestBoard.pulse(sim, 0.2)
+	check(str(sim.quest_flags.get(quest_id, "")) == "done", "%s files the job after %s" % [shell_name, who])
+	check(int(sim.quest_flags.get(standing, 0)) > 0, "%s writes standing" % who)
+	check(bool(sim.quest_flags.get(rumor, false)), "%s writes the rumor" % who)
 
 
 func _cue() -> void:

@@ -3,9 +3,18 @@
   "title": "Two Weathers",
   "kind": "authored",
   "giver": "Homestead",
-  "summary": "Start: enter the system. The log opens Two Weathers and the helm marks Hot Face. Do: Close on Hot Face. The Weather Shepherd walks the terminator pocket. Ember kale wants the hot face. Ghost gourd wants the cold face. Finish: come inside Hot Face's shell. The Charter writes standing. The pocket is the claim slot. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter Two Weathers. The log opens the job and the helm marks the Weather Shepherd. Do: come within 320 meters of the Weather Shepherd. The shepherd walks the terminator pocket. Ember kale wants the hot face. Ghost gourd wants the cold. Finish: after the shepherd is met, come inside Hot Face's shell. The Charter writes standing. The pocket is the claim slot. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "hot_face",
   "system_id": "HC-V1-R5-S2",
+  "prelude": [
+    {
+      "id": "meet_shepherd",
+      "kind": "alongside",
+      "action": "herd",
+      "range": 320,
+      "label": "Weather Shepherd"
+    }
+  ],
   "mutations": [
     "rumor_hot_face",
     "charter_standing_up"

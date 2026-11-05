@@ -3,9 +3,18 @@
   "title": "Guest Lamp",
   "kind": "authored",
   "giver": "Orbital Municipal Navy",
-  "summary": "Start: enter the system. The log opens Guest Lamp and the helm marks Guest Station. Do: Close on Guest Station. The Lamp Host orbits the diplomacy lamp. Pickpockets work the vacuum lane. The navy escort stays with the host. Finish: come inside Guest Station's shell. The navy writes standing. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter Guest Lamp. The log opens the job and the helm marks the Lamp Host. Do: come within 320 meters of the Lamp Host. The host slides alongside and reads the lamp paper. An interceptor holds the lane. The navy escort stays with the host. Finish: after the host is met, come inside Guest Station's shell. The navy writes standing. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "guest_station",
   "system_id": "HC-V1-R3-S3",
+  "prelude": [
+    {
+      "id": "meet_host",
+      "kind": "alongside",
+      "action": "factor",
+      "range": 320,
+      "label": "Lamp Host"
+    }
+  ],
   "mutations": [
     "rumor_guest_station",
     "municipal_standing_up"

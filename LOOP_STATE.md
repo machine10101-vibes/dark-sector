@@ -66,6 +66,7 @@ Player-visible what works now:
 - An authored claim jumper flies a Red Keel ketch. The hull is a squat claim boat, wears ore bins, a bounty plate, and the claim stake, and posts 52 GRT. The gun is a short wide turret that lives inside the pocket. Helion's own pack stays on skiffs, and the slate still remembers the pack. The warrant board names the hull, the job, and the bounty. Combat math is unchanged.
 - The contacts list names the hull. A hostile row reads the callsign and the posted bounty, so a brig, a yawl, a pinnace, a lugger, and a ketch can be told apart before the lock. A neutral hauler reads its hull. Law, a lock warning, and a live order keep their own words. Combat math is unchanged.
 - Second Copy files only after the Print Factor is alongside inside 320 meters, then Print Yard. Tow the Yard files only after the Tug Factor is alongside inside 480 meters, then Tug Yard. Ore Choir files only after the claim jumper's rim pocket is seen inside 400 meters, then Choir Anvil. In that system the guide points at the unfinished step. The helm names the meet. Water Lease stays a route that finishes at Towline with ice spall in the hold. Combat math is unchanged.
+- Bonded Loft files only after the Bond Factor is alongside inside 320 meters, then the loft. Broken Charter files only after the Stamp Clerk is alongside, then First Stamp. Guest Lamp files only after the Lamp Host is alongside, then Guest Station. Two Weathers files only after the Weather Shepherd is alongside, then Hot Face. The Ledger scan contract stays its own job. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — the other HC-V1 body jobs still file when the keel enters the shell; art loop Gate 2+ on three starters
 Blocked by:
@@ -123,6 +124,10 @@ Files touched:
 - quests/authored/visit_print_yard.json
 - quests/authored/visit_tug_yard.json
 - quests/authored/visit_choir_anvil.json
+- quests/authored/visit_bonded_loft.json
+- quests/authored/visit_first_stamp.json
+- quests/authored/visit_guest_station.json
+- quests/authored/visit_hot_face.json
 - tests/ecosystem_sim.gd
 - PLAYTEST.md
 - LOOP_STATE.md
