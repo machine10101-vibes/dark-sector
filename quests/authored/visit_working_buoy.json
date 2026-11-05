@@ -3,9 +3,18 @@
   "title": "Last Beacon",
   "kind": "authored",
   "giver": "Drift tender",
-  "summary": "Start: enter the system. The log opens Last Beacon and the helm marks Working Buoy. Do: Close on Working Buoy. The Buoy Keeper orbits the one lamp that still answers. Everything else is wreck light. Finish: come inside Working Buoy's shell. A drift rumor. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter Last Beacon. The log opens the job and the helm marks the Buoy Keeper. Do: come within 320 meters of the Buoy Keeper. The keeper slides alongside and names the one lamp that still answers. Everything else is wreck light. Finish: after the keeper is met, come inside Working Buoy's shell. A drift rumor. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "working_buoy",
   "system_id": "HC-V1-R6-S6",
+  "prelude": [
+    {
+      "id": "meet_keeper",
+      "kind": "alongside",
+      "action": "factor",
+      "range": 320,
+      "label": "Buoy Keeper"
+    }
+  ],
   "mutations": [
     "rumor_working_buoy"
   ]

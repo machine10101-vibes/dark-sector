@@ -3,9 +3,18 @@
   "title": "Nameless Chart",
   "kind": "authored",
   "giver": "Drift tender",
-  "summary": "Start: enter the system. The log opens Nameless Chart and the helm marks False Mark. Do: Close on False Mark. The chart lies. False Rain moves. The jackpot body may be empty. Finish on the false mark anyway so the lie is on the slate. Finish: come inside False Mark's shell. A drift rumor. The map is still wrong. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter Nameless Chart. The log opens the job and the helm marks the home buoy. Do: enter the ambush sight, 520 meters of the home buoy. The ambush holds until a keel crosses that line. The chart lies. False Rain moves. Finish: after the sight is sprung, come inside False Mark's shell. A drift rumor. The map is still wrong. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "false_mark",
   "system_id": "HC-V1-R6-S3",
+  "prelude": [
+    {
+      "id": "spring_sight",
+      "kind": "sight",
+      "role": "ambush",
+      "range": 520,
+      "label": "the home buoy"
+    }
+  ],
   "mutations": [
     "rumor_false_mark"
   ]

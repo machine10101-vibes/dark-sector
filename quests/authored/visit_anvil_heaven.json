@@ -3,9 +3,18 @@
   "title": "Iron Rain",
   "kind": "authored",
   "giver": "Drift tender",
-  "summary": "Start: enter the system. The log opens Iron Rain and the helm marks Anvil Heaven. Do: Close on Anvil Heaven. The nickel stream is a barn's living and a fighter's grave. Do not park a light hull in the rain. Finish: come inside Anvil Heaven's shell. A drift rumor. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter Iron Rain. The log opens the job and the helm marks the home buoy. Do: enter the ambush sight, 520 meters of the home buoy. The ambush holds until a keel crosses that line. A kite keeps the flank. The nickel stream is a barn's living and a fighter's grave. Finish: after the sight is sprung, come inside Anvil Heaven's shell. A drift rumor. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "anvil_heaven",
   "system_id": "HC-V1-R6-S5",
+  "prelude": [
+    {
+      "id": "spring_sight",
+      "kind": "sight",
+      "role": "ambush",
+      "range": 520,
+      "label": "the home buoy"
+    }
+  ],
   "mutations": [
     "rumor_anvil_heaven"
   ]

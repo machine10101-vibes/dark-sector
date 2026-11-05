@@ -155,6 +155,10 @@ Lane the chart. One keel. Quests, then Track.
 10. **Not Ours.** Enter Garden Moon. The job stays open. Come within 320 m of the Orbit Clerk. Enter Garden Moon again. The navy writes standing. The jurisdiction route is still its own run.
 11. **After Hours.** Enter Night Market. The job stays open. Come within 320 m of the Night Broker. Enter Night Market again. The navy writes standing.
 12. **The Exception.** Enter Research Shard. The job stays open. Come within 320 m of the License Warden. Enter Research Shard again. The Choir writes standing.
+13. **Last Beacon.** Enter Working Buoy. The job stays open. Come within 320 m of the Buoy Keeper. Enter Working Buoy again. A drift rumor files.
+14. **Empty Tithe.** Enter Tithe Outpost. The job stays open. Come within 320 m of the Tithe Broker. Enter Tithe Outpost again. Red Keel heat rises. The food route is still its own run.
+15. **Deep Hold.** Enter Hollow Rock. The job stays open. Come within 320 m of the Den Keeper. Enter Hollow Rock again. Black Sail heat rises.
+16. **Drift buoys.** At Clockstream, Nameless Chart, Hullweather, and Iron Rain, enter the named body. The job stays open. Come within 520 m of the ambush home buoy. Enter the body again. A drift rumor files.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd

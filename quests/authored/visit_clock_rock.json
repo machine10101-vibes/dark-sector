@@ -3,9 +3,18 @@
   "title": "Clockstream",
   "kind": "authored",
   "giver": "Drift tender",
-  "summary": "Start: enter the system. The log opens Clockstream and the helm marks Clock Rock. Do: Close on Clock Rock. The meteor stream has a period. A probe that sits in the window becomes Missed Windows. Do not park in the vector. Finish: come inside Clock Rock's shell. A drift rumor. The window still kills a parked probe. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter Clockstream. The log opens the job and the helm marks the home buoy. Do: enter the ambush sight, 520 meters of the home buoy. The ambush holds until a keel crosses that line. The meteor stream still has a period. Do not park a probe in the vector. Finish: after the sight is sprung, come inside Clock Rock's shell. A drift rumor. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "clock_rock",
   "system_id": "HC-V1-R6-S2",
+  "prelude": [
+    {
+      "id": "spring_sight",
+      "kind": "sight",
+      "role": "ambush",
+      "range": 520,
+      "label": "the home buoy"
+    }
+  ],
   "mutations": [
     "rumor_clock_rock"
   ]

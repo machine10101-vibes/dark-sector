@@ -462,12 +462,21 @@ func _hooks() -> void:
 	_meet_shell("vesper", "HC-V1-R3-S4", "authored_garden_moon", "garden_moon", "Orbit Clerk", "meet_clerk", "Garden Moon", "Not Ours: Orbit Clerk.", "municipal_standing", "rumor_garden_moon")
 	_meet_shell("anvil", "HC-V1-R3-S6", "authored_night_market", "night_market", "Night Broker", "meet_broker", "Night Market", "After Hours: Night Broker.", "municipal_standing", "rumor_night_market")
 	_meet_shell("kestrel", "HC-V1-R4-S6", "authored_research_shard", "research_shard", "License Warden", "meet_warden", "Research Shard", "The Exception: License Warden.", "glass_standing", "rumor_research_shard")
+	_meet_shell("vesper", "HC-V1-R6-S6", "authored_working_buoy", "working_buoy", "Buoy Keeper", "meet_keeper", "Working Buoy", "Last Beacon: Buoy Keeper.", "", "rumor_working_buoy")
+	_meet_shell("anvil", "HC-V1-R7-S3", "authored_tithe_outpost", "tithe_outpost", "Tithe Broker", "meet_broker", "Tithe Outpost", "Empty Tithe: Tithe Broker.", "heat_red_keel", "rumor_tithe_outpost")
+	_meet_shell("kestrel", "HC-V1-R8-S5", "authored_hollow_rock", "hollow_rock", "Den Keeper", "meet_keeper", "Hollow Rock", "Deep Hold: Den Keeper.", "heat_black_sail", "rumor_hollow_rock")
+	_meet_shell("vesper", "HC-V1-R6-S2", "authored_clock_rock", "clock_rock", "the home buoy", "spring_sight", "Clock Rock", "Clockstream: the home buoy.", "", "rumor_clock_rock", "ambush")
+	_meet_shell("anvil", "HC-V1-R6-S3", "authored_false_mark", "false_mark", "the home buoy", "spring_sight", "False Mark", "Nameless Chart: the home buoy.", "", "rumor_false_mark", "ambush")
+	_meet_shell("kestrel", "HC-V1-R6-S4", "authored_station_hulk", "station_hulk", "the home buoy", "spring_sight", "Station Hulk", "Hullweather: the home buoy.", "", "rumor_station_hulk", "ambush")
+	_meet_shell("vesper", "HC-V1-R6-S5", "authored_anvil_heaven", "anvil_heaven", "the home buoy", "spring_sight", "Anvil Heaven", "Iron Rain: the home buoy.", "", "rumor_anvil_heaven", "ambush")
 
 
-func _meet_shell(ship: String, system_id: String, quest_id: String, body_id: String, who: String, step_id: String, shell_name: String, said: String, standing: String, rumor: String) -> void:
+func _meet_shell(ship: String, system_id: String, quest_id: String, body_id: String, who: String, step_id: String, shell_name: String, said: String, standing: String, rumor: String, role: String = "") -> void:
 	var sim := make(ship)
 	sim._arrive(system_id, "")
 	var actor := _named(sim, who)
+	if role != "":
+		actor = _actor_role(sim, role)
 	check(not actor.is_empty(), "%s posts %s" % [shell_name, who])
 	if actor.is_empty():
 		return
@@ -476,7 +485,12 @@ func _meet_shell(ship: String, system_id: String, quest_id: String, body_id: Str
 	check(_body_open(sim, quest_id, body_id), "%s's shell does not file the job" % shell_name)
 	var flag := "%s_%s" % [quest_id, step_id]
 	check(bool(sim.quest_flags.get(flag, false)) == false, "standing on %s does not meet %s" % [shell_name, who])
-	sim.player.pos = actor.pos + Vector2(40.0, 0.0)
+	var mark: Vector2 = actor.pos
+	var gap := 40.0
+	if role != "":
+		mark = actor.home
+		gap = 80.0
+	sim.player.pos = mark + Vector2(gap, 0.0)
 	QuestBoard.pulse(sim, 0.2)
 	check(bool(sim.quest_flags.get(flag, false)), "coming alongside %s records the meet" % who)
 	check(_said(sim, said), "the helm names %s" % who)
@@ -488,8 +502,13 @@ func _meet_shell(ship: String, system_id: String, quest_id: String, body_id: Str
 	sim.player.pos = rock.pos
 	QuestBoard.pulse(sim, 0.2)
 	check(str(sim.quest_flags.get(quest_id, "")) == "done", "%s files the job after %s" % [shell_name, who])
-	check(int(sim.quest_flags.get(standing, 0)) > 0, "%s writes standing" % who)
-	check(bool(sim.quest_flags.get(rumor, false)), "%s writes the rumor" % who)
+	if standing.begins_with("heat_"):
+		var fac := standing.substr(5)
+		check(float(sim.heat.get(fac, 0.0)) >= 8.0, "%s writes heat" % who)
+	elif standing != "":
+		check(int(sim.quest_flags.get(standing, 0)) > 0, "%s writes standing" % who)
+	if rumor != "":
+		check(bool(sim.quest_flags.get(rumor, false)), "%s writes the rumor" % who)
 
 
 func _cue() -> void:

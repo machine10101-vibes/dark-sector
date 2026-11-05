@@ -68,6 +68,7 @@ Player-visible what works now:
 - Second Copy files only after the Print Factor is alongside inside 320 meters, then Print Yard. Tow the Yard files only after the Tug Factor is alongside inside 480 meters, then Tug Yard. Ore Choir files only after the claim jumper's rim pocket is seen inside 400 meters, then Choir Anvil. In that system the guide points at the unfinished step. The helm names the meet. Water Lease stays a route that finishes at Towline with ice spall in the hold. Combat math is unchanged.
 - Bonded Loft files only after the Bond Factor is alongside inside 320 meters, then the loft. Broken Charter files only after the Stamp Clerk is alongside, then First Stamp. Guest Lamp files only after the Lamp Host is alongside, then Guest Station. Two Weathers files only after the Weather Shepherd is alongside, then Hot Face. The Ledger scan contract stays its own job. Combat math is unchanged.
 - Lower Stack files only after the Shift Boss is alongside inside 320 meters, then Algae Stack. Clean Hands files only after the Fine Clerk is alongside, then Feedstock. Not Ours files only after the Orbit Clerk is alongside, then Garden Moon. After Hours files only after the Night Broker is alongside, then Night Market. The Exception files only after the License Warden is alongside, then Research Shard. The jurisdiction route stays its own run. Combat math is unchanged.
+- Last Beacon files only after the Buoy Keeper is alongside inside 320 meters, then Working Buoy. Empty Tithe files only after the Tithe Broker is alongside, then Tithe Outpost, and Red Keel heat rises. Deep Hold files only after the Den Keeper is alongside, then Hollow Rock, and Black Sail heat rises. Clockstream, Nameless Chart, Hullweather, and Iron Rain file only after the ambush sight at 520 meters of the home buoy, then the named body. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — the other HC-V1 body jobs still file when the keel enters the shell; art loop Gate 2+ on three starters
 Blocked by:
@@ -134,6 +135,13 @@ Files touched:
 - quests/authored/visit_garden_moon.json
 - quests/authored/visit_night_market.json
 - quests/authored/visit_research_shard.json
+- quests/authored/visit_working_buoy.json
+- quests/authored/visit_tithe_outpost.json
+- quests/authored/visit_hollow_rock.json
+- quests/authored/visit_clock_rock.json
+- quests/authored/visit_false_mark.json
+- quests/authored/visit_station_hulk.json
+- quests/authored/visit_anvil_heaven.json
 - tests/ecosystem_sim.gd
 - PLAYTEST.md
 - LOOP_STATE.md
