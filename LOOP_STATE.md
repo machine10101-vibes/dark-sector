@@ -69,6 +69,7 @@ Player-visible what works now:
 - Bonded Loft files only after the Bond Factor is alongside inside 320 meters, then the loft. Broken Charter files only after the Stamp Clerk is alongside, then First Stamp. Guest Lamp files only after the Lamp Host is alongside, then Guest Station. Two Weathers files only after the Weather Shepherd is alongside, then Hot Face. The Ledger scan contract stays its own job. Combat math is unchanged.
 - Lower Stack files only after the Shift Boss is alongside inside 320 meters, then Algae Stack. Clean Hands files only after the Fine Clerk is alongside, then Feedstock. Not Ours files only after the Orbit Clerk is alongside, then Garden Moon. After Hours files only after the Night Broker is alongside, then Night Market. The Exception files only after the License Warden is alongside, then Research Shard. The jurisdiction route stays its own run. Combat math is unchanged.
 - Last Beacon files only after the Buoy Keeper is alongside inside 320 meters, then Working Buoy. Empty Tithe files only after the Tithe Broker is alongside, then Tithe Outpost, and Red Keel heat rises. Deep Hold files only after the Den Keeper is alongside, then Hollow Rock, and Black Sail heat rises. Clockstream, Nameless Chart, Hullweather, and Iron Rain file only after the ambush sight at 520 meters of the home buoy, then the named body. Combat math is unchanged.
+- Perimeter files only after the ambush sight at 520 meters of the home buoy, then Last Stake. Cinder Parish files only after the Parish Tender is alongside inside 320 meters, then Pulpit. Quiet Sun files when the Porch Hauler is alongside inside the lamp shell. The lamp's center, without the hauler, stays open. Seedcut files only after the Orchard Cutter is alongside, then Night Orchard, and Black Sail heat rises. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — the other HC-V1 body jobs still file when the keel enters the shell; art loop Gate 2+ on three starters
 Blocked by:
@@ -142,6 +143,10 @@ Files touched:
 - quests/authored/visit_false_mark.json
 - quests/authored/visit_station_hulk.json
 - quests/authored/visit_anvil_heaven.json
+- quests/authored/visit_last_stake.json
+- quests/authored/visit_pulpit.json
+- quests/authored/visit_suburb_lamp.json
+- quests/authored/visit_night_orchard.json
 - tests/ecosystem_sim.gd
 - PLAYTEST.md
 - LOOP_STATE.md

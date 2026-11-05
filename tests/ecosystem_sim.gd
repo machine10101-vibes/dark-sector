@@ -469,9 +469,13 @@ func _hooks() -> void:
 	_meet_shell("anvil", "HC-V1-R6-S3", "authored_false_mark", "false_mark", "the home buoy", "spring_sight", "False Mark", "Nameless Chart: the home buoy.", "", "rumor_false_mark", "ambush")
 	_meet_shell("kestrel", "HC-V1-R6-S4", "authored_station_hulk", "station_hulk", "the home buoy", "spring_sight", "Station Hulk", "Hullweather: the home buoy.", "", "rumor_station_hulk", "ambush")
 	_meet_shell("vesper", "HC-V1-R6-S5", "authored_anvil_heaven", "anvil_heaven", "the home buoy", "spring_sight", "Anvil Heaven", "Iron Rain: the home buoy.", "", "rumor_anvil_heaven", "ambush")
+	_meet_shell("anvil", "HC-V1-R5-S6", "authored_last_stake", "last_stake", "the home buoy", "spring_sight", "Last Stake", "Perimeter: the home buoy.", "charter_standing", "rumor_last_stake", "ambush")
+	_meet_shell("kestrel", "HC-V1-R3-S5", "authored_pulpit", "pulpit", "Parish Tender", "meet_tender", "Pulpit", "Cinder Parish: Parish Tender.", "municipal_standing", "rumor_pulpit")
+	_meet_shell("vesper", "HC-V1-R1-S6", "authored_suburb_lamp", "suburb_lamp", "Porch Hauler", "meet_hauler", "Suburb Lamp", "Quiet Sun: Porch Hauler.", "compact_standing", "rumor_suburb_lamp", "", true)
+	_meet_shell("anvil", "HC-V1-R8-S3", "authored_night_orchard", "night_orchard", "Orchard Cutter", "meet_cutter", "Night Orchard", "Seedcut: Orchard Cutter.", "heat_black_sail", "rumor_night_orchard")
 
 
-func _meet_shell(ship: String, system_id: String, quest_id: String, body_id: String, who: String, step_id: String, shell_name: String, said: String, standing: String, rumor: String, role: String = "") -> void:
+func _meet_shell(ship: String, system_id: String, quest_id: String, body_id: String, who: String, step_id: String, shell_name: String, said: String, standing: String, rumor: String, role: String = "", files_on_meet: bool = false) -> void:
 	var sim := make(ship)
 	sim._arrive(system_id, "")
 	var actor := _named(sim, who)
@@ -494,14 +498,17 @@ func _meet_shell(ship: String, system_id: String, quest_id: String, body_id: Str
 	QuestBoard.pulse(sim, 0.2)
 	check(bool(sim.quest_flags.get(flag, false)), "coming alongside %s records the meet" % who)
 	check(_said(sim, said), "the helm names %s" % who)
-	check(str(sim.quest_flags.get(quest_id, "")) != "done", "%s alone does not file the job" % who)
-	var after := QuestBoard.cue_line(sim)
-	check(after.contains(shell_name), "after %s the guide marks %s" % [who, shell_name])
-	check(after.contains(who) == false, "after the meet the guide leaves %s" % who)
-	var rock = sim.planet(body_id)
-	sim.player.pos = rock.pos
-	QuestBoard.pulse(sim, 0.2)
-	check(str(sim.quest_flags.get(quest_id, "")) == "done", "%s files the job after %s" % [shell_name, who])
+	if files_on_meet:
+		check(str(sim.quest_flags.get(quest_id, "")) == "done", "%s files the job when %s is met inside the shell" % [shell_name, who])
+	else:
+		check(str(sim.quest_flags.get(quest_id, "")) != "done", "%s alone does not file the job" % who)
+		var after := QuestBoard.cue_line(sim)
+		check(after.contains(shell_name), "after %s the guide marks %s" % [who, shell_name])
+		check(after.contains(who) == false, "after the meet the guide leaves %s" % who)
+		var rock = sim.planet(body_id)
+		sim.player.pos = rock.pos
+		QuestBoard.pulse(sim, 0.2)
+		check(str(sim.quest_flags.get(quest_id, "")) == "done", "%s files the job after %s" % [shell_name, who])
 	if standing.begins_with("heat_"):
 		var fac := standing.substr(5)
 		check(float(sim.heat.get(fac, 0.0)) >= 8.0, "%s writes heat" % who)

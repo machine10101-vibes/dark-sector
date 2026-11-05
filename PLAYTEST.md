@@ -159,6 +159,10 @@ Lane the chart. One keel. Quests, then Track.
 14. **Empty Tithe.** Enter Tithe Outpost. The job stays open. Come within 320 m of the Tithe Broker. Enter Tithe Outpost again. Red Keel heat rises. The food route is still its own run.
 15. **Deep Hold.** Enter Hollow Rock. The job stays open. Come within 320 m of the Den Keeper. Enter Hollow Rock again. Black Sail heat rises.
 16. **Drift buoys.** At Clockstream, Nameless Chart, Hullweather, and Iron Rain, enter the named body. The job stays open. Come within 520 m of the ambush home buoy. Enter the body again. A drift rumor files.
+17. **Perimeter.** Enter Last Stake. The job stays open. Come within 520 m of the home buoy. Enter Last Stake again. The Charter writes standing. The pocket is still a garden.
+18. **Cinder Parish.** Enter Pulpit. The job stays open. Come within 320 m of the Parish Tender. Enter Pulpit again. The navy writes standing.
+19. **Quiet Sun.** Enter the center of Suburb Lamp. The job stays open. Come within 320 m of the Porch Hauler, who flies inside that shell. The Compact writes standing.
+20. **Seedcut.** Enter Night Orchard. The job stays open. Come within 320 m of the Orchard Cutter. Enter Night Orchard again. Black Sail heat rises.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd
