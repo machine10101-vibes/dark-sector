@@ -3,9 +3,18 @@
   "title": "Cadet Watch",
   "kind": "authored",
   "giver": "Helion Compact",
-  "summary": "Start: enter the system. The log opens Cadet Watch and the helm marks Cadet Yard. Do: Close on Cadet Yard. The training patrol hails paint rounds before live guns. The ice ring is a counted cut and the salvage is bad on purpose. Finish: come inside Cadet Yard's shell. The Compact writes standing. A shot in the green still goes on the slate. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter Cadet Watch. The log opens the job and the helm marks Helion Compact Cutter 1. Do: come within 320 meters of that cutter. The training patrol hails paint rounds before live guns. The ice ring is a counted cut and the salvage is bad on purpose. Finish: after the cutter is met, come inside Cadet Yard's shell. The Compact writes standing. A shot in the green still goes on the slate. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "cadet_yard",
   "system_id": "HC-V1-R1-S4",
+  "prelude": [
+    {
+      "id": "meet_cutter",
+      "kind": "alongside",
+      "action": "patrol",
+      "range": 320,
+      "label": "Helion Compact Cutter 1"
+    }
+  ],
   "mutations": [
     "rumor_cadet_yard",
     "compact_standing_up"

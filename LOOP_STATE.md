@@ -70,6 +70,7 @@ Player-visible what works now:
 - Lower Stack files only after the Shift Boss is alongside inside 320 meters, then Algae Stack. Clean Hands files only after the Fine Clerk is alongside, then Feedstock. Not Ours files only after the Orbit Clerk is alongside, then Garden Moon. After Hours files only after the Night Broker is alongside, then Night Market. The Exception files only after the License Warden is alongside, then Research Shard. The jurisdiction route stays its own run. Combat math is unchanged.
 - Last Beacon files only after the Buoy Keeper is alongside inside 320 meters, then Working Buoy. Empty Tithe files only after the Tithe Broker is alongside, then Tithe Outpost, and Red Keel heat rises. Deep Hold files only after the Den Keeper is alongside, then Hollow Rock, and Black Sail heat rises. Clockstream, Nameless Chart, Hullweather, and Iron Rain file only after the ambush sight at 520 meters of the home buoy, then the named body. Combat math is unchanged.
 - Perimeter files only after the ambush sight at 520 meters of the home buoy, then Last Stake. Cinder Parish files only after the Parish Tender is alongside inside 320 meters, then Pulpit. Quiet Sun files when the Porch Hauler is alongside inside the lamp shell. The lamp's center, without the hauler, stays open. Seedcut files only after the Orchard Cutter is alongside, then Night Orchard, and Black Sail heat rises. Combat math is unchanged.
+- Cadet Watch files only after Helion Compact Cutter 1 is alongside inside 320 meters, then Cadet Yard. Sporefall files only after Glass Choir Cutter 1 is alongside, then Blight Moon. Sealed Orchard files only after Glass Choir Cutter 1 is alongside, then Dead Dome. No Witness files only after the interceptor sight at 520 meters of the home buoy, then Classroom, and Red Keel heat rises. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — the other HC-V1 body jobs still file when the keel enters the shell; art loop Gate 2+ on three starters
 Blocked by:
@@ -147,6 +148,10 @@ Files touched:
 - quests/authored/visit_pulpit.json
 - quests/authored/visit_suburb_lamp.json
 - quests/authored/visit_night_orchard.json
+- quests/authored/visit_cadet_yard.json
+- quests/authored/visit_blight_moon.json
+- quests/authored/visit_dead_dome.json
+- quests/authored/visit_classroom.json
 - tests/ecosystem_sim.gd
 - PLAYTEST.md
 - LOOP_STATE.md

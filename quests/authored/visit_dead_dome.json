@@ -3,9 +3,18 @@
   "title": "Sealed Orchard",
   "kind": "authored",
   "giver": "Glass Choir",
-  "summary": "Start: enter the system. The log opens Sealed Orchard and the helm marks Dead Dome. Do: Close on Dead Dome. The wardens patrol the quarantine. Lamp-moth graves and illegal culture vaults are the reason the gate still shoots. Finish: come inside Dead Dome's shell. The Choir writes standing. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter Sealed Orchard. The log opens the job and the helm marks Glass Choir Cutter 1. Do: come within 320 meters of that cutter. The wardens patrol the quarantine. Lamp-moth graves and illegal culture vaults are the reason the gate still shoots. Finish: after the cutter is met, come inside Dead Dome's shell. The Choir writes standing. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "dead_dome",
   "system_id": "HC-V1-R4-S2",
+  "prelude": [
+    {
+      "id": "meet_warden",
+      "kind": "alongside",
+      "action": "patrol",
+      "range": 320,
+      "label": "Glass Choir Cutter 1"
+    }
+  ],
   "mutations": [
     "rumor_dead_dome",
     "glass_standing_up"

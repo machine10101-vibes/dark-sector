@@ -163,6 +163,10 @@ Lane the chart. One keel. Quests, then Track.
 18. **Cinder Parish.** Enter Pulpit. The job stays open. Come within 320 m of the Parish Tender. Enter Pulpit again. The navy writes standing.
 19. **Quiet Sun.** Enter the center of Suburb Lamp. The job stays open. Come within 320 m of the Porch Hauler, who flies inside that shell. The Compact writes standing.
 20. **Seedcut.** Enter Night Orchard. The job stays open. Come within 320 m of the Orchard Cutter. Enter Night Orchard again. Black Sail heat rises.
+21. **Cadet Watch.** Enter Cadet Yard. The job stays open. Come within 320 m of Helion Compact Cutter 1. Enter Cadet Yard again. The Compact writes standing.
+22. **Sporefall.** Enter Blight Moon. The job stays open. Come within 320 m of Glass Choir Cutter 1. Enter Blight Moon again. The Choir writes standing.
+23. **Sealed Orchard.** Enter Dead Dome. The job stays open. Come within 320 m of Glass Choir Cutter 1. Enter Dead Dome again. The Choir writes standing.
+24. **No Witness.** Enter Classroom. The job stays open. Come within 520 m of the interceptor home buoy. Enter Classroom again. Red Keel heat rises.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd
