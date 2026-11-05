@@ -1,0 +1,22 @@
+{
+  "id": "authored_bonded_loft",
+  "title": "Bonded Loft",
+  "kind": "authored",
+  "giver": "Helion Compact",
+  "summary": "Start: enter Ledger. The log opens Bonded Loft and the helm marks the Bond Factor. Do: come within 320 meters of the Bond Factor. The factor slides alongside and reads the bond in public. The warehouse patrol hails. Sealing a layer is the separate Ledger contract. Finish: after the factor is met, come inside Bonded Loft's shell. The Compact writes standing. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "bonded_loft",
+  "system_id": "HC-V1-R1-S5",
+  "prelude": [
+    {
+      "id": "meet_factor",
+      "kind": "alongside",
+      "action": "factor",
+      "range": 320,
+      "label": "Bond Factor"
+    }
+  ],
+  "mutations": [
+    "rumor_bonded_loft",
+    "compact_standing_up"
+  ]
+}

@@ -1,0 +1,168 @@
+{
+  "id": "HC-V1-R2-S5",
+  "name": "Second Copy",
+  "seed": 22005,
+  "why_visit": "Fabricator parts and a derelict print-yard. The second copy is never quite the keel you ordered.",
+  "law_color": "amber",
+  "status": "authored",
+  "region": "R2",
+  "star": {
+    "id": "hc-v1-r2-s5-star",
+    "name": "Copy",
+    "class": "K",
+    "radius": 120,
+    "color": "#e0b070"
+  },
+  "bodies": [
+    {
+      "id": "print_yard",
+      "name": "Print Yard",
+      "angle": 0.6,
+      "distance": 1600,
+      "radius": 100,
+      "color": "#c8a060",
+      "blurb": "A print-yard. The gantries are cold and the paper is warm.",
+      "legal": "Rimward Charter print lease. The yard is derelict. The paper is still sold.",
+      "air": "Shop air in the office. Vacuum in the bay.",
+      "face": "Misprint plate and stencil paint.",
+      "crust": "Printed hull stock, half cured.",
+      "life": "One factor. No wild stock.",
+      "ruins": "The first bad copy, bolted to the door.",
+      "resource_id": "print_stock",
+      "resource_name": "Print stock",
+      "amount": 6,
+      "heat": "",
+      "moon": false,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    },
+    {
+      "id": "stencil_moon",
+      "name": "Stencil Moon",
+      "angle": 2.8,
+      "distance": 2300,
+      "radius": 54,
+      "color": "#8a6840",
+      "blurb": "Stencil storage. The shapes are the inventory.",
+      "legal": "The moon that holds the stencils. Scanning is the job. Taking a stencil is a lease.",
+      "air": "None.",
+      "face": "Stencil cuts and cured resin.",
+      "crust": "Resin over nickel.",
+      "life": "None.",
+      "ruins": "A stencil that printed a keel inside out.",
+      "resource_id": "stencil_resin",
+      "resource_name": "Stencil resin",
+      "amount": 4,
+      "heat": "",
+      "moon": true,
+      "junk": false,
+      "ring": false,
+      "ring_kind": ""
+    }
+  ],
+  "belt": {
+    "id": "misprint_belt",
+    "name": "Misprint Belt",
+    "composition": "cured misprint plate and stencil resin shed by the print-yard",
+    "radius": 2900,
+    "width": 160,
+    "count": 12,
+    "resource_id": "misprint",
+    "resource_name": "Misprint",
+    "amount": 5,
+    "legal": "Misprint plate. The Charter still calls it a lease.",
+    "heat": ""
+  },
+  "trash": {
+    "id": "bad_copies",
+    "name": "Bad Copies",
+    "origin": "Keels printed once, rejected, and left in the yard when the stencil drifted.",
+    "anchor": "print_yard",
+    "angle": 1.5,
+    "distance": 600,
+    "count": 10,
+    "spread": 140,
+    "resource_id": "salvage_parts",
+    "resource_name": "Keel salvage",
+    "amount": 6,
+    "legal": "Rejected copies. Salvage rights if the factor is not reading the paper.",
+    "heat": ""
+  },
+  "stream": {},
+  "pocket": {
+    "id": "copy_pocket",
+    "name": "Stencil Pocket",
+    "anchor": "print_yard",
+    "angle": -1.0,
+    "distance": 460,
+    "radius": 180,
+    "plantable": false,
+    "why": "A print pocket. Not a garden."
+  },
+  "gates": [
+    {
+      "id": "copy_from_towline",
+      "name": "Towline",
+      "to": "HC-V1-R2-S2",
+      "arrive": "towline_to_copy",
+      "anchor": "print_yard",
+      "angle": 2.4,
+      "distance": 1180,
+      "radius": 120,
+      "color": "amber"
+    }
+  ],
+  "pdo": {
+    "faction": "rimward_charter",
+    "count": 1,
+    "radius": 520,
+    "home": "print_yard",
+    "role": "clerk",
+    "action": "clerk",
+    "duty": "Print clerk over Second Copy. The stencil is the law. Hail a keel that enters the bay."
+  },
+  "pirates": {
+    "count": 1,
+    "angle": 2.1,
+    "standoff": 800,
+    "roles": [
+      "ambush"
+    ],
+    "actions": [
+      "ambush"
+    ],
+    "duties": [
+      "Ambush over Second Copy. Hold the bad copies until a keel comes inside 520 meters, then close."
+    ]
+  },
+  "haulers": [
+    {
+      "id": "print_factor",
+      "name": "Print Factor",
+      "class_id": "anvil",
+      "home": "print_yard",
+      "radius": 740,
+      "role": "factor",
+      "action": "factor",
+      "duty": "Print Factor at Second Copy. Come alongside and the factor reads which copy is yours."
+    }
+  ],
+  "nest": {
+    "id": "nest",
+    "name": "",
+    "angle": 1.1,
+    "distance": 9000
+  },
+  "zones": {
+    "green": {
+      "anchor": "print_yard",
+      "radius": 420
+    },
+    "amber": {
+      "anchor": "nest",
+      "radius": 0
+    }
+  },
+  "flagship": "Print Yard"
+}

@@ -1,0 +1,12 @@
+{
+  "id": "authored_anvil_heaven",
+  "title": "Iron Rain",
+  "kind": "authored",
+  "giver": "Drift tender",
+  "summary": "Start: enter the system. The log opens Iron Rain and the helm marks Anvil Heaven. Do: Close on Anvil Heaven. The nickel stream is a barn's living and a fighter's grave. Do not park a light hull in the rain. Finish: come inside Anvil Heaven's shell. A drift rumor. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "anvil_heaven",
+  "system_id": "HC-V1-R6-S5",
+  "mutations": [
+    "rumor_anvil_heaven"
+  ]
+}

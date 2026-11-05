@@ -335,6 +335,46 @@
       "rule_color": "red",
       "traffic": "black sail",
       "pdo_response_time": ""
+    },
+    {
+      "id": "local-towline-ice",
+      "from": "HC-V1-R2-S2",
+      "to": "HC-V1-R2-S4",
+      "rule_color": "amber",
+      "traffic": "water lease",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-towline-copy",
+      "from": "HC-V1-R2-S2",
+      "to": "HC-V1-R2-S5",
+      "rule_color": "amber",
+      "traffic": "print yard",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-lease-fine",
+      "from": "HC-V1-R2-S1",
+      "to": "HC-V1-R2-S6",
+      "rule_color": "amber",
+      "traffic": "expired charter",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-soil-moth",
+      "from": "HC-V1-R5-S1",
+      "to": "HC-V1-R5-S3",
+      "rule_color": "amber",
+      "traffic": "pollinator",
+      "pdo_response_time": ""
+    },
+    {
+      "id": "local-soil-silo",
+      "from": "HC-V1-R5-S1",
+      "to": "HC-V1-R5-S5",
+      "rule_color": "amber",
+      "traffic": "seed vault",
+      "pdo_response_time": ""
     }
   ]
 }

@@ -1,5 +1,7 @@
 extends SceneTree
 
+const Steer = preload("res://world/helm_steer.gd")
+
 var defs: Dictionary = {}
 var fails := 0
 var reached := 0
@@ -19,8 +21,10 @@ func _init() -> void:
 	_locks()
 	_turrets()
 	_orders()
+	_click_orders()
 	_kill_the_cutter()
-	check(reached == 6, "every section ran to the end (%d of 6)" % reached)
+	_awareness()
+	check(reached == 8, "every section ran to the end (%d of 8)" % reached)
 	if fails == 0:
 		print("HELM COMBAT PASS")
 	else:
@@ -200,6 +204,78 @@ func _orders() -> void:
 	reached += 1
 
 
+func _click_orders() -> void:
+	var behind := {"at": Vector2(0, 0), "rad": 80.0, "id": "aegis"}
+	var ship := {"at": Vector2(12, 0), "rad": 20.0, "id": "skiff"}
+	var picked := HelmCombat.pick_mark(Vector2(8, 0), [behind, ship])
+	check(str(picked.get("id", "")) == "skiff", "a click on a ship beats the world behind it")
+	var ring := {"at": Vector2(140, 0), "rad": 36.0, "id": "helion_lane"}
+	var buoy := HelmCombat.pick_mark(Vector2(120, 0), [behind, ring])
+	check(str(buoy.get("id", "")) == "helion_lane", "a click on a lane buoy selects the ring")
+	check(HelmCombat.pick_mark(Vector2(500, 0), [behind, ship]).is_empty(), "empty sky stays empty")
+	check(not Steer.is_drag(Vector2.ZERO, Vector2(3, 2)), "a short tap stays a click")
+	check(Steer.is_drag(Vector2.ZERO, Vector2(8, 1)), "a pull past seven pixels is a drag")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, false, false) == "lock", "left click on a mark locks")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), true, false, false) == "approach", "double click on a mark approaches")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, true, false) == "fly", "empty left click flies the heading")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), true, true, false) == "fly", "empty double click flies the heading")
+	check(Steer.gesture(Vector2.ZERO, Vector2(20, 0), false, true, false) == "box", "left drag boxes own units")
+	var box := Steer.box_of(Vector2(0, 0), Vector2(24, 16))
+	check(box.has_point(Vector2(10, 8)), "a drag box covers the pulled rectangle")
+	var boxed := Steer.box_hits(box, [
+		{"id": "wing", "at": Vector2(8, 6), "rad": 6.0},
+		{"id": "far", "at": Vector2(80, 80), "rad": 6.0},
+	])
+	check(boxed.size() == 1 and str(boxed[0].id) == "wing", "a drag box picks the units inside it")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, false, true) == "strike", "right click opens strike")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), false, true, true) == "command", "empty right click opens command")
+	check(Steer.gesture(Vector2.ZERO, Vector2(2, 1), true, false, true) == "engage", "double right click engages")
+	var look: Dictionary = Steer.apply_look(0.0, 0.74, 20.0, 0.0)
+	check(float(look.yaw) < 0.0 and str(look.mode) == "orbit", "look drag turns the eye into orbit")
+	var sim := make("kestrel")
+	_free(sim)
+	var arms := HelmCombat.weapon_rows(sim, sim.player)
+	check(arms.size() >= 1 and str(arms[0].socket) == "nose", "every keel lists its main gun first")
+	check(str(arms[0].short) == "TURRET", "the Beak's hull gun is the turret")
+	check(sim.install("gun_sponson").ok, "the cheek gun bolts for the attack row")
+	check(sim.install("laser_bank").ok, "the beam bank bolts for the attack row")
+	check(sim.install("missile_rack").ok, "the missile rack bolts for the attack row")
+	var fitted := HelmCombat.weapon_rows(sim, sim.player)
+	var sockets: PackedStringArray = PackedStringArray()
+	for raw in fitted:
+		var row: Dictionary = raw
+		sockets.append(str(row.socket))
+	check(sockets.has("gun_sponson") and sockets.has("laser_bank") and sockets.has("missile_rack"), "bolted guns join the attack row")
+	check(HelmCombat.weapon_short("Point Defense", "pd") == "PD", "point defense keeps its own short name")
+	var quarry := _actor(sim, "red_keel")
+	_park(sim, quarry, Vector2(280, 40))
+	sim.tick(0.05, {"engage": {"socket": "nose", "lock": str(quarry.agent_id), "name": "Main turret"}})
+	check(str(sim.player.lock_id) == str(quarry.agent_id), "attack locks the clicked ship")
+	check(str(sim.player.engage) == "nose", "attack arms the chosen gun")
+	sim.player.lock_ok = true
+	sim.player.fire_cd = 0.0
+	var before := sim.projectiles.size()
+	sim.tick(0.05, {})
+	check(sim.projectiles.size() > before, "the armed gun fires on the target")
+	sim.tick(0.05, {"order": {"kind": "stop"}})
+	check(str(sim.player.get("engage", "")) == "", "all stop holds the guns")
+	var fighter = null
+	for item in sim.craft:
+		if str(item.def_id) == "fighter":
+			fighter = item
+	check(fighter != null and CraftOrders.strike(sim, str(fighter.uid), str(quarry.agent_id)) == "", "a fighter takes the clicked ship")
+	check(str(fighter.target) == str(quarry.agent_id) and str(fighter.order) == "attack", "the fighter's attack is that ship")
+	var hold: Vector2 = Vector2(sim.player.pos) + Vector2(420.0, 0.0)
+	check(CraftOrders.hold_at(sim, str(fighter.uid), hold) == "", "a fighter takes a click-move")
+	check(str(fighter.order) == "hold", "the fighter holds the clicked point")
+	var start: Vector2 = Vector2(fighter.pos)
+	for i in 80:
+		CraftOrders.step(sim, fighter, 0.05)
+	check(Vector2(fighter.pos).distance_to(hold) < start.distance_to(hold), "the fighter flies the click-move")
+	check(CraftOrders.wing_strike(sim, "") == "Pick a ship first.", "a wing needs a ship")
+	reached += 1
+
+
 func _kill_the_cutter() -> void:
 	var sim := make("vesper")
 	_free(sim)
@@ -250,4 +326,73 @@ func _kill_the_cutter() -> void:
 	var line: String = sim.try_salvage(str(wreck.id))
 	check(line == "ok" and int(sim.player.cargo.get("salvage_parts", 0)) >= 1, "the wreck is looted into the hold (%s)" % line)
 
+	reached += 1
+
+
+func _awareness() -> void:
+	var sim := make("vesper")
+	_free(sim)
+	var cutter := _actor(sim, "helion_compact")
+	var skiff := _actor(sim, "red_keel")
+	_park(sim, cutter, Vector2(360, 40))
+	_park(sim, skiff, Vector2(280, -80))
+	check(HelmCombat.lockers(sim, sim.player).is_empty(), "a quiet sky has no incoming lock")
+	var room: Dictionary = HelmCombat.presence(sim)
+	check(int(room.captains) == 1, "the local captain counts as presence")
+	check(int(room.hostiles) >= 1, "Red Keel skiffs count as hostiles")
+	HelmCombat.set_lock(sim, cutter, str(sim.player.agent_id))
+	var painted := HelmCombat.lockers(sim, sim.player)
+	check(painted.size() == 1 and str(painted[0].id) == str(cutter.agent_id), "a cutter locking the keel is named")
+	check(not bool(painted[0].lock_ok), "an incoming lock still takes time")
+	HelmCombat.watch_locks(sim)
+	var locking := false
+	for raw in sim.lines:
+		var line: Dictionary = raw
+		if str(line.text).find("is locking you") >= 0:
+			locking = true
+	check(locking, "the helm speaks when someone starts a lock")
+	var before := sim.lines.size()
+	HelmCombat.watch_locks(sim)
+	check(sim.lines.size() == before, "the same incoming lock does not shout twice")
+	cutter.lock_ok = true
+	HelmCombat.watch_locks(sim)
+	var locked := false
+	for raw in sim.lines:
+		var line: Dictionary = raw
+		if str(line.text).find("has lock on you") >= 0:
+			locked = true
+	check(locked, "the helm speaks when that lock lands")
+	var gun: Dictionary = Fit.stats(defs, sim.player).gun
+	var still := {"pos": sim.player.pos + Vector2(300, 0), "vel": Vector2.ZERO}
+	check(HelmCombat.hit_chance(sim.player, still, gun) > 0.99, "awareness does not change a still optimal hit")
+	var bands: Dictionary = HelmCombat.range_bands(sim, sim.player)
+	check(absf(float(bands.optimal) - float(gun.optimal)) < 0.01, "range rings read the live gun")
+	check(absf(float(bands.falloff) - (float(gun.optimal) + float(gun.falloff))) < 0.01, "falloff ring is optimal plus falloff")
+	sim.tick(0.05, {"sweep": true})
+	check(int(sim.sweep.get("contacts", 0)) >= 2, "a sweep names the nearby hulls")
+	var swept := false
+	for raw in sim.lines:
+		var line: Dictionary = raw
+		if str(line.text).begins_with("Sweep:"):
+			swept = true
+	check(swept, "a sweep speaks the count")
+	sim.tick(0.05, {"sweep": true})
+	check(str(sim.lines[0].text).find("cycling") >= 0, "a rushed sweep waits for the sensors")
+	var pay := HelmCombat.insurance_payout(defs, sim.player)
+	check(pay >= 8, "insurance pays a cut of the hull")
+	var purse0 := DockBoard.purse(sim)
+	sim.player.hp = 1.0
+	sim.player.shield = 0.0
+	sim.player.armor_hp = 0.0
+	sim.player.cargo["raw_mass"] = 2
+	sim.damage_unit(sim.player, 80.0, "agent:red_keel:0")
+	check(DockBoard.purse(sim) == purse0 + pay, "a broken keel pays insurance into the purse")
+	var own: Dictionary = {}
+	for raw in sim.wrecks:
+		var wreck: Dictionary = raw
+		if str(wreck.get("agent_id", "")) == str(sim.player.agent_id):
+			own = wreck
+	check(not own.is_empty() and bool(own.get("insured", false)), "the captain wreck is insured")
+	check(int(own.get("value", 0)) == HelmCombat.wreck_value(own), "the wreck posts a salvage value")
+	check(int(sim.player.cargo.get("raw_mass", 0)) == 1, "insurance does not change the hold split")
 	reached += 1

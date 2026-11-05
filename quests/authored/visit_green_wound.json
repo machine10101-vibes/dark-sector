@@ -1,0 +1,12 @@
+{
+  "id": "authored_green_wound",
+  "title": "Green Wound",
+  "kind": "authored",
+  "giver": "Homestead",
+  "summary": "Start: enter the system. The log opens Green Wound and the helm marks Green Wound. Do: Close on Green Wound. Quiet Hollow, the claim pocket, sits off the crust. This job is the shard itself. The blight slate is separate and files if the crop dies. Finish: come inside Green Wound's shell. A homestead rumor. The core still belongs in Quiet Hollow. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "green_wound",
+  "system_id": "HC-V1-R5-S1",
+  "mutations": [
+    "rumor_green_wound"
+  ]
+}

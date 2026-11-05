@@ -1,0 +1,13 @@
+{
+  "id": "authored_pulpit",
+  "title": "Cinder Parish",
+  "kind": "authored",
+  "giver": "Orbital Municipal Navy",
+  "summary": "Start: enter the system. The log opens Cinder Parish and the helm marks Pulpit. Do: Close on Pulpit. The Parish Tender orbits the trash moon. The sermon is scrap. The navy escort stays with the tender. Finish: come inside Pulpit's shell. The navy writes standing. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "pulpit",
+  "system_id": "HC-V1-R3-S5",
+  "mutations": [
+    "rumor_pulpit",
+    "municipal_standing_up"
+  ]
+}

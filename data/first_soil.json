@@ -253,6 +253,28 @@
       "color": "amber"
     },
     {
+      "id": "soil_to_moth",
+      "name": "Pollinator Road",
+      "to": "HC-V1-R5-S3",
+      "arrive": "moth_from_soil",
+      "anchor": "green_wound",
+      "angle": 5.1,
+      "distance": 1340,
+      "radius": 110,
+      "color": "amber"
+    },
+    {
+      "id": "soil_to_silo",
+      "name": "Silo Road",
+      "to": "HC-V1-R5-S5",
+      "arrive": "silo_from_soil",
+      "anchor": "green_wound",
+      "angle": 5.8,
+      "distance": 1500,
+      "radius": 110,
+      "color": "amber"
+    },
+    {
       "id": "soil_lane",
       "name": "Homestead Road",
       "to": "HC-V1-R1-S1",

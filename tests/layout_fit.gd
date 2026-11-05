@@ -91,9 +91,12 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 	var cast: Button = hud.get("cast_button")
 	var dock: Button = hud.get("dock_button")
 	var board: Button = hud.get("board_button")
+	var market: Button = hud.get("market_button")
 	cast.visible = true
 	dock.visible = true
 	board.visible = true
+	if market != null:
+		market.visible = true
 	var cue: Label = hud.get("haul_cue")
 	cue.text = "Ice ring 451 m — hold that way."
 	cue.visible = true
@@ -128,12 +131,25 @@ func _check_helm(screen: Vector2, touch: bool) -> void:
 	_apart(flight, primary, tag + " tag/primary")
 	if screen.y < 520.0 and flight.get_global_rect().size.y > 32.0:
 		_bad(tag + " tag tall %s" % flight.get_global_rect())
-	for node in [cast, dock, board, hud.get("quest_button"), hud.get("probe_button")]:
+	for node in [cast, dock, board, hud.get("market_button"), hud.get("quest_button"), hud.get("probe_button")]:
 		var button := node as Control
-		if button.visible:
+		if button != null and button.visible:
 			_inside(button, screen, tag + " " + button.name)
 			if button.get_global_rect().size.y < 40.0:
 				_bad(tag + " short " + button.name)
+	var stock := _find_button(hud, "Stock")
+	if stock == null:
+		_bad(tag + " missing Stock")
+	if _find_button(hud, "Market") == null:
+		_bad(tag + " missing Market")
+	var attack := _find_button(hud, "Main turret")
+	if attack == null:
+		attack = _find_button(hud, "TURRET")
+	if attack == null:
+		_bad(tag + " missing attack")
+	else:
+		_inside_parent(attack, primary, tag + " attack")
+		_apart(attack, actions, tag + " attack/actions")
 	if touch:
 		var pad: Node = hud.get("pad")
 		var joy: Control = pad.get("joy")
@@ -177,9 +193,12 @@ func _check_board(screen: Vector2) -> void:
 	var cast: Button = hud.get("cast_button")
 	var dock: Button = hud.get("dock_button")
 	var board_button: Button = hud.get("board_button")
+	var market_button: Button = hud.get("market_button")
 	cast.visible = true
 	dock.visible = true
 	board_button.visible = true
+	if market_button != null:
+		market_button.visible = true
 	hud._layout_chrome(screen)
 	_resort(hud)
 	var primary: Control = hud.get("primary_bar")
@@ -187,7 +206,7 @@ func _check_board(screen: Vector2) -> void:
 	var status: Control = hud.get("status_card")
 	_inside(panel, screen, "board panel")
 	if screen.y < 520.0 and screen.x > screen.y:
-		for node in [cast, dock, board_button, hud.get("quest_button"), hud.get("probe_button")]:
+		for node in [cast, dock, board_button, hud.get("market_button"), hud.get("quest_button"), hud.get("probe_button")]:
 			var button := node as Control
 			if button.visible:
 				_inside(button, screen, "board " + button.name)

@@ -1,0 +1,13 @@
+{
+  "id": "authored_false_green",
+  "title": "Crossed Flags",
+  "kind": "authored",
+  "giver": "Marchport",
+  "summary": "Start: enter the system. The log opens Crossed Flags and the helm marks False Green. Do: Close on False Green. Two deserter squadrons wear Compact colors. The green is paint. The law is red. Finish: come inside False Green's shell. Red Keel heat rises. Do not trust the paint. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "false_green",
+  "system_id": "HC-V1-R7-S4",
+  "mutations": [
+    "rumor_false_green",
+    "heat_red_keel"
+  ]
+}

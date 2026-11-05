@@ -1,0 +1,695 @@
+{
+  "schema": "mob_roles_v1",
+  "systems": {
+    "HC-V1-R1-S2": {
+      "pdo": {
+        "role": "range",
+        "action": "range",
+        "duty": "Range officer over Brass Lantern. The gunnery moon is hot. Hail a keel that crowds the watch. Guns wait for the slate."
+      },
+      "haulers": {
+        "scale_clerk": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Scale Clerk at Brass Lantern. Honest scales. Fuel and ammo are weighed in public. Come alongside and the clerk reads the hold."
+        }
+      }
+    },
+    "HC-V1-R1-S3": {
+      "pdo": {
+        "role": "bailiff",
+        "action": "bailiff",
+        "duty": "Bailiff over Writ. Seized hulls stay on the slate. Hail a keel in the yard. The tow to Gyre is the next paper."
+      },
+      "haulers": {
+        "bailiff_holt": {
+          "role": "clerk",
+          "action": "clerk",
+          "duty": "Bailiff Holt at Writ. Walk the seized yard and name the next tow to Gyre."
+        }
+      }
+    },
+    "HC-V1-R1-S4": {
+      "pdo": {
+        "role": "patrol",
+        "action": "patrol",
+        "duty": "Cadet watch over White Wake. Hail paint rounds before live guns. The green still writes a shot."
+      }
+    },
+    "HC-V1-R1-S5": {
+      "pdo": {
+        "role": "patrol",
+        "action": "patrol",
+        "duty": "Patrol over Ledger. Hail a keel that closes inside 640 meters. Guns follow the slate, not the first look."
+      },
+      "haulers": {
+        "bond_factor": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Bond Factor at Ledger. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      }
+    },
+    "HC-V1-R1-S6": {
+      "pdo": {
+        "role": "patrol",
+        "action": "patrol",
+        "duty": "Patrol over Quiet Sun. Hail a keel that closes inside 640 meters. Guns follow the slate, not the first look."
+      },
+      "haulers": {
+        "porch_hauler": {
+          "role": "trader",
+          "action": "orbit",
+          "duty": "Porch Hauler at Quiet Sun. Orbit the suburb lamp. The amber work is the buoy gyre behind the porch, not the green lane."
+        }
+      }
+    },
+    "HC-V1-R2-S1": {
+      "haulers": {
+        "tally_clerk": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Tally Clerk at Lease. Sell the harvest paper. Tallyrock is mined out and the license is still for sale."
+        },
+        "paper_vendor": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Paper Vendor at Lease. A second copy of the harvest paper. Come alongside and read the fine print before you cut."
+        }
+      }
+    },
+    "HC-V1-R2-S2": {
+      "haulers": {
+        "tug_factor": {
+          "role": "tug",
+          "action": "tow",
+          "duty": "Tug Factor at Towline. Hold the tow. Inside 480 meters, match the captain's nose and stay on the road."
+        }
+      }
+    },
+    "HC-V1-R2-S3": {
+      "haulers": {
+        "choir_hauler": {
+          "role": "trader",
+          "action": "orbit",
+          "duty": "Choir Hauler at Ore Choir. Haul metal off the belt. The claim jumper on the rim wants the same load."
+        }
+      },
+      "pirates": [
+        {
+          "role": "claim_jumper",
+          "action": "claim_jumper",
+          "duty": "Claim jumper over Ore Choir. Sit the pocket. Chase a keel that enters it. Stay put while the pocket is empty."
+        },
+        {
+          "role": "kite",
+          "action": "kite",
+          "duty": "Kite over Ore Choir. Hold 340 to 460 meters, slide the flank, and shoot. Do not sit in the guns."
+        }
+      ]
+    },
+    "HC-V1-R5-S2": {
+      "haulers": {
+        "weather_shepherd": {
+          "role": "herdsman",
+          "action": "herd",
+          "duty": "Weather Shepherd at Two Weathers. Walk the terminator pocket. Ember kale wants the hot face. Ghost gourd wants the cold."
+        }
+      }
+    },
+    "HC-V1-R5-S4": {
+      "haulers": {
+        "stamp_clerk": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Stamp Clerk at Broken Charter. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      },
+      "pirates": [
+        {
+          "role": "ambush",
+          "action": "ambush",
+          "duty": "Ambush over Broken Charter. Hold the home buoy. Close only when a keel comes inside 520 meters or shoots."
+        }
+      ]
+    },
+    "HC-V1-R5-S6": {
+      "pirates": [
+        {
+          "role": "raider",
+          "action": "raider",
+          "duty": "Raider over Perimeter. Take the nearest hauler inside 1100 meters. If the haulers are gone, the captain is the prize."
+        },
+        {
+          "role": "ambush",
+          "action": "ambush",
+          "duty": "Ambush over Perimeter. Hold the home buoy. Close only when a keel comes inside 520 meters or shoots."
+        }
+      ]
+    },
+    "HC-V1-R6-S1": {
+      "pirates": [
+        {
+          "role": "ambush",
+          "action": "ambush",
+          "duty": "Ambush over Gyre. Hold the home buoy. Close only when a keel comes inside 520 meters or shoots."
+        },
+        {
+          "role": "kite",
+          "action": "kite",
+          "duty": "Kite over Gyre. Hold 340 to 460 meters, slide the flank, and shoot. Do not sit in the guns."
+        }
+      ]
+    },
+    "HC-V1-R2-S4": {
+      "pdo": {
+        "role": "clerk",
+        "action": "clerk",
+        "duty": "Lease clerk over Stamped Ice. Read the water minute. Hail a keel that crowds the office. Guns stay on the slate."
+      },
+      "haulers": {
+        "ice_factor": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Ice Factor at Stamped Ice. The minute and the ice are weighed in public. Come alongside and the factor reads the stamp."
+        }
+      },
+      "pirates": [
+        {
+          "role": "kite",
+          "action": "kite",
+          "duty": "Kite over Stamped Ice. Hold 340 to 460 meters off the clock ring and shoot from the flank. Do not sit in the ice."
+        }
+      ]
+    },
+    "HC-V1-R2-S5": {
+      "pdo": {
+        "role": "clerk",
+        "action": "clerk",
+        "duty": "Print clerk over Second Copy. The stencil is the law. Hail a keel that enters the bay."
+      },
+      "haulers": {
+        "print_factor": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Print Factor at Second Copy. Come alongside and the factor reads which copy is yours."
+        }
+      },
+      "pirates": [
+        {
+          "role": "ambush",
+          "action": "ambush",
+          "duty": "Ambush over Second Copy. Hold the bad copies until a keel comes inside 520 meters, then close."
+        }
+      ]
+    },
+    "HC-V1-R2-S6": {
+      "haulers": {
+        "expired_clerk": {
+          "role": "flee",
+          "action": "flee",
+          "duty": "Expired Clerk at Fine Print. The paper died mid-job. Run when the pack closes inside 640 meters."
+        }
+      },
+      "pirates": [
+        {
+          "role": "ambush",
+          "action": "ambush",
+          "duty": "Ambush over Fine Print. Hold the school buoy. Close when a keel enters 520 meters."
+        },
+        {
+          "role": "kite",
+          "action": "kite",
+          "duty": "Kite over Fine Print. Keep the flank at 340 to 460 meters and punish a straight run."
+        },
+        {
+          "role": "raider",
+          "action": "raider",
+          "duty": "Raider over Fine Print. Take the clerk's hull first. The captain is the second prize."
+        }
+      ]
+    },
+    "HC-V1-R3-S1": {
+      "pdo": {
+        "role": "escort",
+        "action": "escort",
+        "duty": "Municipal escort over Haven Wheel. Stay with the local hauler. Leave the green and the navy does not follow."
+      },
+      "haulers": {
+        "navy_factor": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Navy Factor at Haven Wheel. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      }
+    },
+    "HC-V1-R3-S2": {
+      "pdo": {
+        "role": "escort",
+        "action": "escort",
+        "duty": "Municipal escort over Lower Stack. Stay with the local hauler. Leave the green and the navy does not follow."
+      },
+      "haulers": {
+        "shift_boss": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Shift Boss at Lower Stack. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      }
+    },
+    "HC-V1-R3-S3": {
+      "pdo": {
+        "role": "escort",
+        "action": "escort",
+        "duty": "Municipal escort over Guest Lamp. Stay with the local hauler. Leave the green and the navy does not follow."
+      },
+      "haulers": {
+        "lamp_host": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Lamp Host at Guest Lamp. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      },
+      "pirates": [
+        {
+          "role": "interceptor",
+          "action": "interceptor",
+          "duty": "Interceptor over Guest Lamp. Close the quarry and hold the guns. Break off if the chase runs past five seconds or the green is deep."
+        }
+      ]
+    },
+    "HC-V1-R3-S4": {
+      "pdo": {
+        "role": "escort",
+        "action": "escort",
+        "duty": "Municipal escort over Not Ours. Stay with the local hauler. Leave the green and the navy does not follow."
+      },
+      "haulers": {
+        "orbit_clerk": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Orbit Clerk at Not Ours. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      }
+    },
+    "HC-V1-R3-S5": {
+      "haulers": {
+        "parish_tender": {
+          "role": "trader",
+          "action": "orbit",
+          "duty": "Parish Tender at Cinder Parish. Haul the local contract around the yard."
+        }
+      },
+      "pirates": [
+        {
+          "role": "ambush",
+          "action": "ambush",
+          "duty": "Ambush over Cinder Parish. Hold the home buoy. Close only when a keel comes inside 520 meters or shoots."
+        }
+      ]
+    },
+    "HC-V1-R3-S6": {
+      "haulers": {
+        "night_broker": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Night Broker at After Hours. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      },
+      "pirates": [
+        {
+          "role": "ambush",
+          "action": "ambush",
+          "duty": "Ambush over After Hours. Hold the home buoy. Close only when a keel comes inside 520 meters or shoots."
+        },
+        {
+          "role": "kite",
+          "action": "kite",
+          "duty": "Kite over After Hours. Hold 340 to 460 meters, slide the flank, and shoot. Do not sit in the guns."
+        }
+      ]
+    },
+    "HC-V1-R4-S1": {
+      "pdo": {
+        "role": "patrol",
+        "action": "patrol",
+        "duty": "Choir warden over Choir Gate. Hail, then the guns. A dirty hold is a fine."
+      },
+      "haulers": {
+        "gate_warden": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Gate Warden at Choir Gate. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      }
+    },
+    "HC-V1-R4-S2": {
+      "pdo": {
+        "role": "patrol",
+        "action": "patrol",
+        "duty": "Choir warden over Sealed Orchard. Hail, then the guns. A dirty hold is a fine."
+      }
+    },
+    "HC-V1-R4-S3": {
+      "pdo": {
+        "role": "patrol",
+        "action": "patrol",
+        "duty": "Choir warden over Sporefall. Hail, then the guns. A dirty hold is a fine."
+      }
+    },
+    "HC-V1-R4-S4": {
+      "pdo": {
+        "role": "patrol",
+        "action": "patrol",
+        "duty": "Choir warden over Ash Hymn. Hail, then the guns. A dirty hold is a fine."
+      },
+      "haulers": {
+        "hymn_warden": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Hymn Warden at Ash Hymn. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      }
+    },
+    "HC-V1-R4-S5": {
+      "pdo": {
+        "role": "patrol",
+        "action": "patrol",
+        "duty": "Choir warden over Clean Hands. Hail, then the guns. A dirty hold is a fine."
+      },
+      "haulers": {
+        "fine_clerk": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Fine Clerk at Clean Hands. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      }
+    },
+    "HC-V1-R4-S6": {
+      "pdo": {
+        "role": "patrol",
+        "action": "patrol",
+        "duty": "Choir warden over The Exception. Hail, then the guns. A dirty hold is a fine."
+      },
+      "haulers": {
+        "license_warden": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "License Warden at The Exception. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      }
+    },
+    "HC-V1-R5-S3": {
+      "haulers": {
+        "moth_tender": {
+          "role": "herdsman",
+          "action": "herd",
+          "duty": "Moth Tender on Pollinator Road. Walk the perch pocket and keep the lamps with the herd."
+        },
+        "lighter_pilot": {
+          "role": "tug",
+          "action": "tow",
+          "duty": "Lighter Pilot on Pollinator Road. Hold the livestock tow. Come within 480 meters and the lighter matches your nose."
+        }
+      },
+      "pirates": [
+        {
+          "role": "raider",
+          "action": "raider",
+          "duty": "Raider over Pollinator Road. Take the livestock lighter inside 1100 meters. The pen is the prize."
+        }
+      ]
+    },
+    "HC-V1-R5-S5": {
+      "haulers": {
+        "vault_clerk": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Vault Clerk at Silo Dark. Come alongside and the clerk names which silo still has a case."
+        }
+      },
+      "pirates": [
+        {
+          "role": "ambush",
+          "action": "ambush",
+          "duty": "Ambush over Silo Dark. Hold the vault buoy. Close when a keel enters 520 meters."
+        },
+        {
+          "role": "raider",
+          "action": "raider",
+          "duty": "Raider over Silo Dark. Take the vault clerk's hull. The seed cases are the second cut."
+        }
+      ]
+    },
+    "HC-V1-R6-S2": {
+      "pirates": [
+        {
+          "role": "ambush",
+          "action": "ambush",
+          "duty": "Ambush over Clockstream. Hold the home buoy. Close only when a keel comes inside 520 meters or shoots."
+        }
+      ]
+    },
+    "HC-V1-R6-S3": {
+      "pirates": [
+        {
+          "role": "ambush",
+          "action": "ambush",
+          "duty": "Ambush over Nameless Chart. Hold the home buoy. Close only when a keel comes inside 520 meters or shoots."
+        }
+      ]
+    },
+    "HC-V1-R6-S4": {
+      "pirates": [
+        {
+          "role": "ambush",
+          "action": "ambush",
+          "duty": "Ambush over Hullweather. Hold the home buoy. Close only when a keel comes inside 520 meters or shoots."
+        }
+      ]
+    },
+    "HC-V1-R6-S5": {
+      "pirates": [
+        {
+          "role": "ambush",
+          "action": "ambush",
+          "duty": "Ambush over Iron Rain. Hold the home buoy. Close only when a keel comes inside 520 meters or shoots."
+        },
+        {
+          "role": "kite",
+          "action": "kite",
+          "duty": "Kite over Iron Rain. Hold 340 to 460 meters, slide the flank, and shoot. Do not sit in the guns."
+        }
+      ]
+    },
+    "HC-V1-R6-S6": {
+      "haulers": {
+        "buoy_keeper": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Buoy Keeper at Last Beacon. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      },
+      "pirates": [
+        {
+          "role": "ambush",
+          "action": "ambush",
+          "duty": "Ambush over Last Beacon. Hold the home buoy. Close only when a keel comes inside 520 meters or shoots."
+        }
+      ]
+    },
+    "HC-V1-R7-S1": {
+      "haulers": {
+        "paper_seller": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Paper Seller at Marchport. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      },
+      "pirates": [
+        {
+          "role": "interceptor",
+          "action": "interceptor",
+          "duty": "Interceptor over Marchport. Close the quarry and hold the guns. Break off if the chase runs past five seconds or the green is deep."
+        },
+        {
+          "role": "raider",
+          "action": "raider",
+          "duty": "Raider over Marchport. Take the nearest hauler inside 1100 meters. If the haulers are gone, the captain is the prize."
+        }
+      ]
+    },
+    "HC-V1-R7-S2": {
+      "pirates": [
+        {
+          "role": "interceptor",
+          "action": "interceptor",
+          "duty": "Interceptor over Letter. Close the quarry and hold the guns. Break off if the chase runs past five seconds or the green is deep."
+        },
+        {
+          "role": "raider",
+          "action": "raider",
+          "duty": "Raider over Letter. Take the nearest hauler inside 1100 meters. If the haulers are gone, the captain is the prize."
+        }
+      ]
+    },
+    "HC-V1-R7-S3": {
+      "haulers": {
+        "tithe_broker": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Tithe Broker at Empty Tithe. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      },
+      "pirates": [
+        {
+          "role": "interceptor",
+          "action": "interceptor",
+          "duty": "Interceptor over Empty Tithe. Close the quarry and hold the guns. Break off if the chase runs past five seconds or the green is deep."
+        }
+      ]
+    },
+    "HC-V1-R7-S4": {
+      "pirates": [
+        {
+          "role": "interceptor",
+          "action": "interceptor",
+          "duty": "Interceptor over Crossed Flags. Close the quarry and hold the guns. Break off if the chase runs past five seconds or the green is deep."
+        },
+        {
+          "role": "raider",
+          "action": "raider",
+          "duty": "Raider over Crossed Flags. Take the nearest hauler inside 1100 meters. If the haulers are gone, the captain is the prize."
+        }
+      ]
+    },
+    "HC-V1-R7-S5": {
+      "pirates": [
+        {
+          "role": "interceptor",
+          "action": "interceptor",
+          "duty": "Interceptor over Claimwake. Close the quarry and hold the guns. Break off if the chase runs past five seconds or the green is deep."
+        }
+      ]
+    },
+    "HC-V1-R7-S6": {
+      "pirates": [
+        {
+          "role": "interceptor",
+          "action": "interceptor",
+          "duty": "Interceptor over No Witness. Close the quarry and hold the guns. Break off if the chase runs past five seconds or the green is deep."
+        },
+        {
+          "role": "raider",
+          "action": "raider",
+          "duty": "Raider over No Witness. Take the nearest hauler inside 1100 meters. If the haulers are gone, the captain is the prize."
+        },
+        {
+          "role": "kite",
+          "action": "kite",
+          "duty": "Kite over No Witness. Hold 340 to 460 meters, slide the flank, and shoot. Do not sit in the guns."
+        }
+      ]
+    },
+    "HC-V1-R8-S1": {
+      "haulers": {
+        "quay_factor": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Quay Factor at Black Quay. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      },
+      "pirates": [
+        {
+          "role": "interceptor",
+          "action": "interceptor",
+          "duty": "Interceptor over Black Quay. Close the quarry and hold the guns. Break off if the chase runs past five seconds or the green is deep."
+        },
+        {
+          "role": "raider",
+          "action": "raider",
+          "duty": "Raider over Black Quay. Take the nearest hauler inside 1100 meters. If the haulers are gone, the captain is the prize."
+        }
+      ]
+    },
+    "HC-V1-R8-S2": {
+      "pirates": [
+        {
+          "role": "interceptor",
+          "action": "interceptor",
+          "duty": "Interceptor over False Choir. Close the quarry and hold the guns. Break off if the chase runs past five seconds or the green is deep."
+        },
+        {
+          "role": "raider",
+          "action": "raider",
+          "duty": "Raider over False Choir. Take the nearest hauler inside 1100 meters. If the haulers are gone, the captain is the prize."
+        }
+      ]
+    },
+    "HC-V1-R8-S3": {
+      "haulers": {
+        "orchard_cutter": {
+          "role": "trader",
+          "action": "orbit",
+          "duty": "Orchard Cutter at Seedcut. Haul the local contract around the yard."
+        }
+      },
+      "pirates": [
+        {
+          "role": "interceptor",
+          "action": "interceptor",
+          "duty": "Interceptor over Seedcut. Close the quarry and hold the guns. Break off if the chase runs past five seconds or the green is deep."
+        }
+      ]
+    },
+    "HC-V1-R8-S4": {
+      "pirates": [
+        {
+          "role": "interceptor",
+          "action": "interceptor",
+          "duty": "Interceptor over Twin Wake. Close the quarry and hold the guns. Break off if the chase runs past five seconds or the green is deep."
+        },
+        {
+          "role": "raider",
+          "action": "raider",
+          "duty": "Raider over Twin Wake. Take the nearest hauler inside 1100 meters. If the haulers are gone, the captain is the prize."
+        },
+        {
+          "role": "kite",
+          "action": "kite",
+          "duty": "Kite over Twin Wake. Hold 340 to 460 meters, slide the flank, and shoot. Do not sit in the guns."
+        }
+      ]
+    },
+    "HC-V1-R8-S5": {
+      "haulers": {
+        "den_keeper": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Den Keeper at Deep Hold. Orbit the yard. Come alongside and the paper is read in public."
+        }
+      },
+      "pirates": [
+        {
+          "role": "interceptor",
+          "action": "interceptor",
+          "duty": "Interceptor over Deep Hold. Close the quarry and hold the guns. Break off if the chase runs past five seconds or the green is deep."
+        }
+      ]
+    },
+    "HC-V1-R8-S6": {
+      "pirates": [
+        {
+          "role": "interceptor",
+          "action": "interceptor",
+          "duty": "Interceptor over The Joke. Close the quarry and hold the guns. Break off if the chase runs past five seconds or the green is deep."
+        },
+        {
+          "role": "raider",
+          "action": "raider",
+          "duty": "Raider over The Joke. Take the nearest hauler inside 1100 meters. If the haulers are gone, the captain is the prize."
+        }
+      ]
+    }
+  }
+}

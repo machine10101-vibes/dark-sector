@@ -1,0 +1,13 @@
+{
+  "id": "authored_tithe_outpost",
+  "title": "Empty Tithe",
+  "kind": "authored",
+  "giver": "Marchport",
+  "summary": "Start: enter the system. The log opens Empty Tithe and the helm marks Tithe Outpost. Do: Close on Tithe Outpost. The Tithe Broker sells food at a starving price. The jurisdiction run that brings food mass is the separate route. Finish: come inside Tithe Outpost's shell. Red Keel heat rises. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "tithe_outpost",
+  "system_id": "HC-V1-R7-S3",
+  "mutations": [
+    "rumor_tithe_outpost",
+    "heat_red_keel"
+  ]
+}

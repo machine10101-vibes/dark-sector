@@ -1,0 +1,12 @@
+{
+  "id": "authored_working_buoy",
+  "title": "Last Beacon",
+  "kind": "authored",
+  "giver": "Drift tender",
+  "summary": "Start: enter the system. The log opens Last Beacon and the helm marks Working Buoy. Do: Close on Working Buoy. The Buoy Keeper orbits the one lamp that still answers. Everything else is wreck light. Finish: come inside Working Buoy's shell. A drift rumor. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "working_buoy",
+  "system_id": "HC-V1-R6-S6",
+  "mutations": [
+    "rumor_working_buoy"
+  ]
+}

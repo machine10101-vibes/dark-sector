@@ -1,0 +1,13 @@
+{
+  "id": "authored_algae_stack",
+  "title": "Lower Stack",
+  "kind": "authored",
+  "giver": "Orbital Municipal Navy",
+  "summary": "Start: enter the system. The log opens Lower Stack and the helm marks Algae Stack. Do: Close on Algae Stack. The navy escort stays with the Shift Boss. The union bell is the other body. The curtains are the belt. Finish: come inside Algae Stack's shell. The navy writes standing. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "algae_stack",
+  "system_id": "HC-V1-R3-S2",
+  "mutations": [
+    "rumor_algae_stack",
+    "municipal_standing_up"
+  ]
+}

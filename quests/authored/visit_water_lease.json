@@ -1,0 +1,20 @@
+{
+  "id": "authored_water_lease",
+  "title": "Water Lease",
+  "kind": "authored",
+  "giver": "Rimward Charter",
+  "summary": "Start: take Clock Lane from Towline into Stamped Ice. The log opens Water Lease and the helm marks Clock Ice. Do: cut ice spall off the clock ring. A kite holds 340 to 460 meters off that ring. The lease clerk hails at the office and the Ice Factor reads the stamp if you come alongside. Then ride back to Towline with the ice in the hold. The Tug Factor matches your nose inside 480 meters. Finish: be at Towline with ice spall aboard. The Charter writes standing and a rumor. Fail: arrive at Towline with an empty hold and the last step stays open. The job does not expire.",
+  "route": [
+    "HC-V1-R2-S4",
+    "HC-V1-R2-S2"
+  ],
+  "marks": [
+    "clock_ice",
+    "tug_yard"
+  ],
+  "need_cargo": "ice_spall",
+  "mutations": [
+    "rumor_water_lease",
+    "charter_standing_up"
+  ]
+}

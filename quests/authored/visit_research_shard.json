@@ -1,0 +1,13 @@
+{
+  "id": "authored_research_shard",
+  "title": "The Exception",
+  "kind": "authored",
+  "giver": "Glass Choir",
+  "summary": "Start: enter the system. The log opens The Exception and the helm marks Research Shard. Do: Close on Research Shard. One sanctioned shard. The License Warden orbits it. The plague hook is the other body and is not a gift. Finish: come inside Research Shard's shell. The Choir writes standing. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "research_shard",
+  "system_id": "HC-V1-R4-S6",
+  "mutations": [
+    "rumor_research_shard",
+    "glass_standing_up"
+  ]
+}

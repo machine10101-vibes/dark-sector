@@ -43,6 +43,18 @@ static func accept(sim) -> String:
 	return "No contract is offered."
 
 
+static func try_take(sim) -> String:
+	var note := accept(sim)
+	if note == "":
+		return ""
+	if not DockBoard.at_pad(sim):
+		return note
+	for job in ["scan", "haul", "salvage", "escort"]:
+		if DockBoard.state(sim, "dock_%s" % job) == "open":
+			return DockBoard.take(sim, job)
+	return note
+
+
 static func mark(sim) -> String:
 	var focus := focus(sim)
 	sim.nav_mark = focus
@@ -51,6 +63,7 @@ static func mark(sim) -> String:
 
 
 static func on_arrive(sim) -> void:
+	_note_open(sim)
 	if str(sim.defs.system.id) != "HC-V1-R1-S1":
 		return
 	if not bool(sim.quest_flags.get("inspect_pending", false)):
@@ -72,6 +85,9 @@ static func focus(sim) -> Dictionary:
 		var job := _active_contract(sim)
 		if not job.is_empty():
 			return _contract_focus(sim, job)
+		var hook: Dictionary = _near_hook(sim)
+		if not hook.is_empty():
+			return hook
 		return _point(sim, str(sim.defs.system.id), "system", str(sim.defs.system.id), str(sim.defs.system.name))
 	match beat:
 		"undock":
@@ -88,6 +104,594 @@ static func focus(sim) -> Dictionary:
 			return _point(sim, "HC-V1-R5-S1", "claim", "quiet_hollow", "Quiet Hollow")
 		_:
 			return _point(sim, str(sim.defs.system.id), "system", str(sim.defs.system.id), str(sim.defs.system.name))
+
+
+static func cue_line(sim) -> String:
+	if sim == null or sim.player.is_empty():
+		return ""
+	var slip := DockBoard.slip_line(sim)
+	if slip != "":
+		return slip
+	var guided := _guide_cue(sim)
+	if guided != "":
+		return guided
+	var beat := str(sim.quest_flags.get("shakedown_beat", "undock"))
+	if beat != "" and beat != "done" and beat != "failed":
+		return _beat_line(sim, beat)
+	var job := _active_contract(sim)
+	if not job.is_empty():
+		var title := str(job.get("title", "Contract"))
+		if str(job.get("state", "")) == "offered":
+			return "OFFER  %s  ·  Take or Approach" % title
+		if str(job.get("template", "")) == "defend":
+			var held := float(job.get("pocket_time", 0.0))
+			if _in_claim(sim):
+				return "%s  ·  hold %.0f/48 in pocket" % [title, held]
+			return "%s  ·  enter the pocket" % title
+		var mark := _contract_focus(sim, job)
+		var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
+		if pos == Vector2.ZERO:
+			return title
+		var gap: float = sim.player.pos.distance_to(pos)
+		return "%s  ·  %d m" % [title, int(gap)]
+	return _hook_line(sim)
+
+
+static func cue_aim(sim) -> Vector2:
+	if sim == null or sim.player.is_empty():
+		return Vector2.ZERO
+	var slip: Vector2 = DockBoard.cue_aim(sim)
+	if slip.length() > 8.0:
+		return slip
+	var guided: Dictionary = _guide_mark(sim)
+	if not guided.is_empty():
+		return _beam(sim, guided)
+	var beat := str(sim.quest_flags.get("shakedown_beat", ""))
+	var mark: Dictionary = {}
+	if beat != "" and beat != "done" and beat != "failed" and beat != "module" and beat != "garden":
+		mark = focus(sim)
+	else:
+		var job := _active_contract(sim)
+		if not job.is_empty():
+			mark = _contract_focus(sim, job)
+		else:
+			mark = _near_hook(sim)
+	if mark.is_empty():
+		return Vector2.ZERO
+	if str(mark.get("kind", "")) == "keel":
+		return Vector2.ZERO
+	var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
+	if pos == Vector2.ZERO:
+		return Vector2.ZERO
+	var beam: Vector2 = pos - sim.player.pos
+	if beam.length() <= 8.0:
+		return Vector2.ZERO
+	return beam
+
+
+static func shakedown_line(sim) -> String:
+	var beat := str(sim.quest_flags.get("shakedown_beat", ""))
+	if beat == "" or beat == "done" or beat == "failed":
+		return ""
+	return _beat_line(sim, beat)
+
+
+static func _beat_line(sim, beat: String) -> String:
+	var mark := focus(sim)
+	var label := str(mark.get("label", "the mark"))
+	var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
+	var gap := 0
+	if pos != Vector2.ZERO:
+		gap = int(sim.player.pos.distance_to(pos))
+	match beat:
+		"undock":
+			if bool(sim.player.get("moored", false)):
+				return "Cast off — leave the pad."
+			return "Leave the pad — shakedown is live."
+		"scan":
+			return "Scan Aegis Prime — %d m." % gap
+		"harvest":
+			return "Cut the ice ring or Seized Hold — %d m." % gap
+		"module":
+			return "Bolt a module — Bolt on SHIP."
+		"pirate":
+			return "Meet the Red Keel — %d m." % gap
+		"claim":
+			var out := CraftOrders.out_name(sim)
+			if out != "" and str(sim.defs.system.id) == "HC-V1-R1-S1":
+				return "Return %s — Lane waits." % out
+			if str(sim.defs.system.id) != "HC-V1-R5-S1":
+				return "Lane to Quiet Hollow — %s." % label
+			if int(sim.player.cargo.get("claim_core", 0)) < 1:
+				return "Make a Claim Core — four raw mass."
+			return "Plant the core on Quiet Hollow."
+		"garden":
+			if not bool(sim.quest_flags.get("wheat_cut", false)):
+				return "Tend glasswheat — Tend on LAW."
+			return "Feed the kine — Feed on LAW."
+		_:
+			return ""
+
+
+static func try_bolt(sim) -> String:
+	if sim == null or sim.player.is_empty():
+		return "No keel to bolt."
+	if sim.in_combat():
+		return "The bay is shut. Break off before you touch a bolt."
+	var yard: Array = sim.player.get("yard", [])
+	var order: Array = []
+	if yard.has("sensor_mast"):
+		order.append("sensor_mast")
+	for mid in yard:
+		var module_id := str(mid)
+		if module_id == "sensor_mast":
+			continue
+		order.append(module_id)
+	for module_id in order:
+		if sim.player.modules.has(module_id):
+			continue
+		if not sim.defs.modules.has(module_id):
+			continue
+		sim.install(module_id)
+		return ""
+	if DockBoard.at_pad(sim):
+		var cheapest := ""
+		var cheapest_price := 9999
+		for kit_id in DockBoard.KIT.keys():
+			var row: Dictionary = DockBoard.KIT[kit_id]
+			if row.has("round"):
+				continue
+			if sim.player.modules.has(kit_id) or DockBoard.paid_mount(sim, kit_id):
+				continue
+			var price := int(row.price)
+			if price < cheapest_price:
+				cheapest_price = price
+				cheapest = str(kit_id)
+		if cheapest != "":
+			var note := DockBoard.buy_kit(sim, cheapest)
+			if note != "" and DockBoard.can_afford(sim, cheapest):
+				note = DockBoard.fabricate(sim, cheapest)
+			if note != "":
+				return note
+			sim.install(cheapest)
+			return ""
+	return "No spare in the yard. Buy a kit at the Helion pad."
+
+
+static func try_approach(sim) -> String:
+	if sim == null or sim.player.is_empty():
+		return "No keel to move."
+	var slip_aim: Vector2 = DockBoard.cue_aim(sim)
+	if slip_aim.length() > 8.0:
+		var dest: Vector2 = sim.player.pos + slip_aim
+		var label := DockBoard.slip_line(sim)
+		if label == "":
+			label = "the dock mark"
+		HelmCombat.set_order(sim, sim.player, {
+			"kind": "approach",
+			"x": dest.x,
+			"y": dest.y,
+			"label": label,
+		})
+		return ""
+	var beat := str(sim.quest_flags.get("shakedown_beat", "undock"))
+	if beat == "undock" and bool(sim.player.get("moored", false)):
+		return "Cast off — leave the pad."
+	if beat == "done" or beat == "failed":
+		var job := _active_contract(sim)
+		if not job.is_empty() and str(job.get("state", "")) == "offered":
+			accept(sim)
+	var guided: Dictionary = _guide_mark(sim)
+	if not guided.is_empty():
+		return _fly_mark(sim, guided)
+	if beat == "module":
+		return "Bolt a module from the SHIP row."
+	var mark: Dictionary = focus(sim)
+	var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
+	if pos == Vector2.ZERO:
+		return "No job mark to approach."
+	if beat == "garden" and pos.distance_to(sim.player.pos) <= 80.0:
+		return "Tend glasswheat and keep the kine."
+	if pos.distance_to(sim.player.pos) <= 8.0:
+		return "Already on the mark."
+	HelmCombat.set_order(sim, sim.player, {
+		"kind": "approach",
+		"x": pos.x,
+		"y": pos.y,
+		"label": str(mark.get("label", "the mark")),
+	})
+	return ""
+
+
+static func track(sim, quest_id: String) -> String:
+	if sim == null or sim.player.is_empty():
+		return "No keel on the slate."
+	var current := str(sim.quest_flags.get("tracked_quest", ""))
+	if quest_id == "" or quest_id == current:
+		sim.quest_flags.tracked_quest = ""
+		sim.say("Guide cleared. The helm follows the live job.")
+		return ""
+	if not _can_track(sim, quest_id):
+		return "That job is not on the slate."
+	sim.quest_flags.tracked_quest = quest_id
+	var card := guide_card(sim, quest_id)
+	var mark := _mark_for(sim, quest_id)
+	if not mark.is_empty():
+		sim.nav_mark = mark
+	sim.say("Tracking %s. %s" % [str(card.get("title", quest_id)), str(card.get("step", "the next step"))])
+	return ""
+
+
+static func guide_card(sim, quest_id: String) -> Dictionary:
+	if sim == null or sim.player.is_empty() or quest_id == "":
+		return {}
+	var tracking := str(sim.quest_flags.get("tracked_quest", "")) == quest_id
+	if quest_id == "authored_shakedown_01":
+		var beat := str(sim.quest_flags.get("shakedown_beat", "undock"))
+		var mark := focus(sim)
+		var step := "Shakedown is filed."
+		if beat != "done" and beat != "failed":
+			step = _beat_line(sim, beat)
+		elif beat == "failed":
+			step = "Shakedown failed. The slate kept it."
+		return {
+			"id": quest_id,
+			"title": "Shakedown",
+			"step": step,
+			"start": "Cast off from Helion Dock.",
+			"detail": "Follow the beat the helm names.",
+			"finish": "Tend the garden and feed the kine.",
+			"reward": "A blueprint from Clerk Ivo Ram.",
+			"fail": "The hold-kine dies before the cut.",
+			"where": str(mark.get("label", "Helion")),
+			"x": float(mark.get("x", 0.0)),
+			"y": float(mark.get("y", 0.0)),
+			"tracking": tracking,
+		}
+	if sim.defs.quests.has(quest_id):
+		var quest: Dictionary = sim.defs.quests[quest_id]
+		var summary := str(quest.get("summary", ""))
+		var quest_mark := _mark_for(sim, quest_id)
+		var filed := str(sim.quest_flags.get(quest_id, "")) == "done"
+		var quest_step := "Filed on the slate."
+		if not filed:
+			quest_step = _step_line(sim, quest, quest_mark)
+		var reward := _clause(summary, "Reward:")
+		if reward == "":
+			reward = _reward_line(quest.get("mutations", []))
+		var fail := _clause(summary, "Fail:")
+		if fail == "":
+			fail = "There is no timer. The job stays open until you finish it."
+		var detail := _clause(summary, "Do:")
+		if detail == "":
+			detail = summary
+		return {
+			"id": quest_id,
+			"title": str(quest.get("title", quest_id)),
+			"step": quest_step,
+			"start": _clause(summary, "Start:"),
+			"detail": detail,
+			"finish": _clause(summary, "Finish:"),
+			"reward": reward,
+			"fail": fail,
+			"where": str(quest_mark.get("label", str(quest.get("title", quest_id)))),
+			"x": float(quest_mark.get("x", 0.0)),
+			"y": float(quest_mark.get("y", 0.0)),
+			"tracking": tracking,
+		}
+	for row in sim.contracts:
+		var contract: Dictionary = row
+		if str(contract.get("id", "")) != quest_id:
+			continue
+		var job_mark := _contract_focus(sim, contract)
+		var job_state := str(contract.get("state", ""))
+		var job_step := "Filed on the slate."
+		if job_state == "offered":
+			job_step = "Take the offer. Approach accepts it."
+		elif job_state == "active":
+			job_step = _mark_step(sim, job_mark)
+			if str(contract.get("template", "")) == "defend":
+				job_step = "Hold the pocket. %s" % job_step
+		elif job_state == "failed":
+			job_step = "The contract failed. The slate kept a mark."
+		return {
+			"id": quest_id,
+			"title": str(contract.get("title", "Contract")),
+			"step": job_step,
+			"start": "The sector offered this contract.",
+			"detail": str(contract.get("summary", "")),
+			"finish": "Finish the contract. The sector keeps the change.",
+			"reward": _reward_line(contract.get("success_mutations", [])),
+			"fail": "The timer can fail it, and a ruptured hollow fails a defend.",
+			"where": str(job_mark.get("label", str(contract.get("title", "Contract")))),
+			"x": float(job_mark.get("x", 0.0)),
+			"y": float(job_mark.get("y", 0.0)),
+			"tracking": tracking,
+		}
+	return {}
+
+
+static func _guide_cue(sim) -> String:
+	var qid := str(sim.quest_flags.get("tracked_quest", ""))
+	if qid == "":
+		return ""
+	if not _can_track(sim, qid):
+		sim.quest_flags.tracked_quest = ""
+		return ""
+	var card := guide_card(sim, qid)
+	if card.is_empty():
+		return ""
+	return "TRACK  %s  ·  %s" % [str(card.get("title", qid)), str(card.get("step", ""))]
+
+
+static func _guide_mark(sim) -> Dictionary:
+	if DockBoard.slip_line(sim) != "":
+		return {}
+	var qid := str(sim.quest_flags.get("tracked_quest", ""))
+	if qid == "":
+		return {}
+	if not _can_track(sim, qid):
+		sim.quest_flags.tracked_quest = ""
+		return {}
+	return _mark_for(sim, qid)
+
+
+static func _can_track(sim, quest_id: String) -> bool:
+	if quest_id == "authored_shakedown_01":
+		var beat := str(sim.quest_flags.get("shakedown_beat", ""))
+		return beat != "" and beat != "done" and beat != "failed"
+	if str(sim.quest_flags.get(quest_id, "")) == "done" or str(sim.quest_flags.get(quest_id, "")) == "failed":
+		return false
+	if sim.defs.quests.has(quest_id):
+		var quest: Dictionary = sim.defs.quests[quest_id]
+		var ship := str(quest.get("ship", ""))
+		if ship != "" and ship != str(sim.player.class_id):
+			return false
+		if hook_open(sim, quest, quest_id):
+			return true
+		return str(sim.quest_flags.get(quest_id, "")) == "open"
+	for row in sim.contracts:
+		var contract: Dictionary = row
+		if str(contract.get("id", "")) != quest_id:
+			continue
+		var state := str(contract.get("state", ""))
+		return state == "offered" or state == "active"
+	return false
+
+
+static func _mark_for(sim, quest_id: String) -> Dictionary:
+	if quest_id == "authored_shakedown_01":
+		return focus(sim)
+	if sim.defs.quests.has(quest_id):
+		var quest: Dictionary = sim.defs.quests[quest_id]
+		var title := str(quest.get("title", quest_id))
+		var body := str(quest.get("body", ""))
+		if body != "":
+			var system_id := str(quest.get("system_id", ""))
+			var label := _body_label(sim, system_id, body, title)
+			var here := system_id == "" or str(sim.defs.system.id) == system_id
+			if here:
+				var pending := _open_prelude(sim, quest, quest_id)
+				if not pending.is_empty():
+					return _prelude_point(sim, pending)
+			return _point(sim, system_id, "body", body, label)
+		if quest.has("route"):
+			var route: Array = quest.route
+			var step := int(sim.quest_flags.get("%s_step" % quest_id, 0))
+			if step < 0:
+				step = 0
+			if step >= route.size():
+				step = route.size() - 1
+			if step < 0:
+				return {}
+			var next_id := str(route[step])
+			var marks: Array = quest.get("marks", [])
+			if step < marks.size() and str(marks[step]) != "":
+				var mark_id := str(marks[step])
+				var label := _body_label(sim, next_id, mark_id, title)
+				return _point(sim, next_id, "body", mark_id, label)
+			var sys_name := next_id
+			var chart: Dictionary = sim.defs.get("systems", {})
+			if chart.has(next_id):
+				sys_name = str(chart[next_id].get("name", next_id))
+			return _point(sim, next_id, "system", next_id, sys_name)
+	for row in sim.contracts:
+		var contract: Dictionary = row
+		if str(contract.get("id", "")) == quest_id:
+			return _contract_focus(sim, contract)
+	return {}
+
+
+static func _body_label(sim, system_id: String, body_id: String, fallback: String) -> String:
+	if str(sim.defs.system.id) == system_id:
+		var rock = sim.planet(body_id)
+		if rock != null:
+			return str(rock.name)
+	var chart: Dictionary = sim.defs.get("systems", {})
+	if chart.has(system_id):
+		var spec: Dictionary = chart[system_id]
+		for key in ["planets", "bodies"]:
+			for raw in spec.get(key, []):
+				if typeof(raw) != TYPE_DICTIONARY:
+					continue
+				var body: Dictionary = raw
+				if str(body.get("id", "")) == body_id:
+					return str(body.get("name", fallback))
+	return fallback
+
+
+static func _step_line(sim, quest: Dictionary, mark: Dictionary) -> String:
+	var line := _mark_step(sim, mark)
+	if not quest.has("route"):
+		return line
+	var route: Array = quest.route
+	var qid := str(quest.get("id", ""))
+	var step := int(sim.quest_flags.get("%s_step" % qid, 0))
+	var need := str(quest.get("need_cargo", ""))
+	var last := step >= route.size() - 1
+	var here := step >= 0 and step < route.size() and str(sim.defs.system.id) == str(route[step])
+	if need != "" and last and here and int(sim.player.cargo.get(need, 0)) < 1:
+		return "%s  ·  bring %s" % [line, need.replace("_", " ")]
+	return line
+
+
+static func _mark_step(sim, mark: Dictionary) -> String:
+	var label := str(mark.get("label", "the mark"))
+	var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
+	if pos == Vector2.ZERO:
+		return label
+	return "%s  ·  %d m" % [label, int(sim.player.pos.distance_to(pos))]
+
+
+static func _beam(sim, mark: Dictionary) -> Vector2:
+	if str(mark.get("kind", "")) == "keel":
+		return Vector2.ZERO
+	var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
+	if pos == Vector2.ZERO:
+		return Vector2.ZERO
+	var beam: Vector2 = pos - sim.player.pos
+	if beam.length() <= 8.0:
+		return Vector2.ZERO
+	return beam
+
+
+static func _fly_mark(sim, mark: Dictionary) -> String:
+	var pos := Vector2(float(mark.get("x", 0.0)), float(mark.get("y", 0.0)))
+	if pos == Vector2.ZERO:
+		return "No job mark to approach."
+	if pos.distance_to(sim.player.pos) <= 8.0:
+		return "Already on the mark."
+	HelmCombat.set_order(sim, sim.player, {
+		"kind": "approach",
+		"x": pos.x,
+		"y": pos.y,
+		"label": str(mark.get("label", "the mark")),
+	})
+	return ""
+
+
+static func _note_open(sim) -> void:
+	var quests = sim.defs.get("quests", {})
+	if typeof(quests) != TYPE_DICTIONARY:
+		return
+	for key in quests.keys():
+		var quest = quests[key]
+		if typeof(quest) != TYPE_DICTIONARY:
+			continue
+		var qid := str(quest.get("id", key))
+		var cur := str(sim.quest_flags.get(qid, ""))
+		if cur == "done" or cur == "failed":
+			continue
+		var ship := str(quest.get("ship", ""))
+		if ship != "" and ship != str(sim.player.class_id):
+			continue
+		if not hook_open(sim, quest, qid):
+			continue
+		if cur == "" or cur == "dormant":
+			sim.quest_flags[qid] = "open"
+
+
+static func _release_track(sim, quest_id: String) -> bool:
+	if str(sim.quest_flags.get("tracked_quest", "")) != quest_id:
+		return false
+	sim.quest_flags.tracked_quest = ""
+	return true
+
+
+static func _clause(summary: String, label: String) -> String:
+	var at := summary.find(label)
+	if at < 0:
+		return ""
+	var from := at + label.length()
+	var end := summary.length()
+	for other in ["Start:", "Do:", "Finish:", "Reward:", "Fail:"]:
+		if other == label:
+			continue
+		var next := summary.find(other, from)
+		if next >= 0 and next < end:
+			end = next
+	return summary.substr(from, end - from).strip_edges()
+
+
+static func _reward_line(mutations) -> String:
+	if typeof(mutations) != TYPE_ARRAY:
+		return ""
+	var bits: PackedStringArray = PackedStringArray()
+	for item in mutations:
+		var text := str(item)
+		if text.begins_with("rumor_"):
+			bits.append("a rumor on the slate")
+		elif text.ends_with("_standing_up"):
+			bits.append("%s standing" % text.trim_suffix("_standing_up").replace("_", " "))
+		elif text.begins_with("heat_"):
+			bits.append("%s heat" % text.trim_prefix("heat_").replace("_", " "))
+		elif text == "salvage_grant":
+			bits.append("one crate of salvage")
+		elif text == "blueprint":
+			bits.append("a blueprint")
+	if bits.is_empty():
+		return ""
+	return ", ".join(bits)
+
+
+static func hook_open(sim, quest: Dictionary, quest_id: String) -> bool:
+	if sim == null or sim.player.is_empty():
+		return false
+	if str(sim.quest_flags.get(quest_id, "")) == "done":
+		return false
+	var body := str(quest.get("body", ""))
+	if body != "":
+		var system_id := str(quest.get("system_id", ""))
+		return system_id == "" or str(sim.defs.system.id) == system_id
+	if quest.has("route"):
+		var route: Array = quest.route
+		return route.has(str(sim.defs.system.id))
+	return false
+
+
+static func _hook_line(sim) -> String:
+	var hook: Dictionary = _near_hook(sim)
+	if hook.is_empty():
+		return ""
+	var label := str(hook.get("label", ""))
+	var pos := Vector2(float(hook.get("x", 0.0)), float(hook.get("y", 0.0)))
+	if pos == Vector2.ZERO:
+		return "Visit  %s" % label
+	var gap: float = sim.player.pos.distance_to(pos)
+	return "Visit  %s  ·  %d m" % [label, int(gap)]
+
+
+static func _near_hook(sim) -> Dictionary:
+	var quests = sim.defs.get("quests", {})
+	if typeof(quests) != TYPE_DICTIONARY:
+		return {}
+	for key in quests.keys():
+		var quest = quests[key]
+		if typeof(quest) != TYPE_DICTIONARY:
+			continue
+		var qid := str(quest.get("id", key))
+		if not hook_open(sim, quest, qid):
+			continue
+		var body := str(quest.get("body", ""))
+		if body != "":
+			var rock = sim.planet(body)
+			if rock == null:
+				continue
+			return _point(sim, str(sim.defs.system.id), "body", body, str(quest.get("title", qid)))
+		if quest.has("route"):
+			var route: Array = quest.route
+			var step := int(sim.quest_flags.get("%s_step" % qid, 0))
+			if step < 0:
+				step = 0
+			if step >= route.size():
+				continue
+			var next_id := str(route[step])
+			var title := str(quest.get("title", qid))
+			var marks: Array = quest.get("marks", [])
+			if next_id == str(sim.defs.system.id) and step < marks.size() and str(marks[step]) != "":
+				return _point(sim, next_id, "body", str(marks[step]), title)
+			return _point(sim, next_id, "system", next_id, title)
+	return {}
 
 
 static func live_summary(sim) -> String:
@@ -186,7 +790,11 @@ static func _from_world(sim) -> Dictionary:
 		if str(sim.defs.system.id) == "HC-V1-R5-S1" and not bool(sim.quest_flags.get("did_defend", false)):
 			return _contract("defend", "homestead", "Hold the hollow", "Stay in the claim pocket through a raid timer.", ["HC-V1-R5-S1", "quiet_hollow"], "quiet_hollow", float(sim.claim.get("x", sim.pocket_pos.x)), float(sim.claim.get("y", sim.pocket_pos.y)), "HC-V1-R5-S1")
 	if _living_pirates(sim) > 0 and not bool(sim.quest_flags.get("did_cull", false)):
-		return _contract("cull", "helion_compact", "Cull or drive off the pack", "Kill a Red Keel skiff or leave them behind.", ["HC-V1-R1-S1", "red_keel"], "red_keel", sim.pack_pos.x, sim.pack_pos.y, str(sim.defs.system.id))
+		var pack := "the pack"
+		var named := str(sim.gang_name)
+		if named != "":
+			pack = named
+		return _contract("cull", "helion_compact", "Cull or drive off %s" % pack, "Kill a %s skiff or leave them behind." % pack, ["HC-V1-R1-S1", "red_keel"], "red_keel", sim.pack_pos.x, sim.pack_pos.y, str(sim.defs.system.id))
 	var unknown := _unknown_body(sim)
 	if unknown != "" and not bool(sim.quest_flags.get("did_survey", false)):
 		var node = sim.survey_node(unknown)
@@ -274,7 +882,116 @@ static func _template_done(sim, contract: Dictionary) -> bool:
 	return str(sim.defs.system.id) == str(contract.get("system_id", "")) and int(sim.player.cargo.get(need, 0)) > 0
 
 
+static func _prelude_rows(quest: Dictionary) -> Array:
+	var raw = quest.get("prelude", [])
+	if typeof(raw) != TYPE_ARRAY:
+		return []
+	return raw
+
+
+static func _prelude_flag(quest_id: String, step_id: String) -> String:
+	return "%s_%s" % [quest_id, step_id]
+
+
+static func _prelude_clear(sim, quest: Dictionary, quest_id: String) -> bool:
+	for raw in _prelude_rows(quest):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var step: Dictionary = raw
+		var flag := _prelude_flag(quest_id, str(step.get("id", "")))
+		if not bool(sim.quest_flags.get(flag, false)):
+			return false
+	return true
+
+
+static func _open_prelude(sim, quest: Dictionary, quest_id: String) -> Dictionary:
+	for raw in _prelude_rows(quest):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var step: Dictionary = raw
+		var flag := _prelude_flag(quest_id, str(step.get("id", "")))
+		if not bool(sim.quest_flags.get(flag, false)):
+			return step
+	return {}
+
+
+static func _prelude_met(sim, step: Dictionary) -> bool:
+	var reach: float = float(step.get("range", 0.0))
+	var kind := str(step.get("kind", "alongside"))
+	if kind == "sight":
+		var role := str(step.get("role", ""))
+		for actor in sim.actors:
+			if not bool(actor.get("alive", false)):
+				continue
+			if str(actor.ai.get("role", "")) != role:
+				continue
+			if sim.player.pos.distance_to(actor.home) <= reach:
+				return true
+		return false
+	var action := str(step.get("action", ""))
+	for actor in sim.actors:
+		if not bool(actor.get("alive", false)):
+			continue
+		if str(actor.ai.get("action", "")) != action:
+			continue
+		if sim.player.pos.distance_to(actor.pos) <= reach:
+			return true
+	return false
+
+
+static func _advance_prelude(sim, quest: Dictionary, quest_id: String) -> void:
+	var system_id := str(quest.get("system_id", ""))
+	if system_id != "" and str(sim.defs.system.id) != system_id:
+		return
+	for raw in _prelude_rows(quest):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var step: Dictionary = raw
+		var flag := _prelude_flag(quest_id, str(step.get("id", "")))
+		if bool(sim.quest_flags.get(flag, false)):
+			continue
+		if not _prelude_met(sim, step):
+			return
+		sim.quest_flags[flag] = true
+		sim.say("%s: %s." % [str(quest.get("title", quest_id)), str(step.get("label", "the step"))])
+		return
+
+
+static func _prelude_point(sim, step: Dictionary) -> Dictionary:
+	var kind := str(step.get("kind", "alongside"))
+	var label := str(step.get("label", "the step"))
+	var pos := Vector2.ZERO
+	if kind == "sight":
+		var role := str(step.get("role", ""))
+		for actor in sim.actors:
+			if not bool(actor.get("alive", false)):
+				continue
+			if str(actor.ai.get("role", "")) != role:
+				continue
+			pos = actor.home
+			break
+	else:
+		var action := str(step.get("action", ""))
+		for actor in sim.actors:
+			if not bool(actor.get("alive", false)):
+				continue
+			if str(actor.ai.get("action", "")) != action:
+				continue
+			pos = actor.pos
+			break
+	return {
+		"system_id": str(sim.defs.system.id),
+		"target_system": str(sim.defs.system.id),
+		"kind": "prelude",
+		"target_id": str(step.get("id", "")),
+		"label": label,
+		"x": pos.x,
+		"y": pos.y,
+	}
+
+
 static func _data_hooks(sim) -> void:
+	_note_open(sim)
 	var quests = sim.defs.get("quests", {})
 	if typeof(quests) != TYPE_DICTIONARY:
 		return
@@ -291,9 +1008,11 @@ static func _data_hooks(sim) -> void:
 		if str(quest.get("body", "")) != "":
 			var system_id := str(quest.get("system_id", ""))
 			if system_id == "" or str(sim.defs.system.id) == system_id:
-				var rock = sim.planet(str(quest.body))
-				if rock != null and sim.player.pos.distance_to(rock.pos) < float(rock.radius) + 240.0:
-					hit = true
+				_advance_prelude(sim, quest, qid)
+				if _prelude_clear(sim, quest, qid):
+					var rock = sim.planet(str(quest.body))
+					if rock != null and sim.player.pos.distance_to(rock.pos) < float(rock.radius) + 240.0:
+						hit = true
 		if quest.has("route") and not hit:
 			var route: Array = quest.route
 			var step := int(sim.quest_flags.get("%s_step" % qid, 0))
@@ -309,9 +1028,12 @@ static func _data_hooks(sim) -> void:
 						hit = true
 		if hit:
 			sim.quest_flags[qid] = "done"
+			var was_tracked := _release_track(sim, qid)
 			for mutation in quest.get("mutations", []):
 				_apply(sim, str(mutation))
 			sim.say("%s is on the slate." % str(quest.get("title", qid)))
+			if was_tracked:
+				sim.say("The guide is clear.")
 
 
 static func _apply_open(sim, mutation: String) -> void:
@@ -464,6 +1186,7 @@ static func _contract_failed(sim, contract: Dictionary) -> bool:
 
 static func _succeed_contract(sim, contract: Dictionary) -> void:
 	contract.state = "done"
+	var was_tracked := _release_track(sim, str(contract.get("id", "")))
 	var template := str(contract.get("template", ""))
 	sim.quest_flags["did_%s" % template] = true
 	if template == "deliver":
@@ -471,20 +1194,26 @@ static func _succeed_contract(sim, contract: Dictionary) -> void:
 	for mutation in contract.get("success_mutations", []):
 		_apply(sim, str(mutation))
 	sim.say("%s is done. The sector keeps the change." % str(contract.title))
+	if was_tracked:
+		sim.say("The guide is clear.")
 
 
 static func _fail_contract(sim, contract: Dictionary) -> void:
 	contract.state = "failed"
+	var was_tracked := _release_track(sim, str(contract.get("id", "")))
 	var template := str(contract.get("template", ""))
 	sim.quest_flags["did_%s" % template] = true
 	for mutation in contract.get("failure_mutations", []):
 		_apply(sim, str(mutation))
 	sim.say("%s failed. The slate kept a mark." % str(contract.title))
+	if was_tracked:
+		sim.say("The guide is clear.")
 
 
 static func _finish_shakedown(sim) -> void:
 	sim.quest_flags.shakedown_beat = "done"
 	sim.quest_flags.authored_shakedown_01 = "done"
+	var shakedown_tracked := _release_track(sim, "authored_shakedown_01")
 	var quest: Dictionary = sim.defs.quests.get("authored_shakedown_01", {})
 	for mutation in quest.get("success_mutations", []):
 		_apply(sim, str(mutation))
@@ -493,6 +1222,8 @@ static func _finish_shakedown(sim) -> void:
 	if sim.defs.modules.has(part):
 		nice = str(sim.defs.modules[part].name)
 	sim.say("Shakedown is filed. Clerk Ivo Ram leaves a blueprint for the %s." % nice)
+	if shakedown_tracked:
+		sim.say("The guide is clear.")
 
 
 static func _fail_shakedown(sim) -> void:
@@ -754,7 +1485,68 @@ static func _active_contract(sim) -> Dictionary:
 
 
 static func _contract_focus(sim, contract: Dictionary) -> Dictionary:
-	return _point(sim, str(contract.get("system_id", sim.defs.system.id)), str(contract.get("template", "system")), str(contract.get("target", "")), str(contract.get("title", "contract")))
+	var template := str(contract.get("template", ""))
+	var target := str(contract.get("target", ""))
+	var title := str(contract.get("title", "contract"))
+	var system_id := str(contract.get("system_id", sim.defs.system.id))
+	var stored := Vector2(float(contract.get("x", 0.0)), float(contract.get("y", 0.0)))
+	var food := int(sim.player.cargo.get("food_mass", 0))
+	match template:
+		"cull":
+			return _point(sim, str(sim.defs.system.id), "patrol", "red_keel", title)
+		"recover":
+			var spot := stored
+			for item in sim.craft:
+				if str(item.uid) == target:
+					spot = item.pos
+					break
+			return _mark_at(sim, system_id, "wreck", target, title, spot)
+		"survey", "ledger":
+			return _point(sim, system_id, "body", target, title)
+		"deliver":
+			if food > 0:
+				return _point(sim, "HC-V1-R1-S1", "pad", "helion_dock", "Helion Dock")
+			return _point(sim, "HC-V1-R5-S1", "claim", "quiet_hollow", "Quiet Hollow")
+		"defend":
+			return _point(sim, "HC-V1-R5-S1", "claim", "quiet_hollow", title)
+		"lantern":
+			if food > 0:
+				return _point(sim, "HC-V1-R1-S2", "body", "lamp_yard", title)
+			return _point(sim, "HC-V1-R5-S1", "claim", "quiet_hollow", title)
+		"towline":
+			return _point(sim, "HC-V1-R2-S2", "body", target, title)
+		"gyre":
+			return _point(sim, "HC-V1-R6-S1", "body", target, title)
+		"meteor_window", "choir_ash_window":
+			var rain: Vector2 = sim.stream_origin
+			if rain == Vector2.ZERO:
+				rain = stored
+			return _mark_at(sim, system_id, "stream", target, title, rain)
+		"unpaid_tow":
+			var dump: Vector2 = sim.trash_pos
+			if dump == Vector2.ZERO:
+				dump = stored
+			return _mark_at(sim, system_id, "trash", target, title, dump)
+		_:
+			if stored != Vector2.ZERO and str(sim.defs.system.id) == system_id:
+				return _mark_at(sim, system_id, template, target, title, stored)
+			return _point(sim, system_id, "body", target, title)
+
+
+static func _mark_at(sim, system_id: String, kind: String, target_id: String, label: String, pos: Vector2) -> Dictionary:
+	if str(sim.defs.system.id) != system_id:
+		return _point(sim, system_id, kind, target_id, label)
+	if pos == Vector2.ZERO:
+		pos = _local_pos(sim, kind, target_id)
+	return {
+		"system_id": str(sim.defs.system.id),
+		"target_system": system_id,
+		"kind": kind,
+		"target_id": target_id,
+		"label": label,
+		"x": pos.x,
+		"y": pos.y,
+	}
 
 
 static func _point(sim, system_id: String, kind: String, target_id: String, label: String) -> Dictionary:
@@ -788,14 +1580,31 @@ static func _local_pos(sim, kind: String, target_id: String) -> Vector2:
 		if bool(sim.claim.get("owned", false)) and str(sim.claim.get("system_id", "")) == str(sim.defs.system.id):
 			return Vector2(float(sim.claim.get("x", sim.pocket_pos.x)), float(sim.claim.get("y", sim.pocket_pos.y)))
 		return sim.pocket_pos
+	if kind == "pad":
+		return sim.beacon_pos
 	if kind == "patrol" and target_id == "red_keel":
+		return sim.pack_pos
+	if kind == "cull":
 		return sim.pack_pos
 	if kind == "patrol":
 		for actor in sim.actors:
 			if str(actor.team) == "helion_compact" and bool(actor.alive):
 				return actor.pos
 		return sim.beacon_pos
-	if kind == "body":
+	if kind == "stream":
+		if sim.stream_origin != Vector2.ZERO:
+			return sim.stream_origin
+	if kind == "trash":
+		if sim.trash_pos != Vector2.ZERO:
+			return sim.trash_pos
+	if kind == "wreck":
+		for item in sim.craft:
+			if str(item.uid) == target_id:
+				return item.pos
+		for wreck in sim.wrecks:
+			if str(wreck.get("id", "")) == target_id:
+				return wreck.pos
+	if kind == "body" or kind == "survey" or kind == "ledger" or kind == "gyre" or kind == "towline" or kind == "lantern":
 		var node = sim.survey_node(target_id)
 		if node != null:
 			return node.pos
@@ -804,6 +1613,12 @@ static func _local_pos(sim, kind: String, target_id: String) -> Vector2:
 			return body.pos
 	if kind == "keel":
 		return sim.player.pos
+	var named = sim.survey_node(target_id)
+	if named != null:
+		return named.pos
+	var rock = sim.planet(target_id)
+	if rock != null:
+		return rock.pos
 	return sim.beacon_pos
 
 

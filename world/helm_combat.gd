@@ -232,6 +232,26 @@ static func targets(sim, unit: Dictionary, reach: float = -1.0) -> Array:
 	return rows
 
 
+## The mark under a cursor. A tighter disc wins, so a ship in front of a
+## planet or a lane buoy on the limb is the thing the click means.
+static func pick_mark(at: Vector2, marks: Array) -> Dictionary:
+	var best: Dictionary = {}
+	var best_gap := 0.0
+	var best_rad := 0.0
+	for row in marks:
+		var spot: Vector2 = row.at
+		var rad: float = float(row.rad)
+		var gap: float = at.distance_to(spot)
+		if gap > rad:
+			continue
+		var tighter := best.is_empty() or rad < best_rad - 4.0 or (absf(rad - best_rad) <= 4.0 and gap < best_gap)
+		if tighter:
+			best = row
+			best_gap = gap
+			best_rad = rad
+	return best
+
+
 static func set_lock(sim, unit: Dictionary, id: String) -> void:
 	if str(unit.get("lock_id", "")) == id:
 		return
@@ -292,6 +312,273 @@ static func locked_unit(sim, unit: Dictionary):
 	if not bool(unit.get("lock_ok", false)):
 		return null
 	return find_unit(sim, str(unit.get("lock_id", "")))
+
+
+## Anyone painting this keel. PVP lives or dies on knowing that before the
+## first volley, not after the overview scrolls.
+static func lockers(sim, unit: Dictionary) -> Array:
+	var rows: Array = []
+	var id := str(unit.get("agent_id", ""))
+	if id == "":
+		return rows
+	var pool: Array = []
+	for actor in sim.actors:
+		pool.append(actor)
+	for mate in sim.captains:
+		pool.append(mate)
+	if str(sim.player.get("agent_id", "")) != id:
+		pool.append(sim.player)
+	for raw in pool:
+		var other: Dictionary = raw
+		if str(other.get("agent_id", "")) == id:
+			continue
+		if not bool(other.get("alive", false)):
+			continue
+		if str(other.get("lock_id", "")) != id:
+			continue
+		var dist: float = unit.pos.distance_to(other.pos)
+		rows.append({
+			"id": str(other.get("agent_id", "")),
+			"name": str(other.get("name", "Contact")),
+			"dist": dist,
+			"unit": other,
+			"lock_ok": bool(other.get("lock_ok", false)),
+			"lock_t": float(other.get("lock_t", 0.0)),
+			"lock_need": float(other.get("lock_need", 0.0)),
+		})
+	rows.sort_custom(func(a, b): return float(a.dist) < float(b.dist))
+	return rows
+
+
+## Speak once when a new keel starts locking the local captain, and again
+## when that lock lands. Combat math is untouched.
+static func watch_locks(sim) -> void:
+	if sim == null or not bool(sim.player.get("alive", false)):
+		return
+	var seen: Dictionary = {}
+	var prev: Dictionary = sim.lock_watch
+	if typeof(prev) != TYPE_DICTIONARY:
+		prev = {}
+	for raw in lockers(sim, sim.player):
+		var row: Dictionary = raw
+		var id := str(row.id)
+		var stage := 2 if bool(row.lock_ok) else 1
+		seen[id] = stage
+		var was := int(prev.get(id, 0))
+		if was >= stage:
+			continue
+		var name := str(row.get("name", "A keel"))
+		if stage == 2:
+			sim.say("%s has lock on you." % name)
+			sim.sfx("lock")
+		else:
+			sim.say("%s is locking you." % name)
+	sim.lock_watch = seen
+
+
+## Who shares this sky: captains, hostiles, and live wrecks. The minimap
+## and the helm read the same count.
+static func presence(sim) -> Dictionary:
+	var captains := 0
+	if bool(sim.player.get("alive", false)) and str(sim.player.get("controller", "")) == "human":
+		captains += 1
+	for raw in sim.captains:
+		var mate: Dictionary = raw
+		if bool(mate.get("alive", false)) and str(mate.get("controller", "")) == "human":
+			captains += 1
+	var hostiles := 0
+	for raw in sim.actors:
+		var actor: Dictionary = raw
+		if not bool(actor.get("alive", false)):
+			continue
+		if str(actor.get("team", "")) == "red_keel":
+			hostiles += 1
+	var wrecks := 0
+	for raw in sim.wrecks:
+		var wreck: Dictionary = raw
+		if not bool(wreck.get("stripped", false)):
+			wrecks += 1
+	return {"captains": captains, "hostiles": hostiles, "wrecks": wrecks}
+
+
+## Sensor, turret optimal, and optimal-plus-falloff from the live fit.
+## Display only — hit_chance still owns the shot.
+static func range_bands(sim, unit: Dictionary) -> Dictionary:
+	var stats := Fit.stats(sim.defs, unit)
+	var gun: Dictionary = stats.gun
+	var optimal := float(gun.get("optimal", 400.0))
+	return {
+		"sensor": float(stats.sensor),
+		"optimal": optimal,
+		"falloff": optimal + float(gun.get("falloff", 200.0)),
+	}
+
+
+## Live attacks on this keel: the hull gun first, then every bolted mount.
+## Display and helm verbs only — families stay distinct.
+static func weapon_rows(sim, unit: Dictionary) -> Array:
+	var rows: Array = []
+	if sim == null or unit.is_empty():
+		return rows
+	var gun: Dictionary = Fit.stats(sim.defs, unit).gun
+	var turret := str(gun.get("kind", "nose")) == "turret"
+	var name := "Main turret" if turret else "Main gun"
+	rows.append({
+		"socket": "nose",
+		"name": name,
+		"family": str(gun.get("family", "bullet")),
+		"short": "TURRET" if turret else "GUN",
+		"kind": str(gun.get("kind", "nose")),
+	})
+	for raw in Fit.mounts(sim.defs, unit):
+		var mount: Dictionary = raw
+		var mount_name := str(mount.get("name", "Mount"))
+		var family := str(mount.get("family", ""))
+		rows.append({
+			"socket": str(mount.get("socket", mount.get("id", ""))),
+			"name": mount_name,
+			"family": family,
+			"short": weapon_short(mount_name, family),
+			"kind": str(mount.get("kind", "")),
+		})
+	return rows
+
+
+static func weapon_short(name: String, family: String) -> String:
+	match name:
+		"Main turret":
+			return "TURRET"
+		"Main gun":
+			return "GUN"
+		"Cheek Gun":
+			return "CHEEK"
+		"Heavy Turret":
+			return "HEAVY"
+		"Beam Bank":
+			return "BEAM"
+		"Missile Rack":
+			return "RACK"
+		"Point Defense":
+			return "PD"
+		"Stake Gun":
+			return "STAKE"
+	match family:
+		"laser":
+			return "BEAM"
+		"missile":
+			return "RACK"
+		"pd":
+			return "PD"
+		"bullet":
+			return "GUN"
+	if name.length() <= 6:
+		return name.to_upper()
+	return name.substr(0, 6).to_upper()
+
+
+static func wreck_value(wreck: Dictionary) -> int:
+	var n := 0
+	var cargo: Dictionary = wreck.get("cargo", {})
+	for key in cargo.keys():
+		n += maxi(0, int(cargo[key]))
+	if str(wreck.get("controller", "")) == "human":
+		n += 2
+	else:
+		n += 1
+	return n
+
+
+static func insurance_payout(defs: Dictionary, unit: Dictionary) -> int:
+	var hull: Dictionary = defs.ships.get(str(unit.get("class_id", "")), {})
+	var hp := float(hull.get("hp", float(unit.get("max_hp", 40.0))))
+	return maxi(8, int(round(hp * 0.4)))
+
+
+## A short sensor pulse. Same reach the overview already uses. Names what
+## is around you without asking the chart to dump.
+static func sweep(sim, unit: Dictionary) -> Dictionary:
+	var stats := Fit.stats(sim.defs, unit)
+	var reach := float(stats.sensor) * 1.6
+	var hostiles := 0
+	var wrecks := 0
+	var ore := 0
+	var contacts := 0
+	var rows: Array = []
+	for raw in targets(sim, unit, reach):
+		var row: Dictionary = raw
+		var other: Dictionary = row.unit
+		contacts += 1
+		var team := str(other.get("team", ""))
+		var hostile := team == "red_keel"
+		if not hostile and team == str(sim._pdo_id()):
+			var stage := str(sim.heat_stage())
+			hostile = stage == "guns" or bool(sim.pdo_alert)
+		if hostile:
+			hostiles += 1
+		rows.append({
+			"kind": "ship",
+			"id": str(row.id),
+			"name": str(other.get("name", "Contact")),
+			"pos": other.pos,
+			"hostile": hostile,
+		})
+	for raw in sim.wrecks:
+		var wreck: Dictionary = raw
+		if bool(wreck.get("stripped", false)):
+			continue
+		var gap: float = unit.pos.distance_to(wreck.pos)
+		if gap > reach:
+			continue
+		wrecks += 1
+		rows.append({
+			"kind": "wreck",
+			"id": str(wreck.get("id", "")),
+			"name": "Wreck · %s" % str(wreck.get("name", "keel")),
+			"pos": wreck.pos,
+			"hostile": false,
+		})
+	for raw in sim.nodes:
+		var place: Dictionary = raw
+		if not sim.yields_material(place):
+			continue
+		var gap: float = unit.pos.distance_to(place.pos)
+		if gap > reach:
+			continue
+		ore += 1
+		rows.append({
+			"kind": "ore",
+			"id": str(place.get("id", "")),
+			"name": str(place.get("name", "seam")),
+			"pos": place.pos,
+			"hostile": false,
+		})
+	return {
+		"t": float(sim.time),
+		"reach": reach,
+		"hostiles": hostiles,
+		"wrecks": wrecks,
+		"ore": ore,
+		"contacts": contacts,
+		"rows": rows,
+	}
+
+
+static func try_sweep(sim, unit: Dictionary) -> String:
+	if int(sim.layer) != ScaleFrame.BAND:
+		return "Sweep is for local space."
+	var last := float(sim.quest_flags.get("sweep_at", -10.0))
+	if float(sim.time) - last < 2.4:
+		return "Sensors still cycling."
+	sim.quest_flags.sweep_at = float(sim.time)
+	var pulse: Dictionary = sweep(sim, unit)
+	sim.sweep = pulse
+	sim.say("Sweep: %d hostiles, %d wrecks, %d ore groups." % [
+		int(pulse.hostiles),
+		int(pulse.wrecks),
+		int(pulse.ore),
+	])
+	sim.sfx("scan_done")
+	return ""
 
 
 # Turrets ------------------------------------------------------------------
@@ -408,6 +695,10 @@ static func set_order(sim, unit: Dictionary, order) -> void:
 	if order.has("x") and order.has("y"):
 		row.x = float(order.x)
 		row.y = float(order.y)
+	if str(order.get("label", "")) != "":
+		row.label = str(order.label)
+	if kind == "stop":
+		unit.engage = ""
 	if kind != "stop" and row.target == "" and not row.has("x"):
 		row.target = str(unit.get("lock_id", ""))
 		if row.target == "":
@@ -433,6 +724,8 @@ static func order_label(sim, order: Dictionary) -> String:
 		var wreck = sim.wreck_by_id(str(order.get("target", "")))
 		if wreck != null:
 			name = "wreck of %s" % str(wreck.get("name", "a keel"))
+		elif str(order.get("label", "")) != "":
+			name = str(order.label)
 	match kind:
 		"approach":
 			return "Approaching %s" % name
@@ -460,6 +753,17 @@ static func _order_goal(sim, order: Dictionary) -> Dictionary:
 	return {"ok": false}
 
 
+## A warrant filed on the pad has to survive the mooring ticks.
+## The stick still clears it. The keel does not fly until it casts off.
+static func _warrant_moored(unit: Dictionary) -> bool:
+	if not bool(unit.get("moored", false)):
+		return false
+	var order: Dictionary = unit.get("order", {})
+	if str(order.get("kind", "")) != "approach":
+		return false
+	return str(order.get("label", "")).begins_with("Warrant ")
+
+
 static func manual_input(cmd: Dictionary) -> bool:
 	return absf(float(cmd.get("thrust", 0.0))) > 0.15 \
 		or float(cmd.get("retro", 0.0)) > 0.15 \
@@ -475,6 +779,8 @@ static func steer(sim, unit: Dictionary, cmd: Dictionary, stats: Dictionary) -> 
 	if order.is_empty():
 		return cmd
 	if manual_input(cmd) or int(sim.layer) != ScaleFrame.BAND or bool(unit.get("moored", false)):
+		if bool(unit.get("moored", false)) and not manual_input(cmd) and int(sim.layer) == ScaleFrame.BAND and _warrant_moored(unit):
+			return cmd
 		if manual_input(cmd) and _is_local(sim, unit):
 			sim.say("Helm back in hand.")
 		unit.order = {}

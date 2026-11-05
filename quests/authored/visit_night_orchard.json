@@ -1,0 +1,13 @@
+{
+  "id": "authored_night_orchard",
+  "title": "Seedcut",
+  "kind": "authored",
+  "giver": "Black Sail",
+  "summary": "Start: enter the system. The log opens Seedcut and the helm marks Night Orchard. Do: Close on Night Orchard. The Orchard Cutter orbits stolen vaults. The night stock is the black market. Finish: come inside Night Orchard's shell. Black Sail heat rises. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "night_orchard",
+  "system_id": "HC-V1-R8-S3",
+  "mutations": [
+    "rumor_night_orchard",
+    "heat_black_sail"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "authored_plywood_fort",
+  "title": "The Joke",
+  "kind": "authored",
+  "giver": "Black Sail",
+  "summary": "Start: enter the system. The log opens The Joke and the helm marks Plywood Fort. Do: Close on Plywood Fort. It is painted as a patrol fort. The guns are real. An interceptor shoots first. Finish: come inside Plywood Fort's shell. Black Sail heat rises. The fort is still plywood. Fail: there is no timer. Leave and the job stays open until you close.",
+  "body": "plywood_fort",
+  "system_id": "HC-V1-R8-S6",
+  "mutations": [
+    "rumor_plywood_fort",
+    "heat_black_sail"
+  ]
+}
