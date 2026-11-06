@@ -253,6 +253,11 @@ func _claims() -> void:
 	clause.player.pos = clause.pocket_pos
 	check(bool(clause.defs.system.pocket.plantable), "Clause Pocket is filed open")
 	check(Homestead.try_plant(clause) == "", "Clause Pocket takes a core")
+	var tithe := make("vesper")
+	tithe._arrive("HC-V1-R7-S3", "")
+	tithe.player.pos = tithe.pocket_pos
+	check(bool(tithe.defs.system.pocket.plantable), "Empty Tithe Pocket is filed open")
+	check(Homestead.try_plant(tithe) == "", "Empty Tithe Pocket takes a core")
 
 
 func _life() -> void:

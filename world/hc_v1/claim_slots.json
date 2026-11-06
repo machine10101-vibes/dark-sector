@@ -31,6 +31,11 @@
       "system_id": "HC-V1-R2-S6",
       "pocket_id": "clause_pocket",
       "name": "Clause Pocket"
+    },
+    {
+      "system_id": "HC-V1-R7-S3",
+      "pocket_id": "tithe_outpost_pocket",
+      "name": "Empty Tithe Pocket"
     }
   ]
 }
