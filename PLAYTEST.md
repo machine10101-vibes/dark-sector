@@ -167,6 +167,10 @@ Lane the chart. One keel. Quests, then Track.
 22. **Sporefall.** Enter Blight Moon. The job stays open. Come within 320 m of Glass Choir Cutter 1. Enter Blight Moon again. The Choir writes standing.
 23. **Sealed Orchard.** Enter Dead Dome. The job stays open. Come within 320 m of Glass Choir Cutter 1. Enter Dead Dome again. The Choir writes standing.
 24. **No Witness.** Enter Classroom. The job stays open. Come within 520 m of the interceptor home buoy. Enter Classroom again. Red Keel heat rises.
+25. **Crossed Flags.** Enter False Green. The job stays open. Come within 520 m of the interceptor home buoy. Enter False Green again. Red Keel heat rises. The green paint is still a costume.
+26. **Letter.** Enter Marque Rock. The job stays open. Come within 520 m of the interceptor home buoy. Enter Marque Rock again. Red Keel heat rises.
+27. **The Joke.** Enter Plywood Fort. The job stays open. Come within 520 m of the interceptor home buoy. Enter Plywood Fort again. Black Sail heat rises.
+28. **Twin Wake.** Enter Red Sail. The job stays open. Come within 520 m of the interceptor home buoy. Enter Red Sail again. Black Sail heat rises.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd

@@ -3,9 +3,18 @@
   "title": "Letter",
   "kind": "authored",
   "giver": "Marchport",
-  "summary": "Start: enter the system. The log opens Letter and the helm marks Marque Rock. Do: Close on Marque Rock. Letters of marque expire here more often than they are honored. The law is red. Finish: come inside Marque Rock's shell. Red Keel heat rises. The letter is still expired. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter Letter. The log opens the job and the helm marks the home buoy. Do: enter the interceptor sight, 520 meters of the home buoy. Letters of marque expire here more often than they are honored. The law is red. Finish: after the sight is sprung, come inside Marque Rock's shell. Red Keel heat rises. The letter is still expired. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "marque_rock",
   "system_id": "HC-V1-R7-S2",
+  "prelude": [
+    {
+      "id": "spring_sight",
+      "kind": "sight",
+      "role": "interceptor",
+      "range": 520,
+      "label": "the home buoy"
+    }
+  ],
   "mutations": [
     "rumor_marque_rock",
     "heat_red_keel"

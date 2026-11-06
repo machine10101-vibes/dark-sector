@@ -477,6 +477,10 @@ func _hooks() -> void:
 	_meet_shell("vesper", "HC-V1-R4-S3", "authored_blight_moon", "blight_moon", "Glass Choir Cutter 1", "meet_warden", "Blight Moon", "Sporefall: Glass Choir Cutter 1.", "glass_standing", "rumor_blight_moon")
 	_meet_shell("anvil", "HC-V1-R4-S2", "authored_dead_dome", "dead_dome", "Glass Choir Cutter 1", "meet_warden", "Dead Dome", "Sealed Orchard: Glass Choir Cutter 1.", "glass_standing", "rumor_dead_dome")
 	_meet_shell("kestrel", "HC-V1-R7-S6", "authored_classroom", "classroom", "the home buoy", "spring_sight", "Classroom", "No Witness: the home buoy.", "heat_red_keel", "rumor_classroom", "interceptor")
+	_meet_shell("vesper", "HC-V1-R7-S4", "authored_false_green", "false_green", "the home buoy", "spring_sight", "False Green", "Crossed Flags: the home buoy.", "heat_red_keel", "rumor_false_green", "interceptor")
+	_meet_shell("anvil", "HC-V1-R7-S2", "authored_marque_rock", "marque_rock", "the home buoy", "spring_sight", "Marque Rock", "Letter: the home buoy.", "heat_red_keel", "rumor_marque_rock", "interceptor")
+	_meet_shell("kestrel", "HC-V1-R8-S6", "authored_plywood_fort", "plywood_fort", "the home buoy", "spring_sight", "Plywood Fort", "The Joke: the home buoy.", "heat_black_sail", "rumor_plywood_fort", "interceptor")
+	_meet_shell("vesper", "HC-V1-R8-S4", "authored_red_sail", "red_sail", "the home buoy", "spring_sight", "Red Sail", "Twin Wake: the home buoy.", "heat_black_sail", "rumor_red_sail", "interceptor")
 
 
 func _meet_shell(ship: String, system_id: String, quest_id: String, body_id: String, who: String, step_id: String, shell_name: String, said: String, standing: String, rumor: String, role: String = "", files_on_meet: bool = false) -> void:

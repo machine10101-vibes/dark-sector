@@ -3,9 +3,18 @@
   "title": "The Joke",
   "kind": "authored",
   "giver": "Black Sail",
-  "summary": "Start: enter the system. The log opens The Joke and the helm marks Plywood Fort. Do: Close on Plywood Fort. It is painted as a patrol fort. The guns are real. An interceptor shoots first. Finish: come inside Plywood Fort's shell. Black Sail heat rises. The fort is still plywood. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter The Joke. The log opens the job and the helm marks the home buoy. Do: enter the interceptor sight, 520 meters of the home buoy. The fort is painted as a patrol post. The guns are real. An interceptor shoots first. Finish: after the sight is sprung, come inside Plywood Fort's shell. Black Sail heat rises. The fort is still plywood. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "plywood_fort",
   "system_id": "HC-V1-R8-S6",
+  "prelude": [
+    {
+      "id": "spring_sight",
+      "kind": "sight",
+      "role": "interceptor",
+      "range": 520,
+      "label": "the home buoy"
+    }
+  ],
   "mutations": [
     "rumor_plywood_fort",
     "heat_black_sail"
