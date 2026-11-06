@@ -3,9 +3,18 @@
   "title": "War Hulk",
   "kind": "authored",
   "giver": "Drift tender",
-  "summary": "Start: enter the system. The log opens War Hulk and the helm marks War Hulk. Do: Close on War Hulk. An ambush holds inside the Swallow until you enter 520 meters. A kite circles the teeth. The Swallow recovery is the separate salvage short. Finish: come inside War Hulk's shell. The slate grants one keel salvage. With that salvage aboard, the Swallow recovery can file. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter Gyre. The log opens the job and the helm marks the home buoy. Do: enter the ambush sight, 520 meters of the home buoy. The ambush holds inside the Swallow until a keel crosses that line. A kite circles the teeth. The Swallow recovery is the separate salvage short. Finish: after the sight is sprung, come inside War Hulk's shell. The slate grants one keel salvage. With that salvage aboard, the Swallow recovery can file. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "war_hulk",
   "system_id": "HC-V1-R6-S1",
+  "prelude": [
+    {
+      "id": "spring_sight",
+      "kind": "sight",
+      "role": "ambush",
+      "range": 520,
+      "label": "the home buoy"
+    }
+  ],
   "mutations": [
     "rumor_war_hulk",
     "salvage_grant"

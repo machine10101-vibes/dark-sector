@@ -481,6 +481,8 @@ func _hooks() -> void:
 	_meet_shell("anvil", "HC-V1-R7-S2", "authored_marque_rock", "marque_rock", "the home buoy", "spring_sight", "Marque Rock", "Letter: the home buoy.", "heat_red_keel", "rumor_marque_rock", "interceptor")
 	_meet_shell("kestrel", "HC-V1-R8-S6", "authored_plywood_fort", "plywood_fort", "the home buoy", "spring_sight", "Plywood Fort", "The Joke: the home buoy.", "heat_black_sail", "rumor_plywood_fort", "interceptor")
 	_meet_shell("vesper", "HC-V1-R8-S4", "authored_red_sail", "red_sail", "the home buoy", "spring_sight", "Red Sail", "Twin Wake: the home buoy.", "heat_black_sail", "rumor_red_sail", "interceptor")
+	_meet_shell("anvil", "HC-V1-R7-S5", "authored_dead_hollow", "dead_hollow", "the home buoy", "spring_sight", "Dead Hollow", "Claimwake: the home buoy.", "heat_red_keel", "rumor_dead_hollow", "interceptor")
+	_meet_shell("kestrel", "HC-V1-R6-S1", "authored_war_hulk", "war_hulk", "the home buoy", "spring_sight", "War Hulk", "War Hulk: the home buoy.", "salvage_grant", "rumor_war_hulk", "ambush")
 
 
 func _meet_shell(ship: String, system_id: String, quest_id: String, body_id: String, who: String, step_id: String, shell_name: String, said: String, standing: String, rumor: String, role: String = "", files_on_meet: bool = false) -> void:
@@ -520,6 +522,8 @@ func _meet_shell(ship: String, system_id: String, quest_id: String, body_id: Str
 	if standing.begins_with("heat_"):
 		var fac := standing.substr(5)
 		check(float(sim.heat.get(fac, 0.0)) >= 8.0, "%s writes heat" % who)
+	elif standing == "salvage_grant":
+		check(int(sim.player.cargo.get("salvage_parts", 0)) >= 1, "%s grants keel salvage" % who)
 	elif standing != "":
 		check(int(sim.quest_flags.get(standing, 0)) > 0, "%s writes standing" % who)
 	if rumor != "":
