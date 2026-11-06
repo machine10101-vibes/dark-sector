@@ -258,6 +258,11 @@ func _claims() -> void:
 	tithe.player.pos = tithe.pocket_pos
 	check(bool(tithe.defs.system.pocket.plantable), "Empty Tithe Pocket is filed open")
 	check(Homestead.try_plant(tithe) == "", "Empty Tithe Pocket takes a core")
+	var den := make("anvil")
+	den._arrive("HC-V1-R8-S5", "")
+	den.player.pos = den.pocket_pos
+	check(bool(den.defs.system.pocket.plantable), "Deep Hold Pocket is filed open")
+	check(Homestead.try_plant(den) == "", "Deep Hold Pocket takes a core")
 
 
 func _life() -> void:
