@@ -185,6 +185,7 @@ Lane the chart. One keel. Quests, then Track.
 40. **Empty Tithe.** Lane there with a Claim Core. Stand in Empty Tithe Pocket. Plant. A dome sits on the hollow. The Tithe Broker still files the job, and Red Keel heat still rises from that meet.
 41. **Vent on the slate.** Bolt an Ash Vent. Open Heat with F. The first line names a higher plate cooling. The patrol chip stays HEAT. A shot still lands the way it did.
 42. **Torn world log.** Host a sky, let it write twice, then tear the live world file. The next Host opens the earlier world and says the previous world is open.
+43. **Held guns.** Fire until the plates hold the guns. Open Heat with F. The first line names the plate the guns must fall to. The patrol chip stays HEAT. A shot still lands the way it did once the plates cool.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd

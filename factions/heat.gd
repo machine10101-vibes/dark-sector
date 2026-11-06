@@ -15,7 +15,7 @@ static func guns(sim) -> String:
 	var cooling := float(Fit.stats(sim.defs, sim.player).cooling)
 	var line := "Guns %.0f / 100. Plate cooling %.0f." % [therm, cooling]
 	if bool(sim.player.get("overheat", false)):
-		line += " The guns are held."
+		line += " The guns are held until the plates fall to %.0f." % HelmCombat.THERM_RESET
 	return line
 
 
