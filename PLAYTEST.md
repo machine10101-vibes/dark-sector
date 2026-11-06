@@ -173,6 +173,7 @@ Lane the chart. One keel. Quests, then Track.
 28. **Twin Wake.** Enter Red Sail. The job stays open. Come within 520 m of the interceptor home buoy. Enter Red Sail again. Black Sail heat rises.
 29. **Claimwake.** Enter Dead Hollow. The job stays open. Come within 520 m of the interceptor home buoy. Enter Dead Hollow again. Red Keel heat rises. The pocket still takes a core.
 30. **War Hulk.** Enter the hulk. The job stays open. Come within 520 m of the ambush home buoy. Enter the hulk again. The slate grants one keel salvage. The Swallow recovery is still its own short.
+31. **Wreck plate.** Kill a ship. The hulk tumbles as plated steel, and the shard orbiting it is torn plate, not a stone.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd

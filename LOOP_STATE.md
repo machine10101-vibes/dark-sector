@@ -73,6 +73,7 @@ Player-visible what works now:
 - Cadet Watch files only after Helion Compact Cutter 1 is alongside inside 320 meters, then Cadet Yard. Sporefall files only after Glass Choir Cutter 1 is alongside, then Blight Moon. Sealed Orchard files only after Glass Choir Cutter 1 is alongside, then Dead Dome. No Witness files only after the interceptor sight at 520 meters of the home buoy, then Classroom, and Red Keel heat rises. Combat math is unchanged.
 - Crossed Flags, Letter, The Joke, and Twin Wake file only after the interceptor sight at 520 meters of the home buoy, then False Green, Marque Rock, Plywood Fort, and Red Sail. Crossed Flags and Letter raise Red Keel heat. The Joke and Twin Wake raise Black Sail heat. Combat math is unchanged.
 - Claimwake files only after the interceptor sight at 520 meters of the home buoy, then Dead Hollow, and Red Keel heat rises. The pocket still takes a core. War Hulk files only after the ambush sight at 520 meters of the home buoy, then the hulk, and the slate grants one keel salvage. The Swallow recovery stays its own short. Combat math is unchanged.
+- A wreck's orbiting shard is torn plate, the same mesh family as the hulk, and the hulk carries a second skin plate and a rivet strip. Combat math is unchanged.
 What is next (ordered):
 1. Live-Ops 2 remainder — the other HC-V1 body jobs still file when the keel enters the shell; art loop Gate 2+ on three starters
 Blocked by:
@@ -160,6 +161,7 @@ Files touched:
 - quests/authored/visit_red_sail.json
 - quests/authored/visit_dead_hollow.json
 - quests/authored/visit_war_hulk.json
+- world/stage3d.gd
 - tests/ecosystem_sim.gd
 - PLAYTEST.md
 - LOOP_STATE.md

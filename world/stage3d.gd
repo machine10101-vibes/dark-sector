@@ -2448,8 +2448,8 @@ func _sync_wrecks(sim) -> void:
 		hulk.transform = xf
 		var shard := _prop("wreckbit%d" % index)
 		if str(shard.get_meta("built", "")) != "yes":
-			shard.mesh = _rock_mesh(index + 21, 4.6)
-			shard.material_override = _rock_shader_mat(Color("3a2a26"), float(index))
+			shard.mesh = _wreck_mesh(index + 21, 3.4)
+			shard.material_override = _plate_mat(Color("6a5048"), float(index) * 0.17)
 			shard.set_meta("built", "yes")
 		var pos: Vector2 = row.pos
 		var orbit_ang := float(sim.time) * 0.9 + float(index) * 1.7
@@ -7388,6 +7388,12 @@ func _wreck_mesh(seed: int, radius: float) -> ArrayMesh:
 	var flake := BoxMesh.new()
 	flake.size = Vector3(radius * 0.4, radius * 0.045, radius * 0.55)
 	st.append_from(flake, 0, Transform3D(Basis(Vector3(0.2, 0.6, 0.8).normalized(), 1.4), Vector3(radius * 0.72, -radius * 0.12, radius * 0.35)))
+	var skin := BoxMesh.new()
+	skin.size = Vector3(radius * 0.92, radius * 0.05, radius * 0.48)
+	st.append_from(skin, 0, Transform3D(Basis(Vector3(0.15, 0.95, 0.25).normalized(), -0.55), Vector3(-radius * 0.35, radius * 0.4, -radius * 0.08)))
+	var rivet := BoxMesh.new()
+	rivet.size = Vector3(radius * 0.7, radius * 0.03, radius * 0.06)
+	st.append_from(rivet, 0, Transform3D(Basis(Vector3.UP, -0.2), Vector3(radius * 0.05, radius * 0.36, radius * 0.22)))
 	var mesh := st.commit()
 	_mesh_cache[key] = mesh
 	return mesh
