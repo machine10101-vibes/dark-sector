@@ -45,6 +45,18 @@ func _run() -> void:
 	check(pile_box.size.x > 28.0 and pile_box.size.y > 16.0 and pile_box.size.z > 16.0, "seized rubble is a lifted cluster")
 	check(rubble != null and rubble.code.find("unshaded") >= 0, "rubble stays lit without the sun")
 	check(planet != null and planet.code.find("VERTEX +=") >= 0 and planet.code.find("night_side") >= 0 and planet.code.find("blob") >= 0, "night-side city lamps are blobs on the limb")
+	var vent := Node3D.new()
+	stage.call("_fill_ship", vent, "vesper", ["vent"], [])
+	check(vent.get_node_or_null("Gearvent0/VentFin") != null, "Ash Vent wears a flank fin")
+	root.add_child(stage)
+	var cold := {"layer": 0, "star_radius": 40.0, "local_origin": Vector2.ZERO, "defs": {"system": {"star": {"color": "#3a6cff", "name": "Cold"}}}}
+	var warm := {"layer": 0, "star_radius": 40.0, "local_origin": Vector2.ZERO, "defs": {"system": {"star": {"color": "#ff8844", "name": "Warm"}}}}
+	stage.call("_sync_star", cold)
+	var cold_light: Color = stage.get("_sun").light_color
+	stage.call("_sync_star", warm)
+	var warm_light: Color = stage.get("_sun").light_color
+	check(cold_light.b > warm_light.b + 0.05, "a blue star cools the key light on the plate")
+	check(warm_light.r > cold_light.r + 0.05, "an amber star warms the key light on the plate")
 	for class_id in ["vesper", "anvil", "kestrel"]:
 		var holder := Node3D.new()
 		stage.call("_fill_ship", holder, class_id, ["mast", "blister", "sponson", "probes"], [])

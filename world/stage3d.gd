@@ -2706,6 +2706,8 @@ func _sync_star(sim) -> void:
 		_star_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_star_glow)
 	var core := Color(str(sim.defs.system.star.color))
+	if _sun != null and not portrait_mode:
+		_sun.light_color = core.lightened(0.22).lerp(Color("f2e4c4"), 0.35)
 	(_star_mesh.mesh as SphereMesh).radius = radius
 	(_star_mesh.mesh as SphereMesh).height = radius * 2.0
 	(_star_mesh.material_override as ShaderMaterial).set_shader_parameter("albedo", core.lightened(0.12))
@@ -4762,10 +4764,10 @@ func _gear_fans(root: Node3D, class_id: String, kind: String) -> void:
 
 func _gear_vent(root: Node3D, class_id: String, kind: String) -> void:
 	var z0 := _out_z(kind)
-	_kit(root, "Skin", Vector3(4.6, 0.08, 1.6), Vector3(0.0, 0.35, z0), Color("8a8478"))
-	_kit(root, "Fin", Vector3(3.2, 1.15, 0.12), Vector3(0.2, 0.95, z0), Color("c4b8a4"))
-	_kit(root, "Rivet", Vector3(3.4, 0.05, 0.16), Vector3(0.0, 0.48, z0 + 0.55), Color("6a645c"))
-	_cyl(root, "Duct", 0.22, 1.8, Vector3(-2.2, 0.4, z0), "x", Color("5c564e"))
+	_kit(root, "VentSkin", Vector3(4.6, 0.08, 1.6), Vector3(0.0, 0.35, z0), Color("8a8478"))
+	_kit(root, "VentFin", Vector3(3.2, 1.15, 0.12), Vector3(0.2, 0.95, z0), Color("c4b8a4"))
+	_kit(root, "VentRivet", Vector3(3.4, 0.05, 0.16), Vector3(0.0, 0.48, z0 + 0.55), Color("6a645c"))
+	_cyl(root, "VentDuct", 0.22, 1.8, Vector3(-2.2, 0.4, z0), "x", Color("5c564e"))
 	_fasten(root, class_id, kind, 2.2, 0.8)
 
 
