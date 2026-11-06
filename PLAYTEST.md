@@ -183,6 +183,7 @@ Lane the chart. One keel. Quests, then Track.
 38. **Gun heat.** Fire until the vitals bar climbs. It reads GUNS, and HOT when the plates hold the guns. F still opens faction heat, and the first line names gun heat and plate cooling. The patrol chip stays HEAT.
 39. **Plate gutters.** Look along a flank in a blue star and an amber star. The seams read as dark gutters. The hull paint stays that keel's color.
 40. **Empty Tithe.** Lane there with a Claim Core. Stand in Empty Tithe Pocket. Plant. A dome sits on the hollow. The Tithe Broker still files the job, and Red Keel heat still rises from that meet.
+41. **Vent on the slate.** Bolt an Ash Vent. Open Heat with F. The first line names a higher plate cooling. The patrol chip stays HEAT. A shot still lands the way it did.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd

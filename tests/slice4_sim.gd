@@ -16,6 +16,7 @@ func _init() -> void:
 	_pack()
 	_hunt_and_break()
 	_heat_ladder()
+	_vent_on_slate()
 	_hangar_and_repair()
 	_death_and_save()
 	_still_works()
@@ -148,6 +149,16 @@ func _hunt_and_break() -> void:
 	var closing: float = hunter.pos.distance_to(press.player.pos)
 	press.tick(0.6, {})
 	check(hunter.pos.distance_to(press.player.pos) < closing - 10.0, "keeping fire up holds the chase inside the lane")
+
+
+func _vent_on_slate() -> void:
+	var bare := make("vesper")
+	var before := HeatWords.guns(bare)
+	check(before.contains("Plate cooling 9"), "a bare keel cools at the hull rate")
+	check(bare.install("ash_vent").ok, "ash vent still bolts")
+	var after := HeatWords.guns(bare)
+	check(after.contains("Plate cooling 13"), "ash vent raises the cooling on the heat slate")
+	check(HeatWords.chip(bare) == "HEAT  clean", "bolting a vent does not touch the patrol word")
 
 
 func _heat_ladder() -> void:

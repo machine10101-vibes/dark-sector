@@ -83,8 +83,9 @@ Player-visible what works now:
 - The vitals bar labels the gun meter GUNS, or HOT when the plates hold the guns. The heat slate names gun heat and plate cooling above the patrol factions. The patrol chip stays HEAT. Hit chance, lock time, and patrol stage stay the same.
 - Plate gutters on the hull shader run darker, so the seams read under the local star. The paint stays each keel's own color.
 - Empty Tithe Pocket takes a core. The Tithe Broker still files Empty Tithe, and that meet still raises Red Keel heat. Helion Dock and The Unlet stay closed.
+- Bolting an Ash Vent raises the plate cooling number on the heat slate, from 9 to 13 on a Needle. The patrol chip stays HEAT. Hit chance and lock time stay the same.
 What is next (ordered):
-1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The next playable work is the heat slate showing the cooling from an Ash Vent.
+1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The module catalog is at the 40-part band, so the next module waits on a wider band. A new region pass stays blocked.
 Blocked by:
 - Nothing in this repo blocks the authored-hook pass. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):
@@ -195,6 +196,7 @@ Files touched:
 - world/hc_v1/systems/HC-V1-R7-S3.json
 - world/hc_v1/claim_slots.json
 - tests/slice9_sim.gd
+- tests/slice4_sim.gd
 - tests/ecosystem_sim.gd
 - PLAYTEST.md
 - LOOP_STATE.md
