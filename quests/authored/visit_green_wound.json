@@ -3,9 +3,18 @@
   "title": "Green Wound",
   "kind": "authored",
   "giver": "Homestead",
-  "summary": "Start: enter the system. The log opens Green Wound and the helm marks Green Wound. Do: Close on Green Wound. Quiet Hollow, the claim pocket, sits off the crust. This job is the shard itself. The blight slate is separate and files if the crop dies. Finish: come inside Green Wound's shell. A homestead rumor. The core still belongs in Quiet Hollow. Fail: there is no timer. Leave and the job stays open until you close.",
+  "summary": "Start: enter First Soil. The log opens the job and the helm marks the Soil Clerk. Do: come within 320 meters of the Soil Clerk. The clerk reads the homestead in the open. Quiet Hollow, the claim pocket, sits off the crust and still takes the core. The blight slate is separate and files if the crop dies. Finish: after the clerk is met, come inside Green Wound's shell. A homestead rumor. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
   "body": "green_wound",
   "system_id": "HC-V1-R5-S1",
+  "prelude": [
+    {
+      "id": "meet_clerk",
+      "kind": "alongside",
+      "action": "factor",
+      "range": 320,
+      "label": "Soil Clerk"
+    }
+  ],
   "mutations": [
     "rumor_green_wound"
   ]

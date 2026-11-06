@@ -75,8 +75,9 @@ Player-visible what works now:
 - Claimwake files only after the interceptor sight at 520 meters of the home buoy, then Dead Hollow, and Red Keel heat rises. The pocket still takes a core. War Hulk files only after the ambush sight at 520 meters of the home buoy, then the hulk, and the slate grants one keel salvage. The Swallow recovery stays its own short. Combat math is unchanged.
 - A wreck's orbiting shard is torn plate, the same mesh family as the hulk, and the hulk carries a second skin plate and a rivet strip. Combat math is unchanged.
 - The helm heat chip still reads the patrol slate: clean, hailed, fined, or guns. When another faction is at 8 or more, the chip names that faction beside the patrol word. Patrol stage and gun math stay the same.
+- Green Wound files only after the Soil Clerk is alongside inside 320 meters, then the shard. The shell alone does not file it. Quiet Hollow still takes a core. The blight slate stays its own job. Combat math is unchanged.
 What is next (ordered):
-1. Green Wound still files when the keel enters the shell. No ship posts in that sky, so the shard itself is the job. The blight slate and Quiet Hollow stay separate. Art loop Gate 2+ on three starters has no spec in this repo.
+1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The next playable work is a heat vent on the hull and a clearer local light on plated steel.
 Blocked by:
 - Nothing in this repo blocks the authored-hook pass. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):
@@ -165,6 +166,9 @@ Files touched:
 - world/stage3d.gd
 - factions/heat.gd
 - tests/slice4_sim.gd
+- data/first_soil.json
+- data/mob_roles.json
+- quests/authored/visit_green_wound.json
 - tests/ecosystem_sim.gd
 - PLAYTEST.md
 - LOOP_STATE.md

@@ -483,6 +483,7 @@ func _hooks() -> void:
 	_meet_shell("vesper", "HC-V1-R8-S4", "authored_red_sail", "red_sail", "the home buoy", "spring_sight", "Red Sail", "Twin Wake: the home buoy.", "heat_black_sail", "rumor_red_sail", "interceptor")
 	_meet_shell("anvil", "HC-V1-R7-S5", "authored_dead_hollow", "dead_hollow", "the home buoy", "spring_sight", "Dead Hollow", "Claimwake: the home buoy.", "heat_red_keel", "rumor_dead_hollow", "interceptor")
 	_meet_shell("kestrel", "HC-V1-R6-S1", "authored_war_hulk", "war_hulk", "the home buoy", "spring_sight", "War Hulk", "War Hulk: the home buoy.", "salvage_grant", "rumor_war_hulk", "ambush")
+	_meet_shell("vesper", "HC-V1-R5-S1", "authored_green_wound", "green_wound", "Soil Clerk", "meet_clerk", "Green Wound", "Green Wound: Soil Clerk.", "", "rumor_green_wound")
 
 
 func _meet_shell(ship: String, system_id: String, quest_id: String, body_id: String, who: String, step_id: String, shell_name: String, said: String, standing: String, rumor: String, role: String = "", files_on_meet: bool = false) -> void:

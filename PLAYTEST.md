@@ -175,6 +175,7 @@ Lane the chart. One keel. Quests, then Track.
 30. **War Hulk.** Enter the hulk. The job stays open. Come within 520 m of the ambush home buoy. Enter the hulk again. The slate grants one keel salvage. The Swallow recovery is still its own short.
 31. **Wreck plate.** Kill a ship. The hulk tumbles as plated steel, and the shard orbiting it is torn plate, not a stone.
 32. **Heat chip.** With a quiet patrol slate, raise Red Keel heat to 8. The chip still reads clean, and it names Red Keel noted beside that word. F still opens the full heat slate.
+33. **Green Wound.** Enter the shard. The job stays open. Come within 320 m of the Soil Clerk. Enter Green Wound again. A homestead rumor files. Quiet Hollow still takes a core. A dead crop still files the blight slate on its own.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd

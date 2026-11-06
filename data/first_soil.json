@@ -184,7 +184,18 @@
     "angle": 0.0,
     "standoff": 0
   },
-  "haulers": [],
+  "haulers": [
+    {
+      "id": "soil_clerk",
+      "name": "Soil Clerk",
+      "class_id": "anvil",
+      "home": "green_wound",
+      "radius": 1200,
+      "role": "factor",
+      "action": "factor",
+      "duty": "Soil Clerk at Green Wound. The shard is the witness. Come alongside and the homestead is read in the open. Quiet Hollow still takes the core."
+    }
+  ],
   "gates": [
     {
       "id": "soil_lane",

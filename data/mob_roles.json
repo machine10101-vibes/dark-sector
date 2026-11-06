@@ -1,6 +1,15 @@
 {
   "schema": "mob_roles_v1",
   "systems": {
+    "HC-V1-R5-S1": {
+      "haulers": {
+        "soil_clerk": {
+          "role": "factor",
+          "action": "factor",
+          "duty": "Soil Clerk at Green Wound. The shard is the witness. Come alongside and the homestead is read in the open. Quiet Hollow still takes the core."
+        }
+      }
+    },
     "HC-V1-R1-S2": {
       "pdo": {
         "role": "range",
