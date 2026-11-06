@@ -57,12 +57,20 @@ func save_path() -> String:
 	return "user://dark_sector_save.json"
 
 
+func save_next_path() -> String:
+	return "user://dark_sector_save.next.json"
+
+
+func save_prev_path() -> String:
+	return "user://dark_sector_save.prev.json"
+
+
 func host_path() -> String:
 	return "user://dark_sector_host.json"
 
 
 func has_save() -> bool:
-	return FileAccess.file_exists(save_path())
+	return FileAccess.file_exists(save_path()) or _read_log(save_prev_path()) != null
 
 
 func begin_new(class_id: String) -> void:
@@ -245,34 +253,77 @@ func write_save() -> String:
 		return "The host keeps the log."
 	var data: Dictionary = sim.to_dict()
 	data["camera_zoom"] = zoom
-	var file := FileAccess.open(save_path(), FileAccess.WRITE)
-	if file == null:
-		return "The slate would not take the log."
-	file.store_string(JSON.stringify(data, "\t"))
-	file.close()
+	var text := JSON.stringify(data, "\t")
+	# Stage beside the live log. A torn IndexedDB write must not erase the slate.
+	var staged := _store_text(save_next_path(), text)
+	if staged != "":
+		return staged
+	if _read_log(save_next_path()) == null:
+		return "The log did not read back. The previous slate is still there."
+	if _read_log(save_path()) != null:
+		var kept := _store_text(save_prev_path(), FileAccess.get_file_as_string(save_path()))
+		if kept != "":
+			return kept
+	var committed := _store_text(save_path(), text)
+	if committed != "":
+		return committed
+	if _read_log(save_path()) == null:
+		return "The log did not land. The previous slate is still there."
 	sim.say("Log written.")
 	sim.sfx("save")
 	return "Log written."
 
 
 func try_load() -> String:
-	if not has_save():
+	var primary: Variant = _read_log(save_path())
+	if primary is Dictionary:
+		return _open_log(primary, "")
+	if FileAccess.file_exists(save_path()):
+		var raw: Variant = JSON.parse_string(FileAccess.get_file_as_string(save_path()))
+		if typeof(raw) == TYPE_DICTIONARY and int(raw.get("version", 0)) != 1:
+			return "That log is from another ship."
+	var prev: Variant = _read_log(save_prev_path())
+	if prev is Dictionary:
+		return _open_log(prev, "The last log was torn. Continue opened the previous slate.")
+	if not FileAccess.file_exists(save_path()) and not FileAccess.file_exists(save_prev_path()):
 		return "No log on the slate."
-	var file := FileAccess.open(save_path(), FileAccess.READ)
-	if file == null:
-		return "The log would not open."
-	var data = JSON.parse_string(file.get_as_text())
-	file.close()
-	if typeof(data) != TYPE_DICTIONARY:
-		return "The log did not parse."
-	if int(data.get("version", 0)) != 1:
-		return "That log is from another ship."
+	return "The log did not parse."
+
+
+func _open_log(data: Dictionary, note: String) -> String:
 	sim = SectorSim.new(defs)
 	sim.from_dict(data)
 	zoom = clampf(float(data.get("camera_zoom", 0.58)), 0.05, 1.55)
 	paused = false
 	map_open = false
 	mode = "sector"
+	if note != "":
+		sim.say(note)
+	return ""
+
+
+func _read_log(path: String) -> Variant:
+	if not FileAccess.file_exists(path):
+		return null
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if typeof(data) != TYPE_DICTIONARY:
+		return null
+	if int(data.get("version", 0)) != 1:
+		return null
+	if not data.has("player"):
+		return null
+	return data
+
+
+func _store_text(path: String, text: String) -> String:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return "The slate would not take the log."
+	file.store_string(text)
+	var err := file.get_error()
+	file.close()
+	if err != OK:
+		return "The slate would not take the log."
 	return ""
 
 

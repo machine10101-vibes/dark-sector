@@ -79,8 +79,9 @@ Player-visible what works now:
 - Ash Vent sits in each starter yard. It bolts on the flank as a plated fin and a rivet strip. It lengthens the top-down outline and adds cooling to the gun heat. Hit chance, lock time, and patrol stage stay the same.
 - The helm key light follows the local star. A blue star cools the plate. An amber star warms it. Ship identity colors stay as they were.
 - Clause Pocket on Fine Print takes a core. The slot is filed beside the other homesteads. The ambush school and Fine Print stay their own job. Helion Dock and The Unlet stay closed.
+- F5 writes the log beside the live slate, then replaces it only after the new file reads back. A torn live log leaves Continue lit, and Continue opens the previous slate. Combat math is unchanged.
 What is next (ordered):
-1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The next playable work needs a written Gate 2 spec, or a shell that still files on entry. None of the visit jobs still file on entry.
+1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The next playable work is the heat slate naming gun heat apart from the patrol word.
 Blocked by:
 - Nothing in this repo blocks the authored-hook pass. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):
@@ -180,6 +181,8 @@ Files touched:
 - world/hc_v1/systems/HC-V1-R2-S6.json
 - world/hc_v1/claim_slots.json
 - tests/slice9_sim.gd
+- scripts/game.gd
+- tests/save_slate.gd
 - tests/ecosystem_sim.gd
 - PLAYTEST.md
 - LOOP_STATE.md

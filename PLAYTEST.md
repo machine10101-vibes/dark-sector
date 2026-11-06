@@ -179,6 +179,7 @@ Lane the chart. One keel. Quests, then Track.
 34. **Ash Vent.** Bolt it from the yard. The flank gains a plated fin. The top-down outline changes. Gun heat falls faster. A shot still lands the way it did.
 35. **Star light.** Fly a blue star, then an amber one. The key light on the plate shifts with the star. The hull paint stays the ship's own color.
 36. **Clause Pocket.** Lane to Fine Print with a Claim Core. Stand in Clause Pocket. Plant. A dome sits on the hollow. Fine Print still wants the home buoy before the charter job files. The Unlet still refuses a core.
+37. **Torn log.** Write the log twice with F5. If the live file is torn, Continue still lights and opens the earlier slate. The helm says the previous slate opened.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd
