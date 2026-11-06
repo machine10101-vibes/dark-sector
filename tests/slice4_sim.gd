@@ -153,6 +153,11 @@ func _hunt_and_break() -> void:
 func _heat_ladder() -> void:
 	var quiet := make("anvil")
 	check(HeatWords.chip(quiet) == "HEAT  clean", "a quiet slate reads clean")
+	quiet.player.therm = 40.0
+	var gun_line := HeatWords.guns(quiet)
+	check(gun_line.begins_with("Guns 40"), "the heat slate names gun heat")
+	check(gun_line.contains("Plate cooling"), "the heat slate names plate cooling")
+	check(HeatWords.chip(quiet) == "HEAT  clean", "gun heat does not change the patrol word")
 	quiet.heat.red_keel = 8.0
 	check(HeatWords.chip(quiet).contains("Red Keel noted"), "Red Keel heat names itself on the chip")
 	check(quiet.heat_stage() == "clear", "gang heat does not change the patrol stage")

@@ -180,6 +180,7 @@ Lane the chart. One keel. Quests, then Track.
 35. **Star light.** Fly a blue star, then an amber one. The key light on the plate shifts with the star. The hull paint stays the ship's own color.
 36. **Clause Pocket.** Lane to Fine Print with a Claim Core. Stand in Clause Pocket. Plant. A dome sits on the hollow. Fine Print still wants the home buoy before the charter job files. The Unlet still refuses a core.
 37. **Torn log.** Write the log twice with F5. If the live file is torn, Continue still lights and opens the earlier slate. The helm says the previous slate opened.
+38. **Gun heat.** Fire until the vitals bar climbs. It reads GUNS, and HOT when the plates hold the guns. F still opens faction heat, and the first line names gun heat and plate cooling. The patrol chip stays HEAT.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd

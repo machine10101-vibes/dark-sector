@@ -3765,7 +3765,7 @@ func _fill_dossier() -> void:
 
 func _heat_text() -> String:
 	var sim = Game.sim
-	var blocks: Array = []
+	var blocks: Array = [HeatWords.guns(sim)]
 	for row in HeatWords.lines(sim, sim.defs):
 		var mem: Array = row.memory
 		var memory := "Memory clear." if mem.is_empty() else "Memory: " + ", ".join(mem)

@@ -1587,7 +1587,7 @@ func _draw_capsule(pane: Control) -> void:
 	var therm := float(p.get("therm", 0.0))
 	var hot := bool(p.get("overheat", false))
 	var hx := 10.0 + half + 8.0
-	_text(Vector2(hx, 48), "HEAT" if not hot else "HOT", 10, HOT_C if hot else Color("9fb7be"), pane)
+	_text(Vector2(hx, 48), "GUNS" if not hot else "HOT", 10, HOT_C if hot else Color("9fb7be"), pane)
 	var heat_x := hx + 36.0
 	var heat_w := w - 10.0 - heat_x
 	pane.draw_rect(Rect2(Vector2(heat_x, 42), Vector2(heat_w, 5)), DIM)

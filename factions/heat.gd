@@ -10,6 +10,15 @@ static func word(value: float) -> String:
 	return "wanted"
 
 
+static func guns(sim) -> String:
+	var therm := float(sim.player.get("therm", 0.0))
+	var cooling := float(Fit.stats(sim.defs, sim.player).cooling)
+	var line := "Guns %.0f / 100. Plate cooling %.0f." % [therm, cooling]
+	if bool(sim.player.get("overheat", false)):
+		line += " The guns are held."
+	return line
+
+
 static func chip(sim) -> String:
 	var heat := float(sim.heat.get(sim._pdo_id(), 0.0))
 	var stage := str(sim.heat_stage())
