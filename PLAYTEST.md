@@ -176,6 +176,7 @@ Lane the chart. One keel. Quests, then Track.
 31. **Wreck plate.** Kill a ship. The hulk tumbles as plated steel, and the shard orbiting it is torn plate, not a stone.
 32. **Heat chip.** With a quiet patrol slate, raise Red Keel heat to 8. The chip still reads clean, and it names Red Keel noted beside that word. F still opens the full heat slate.
 33. **Green Wound.** Enter the shard. The job stays open. Come within 320 m of the Soil Clerk. Enter Green Wound again. A homestead rumor files. Quiet Hollow still takes a core. A dead crop still files the blight slate on its own.
+34. **Ash Vent.** Bolt it from the yard. The flank gains a plated fin. The top-down outline changes. Gun heat falls faster. A shot still lands the way it did.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd

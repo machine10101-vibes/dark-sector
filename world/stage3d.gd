@@ -4173,6 +4173,8 @@ func _station_x(class_id: String, shape: String) -> float:
 			return -8.0
 		"fans":
 			return -24.0
+		"vent":
+			return -18.0
 		"keel":
 			return 44.0
 		"hold":
@@ -4226,6 +4228,8 @@ func _gear_kind(class_id: String, shape: String) -> String:
 		return "wrap"
 	if shape == "cage":
 		return "belly"
+	if shape == "vent":
+		return "cheek"
 	if shape in ["keel", "collar", "hook", "lamp", "shear"]:
 		return "nose"
 	if class_id == "anvil":
@@ -4404,6 +4408,8 @@ func _build_gear(root: Node3D, class_id: String, shape: String, height: float, k
 			_gear_jets(root, class_id, height)
 		"fans":
 			_gear_fans(root, class_id, kind)
+		"vent":
+			_gear_vent(root, class_id, kind)
 		"keel":
 			_gear_keel(root, class_id)
 		"hold":
@@ -4752,6 +4758,15 @@ func _gear_fans(root: Node3D, class_id: String, kind: String) -> void:
 		_kit(root, "Header", Vector3(2.8, 0.32, 0.36), Vector3(0.0, 0.35, z0 + 0.1), Color("b87333"))
 		_cyl(root, "Pipe", 0.16, 1.6, Vector3(0.0, 0.4, z0 - 0.7), "z", Color("6a5344"))
 		_fasten(root, class_id, kind, 1.5, 0.7)
+
+
+func _gear_vent(root: Node3D, class_id: String, kind: String) -> void:
+	var z0 := _out_z(kind)
+	_kit(root, "Skin", Vector3(4.6, 0.08, 1.6), Vector3(0.0, 0.35, z0), Color("8a8478"))
+	_kit(root, "Fin", Vector3(3.2, 1.15, 0.12), Vector3(0.2, 0.95, z0), Color("c4b8a4"))
+	_kit(root, "Rivet", Vector3(3.4, 0.05, 0.16), Vector3(0.0, 0.48, z0 + 0.55), Color("6a645c"))
+	_cyl(root, "Duct", 0.22, 1.8, Vector3(-2.2, 0.4, z0), "x", Color("5c564e"))
+	_fasten(root, class_id, kind, 2.2, 0.8)
 
 
 func _fan_unit(root: Node3D, at: Vector3, radius: float) -> void:

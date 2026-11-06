@@ -1756,5 +1756,38 @@
       "radius": 4,
       "gun_damage": 1
     }
+  },
+  "ash_vent": {
+    "id": "ash_vent",
+    "name": "Ash Vent",
+    "family": "hull",
+    "size": "S",
+    "slot": "Utility",
+    "favored": "",
+    "mass": 6,
+    "power": 4,
+    "crew": 0,
+    "attach": {
+      "x": -18,
+      "y": 22
+    },
+    "footprint": {
+      "w": 18,
+      "h": 14
+    },
+    "shape": "vent",
+    "blurb": "A plated vent on the flank. It bleeds gun heat and it shows on the outline.",
+    "layer": [
+      [
+        [-28, 16],
+        [-8, 30],
+        [-34, 28]
+      ]
+    ],
+    "effects": {
+      "signature": -0.06,
+      "radius": 3,
+      "cooling": 4
+    }
   }
 }
