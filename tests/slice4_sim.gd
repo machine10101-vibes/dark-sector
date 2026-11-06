@@ -151,6 +151,11 @@ func _hunt_and_break() -> void:
 
 
 func _heat_ladder() -> void:
+	var quiet := make("anvil")
+	check(HeatWords.chip(quiet) == "HEAT  clean", "a quiet slate reads clean")
+	quiet.heat.red_keel = 8.0
+	check(HeatWords.chip(quiet).contains("Red Keel noted"), "Red Keel heat names itself on the chip")
+	check(quiet.heat_stage() == "clear", "gang heat does not change the patrol stage")
 	var hailed := make("anvil")
 	hailed.heat.helion_compact = 14.0
 	hailed.hold_npc = true

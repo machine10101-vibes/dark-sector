@@ -74,8 +74,9 @@ Player-visible what works now:
 - Crossed Flags, Letter, The Joke, and Twin Wake file only after the interceptor sight at 520 meters of the home buoy, then False Green, Marque Rock, Plywood Fort, and Red Sail. Crossed Flags and Letter raise Red Keel heat. The Joke and Twin Wake raise Black Sail heat. Combat math is unchanged.
 - Claimwake files only after the interceptor sight at 520 meters of the home buoy, then Dead Hollow, and Red Keel heat rises. The pocket still takes a core. War Hulk files only after the ambush sight at 520 meters of the home buoy, then the hulk, and the slate grants one keel salvage. The Swallow recovery stays its own short. Combat math is unchanged.
 - A wreck's orbiting shard is torn plate, the same mesh family as the hulk, and the hulk carries a second skin plate and a rivet strip. Combat math is unchanged.
+- The helm heat chip still reads the patrol slate: clean, hailed, fined, or guns. When another faction is at 8 or more, the chip names that faction beside the patrol word. Patrol stage and gun math stay the same.
 What is next (ordered):
-1. Live-Ops 2 remainder — the other HC-V1 body jobs still file when the keel enters the shell; art loop Gate 2+ on three starters
+1. Green Wound still files when the keel enters the shell. No ship posts in that sky, so the shard itself is the job. The blight slate and Quiet Hollow stay separate. Art loop Gate 2+ on three starters has no spec in this repo.
 Blocked by:
 - Nothing in this repo blocks the authored-hook pass. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):
@@ -162,6 +163,8 @@ Files touched:
 - quests/authored/visit_dead_hollow.json
 - quests/authored/visit_war_hulk.json
 - world/stage3d.gd
+- factions/heat.gd
+- tests/slice4_sim.gd
 - tests/ecosystem_sim.gd
 - PLAYTEST.md
 - LOOP_STATE.md

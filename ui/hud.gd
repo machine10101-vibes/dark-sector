@@ -1130,14 +1130,7 @@ func _refresh_helm() -> void:
 		link_word = "  ·  GUEST"
 	var heat := float(sim.heat.get(sim._pdo_id(), 0.0))
 	var stage := sim.heat_stage()
-	var heat_word := HeatWords.word(heat)
-	if stage == "guns":
-		heat_word = "guns"
-	elif stage == "fine":
-		heat_word = "fined"
-	elif stage == "hail":
-		heat_word = "hailed"
-	stat_heat.text = "HEAT  %s" % heat_word
+	stat_heat.text = HeatWords.chip(sim)
 	var heat_color := Color("9fd4c8")
 	if stage == "guns":
 		heat_color = Color("f0a0a0")
