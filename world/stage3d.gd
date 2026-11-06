@@ -317,7 +317,8 @@ void fragment() {
 	vec2 cell = floor(local_pos.xz * vec2(0.09, 0.14));
 	float id = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
 	vec3 col = albedo.rgb * (1.04 + 0.16 * id);
-	col = mix(col, col * vec3(0.55, 0.56, 0.54), seam * 0.48);
+	float plate_gutter = clamp(seam * 0.78, 0.0, 1.0);
+	col = mix(col, col * vec3(0.34, 0.35, 0.33), plate_gutter);
 	float edge_wear = smoothstep(0.12, 0.88, 1.0 - abs(n.y));
 	col = mix(col, mix(col, albedo.rgb * 1.18, 0.35), edge_wear * 0.28);
 	float flake = smoothstep(0.86, 0.98, fract(sin(dot(local_pos.xz, vec2(19.0, 47.0))) * 311.0));

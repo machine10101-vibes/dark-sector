@@ -45,6 +45,8 @@ func _run() -> void:
 	check(pile_box.size.x > 28.0 and pile_box.size.y > 16.0 and pile_box.size.z > 16.0, "seized rubble is a lifted cluster")
 	check(rubble != null and rubble.code.find("unshaded") >= 0, "rubble stays lit without the sun")
 	check(planet != null and planet.code.find("VERTEX +=") >= 0 and planet.code.find("night_side") >= 0 and planet.code.find("blob") >= 0, "night-side city lamps are blobs on the limb")
+	var hull: Shader = stage.get("_hull_shader")
+	check(hull != null and hull.code.find("plate_gutter") >= 0 and hull.code.find("albedo.rgb") >= 0, "plate gutters darken the seams and the paint stays the hull color")
 	var vent := Node3D.new()
 	stage.call("_fill_ship", vent, "vesper", ["vent"], [])
 	check(vent.get_node_or_null("Gearvent0/VentFin") != null, "Ash Vent wears a flank fin")

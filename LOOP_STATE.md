@@ -81,8 +81,9 @@ Player-visible what works now:
 - Clause Pocket on Fine Print takes a core. The slot is filed beside the other homesteads. The ambush school and Fine Print stay their own job. Helion Dock and The Unlet stay closed.
 - F5 writes the log beside the live slate, then replaces it only after the new file reads back. A torn live log leaves Continue lit, and Continue opens the previous slate. Combat math is unchanged.
 - The vitals bar labels the gun meter GUNS, or HOT when the plates hold the guns. The heat slate names gun heat and plate cooling above the patrol factions. The patrol chip stays HEAT. Hit chance, lock time, and patrol stage stay the same.
+- Plate gutters on the hull shader run darker, so the seams read under the local star. The paint stays each keel's own color.
 What is next (ordered):
-1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The next playable work is a darker plate gutter so the seams read under the local star.
+1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The next playable work is a filed claim on Empty Tithe, where the pantry is still a closed pocket.
 Blocked by:
 - Nothing in this repo blocks the authored-hook pass. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):
@@ -188,6 +189,8 @@ Files touched:
 - ui/hud.gd
 - ui/helm_overlay.gd
 - tests/slice4_sim.gd
+- world/stage3d.gd
+- tests/world_fidelity.gd
 - tests/ecosystem_sim.gd
 - PLAYTEST.md
 - LOOP_STATE.md
