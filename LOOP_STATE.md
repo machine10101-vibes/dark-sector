@@ -78,8 +78,9 @@ Player-visible what works now:
 - Green Wound files only after the Soil Clerk is alongside inside 320 meters, then the shard. The shell alone does not file it. Quiet Hollow still takes a core. The blight slate stays its own job. Combat math is unchanged.
 - Ash Vent sits in each starter yard. It bolts on the flank as a plated fin and a rivet strip. It lengthens the top-down outline and adds cooling to the gun heat. Hit chance, lock time, and patrol stage stay the same.
 - The helm key light follows the local star. A blue star cools the plate. An amber star warms it. Ship identity colors stay as they were.
+- Clause Pocket on Fine Print takes a core. The slot is filed beside the other homesteads. The ambush school and Fine Print stay their own job. Helion Dock and The Unlet stay closed.
 What is next (ordered):
-1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The next playable work is another posted ship on a shell that still files on entry.
+1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The next playable work needs a written Gate 2 spec, or a shell that still files on entry. None of the visit jobs still file on entry.
 Blocked by:
 - Nothing in this repo blocks the authored-hook pass. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):
@@ -176,6 +177,9 @@ Files touched:
 - world/stage3d.gd
 - tests/slice8_sim.gd
 - tests/world_fidelity.gd
+- world/hc_v1/systems/HC-V1-R2-S6.json
+- world/hc_v1/claim_slots.json
+- tests/slice9_sim.gd
 - tests/ecosystem_sim.gd
 - PLAYTEST.md
 - LOOP_STATE.md

@@ -26,6 +26,11 @@
       "system_id": "HC-V1-R7-S5",
       "pocket_id": "dead_hollow_pocket",
       "name": "Dead Hollow"
+    },
+    {
+      "system_id": "HC-V1-R2-S6",
+      "pocket_id": "clause_pocket",
+      "name": "Clause Pocket"
     }
   ]
 }

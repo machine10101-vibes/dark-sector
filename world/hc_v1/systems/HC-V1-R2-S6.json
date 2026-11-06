@@ -97,8 +97,8 @@
     "angle": -0.6,
     "distance": 440,
     "radius": 170,
-    "plantable": false,
-    "why": "The clause is dead. A core would be the next lesson."
+    "plantable": true,
+    "why": "The clause is dead. The slot is filed. A core is the next lesson."
   },
   "gates": [
     {

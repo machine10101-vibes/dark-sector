@@ -248,6 +248,11 @@ func _claims() -> void:
 	wake._arrive("HC-V1-R7-S5", "")
 	wake.player.pos = wake.pocket_pos
 	check(Homestead.try_plant(wake) == "", "Claimwake plants on its filed slot")
+	var clause := make("kestrel")
+	clause._arrive("HC-V1-R2-S6", "")
+	clause.player.pos = clause.pocket_pos
+	check(bool(clause.defs.system.pocket.plantable), "Clause Pocket is filed open")
+	check(Homestead.try_plant(clause) == "", "Clause Pocket takes a core")
 
 
 func _life() -> void:
