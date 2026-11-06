@@ -35,9 +35,15 @@ func _run() -> void:
 	var live := str(host.call("save_path"))
 	var staged := str(host.call("save_next_path"))
 	var prev := str(host.call("save_prev_path"))
+	var world := str(host.call("host_path"))
+	var world_next := str(host.call("host_next_path"))
+	var world_prev := str(host.call("host_prev_path"))
 	_wipe(live)
 	_wipe(staged)
 	_wipe(prev)
+	_wipe(world)
+	_wipe(world_next)
+	_wipe(world_prev)
 	check(not bool(host.call("has_save")), "a fresh machine has no log")
 	host.call("begin_new", "vesper")
 	var sim = host.get("sim")
@@ -64,6 +70,29 @@ func _run() -> void:
 		if str(line.get("text", "")).contains("previous slate"):
 			said = true
 	check(said, "the helm says the previous slate opened")
+	host.call("begin_new", "vesper")
+	sim = host.get("sim")
+	sim.quest_flags.world_mark = 3
+	check(str(host.call("write_host_log", true)) == "", "the first world log lands")
+	sim = host.get("sim")
+	sim.quest_flags.world_mark = 9
+	check(str(host.call("write_host_log", true)) == "", "the second world log lands beside the first")
+	var torn_world := FileAccess.open(world, FileAccess.WRITE)
+	check(torn_world != null, "the world log can be torn")
+	if torn_world != null:
+		torn_world.store_string("{")
+		torn_world.close()
+	check(bool(host.call("_resume_host_log")), "a torn world log opens the previous world")
+	sim = host.get("sim")
+	check(int(sim.quest_flags.get("world_mark", 0)) == 3, "the previous world keeps the earlier mark")
+	var world_said := false
+	for row in sim.lines:
+		if str(row.get("text", "")).contains("previous world"):
+			world_said = true
+	check(world_said, "the helm says the previous world opened")
 	_wipe(live)
 	_wipe(staged)
 	_wipe(prev)
+	_wipe(world)
+	_wipe(world_next)
+	_wipe(world_prev)

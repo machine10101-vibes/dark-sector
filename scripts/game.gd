@@ -69,6 +69,14 @@ func host_path() -> String:
 	return "user://dark_sector_host.json"
 
 
+func host_next_path() -> String:
+	return "user://dark_sector_host.next.json"
+
+
+func host_prev_path() -> String:
+	return "user://dark_sector_host.prev.json"
+
+
 func has_save() -> bool:
 	return FileAccess.file_exists(save_path()) or _read_log(save_prev_path()) != null
 
@@ -217,33 +225,44 @@ func write_host_log(quiet: bool = true) -> String:
 		return ""
 	if link != null and str(link.role) == "client":
 		return ""
-	var data: Dictionary = sim.to_dict()
-	var file := FileAccess.open(host_path(), FileAccess.WRITE)
-	if file == null:
+	var text := JSON.stringify(sim.to_dict(), "\t")
+	if _store_text(host_next_path(), text) != "":
 		return "The world log would not take."
-	file.store_string(JSON.stringify(data, "\t"))
-	file.close()
+	if not _host_log_ok(_read_log(host_next_path())):
+		return "The world log did not read back."
+	if _host_log_ok(_read_log(host_path())):
+		if _store_text(host_prev_path(), FileAccess.get_file_as_string(host_path())) != "":
+			return "The world log would not take."
+	if _store_text(host_path(), text) != "":
+		return "The world log would not take."
+	if not _host_log_ok(_read_log(host_path())):
+		return "The world log did not land."
 	if not quiet:
 		sim.say("World log written.")
 	return ""
 
 
 func _resume_host_log() -> bool:
-	if not FileAccess.file_exists(host_path()):
-		return false
-	var file := FileAccess.open(host_path(), FileAccess.READ)
-	if file == null:
-		return false
-	var data = JSON.parse_string(file.get_as_text())
-	file.close()
+	if FileAccess.file_exists(host_path()):
+		var raw: Variant = JSON.parse_string(FileAccess.get_file_as_string(host_path()))
+		if typeof(raw) == TYPE_DICTIONARY and int(raw.get("version", 0)) != 1:
+			return false
+	var primary: Variant = _read_log(host_path())
+	if _host_log_ok(primary):
+		sim.from_dict(primary)
+		return true
+	var prev: Variant = _read_log(host_prev_path())
+	if _host_log_ok(prev):
+		sim.from_dict(prev)
+		sim.say("The world log was torn. The previous world is open.")
+		return true
+	return false
+
+
+func _host_log_ok(data: Variant) -> bool:
 	if typeof(data) != TYPE_DICTIONARY:
 		return false
-	if int(data.get("version", 0)) != 1:
-		return false
-	if not data.has("player") or not data.has("claim") or not data.has("system_id"):
-		return false
-	sim.from_dict(data)
-	return true
+	return data.has("player") and data.has("claim") and data.has("system_id")
 
 
 func write_save() -> String:

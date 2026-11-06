@@ -84,8 +84,9 @@ Player-visible what works now:
 - Plate gutters on the hull shader run darker, so the seams read under the local star. The paint stays each keel's own color.
 - Empty Tithe Pocket takes a core. The Tithe Broker still files Empty Tithe, and that meet still raises Red Keel heat. Helion Dock and The Unlet stay closed.
 - Bolting an Ash Vent raises the plate cooling number on the heat slate, from 9 to 13 on a Needle. The patrol chip stays HEAT. Hit chance and lock time stay the same.
+- The host world log stages beside the live file and replaces it only after the new file reads back. A torn world log opens the previous world. Combat math is unchanged.
 What is next (ordered):
-1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The module catalog is at the 40-part band, so the next module waits on a wider band. A new region pass stays blocked.
+1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The module catalog is at the 40-part band, so the next module waits on a wider band. A new region pass stays blocked. The next playable work is the heat slate naming when held guns come back.
 Blocked by:
 - Nothing in this repo blocks the authored-hook pass. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):
@@ -187,6 +188,7 @@ Files touched:
 - tests/slice9_sim.gd
 - scripts/game.gd
 - tests/save_slate.gd
+- scripts/game.gd
 - factions/heat.gd
 - ui/hud.gd
 - ui/helm_overlay.gd
