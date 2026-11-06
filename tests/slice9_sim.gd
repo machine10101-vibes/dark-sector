@@ -240,6 +240,7 @@ func _claims() -> void:
 	sim._arrive("HC-V1-R5-S1", "soil_lane")
 	sim.player.pos = sim.pocket_pos
 	check(Homestead.try_plant(sim) == "", "Quiet Hollow is still a filed slot")
+	check(not bool(sim.quest_flags.get("den_pantry", false)), "Quiet Hollow does not write the den note")
 	var closed := make("anvil")
 	closed._arrive("HC-V1-R3-S4", "")
 	closed.player.pos = closed.pocket_pos
@@ -263,6 +264,12 @@ func _claims() -> void:
 	den.player.pos = den.pocket_pos
 	check(bool(den.defs.system.pocket.plantable), "Deep Hold Pocket is filed open")
 	check(Homestead.try_plant(den) == "", "Deep Hold Pocket takes a core")
+	check(bool(den.quest_flags.get("den_pantry", false)), "Deep Hold writes the den note")
+	var noted := false
+	for line in den.lines:
+		if str(line.get("text", "")).contains("writes the core down"):
+			noted = true
+	check(noted, "the helm reads the den note")
 
 
 func _life() -> void:

@@ -40,7 +40,9 @@
     {
       "system_id": "HC-V1-R8-S5",
       "pocket_id": "hollow_rock_pocket",
-      "name": "Deep Hold Pocket"
+      "name": "Deep Hold Pocket",
+      "note": "den_pantry",
+      "note_line": "The den writes the core down. Deep Hold still wants the keeper."
     }
   ]
 }

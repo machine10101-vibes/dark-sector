@@ -62,8 +62,33 @@ static func try_plant(sim) -> String:
 	sim.spend_cargo("claim_core", 1)
 	_anchor(sim)
 	sim.say("The core takes. A dome, a plot, a pen, a crate, and a weak beacon sit on the hollow.")
+	_file_note(sim)
 	sim.sfx("install")
 	return ""
+
+
+static func _file_note(sim) -> void:
+	var book = sim.defs.get("claim_slots", {})
+	if typeof(book) != TYPE_DICTIONARY:
+		return
+	var slots = book.get("slots", [])
+	if typeof(slots) != TYPE_ARRAY:
+		return
+	var sys_id := str(sim.defs.system.id)
+	var pocket_id := str(sim.defs.system.pocket.get("id", ""))
+	for slot in slots:
+		if typeof(slot) != TYPE_DICTIONARY:
+			continue
+		if str(slot.get("system_id", "")) != sys_id or str(slot.get("pocket_id", "")) != pocket_id:
+			continue
+		var note := str(slot.get("note", ""))
+		if note == "" or note.contains("xp"):
+			return
+		sim.quest_flags[note] = true
+		var line := str(slot.get("note_line", ""))
+		if line != "":
+			sim.say(line)
+		return
 
 
 static func try_make_core(sim) -> String:

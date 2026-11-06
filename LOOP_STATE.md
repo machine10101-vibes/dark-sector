@@ -87,8 +87,9 @@ Player-visible what works now:
 - The host world log stages beside the live file and replaces it only after the new file reads back. A torn world log opens the previous world. Combat math is unchanged.
 - When the plates hold the guns, the heat slate names the fall they must reach before the guns come back. That number is the existing reset, 35. The patrol chip stays HEAT. Hit chance and lock time stay the same.
 - Deep Hold Pocket takes a core. The Den Keeper still files Deep Hold, and that meet still raises Black Sail heat. Helion Dock and The Unlet stay closed.
+- A core on Deep Hold writes den_pantry and the helm reads it. Quiet Hollow still takes a core and does not write that note. The Den Keeper job stays its own meet.
 What is next (ordered):
-1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The module catalog is at the 40-part band, so the next module waits on a wider band. A new region pass stays blocked. The next playable work is a filed note when a core takes on Deep Hold.
+1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The module catalog is at the 40-part band, so the next module waits on a wider band. A new region pass stays blocked.
 Blocked by:
 - Nothing in this repo blocks the authored-hook pass. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):
