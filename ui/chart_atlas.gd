@@ -198,7 +198,70 @@ static func _system_row(defs: Dictionary, regions: Dictionary, system_id: String
 		"pos": at,
 		"slot": slot_index(system_id),
 		"law": str(spec.get("law_color", "")),
+		"why": str(spec.get("why_visit", "")),
+		"places": places_of(spec),
 	}
+
+
+static func places_of(spec: Dictionary) -> Array:
+	var out: Array = []
+	var seen: Dictionary = {}
+	if spec.is_empty():
+		return out
+	for raw in spec.get("nodes", []):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var node: Dictionary = raw
+		var res: Dictionary = node.get("resource", {})
+		_add_place(out, seen, str(node.get("id", "")), str(node.get("name", "")), str(node.get("kind", "")), str(res.get("name", "")))
+	var belt: Dictionary = spec.get("belt", {})
+	if int(belt.get("count", 0)) > 0:
+		_add_place(out, seen, str(belt.get("id", "")), str(belt.get("name", "")), "belt", str(belt.get("resource_name", "")))
+	var field: Dictionary = spec.get("trash", {})
+	if int(field.get("count", 0)) > 0:
+		_add_place(out, seen, str(field.get("id", "")), str(field.get("name", "")), "trash", str(field.get("resource_name", "")))
+	var pocket: Dictionary = spec.get("pocket", {})
+	_add_place(out, seen, str(pocket.get("id", "")), str(pocket.get("name", "")), "pocket", "")
+	var rain: Dictionary = spec.get("stream", {})
+	if str(rain.get("id", "")) != "" and str(rain.get("id", "")) != "none":
+		_add_place(out, seen, str(rain.get("id", "")), str(rain.get("name", rain.get("id", ""))), "stream", str(rain.get("resource_name", "")))
+	for raw in spec.get("planets", []):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var body: Dictionary = raw
+		var scale: Dictionary = body.get("scale", {})
+		for land_raw in scale.get("biomes", []):
+			if typeof(land_raw) != TYPE_DICTIONARY:
+				continue
+			var land: Dictionary = land_raw
+			_add_place(out, seen, str(land.get("id", "")), str(land.get("name", "")), "land", str(body.get("name", "")))
+	return out
+
+
+static func _add_place(out: Array, seen: Dictionary, id: String, place_name: String, kind: String, resource: String) -> void:
+	if place_name == "" or id == "none":
+		return
+	if seen.has(id) or seen.has(place_name):
+		return
+	seen[id] = true
+	seen[place_name] = true
+	out.append({
+		"id": id,
+		"name": place_name,
+		"kind": kind,
+		"resource": resource,
+	})
+
+
+static func place_line(place: Dictionary) -> String:
+	var name := str(place.get("name", ""))
+	var kind := str(place.get("kind", ""))
+	var res := str(place.get("resource", ""))
+	if res != "" and res != name:
+		return "%s · %s · %s" % [name, kind, res]
+	if kind != "":
+		return "%s · %s" % [name, kind]
+	return name
 
 
 static func _index() -> Dictionary:

@@ -91,6 +91,30 @@ func _atlas() -> void:
 	check(hop_ids.has("HC-V1-R1-S3"), "Helion lane reaches Writ")
 	var regions: Array = atlas.get("regions", [])
 	check(regions.size() == 8, "eight regions (%d)" % regions.size())
+	var thin := 0
+	var helion_places := false
+	var lantern_places := false
+	var soil_places := false
+	for raw in systems:
+		var row: Dictionary = raw
+		var places: Array = row.get("places", [])
+		if places.is_empty():
+			thin += 1
+			print("THIN %s" % str(row.get("id", "")))
+		var names := ""
+		for place_raw in places:
+			var place: Dictionary = place_raw
+			names += str(place.get("name", "")) + "|"
+		if str(row.get("id", "")) == "HC-V1-R1-S1":
+			helion_places = names.contains("Aegis Prime") and names.contains("Cinder Reach") and names.contains("Seized Hold")
+		if str(row.get("id", "")) == "HC-V1-R1-S2":
+			lantern_places = names.contains("Lamp Yard") and names.contains("Range Moon")
+		if str(row.get("id", "")) == "HC-V1-R5-S1":
+			soil_places = names.contains("Quiet Hollow") and names.contains("Ash Shelf") and names.contains("Reed Basin") and names.contains("Glass Scar") and names.contains("Garden Belt")
+	check(thin == 0, "every system charts its places (%d thin)" % thin)
+	check(helion_places, "Helion charts Aegis, the reach, and the hold")
+	check(lantern_places, "Brass Lantern charts the yard and the range")
+	check(soil_places, "First Soil charts the hollow, the shelf, the basin, the scar, and the belt")
 
 
 func _open_volume() -> void:

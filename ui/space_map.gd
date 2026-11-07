@@ -1,7 +1,8 @@
 extends Control
 
 ## The whole Haven chart as a massive 3D reach. Drag turns the eye. A tap
-## names a system. The chart does not move the ship.
+## names a system and lists the places in it. In the live sky a tap files
+## that place as the helm mark. The chart does not move the ship.
 
 const Atlas = preload("res://ui/chart_atlas.gd")
 const Stage = preload("res://ui/space_map_stage.gd")
@@ -27,6 +28,7 @@ var live := false
 var focus3 := Vector3.ZERO
 var reach := 2400.0
 var card: PanelContainer
+var card_scroll: ScrollContainer
 var card_title: Label
 var card_body: Label
 var close_button: Button
@@ -35,6 +37,8 @@ var zoom_out: Button
 var fit_button: Button
 var title: Label
 var hint: Label
+var _hit_id := ""
+var _hit_d := 36.0
 
 
 func _ready() -> void:
@@ -71,7 +75,7 @@ func _ready() -> void:
 	title = ThemeKit.label("SPACE MAP", 18, Color("f0c27a"))
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(title)
-	hint = ThemeKit.label("The whole reach in 3D. Drag to turn. Wheel to zoom. Tap a world. F10, Esc, or Close.", 12, Color("8aa8b0"))
+	hint = ThemeKit.label("Drag to turn. Wheel to zoom. Tap a world. The card lists every place. F10, Esc, or Close.", 12, Color("8aa8b0"))
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hint)
 	close_button = ThemeKit.button("Close", true)
@@ -101,9 +105,14 @@ func _ready() -> void:
 	box.add_theme_constant_override("separation", 4)
 	card.add_child(box)
 	card_title = ThemeKit.label("", 18, Color("f2fbff"))
+	card_scroll = ScrollContainer.new()
+	card_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	card_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	card_scroll.mouse_filter = Control.MOUSE_FILTER_STOP
 	card_body = ThemeKit.label("", 14, Color("c5d6dc"))
 	box.add_child(card_title)
-	box.add_child(card_body)
+	box.add_child(card_scroll)
+	card_scroll.add_child(card_body)
 
 
 func _process(delta: float) -> void:
@@ -163,10 +172,12 @@ func _layout() -> void:
 	zoom_out.size = Vector2(44, 40)
 	fit_button.position = Vector2(size.x - 108.0, 112)
 	fit_button.size = Vector2(92, 40)
-	var card_w := 320.0 if size.x >= 720.0 else size.x - 24.0
-	var card_h := 210.0 if size.y >= 560.0 else 150.0
+	var card_w := 340.0 if size.x >= 720.0 else size.x - 24.0
+	var card_h := 280.0 if size.y >= 560.0 else 168.0
 	card.position = Vector2(12, size.y - card_h - 12)
 	card.size = Vector2(card_w, card_h)
+	if card_body != null:
+		card_body.custom_minimum_size = Vector2(maxf(80.0, card_w - 36.0), 0)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -189,10 +200,7 @@ func _gui_input(event: InputEvent) -> void:
 				drag_pitch = cam_pitch
 			else:
 				if drag_on and not drag_moved:
-					var hit := _pick(button.position)
-					if hit != "":
-						selected = hit
-						_fill_card()
+					_choose(_pick(button.position))
 				drag_on = false
 			accept_event()
 	elif event is InputEventMouseMotion and drag_on:
@@ -213,10 +221,7 @@ func _gui_input(event: InputEvent) -> void:
 			drag_pitch = cam_pitch
 		else:
 			if drag_on and not drag_moved:
-				var hit := _pick(touch.position)
-				if hit != "":
-					selected = hit
-					_fill_card()
+				_choose(_pick(touch.position))
 			drag_on = false
 		accept_event()
 	elif event is InputEventScreenDrag and drag_on:
@@ -307,6 +312,9 @@ func _frame_sector() -> void:
 	for body in Game.sim.planets:
 		var row: Dictionary = body
 		pts.append(live_stage.chart(row.pos, 2.0))
+	for place in Game.sim.nodes:
+		var site: Dictionary = place
+		pts.append(live_stage.chart(site.pos, 2.0))
 	for gate in Game.sim.gates:
 		var gate_row: Dictionary = gate
 		pts.append(live_stage.chart(gate_row.pos, 2.0))
@@ -314,6 +322,16 @@ func _frame_sector() -> void:
 		pts.append(live_stage.chart(Game.sim.beacon_pos, 2.0))
 	if Game.sim.pocket_pos != Vector2.ZERO:
 		pts.append(live_stage.chart(Game.sim.pocket_pos, 2.0))
+	if Game.sim.belt_pos != Vector2.ZERO:
+		pts.append(live_stage.chart(Game.sim.belt_pos, 2.0))
+	if Game.sim.ice_pos != Vector2.ZERO:
+		pts.append(live_stage.chart(Game.sim.ice_pos, 2.0))
+	if Game.sim.copper_pos != Vector2.ZERO:
+		pts.append(live_stage.chart(Game.sim.copper_pos, 2.0))
+	if Game.sim.trash_pos != Vector2.ZERO:
+		pts.append(live_stage.chart(Game.sim.trash_pos, 2.0))
+	if Game.sim.stream_origin != Vector2.ZERO:
+		pts.append(live_stage.chart(Game.sim.stream_origin, 2.0))
 	var lo: Vector3 = pts[0]
 	var hi: Vector3 = pts[0]
 	for raw in pts:
@@ -326,7 +344,7 @@ func _frame_sector() -> void:
 		hi.z = maxf(hi.z, at.z)
 	focus3 = (lo + hi) * 0.5
 	var span := (hi - lo).length() * 0.5
-	reach = clampf(span * 1.08, 720.0, 3200.0)
+	reach = clampf(span * 1.08, 720.0, 28000.0)
 	cam.far = maxf(reach * 8.0, 80000.0)
 	cam.fov = 50.0
 
@@ -398,33 +416,45 @@ func _pick_sector(screen_at: Vector2) -> String:
 		return _here()
 	var best := _here()
 	var best_d := 36.0
-	for body in Game.sim.planets:
-		var row: Dictionary = body
-		var world: Vector3 = live_stage.chart(row.pos, 2.0)
-		if cam.is_position_behind(world):
-			continue
-		var at := cam.unproject_position(world)
-		var dist := at.distance_to(screen_at)
-		if dist < best_d:
-			best_d = dist
-			best = str(row.get("id", ""))
+	for place in Game.sim.nodes:
+		var site: Dictionary = place
+		_consider(live_stage, screen_at, site.pos, str(site.get("id", "")), best, best_d)
+		best = _hit_id
+		best_d = _hit_d
 	for gate in Game.sim.gates:
 		var row: Dictionary = gate
-		var world: Vector3 = live_stage.chart(row.pos, 2.0)
-		if cam.is_position_behind(world):
-			continue
-		var at := cam.unproject_position(world)
-		var dist := at.distance_to(screen_at)
-		if dist < best_d:
-			best_d = dist
-			best = str(row.get("id", ""))
+		_consider(live_stage, screen_at, row.pos, str(row.get("id", "")), best, best_d)
+		best = _hit_id
+		best_d = _hit_d
 	if Game.sim.beacon_pos != Vector2.ZERO:
-		var world: Vector3 = live_stage.chart(Game.sim.beacon_pos, 2.0)
-		if not cam.is_position_behind(world):
-			var at := cam.unproject_position(world)
-			if at.distance_to(screen_at) < best_d:
-				best = "beacon"
+		_consider(live_stage, screen_at, Game.sim.beacon_pos, "beacon", best, best_d)
+		best = _hit_id
 	return best
+
+
+func _consider(live_stage, screen_at: Vector2, pos: Vector2, id: String, best: String, best_d: float) -> void:
+	_hit_id = best
+	_hit_d = best_d
+	if id == "" or cam == null:
+		return
+	var world: Vector3 = live_stage.chart(pos, 2.0)
+	if cam.is_position_behind(world):
+		return
+	var dist := cam.unproject_position(world).distance_to(screen_at)
+	if dist < best_d:
+		_hit_id = id
+		_hit_d = dist
+
+
+func _choose(hit: String) -> void:
+	if hit == "":
+		return
+	selected = hit
+	if live and Game.sim != null and Game.sim.survey_node(hit) != null:
+		HelmHarvest.mark(Game.sim, hit)
+		var place = Game.sim.survey_node(hit)
+		Game.sim.say("%s is marked. Probe and Harvest use it." % str(place.name))
+	_fill_card()
 
 
 func _fill_local_card() -> void:
@@ -433,22 +463,40 @@ func _fill_local_card() -> void:
 		card_body.text = "The whole sky of this system."
 		return
 	if selected == "beacon":
-		card_title.text = "Helion Dock"
-		card_body.text = "The pad. This is the local reach, rendered in full."
+		var home = Game.sim.planet(str(Game.sim.defs.system.get("pdo", {}).get("home", "")))
+		var pad_name := "The pad"
+		if home != null:
+			pad_name = "%s pad" % str(home.get("name", "Pad"))
+		card_title.text = pad_name
+		var gap := int(Game.sim.player.pos.distance_to(Game.sim.beacon_pos))
+		card_body.text = "The berth in this sky.\n%d m\nFly in and Dock." % gap
 		return
-	var body = Game.sim.planet(selected)
-	if body != null:
-		card_title.text = str(body.get("name", selected))
-		card_body.text = "A world in this sky. Drag to turn. Wheel to zoom."
+	var place = Game.sim.survey_node(selected)
+	if place != null:
+		card_title.text = str(place.get("name", selected))
+		var res: Dictionary = place.get("resource", {})
+		var stock := str(res.get("name", ""))
+		var kind := str(place.get("kind", ""))
+		var gap := int(Game.sim.player.pos.distance_to(place.pos))
+		var ready := "Ready to cut." if HelmHarvest.ready(Game.sim, place) else "Scan it, then cut."
+		var legal := str(place.get("legal_title", ""))
+		var lines := "%s" % kind
+		if stock != "":
+			lines += " · %s" % stock
+		lines += "\n%d m\n%s\n%s" % [gap, legal, ready]
+		card_body.text = lines
 		return
 	for gate in Game.sim.gates:
 		var row: Dictionary = gate
 		if str(row.get("id", "")) == selected:
+			var dest := str(row.get("to", ""))
+			var other: Dictionary = by_id.get(dest, {})
+			var dest_name := str(other.get("name", dest))
 			card_title.text = str(row.get("name", "Lane"))
-			card_body.text = "A lane ring. Fly into it, then take the lane."
+			card_body.text = "Lane to %s.\nFly into the ring, then take the lane." % dest_name
 			return
 	card_title.text = str(Game.sim.defs.system.get("name", "The reach"))
-	card_body.text = "The whole sky of this system. Drag to turn. Wheel to zoom."
+	card_body.text = "The whole sky of this system. Drag to turn. Wheel to zoom.\n" + _live_places(Game.sim)
 
 
 func _fill_card() -> void:
@@ -462,12 +510,22 @@ func _fill_card() -> void:
 		return
 	card_title.text = str(row.get("name", ""))
 	var lines := str(row.get("region_name", ""))
+	var law := str(row.get("law", ""))
+	if law != "":
+		lines += " · %s" % law
+	var why := str(row.get("why", ""))
+	if why != "":
+		lines += "\n%s" % why
 	if str(row.get("id", "")) == _here():
 		lines += "\nYou are here."
+		if Game.sim != null:
+			lines += "\n" + _live_places(Game.sim)
 	elif _visited(str(row.get("id", ""))):
 		lines += "\nLogged."
+		lines += "\n" + _atlas_places(row)
 	else:
 		lines += "\nNot yet logged."
+		lines += "\n" + _atlas_places(row)
 	var hops: Array = Atlas.links(atlas, str(row.get("id", "")))
 	if hops.is_empty():
 		lines += "\nNo charted lane."
@@ -484,3 +542,71 @@ func _fill_card() -> void:
 			else:
 				lines += "\n%s · %s" % [hop_name, rule]
 	card_body.text = lines
+
+
+func _live_places(sim) -> String:
+	var lines := "Places"
+	var seen: Dictionary = {}
+	for raw in sim.nodes:
+		var place: Dictionary = raw
+		var place_name := str(place.get("name", ""))
+		if place_name == "":
+			continue
+		seen[place_name] = true
+		var kind := str(place.get("kind", ""))
+		var res: Dictionary = place.get("resource", {})
+		var stock := str(res.get("name", ""))
+		var gap := int(sim.player.pos.distance_to(place.pos))
+		var bit := "%s · %s" % [place_name, kind]
+		if stock != "" and stock != place_name:
+			bit += " · %s" % stock
+		lines += "\n%s · %d m" % [bit, gap]
+	var spec: Dictionary = sim.defs.system
+	var belt: Dictionary = spec.get("belt", {})
+	if sim.belt_pos != Vector2.ZERO:
+		lines = _live_extra(lines, seen, sim, sim.belt_pos, str(belt.get("name", "")), "belt", str(belt.get("resource_name", "")))
+	var pocket: Dictionary = spec.get("pocket", {})
+	if sim.pocket_pos != Vector2.ZERO:
+		lines = _live_extra(lines, seen, sim, sim.pocket_pos, str(pocket.get("name", "")), "pocket", "")
+	var rain: Dictionary = spec.get("stream", {})
+	if sim.stream_origin != Vector2.ZERO:
+		lines = _live_extra(lines, seen, sim, sim.stream_origin, str(rain.get("name", "")), "stream", "")
+	for raw in spec.get("planets", []):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var body: Dictionary = raw
+		var scale: Dictionary = body.get("scale", {})
+		for land_raw in scale.get("biomes", []):
+			if typeof(land_raw) != TYPE_DICTIONARY:
+				continue
+			var land: Dictionary = land_raw
+			var land_name := str(land.get("name", ""))
+			if land_name == "" or seen.has(land_name):
+				continue
+			seen[land_name] = true
+			lines += "\n%s · land · on %s" % [land_name, str(body.get("name", "the world"))]
+	if lines == "Places":
+		return "No places charted."
+	return lines
+
+
+func _live_extra(lines: String, seen: Dictionary, sim, at: Vector2, place_name: String, kind: String, stock: String) -> String:
+	if place_name == "" or seen.has(place_name):
+		return lines
+	seen[place_name] = true
+	var bit := "%s · %s" % [place_name, kind]
+	if stock != "" and stock != place_name:
+		bit += " · %s" % stock
+	var gap := int(sim.player.pos.distance_to(at))
+	return lines + "\n%s · %d m" % [bit, gap]
+
+
+func _atlas_places(row: Dictionary) -> String:
+	var places: Array = row.get("places", [])
+	if places.is_empty():
+		return "No places charted."
+	var lines := "Places"
+	for raw in places:
+		var place: Dictionary = raw
+		lines += "\n%s" % Atlas.place_line(place)
+	return lines
