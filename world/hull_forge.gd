@@ -124,6 +124,51 @@ func _surf(x: float, z: float) -> float:
 	return _mid_y(x) + (_top(x) - _bot(x)) * 0.5 * v
 
 
+## Height of the hull skin at (x, z) in holder space: the lofted fuselage, or
+## the wing plate out past it. Mounts read this to sit on the metal.
+func top_at(class_id: String, poly: PackedVector2Array, h: float, x: float, z: float) -> float:
+	_frame(poly, class_id, h)
+	var fuse := _hw(x)
+	var full := maxf(width_at(poly, clampf(x, _tail + 0.01, _nose - 0.01)), 0.9)
+	var wing_thick := float(style_of(class_id).wing)
+	var az := absf(z)
+	if az <= fuse:
+		var body := _surf(x, z)
+		if wing_thick > 0.0 and az <= full:
+			return maxf(body, h * 0.34 + h * wing_thick * 0.5)
+		return body
+	if wing_thick > 0.0 and az <= full:
+		return h * 0.34 + h * wing_thick * 0.5
+	return _surf(x, signf(z) * fuse * 0.995)
+
+
+## Height of the keel line under (x, z).
+func bottom_at(class_id: String, poly: PackedVector2Array, h: float, x: float, z: float) -> float:
+	_frame(poly, class_id, h)
+	var ratio := clampf(absf(z) / _hw(x), 0.0, 0.995)
+	var v := pow(1.0 - pow(ratio, _e), 1.0 / _e)
+	return _mid_y(x) - (_top(x) - _bot(x)) * 0.5 * v
+
+
+## Lateral skin distance at height y: where a flank mount meets the wall.
+func side_at(class_id: String, poly: PackedVector2Array, h: float, x: float, y: float) -> float:
+	_frame(poly, class_id, h)
+	var half_h := maxf((_top(x) - _bot(x)) * 0.5, 0.5)
+	var dy := absf(y - _mid_y(x)) / half_h
+	if dy >= 0.995:
+		return 0.0
+	return _hw(x) * pow(1.0 - pow(dy, _e), 1.0 / _e)
+
+
+## Widest lateral reach a mount can sit at: the wing edge, or the fuselage.
+func reach_at(class_id: String, poly: PackedVector2Array, h: float, x: float) -> float:
+	_frame(poly, class_id, h)
+	var fuse := _hw(x)
+	if float(style_of(class_id).wing) > 0.0:
+		return maxf(width_at(poly, clampf(x, _tail + 0.01, _nose - 0.01)), fuse)
+	return fuse
+
+
 func build(holder: Node3D, class_id: String, poly: PackedVector2Array, h: float, paint: Color, deck_paint: Color, trim: Color) -> void:
 	_frame(poly, class_id, h)
 	var style := style_of(class_id)
@@ -498,8 +543,10 @@ func _dress_lumen(holder: Node3D, h: float) -> void:
 	for side: float in [1.0, -1.0]:
 		var tag := _tag(side)
 		var fx := nose * 0.38
-		f.add(holder, "Fork" + tag, f.tube(0.7, 0.45, 18.0, 12), f.hull_fresh(Color("3a3458"), {"tile": 2.0}), Vector3(fx, h * 0.34, side * 15.0))
-		_glow_lamp(holder, "ForkLamp" + tag, Vector3(nose * 0.52, h * 0.46, side * 17.5), Color("f0c14a"), 0.7)
+		var fz := minf(15.0, width_at(_poly, fx) * 0.8)
+		f.add(holder, "Fork" + tag, f.tube(0.7, 0.45, 18.0, 12), f.hull_fresh(Color("3a3458"), {"tile": 2.0}), Vector3(fx, h * 0.34, side * fz))
+		var lamp_x := nose * 0.52
+		_glow_lamp(holder, "ForkLamp" + tag, Vector3(lamp_x, h * 0.46, side * minf(fz + 2.0, width_at(_poly, lamp_x) * 0.85)), Color("f0c14a"), 0.7)
 
 
 func _dress_casque(holder: Node3D, h: float) -> void:
@@ -527,5 +574,5 @@ func _dress_alidade(holder: Node3D, h: float) -> void:
 	f.add(holder, "SkyEye", eye, f.glow(Color("8ae8ff"), 2.2), dome_at + Vector3(0.0, 0.8, 0.0))
 	for side: float in [1.0, -1.0]:
 		var tag := _tag(side)
-		f.add(holder, "WingPod" + tag, f.tube(1.4, 1.1, 9.0, 14), f.hull_fresh(Color("1e3238"), {"tile": 2.0}), Vector3(-20.0, h * 0.4, side * 24.0))
-		_glow_lamp(holder, "Tip" + tag, Vector3(-30.0, h * 0.38, side * 27.0), Color("9fd0c8"), 0.55)
+		f.add(holder, "WingPod" + tag, f.tube(1.4, 1.1, 9.0, 14), f.hull_fresh(Color("1e3238"), {"tile": 2.0}), Vector3(-20.0, h * 0.4, side * minf(24.0, width_at(_poly, -20.0) * 0.82)))
+		_glow_lamp(holder, "Tip" + tag, Vector3(-30.0, h * 0.38, side * minf(27.0, width_at(_poly, -30.0) * 0.9)), Color("9fd0c8"), 0.55)

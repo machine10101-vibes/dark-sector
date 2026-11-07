@@ -667,6 +667,7 @@ var _glass_shader: Shader
 var _forge
 var _smith
 var _hulls
+var _probe_hulls
 var _plume_shader: Shader
 var _ring_shader: Shader
 var _nebula_shader: Shader
@@ -698,6 +699,7 @@ func _ready() -> void:
 	_hull_shader = _forge.hull_shader
 	_smith = CraftForge.new(_forge)
 	_hulls = HullForge.new(_forge)
+	_probe_hulls = HullForge.new(_forge)
 	_sun = DirectionalLight3D.new()
 	_sun.name = "Sun"
 	_sun.light_color = Color("f2e4c4")
@@ -3803,6 +3805,7 @@ func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array, 
 	var palette := _hull_palette(class_id)
 	_hulls.build(holder, class_id, geom.hull, height, palette.paint, palette.deck, palette.trim)
 	holder.set_meta("hull_poly", geom.hull)
+	holder.set_meta("hull_class", class_id)
 	_add_bridge(holder, class_id, height, float(geom.tail))
 	_mount_roles(holder, class_id, shapes, height)
 	_mount_catalog(holder, class_id, shapes, height, sockets)
@@ -3834,6 +3837,87 @@ func _mount_catalog(holder: Node3D, class_id: String, shapes: Array, height: flo
 		root.rotation.y = float(berth.yaw)
 		holder.add_child(root)
 		_build_gear(root, class_id, shape, height, str(berth.kind))
+		_seat_gear(holder, root, shape, str(berth.kind))
+
+
+func _root_bounds(holder: Node3D, root: Node3D) -> AABB:
+	var acc := AABB()
+	var any := false
+	var base := Transform3D(Basis.IDENTITY, root.position) * Transform3D(Basis.from_euler(root.rotation), Vector3.ZERO)
+	for item in root.find_children("*", "MeshInstance3D", true, false):
+		var inst := item as MeshInstance3D
+		if inst.mesh == null:
+			continue
+		var chain := Transform3D.IDENTITY
+		var node: Node = inst
+		while node != null and node != root:
+			var n3 := node as Node3D
+			chain = Transform3D(Basis.from_euler(n3.rotation) * Basis.from_scale(n3.scale), n3.position) * chain
+			node = node.get_parent()
+		var box: AABB = (base * chain) * inst.get_aabb()
+		if any:
+			acc = acc.merge(box)
+		else:
+			acc = box
+			any = true
+	return acc
+
+
+func _keel_y(holder: Node3D, x: float, z: float) -> float:
+	var poly: PackedVector2Array = holder.get_meta("hull_poly")
+	return _probe_hulls.bottom_at(str(holder.get_meta("hull_class", "vesper")), poly, float(holder.get_meta("crown", 16.0)), x, z)
+
+
+func _flank_at(holder: Node3D, x: float, y: float) -> float:
+	var poly: PackedVector2Array = holder.get_meta("hull_poly")
+	return _probe_hulls.side_at(str(holder.get_meta("hull_class", "vesper")), poly, float(holder.get_meta("crown", 16.0)), x, y)
+
+
+## Pull a gear root onto the skin it was bolted to: down onto the deck, in to
+## the flank wall, or up under the keel line.
+func _seat_gear(holder: Node3D, root: Node3D, shape: String, kind: String) -> void:
+	if kind == "wrap":
+		return
+	var box := _root_bounds(holder, root)
+	if box.size == Vector3.ZERO:
+		return
+	var nose := float(holder.get_meta("nose", 40.0))
+	var tail := float(holder.get_meta("tail", -30.0))
+	if box.end.x > nose + 1.0:
+		root.position.x -= box.end.x - nose - 1.0
+		box.position.x -= box.end.x - nose - 1.0
+	elif box.position.x < tail:
+		root.position.x += tail - box.position.x
+		box.position.x = tail
+	var cx := box.position.x + box.size.x * 0.5
+	var cz := box.position.z + box.size.z * 0.5
+	var hanging := kind == "belly" or shape in ["keel", "hook", "shear", "collar"]
+	if hanging:
+		var keel := _keel_y(holder, cx, clampf(cz, -_skin_reach(holder, cx) * 0.9, _skin_reach(holder, cx) * 0.9))
+		root.position.y += (keel + 0.5) - box.end.y
+		return
+	if kind == "cheek":
+		var mid_y := box.position.y + box.size.y * 0.5
+		var wall := _flank_at(holder, cx, mid_y)
+		var side := 1.0 if cz >= 0.0 else -1.0
+		var inner := box.position.z if side > 0.0 else -box.end.z
+		root.position.z += side * ((wall - 0.6) - inner)
+		return
+	var reach := _skin_reach(holder, cx)
+	var lane := clampf(cz, -reach * 0.8, reach * 0.8)
+	root.position.z += lane - cz
+	var span := _footprint_top(holder, cx, lane, box.size.x * 0.5, box.size.z * 0.3)
+	var seat := lerpf(span.x, span.y, 0.4) - 0.3
+	root.position.y += seat - box.position.y
+	var gap := seat - span.x + 0.5
+	if gap > 0.4:
+		var skirt := MeshInstance3D.new()
+		skirt.name = "Skirt"
+		var foot := Vector3(maxf(box.size.x * 0.7, 1.2), gap + 0.5, maxf(box.size.z * 0.7, 1.2))
+		skirt.mesh = _bevel_box(foot, minf(0.2, gap * 0.3))
+		skirt.position = Vector3(box.position.x + box.size.x * 0.5 - root.position.x, -gap * 0.5 + 0.2, box.position.z + box.size.z * 0.5 - root.position.z)
+		skirt.material_override = _hull_mat(Color("40464a"))
+		root.add_child(skirt)
 
 
 func _deck_top(height: float) -> float:
@@ -4471,6 +4555,7 @@ func _pack_bank(root: Node3D, cols: int, rows: int, fit: float, pitch_x: float, 
 
 
 func _gear_belt(root: Node3D, class_id: String, height: float) -> void:
+	var holder := root.get_parent() as Node3D
 	var courses := 1
 	var y0 := height * 0.28
 	var plate_h := 5.6
@@ -4514,13 +4599,13 @@ func _gear_belt(root: Node3D, class_id: String, height: float) -> void:
 				along += plate_l * 0.42
 			for raw_side in [1.0, -1.0]:
 				var side := float(raw_side)
-				var skin := _skin_z(class_id, along)
+				var skin := _flank_at(holder, along, y)
 				if skin < 1.1:
 					continue
 				var yaw := _outward_yaw(class_id, along, side)
 				var normal := Vector3(sin(yaw), 0.0, cos(yaw))
 				var tangent := Vector3(cos(yaw), 0.0, -sin(yaw))
-				var center := Vector3(along, y, side * skin) + normal * (plate_t * 0.5 - bite)
+				var center := Vector3(along, y, side * skin) + normal * (plate_t * 0.5 - bite - 0.5)
 				var slab := _kit(root, "Slab", Vector3(plate_l, plate_h, plate_t), center, tone_a if (i + course) % 2 == 0 else tone_b)
 				slab.rotation.y = yaw
 				var lip := _kit(root, "Lip", Vector3(plate_l * 0.92, 0.14, 0.16), center + Vector3.UP * (plate_h * 0.42) + normal * (plate_t * 0.42), Color("d5dde6"))
@@ -4539,8 +4624,8 @@ func _gear_belt(root: Node3D, class_id: String, height: float) -> void:
 	if class_id == "vesper":
 		for i in 5:
 			var along := lerpf(10.0, -26.0, float(i) / 4.0)
-			var beam := maxf(_skin_z(class_id, along) * 1.7, 2.0)
-			_kit(root, "Belly", Vector3(4.6, 0.55, beam), Vector3(along, 0.12, 0.0), Color("3a424c"))
+			var beam := maxf(_flank_at(holder, along, height * 0.25) * 1.7, 2.0)
+			_kit(root, "Belly", Vector3(4.6, 0.55, beam), Vector3(along, _keel_y(holder, along, 0.0) + 0.1, 0.0), Color("3a424c"))
 			_stud(root, Vector3(along - 1.2, 0.4, 0.0), 0.11)
 			_stud(root, Vector3(along + 1.2, 0.4, 0.0), 0.11)
 	elif class_id == "kestrel":
@@ -4697,6 +4782,8 @@ func _gear_ring(root: Node3D, class_id: String, height: float) -> void:
 		radius = 10.5
 		y = height * 0.4
 		along = 0.0
+	var holder := root.get_parent() as Node3D
+	y = (_skin_top(holder, along, 0.0) + _keel_y(holder, along, 0.0)) * 0.5
 	var hoop := MeshInstance3D.new()
 	hoop.name = "Hoop"
 	var torus := TorusMesh.new()
@@ -4725,7 +4812,7 @@ func _gear_ring(root: Node3D, class_id: String, height: float) -> void:
 		_kit(root, "Strut", Vector3(0.4, 0.4, length), Vector3(along, y, side * mid), Color("6d6558"))
 		_stud(root, Vector3(along, y, side * inner), 0.16)
 	_kit(root, "StrutUp", Vector3(0.4, maxf(radius - height * 0.2, 1.2), 0.4), Vector3(along, y + radius * 0.45, 0.0), Color("6d6558"))
-	_kit(root, "CollarBand", Vector3(1.6, 1.2, maxf(skin * 1.4, 2.4)), Vector3(along, height * 0.32, 0.0), Color("4e463c"))
+	_kit(root, "CollarBand", Vector3(1.6, 1.2, maxf(skin * 1.4, 2.4)), Vector3(along, y, 0.0), Color("4e463c"))
 
 
 func _gear_lamp(root: Node3D, class_id: String) -> void:
@@ -4998,86 +5085,88 @@ func _weapon_sockets(module_ids: Array) -> Array:
 	return out
 
 
-func _socket_at(holder: Node3D, class_id: String, socket_name: String) -> Vector3:
+const BRIDGE_U := {"vesper": 0.63, "anvil": 0.73, "kestrel": 0.55, "lumen": 0.64, "casque": 0.6, "alidade": 0.51}
+const SOCKET_REF := {"heavy_turret": 4.8, "gun_sponson": 3.6, "point_defense": 2.4, "laser_bank": 3.0, "missile_rack": 3.4, "stake_gun": 3.6}
+const SOCKET_BASE := {"heavy_turret": 0.7, "gun_sponson": 0.7, "point_defense": 0.7, "laser_bank": 1.6, "missile_rack": 0.8, "stake_gun": 0.7}
+const SOCKET_BUILT := {"heavy_turret": 1.85, "gun_sponson": 1.45, "point_defense": 0.85, "laser_bank": 1.0, "missile_rack": 1.0, "stake_gun": 1.45}
+
+
+func _skin_top(holder: Node3D, x: float, z: float) -> float:
+	var poly: PackedVector2Array = holder.get_meta("hull_poly")
+	return _probe_hulls.top_at(str(holder.get_meta("hull_class", "vesper")), poly, float(holder.get_meta("crown", 16.0)), x, z)
+
+
+func _skin_reach(holder: Node3D, x: float) -> float:
+	var poly: PackedVector2Array = holder.get_meta("hull_poly")
+	return _probe_hulls.reach_at(str(holder.get_meta("hull_class", "vesper")), poly, float(holder.get_meta("crown", 16.0)), x)
+
+
+## Lowest and highest skin height under a footprint, so a mount can sit on the
+## high point and a plinth can fill down to the low one.
+func _footprint_top(holder: Node3D, x: float, z: float, rx: float, rz: float) -> Vector2:
+	var low := 1.0e9
+	var high := -1.0e9
+	for ix in 3:
+		for iz in 3:
+			var px := x + (float(ix) - 1.0) * rx
+			var pz := z + (float(iz) - 1.0) * rz
+			var reach := _skin_reach(holder, px)
+			pz = clampf(pz, -reach * 0.96, reach * 0.96)
+			var top := _skin_top(holder, px, pz)
+			low = minf(low, top)
+			high = maxf(high, top)
+	return Vector2(low, high)
+
+
+func _station_of(holder: Node3D, class_id: String, socket_name: String) -> Vector2:
 	var nose := float(holder.get_meta("nose", 40.0))
-	var crown := float(holder.get_meta("crown", 16.0))
-	if class_id == "lumen":
-		match socket_name:
-			"laser_bank":
-				return Vector3(20.0, crown * 0.38, 15.0)
-			"gun_sponson":
-				return Vector3(12.0, crown * 0.36, 14.0)
-			"missile_rack":
-				return Vector3(-10.0, crown * 0.48, 0.0)
-			"heavy_turret":
-				return Vector3(4.0, crown * 1.02, 0.0)
-			_:
-				return Vector3(nose * 0.2, crown * 0.4, 8.0)
-	if class_id == "casque":
-		match socket_name:
-			"missile_rack":
-				return Vector3(-2.0, crown * 0.3, 15.0)
-			"heavy_turret":
-				return Vector3(-4.0, crown * 1.05, 0.0)
-			"gun_sponson":
-				return Vector3(2.0, crown * 0.28, 18.0)
-			"laser_bank":
-				return Vector3(nose * 0.4, crown * 0.2, 0.0)
-			_:
-				return Vector3(0.0, crown * 0.35, 12.0)
-	if class_id == "alidade":
-		match socket_name:
-			"gun_sponson":
-				return Vector3(-16.0, crown * 0.22, 24.0)
-			"laser_bank":
-				return Vector3(24.0, crown * 0.18, 0.0)
-			"missile_rack":
-				return Vector3(-6.0, crown * 0.28, 0.0)
-			"heavy_turret":
-				return Vector3(0.0, crown * 0.95, 0.0)
-			_:
-				return Vector3(-8.0, crown * 0.24, 16.0)
-	if class_id == "anvil":
-		match socket_name:
-			"heavy_turret":
-				return Vector3(2.0, crown * 1.08, 0.0)
-			"missile_rack":
-				return Vector3(-6.0, crown * 0.28, 24.0)
-			"gun_sponson":
-				return Vector3(8.0, crown * 0.42, 20.0)
-			"laser_bank":
-				return Vector3(nose * 0.35, crown * 0.22, 0.0)
-			"point_defense":
-				return Vector3(-nose * 0.2, crown * 0.7, -16.0)
-			_:
-				return Vector3(0.0, crown * 0.4, 12.0)
-	if class_id == "kestrel":
-		match socket_name:
-			"gun_sponson":
-				return Vector3(6.0, crown * 0.48, 13.0)
-			"laser_bank":
-				return Vector3(nose * 0.78, crown * 0.08, 0.0)
-			"missile_rack":
-				return Vector3(-4.0, crown * 0.32, 0.0)
-			"heavy_turret":
-				return Vector3(0.0, crown * 1.02, 0.0)
-			"point_defense":
-				return Vector3(-14.0, crown * 0.4, 8.0)
-			_:
-				return Vector3(nose * 0.2, crown * 0.3, 8.0)
+	var tail := float(holder.get_meta("tail", -30.0))
+	var span := nose - tail
+	var bridge := float(BRIDGE_U.get(class_id, 0.6))
+	var u := bridge
+	var zf := 0.0
 	match socket_name:
-		"gun_sponson":
-			return Vector3(nose * 0.22, crown * 0.62, 7.4)
-		"laser_bank":
-			return Vector3(nose * 0.86, crown * 0.28, 0.0)
-		"missile_rack":
-			return Vector3(nose * 0.02, crown * 0.78, 0.0)
 		"heavy_turret":
-			return Vector3(-4.0, crown * 1.05, 0.0)
+			u = bridge - 0.3
+		"missile_rack":
+			u = bridge - 0.5
 		"point_defense":
-			return Vector3(-nose * 0.32, crown * 0.36, 5.5)
+			u = bridge - 0.17
+			zf = 0.62
+		"gun_sponson":
+			u = bridge - 0.17
+			zf = -0.62
+		"laser_bank":
+			u = minf(bridge + 0.3, 0.9)
+		"stake_gun":
+			u = minf(bridge + 0.2, 0.82)
 		_:
-			return Vector3(nose * 0.12, crown * 0.3, -8.0)
+			u = bridge - 0.2
+	u = clampf(u, 0.1, 0.92)
+	var x := tail + span * u
+	var reach := _skin_reach(holder, x)
+	return Vector2(x, zf * minf(reach, 14.0))
+
+
+func _socket_fit(holder: Node3D, socket_name: String, x: float) -> float:
+	var reach := _skin_reach(holder, x)
+	return clampf(reach / float(SOCKET_REF.get(socket_name, 3.6)), 0.55, 1.0)
+
+
+func _socket_at(holder: Node3D, class_id: String, socket_name: String) -> Vector3:
+	var xz := _station_of(holder, class_id, socket_name)
+	var fit := _socket_fit(holder, socket_name, xz.x)
+	var built := float(SOCKET_BUILT.get(socket_name, 1.0))
+	var radius := 2.8 * built * fit
+	if socket_name == "laser_bank":
+		radius = 4.6 * fit
+	elif socket_name == "missile_rack":
+		radius = 5.0 * built * fit
+	var span := _footprint_top(holder, xz.x, xz.y, radius * 0.7, radius * 0.5)
+	var base := float(SOCKET_BASE.get(socket_name, 0.7)) * built * fit
+	if socket_name == "laser_bank":
+		base = 1.6 * fit
+	return Vector3(xz.x, lerpf(span.x, span.y, 0.5) - 0.35 + base, xz.y)
 
 
 func _mount_sockets(holder: Node3D, class_id: String, sockets: Array) -> void:
@@ -5086,17 +5175,49 @@ func _mount_sockets(holder: Node3D, class_id: String, sockets: Array) -> void:
 		var node := Node3D.new()
 		node.name = name
 		node.position = _socket_at(holder, class_id, name)
+		var fit := _socket_fit(holder, name, node.position.x)
 		holder.add_child(node)
 		if name == "laser_bank":
-			_build_laser(node, class_id)
+			_build_laser(node, class_id, fit)
 		elif name == "missile_rack":
-			_build_rack(node, class_id)
+			_build_rack(node, class_id, fit)
 		elif name == "point_defense":
-			_build_turret(node, 0.85, false)
+			_build_turret(node, 0.85 * fit, false)
 		elif name == "heavy_turret":
-			_build_turret(node, 1.85, true)
+			_build_turret(node, 1.85 * fit, true)
 		else:
-			_build_turret(node, 1.45, false)
+			_build_turret(node, 1.45 * fit, false)
+		_plinth(holder, node, name, fit)
+
+
+## A riser from the weapon's base down to the lowest skin under it, so the
+## hardpoint reads welded to the hull on a sloping deck.
+func _plinth(holder: Node3D, node: Node3D, socket_name: String, fit: float) -> void:
+	var built := float(SOCKET_BUILT.get(socket_name, 1.0))
+	var radius := 2.4 * built * fit
+	var base_depth := float(SOCKET_BASE.get(socket_name, 0.7)) * built * fit
+	var length_x := radius
+	var width_z := radius
+	if socket_name == "laser_bank":
+		length_x = 4.2 * fit
+		width_z = 2.1 * fit
+		base_depth = 1.6 * fit
+	elif socket_name == "missile_rack":
+		length_x = 5.0 * built * fit
+		width_z = 3.0 * built * fit
+		base_depth = 0.8 * built * fit
+	var span := _footprint_top(holder, node.position.x, node.position.z, length_x, width_z * 0.6)
+	var floor_y := span.x - 0.5 - node.position.y
+	var top_y := -base_depth + 0.15
+	var depth := top_y - floor_y
+	if depth < 0.25:
+		return
+	var riser := MeshInstance3D.new()
+	riser.name = "Plinth"
+	riser.mesh = _bevel_box(Vector3(length_x * 1.7, depth, width_z * 1.7), minf(0.4, depth * 0.3))
+	riser.position = Vector3(0.0, (top_y + floor_y) * 0.5, 0.0)
+	riser.material_override = _hull_mat(Color("4a4f54"))
+	node.add_child(riser)
 
 
 func _build_turret(node: Node3D, scale: float, heavy: bool) -> void:
@@ -5132,7 +5253,7 @@ func _build_turret(node: Node3D, scale: float, heavy: bool) -> void:
 		band.height = 0.7 * scale
 		band.radial_segments = 10
 		tip.mesh = band
-		tip.position = Vector3(length * 0.42, 0.0, 0.0)
+		tip.position = Vector3(0.0, -length * 0.42, 0.0)
 		tip.material_override = _hull_mat(Color("7a3e2c"))
 		barrel.add_child(tip)
 	if heavy:
@@ -5157,8 +5278,8 @@ func _build_turret(node: Node3D, scale: float, heavy: bool) -> void:
 	_nav_lamp(node, "Run", Vector3(-1.2 * scale, 1.6 * scale, 0.0), Color("9fd0c8"), 0.35 * scale)
 
 
-func _build_laser(node: Node3D, class_id: String) -> void:
-	var scale := 1.15 if class_id == "vesper" else 1.0
+func _build_laser(node: Node3D, class_id: String, fit: float = 1.0) -> void:
+	var scale := (1.15 if class_id == "vesper" else 1.0) * fit
 	var housing := MeshInstance3D.new()
 	housing.name = "Housing"
 	var box := BoxMesh.new()
@@ -5200,8 +5321,8 @@ func _build_laser(node: Node3D, class_id: String) -> void:
 	_paint_bolt(iris, Color("ffd2a1"), 1.6, 0.85)
 
 
-func _build_rack(node: Node3D, class_id: String) -> void:
-	var scale := 1.45 if class_id == "anvil" else 1.0
+func _build_rack(node: Node3D, class_id: String, fit: float = 1.0) -> void:
+	var scale := (1.45 if class_id == "anvil" else 1.0) * fit
 	var bed := MeshInstance3D.new()
 	bed.name = "Bed"
 	var slab := BoxMesh.new()
@@ -5229,8 +5350,7 @@ func _build_rack(node: Node3D, class_id: String) -> void:
 			ring.rings = 10
 			ring.ring_segments = 6
 			mouth.mesh = ring
-			mouth.position = Vector3(5.1 * scale, 0.0, 0.0)
-			mouth.rotation.z = PI * 0.5
+			mouth.position = Vector3(0.0, -5.1 * scale, 0.0)
 			mouth.material_override = _hull_mat(Color("2a2420"))
 			tube.add_child(mouth)
 			i += 1
@@ -5473,82 +5593,105 @@ func _mount_roles(holder: Node3D, class_id: String, shapes: Array, height: float
 		_mount_probe(holder, class_id, nose, y, height)
 
 
-func _mount_mast(holder: Node3D, class_id: String, nose: float, y: float, height: float) -> void:
+func _perch(holder: Node3D, part_name: String, size: Vector3, x: float, z: float, color: Color, rim: float = 0.0, yaw: float = 0.0) -> MeshInstance3D:
+	var reach := _skin_reach(holder, x)
+	var cz := clampf(z, -reach * 0.96, reach * 0.96)
+	var span := _footprint_top(holder, x, cz, size.x * 0.5, size.z * 0.3)
+	var seat := lerpf(span.x, span.y, 0.4) - 0.3
+	var block := _hardware(holder, part_name, size, Vector3(x, seat + size.y * 0.5 + rim, cz), color)
+	block.rotation.y = yaw
+	var gap := seat - span.x + 0.5
+	if gap > 0.3:
+		var skirt := MeshInstance3D.new()
+		skirt.name = "Skirt"
+		skirt.mesh = _bevel_box(Vector3(size.x * 0.82, gap + 0.6, size.z * 0.82), 0.12)
+		skirt.position = Vector3(0.0, -size.y * 0.5 - gap * 0.5 + 0.1 - rim, 0.0)
+		skirt.material_override = _hull_mat(Color("40464a"))
+		block.add_child(skirt)
+	return block
+
+
+func _mast_at(holder: Node3D, x: float, z: float, boom_h: float, dish_r: float, foot: float, stays: bool = true) -> void:
 	var metal := Color("c4b49a")
-	var dish := Color("c8e8e2")
-	if class_id == "anvil":
-		var dish_y := height * 2.32
-		var boom_len := maxf(dish_y - height, 18.0)
-		_kit(holder, "MountMastCollar", Vector3(10.0, 2.4, 10.0), Vector3(2.0, height * 0.86, 0.0), metal)
-		var boom := _cyl(holder, "MountMast", 1.7, boom_len, Vector3(2.0, height + boom_len * 0.5, 0.0), "y", metal)
-		_rib_along(boom, 4, 1.7, boom_len)
-		_kit(holder, "MastBox", Vector3(3.8, 1.4, 3.8), Vector3(2.0, height * 0.95, 0.0), metal.darkened(0.22))
-		_lens(holder, "MountMastDish", 12.6, Vector3(2.0, dish_y, 0.0), dish)
-	elif class_id == "kestrel":
-		_kit(holder, "MountMastCollar", Vector3(4.6, 1.8, 6.4), Vector3(2.0, y, 12.0), metal)
-		var boom := _cyl(holder, "MountMast", 0.85, 18.0, Vector3(10.0, y + 4.0, 18.0), "x", metal)
-		boom.rotation = Vector3(0.4, 0.85, 0.1)
-		_rib_along(boom, 4, 0.85, 18.0)
-		_lens(holder, "MountMastDish", 5.4, Vector3(18.0, y + 8.0, 24.0), dish)
-	elif class_id == "lumen":
-		var crown_at := Vector3(nose - 8.0, y + 1.2, 0.0)
-		_kit(holder, "MountMastCollar", Vector3(5.2, 1.4, 5.2), crown_at, metal)
-		_lens(holder, "MountMastDish", 6.2, crown_at + Vector3(0.0, 4.4, 0.0), dish)
-		_cyl(holder, "MountMast", 0.55, 12.0, crown_at + Vector3(0.0, 5.2, 0.0), "y", metal)
-	else:
-		_kit(holder, "MountMastCollar", Vector3(5.4, 2.2, 5.4), Vector3(nose - 8.0, height * 1.04, 0.0), metal)
-		var boom := _cyl(holder, "MountMast", 1.15, 24.0, Vector3(nose - 8.0, height + 11.2, 0.0), "y", metal)
-		_rib_along(boom, 4, 1.15, 24.0)
-		_cyl(holder, "MastStay", 0.38, 18.0, Vector3(nose - 8.0, height + 6.2, 2.4), "y", metal.darkened(0.18))
-		_kit(holder, "MastBox", Vector3(3.4, 1.55, 2.4), Vector3(nose - 8.0, height * 1.12, 1.1), metal.darkened(0.28))
-		_cyl(holder, "MastLoom", 0.32, 10.0, Vector3(nose - 6.4, height + 2.8, 0.55), "y", Color("1c2024"))
-		_lens(holder, "MountMastDish", 12.4, Vector3(nose - 8.0, height + 24.2, 0.0), dish)
+	var base := _perch(holder, "MountMastCollar", Vector3(foot, 2.0, foot), x, z, metal)
+	var at := base.position
+	var pole_r := clampf(dish_r * 0.1, 0.5, 1.7)
+	var boom := _cyl(holder, "MountMast", pole_r, boom_h, Vector3(at.x, at.y + 1.0 + boom_h * 0.5, at.z), "y", metal)
+	_rib_along(boom, 4, pole_r, boom_h)
+	_kit(holder, "MastBox", Vector3(foot * 0.72, 1.4, foot * 0.72), Vector3(at.x, at.y + 1.7, at.z), metal.darkened(0.22))
+	if stays:
+		for i in 3:
+			var ang := float(i) * TAU / 3.0 + 0.5
+			var stay := _cyl(holder, "MastStay%d" % i, pole_r * 0.28, boom_h * 0.62, Vector3(at.x + cos(ang) * foot * 0.28, at.y + 1.0 + boom_h * 0.31, at.z + sin(ang) * foot * 0.28), "y", metal.darkened(0.18))
+			stay.rotation = Vector3(-sin(ang) * 0.13, 0.0, -cos(ang) * 0.13)
+	_lens(holder, "MountMastDish", dish_r, Vector3(at.x, at.y + 1.0 + boom_h + dish_r * 0.08, at.z), Color("c8e8e2"))
+
+
+func _mount_mast(holder: Node3D, class_id: String, nose: float, y: float, height: float) -> void:
+	var tail := float(holder.get_meta("tail", -30.0))
+	var span := nose - tail
+	match class_id:
+		"anvil":
+			_mast_at(holder, 2.0, 0.0, height * 1.3, 12.0, 9.0)
+		"kestrel":
+			var x := 2.0
+			_mast_at(holder, x, _skin_reach(holder, x) * 0.55, height * 0.9, 5.4, 4.0)
+		"lumen":
+			_mast_at(holder, tail + span * 0.8, 0.0, 9.0, 6.0, 4.0, false)
+		"casque":
+			_mast_at(holder, nose - 8.0, 0.0, height * 1.2, 11.0, 6.0)
+		"alidade":
+			_mast_at(holder, nose - 8.0, 0.0, height * 1.0, 8.0, 4.4)
+		_:
+			_mast_at(holder, tail + span * 0.78, 0.0, height * 1.1, 10.0, 5.0)
+
+
+func _flank_gun(holder: Node3D, tag: String, x: float, z: float, yaw: float, size: Vector3, bore_r: float, length: float, metal: Color) -> void:
+	var block := _perch(holder, "MountGun" + tag, size, x, z, metal, 0.0, yaw)
+	var barrel := _cyl(block, "MountBarrel" + tag, bore_r, length, Vector3(size.x * 0.5 + length * 0.5 - 0.8, size.y * 0.12, 0.0), "x", Color("1a1e24"))
+	_dress_barrel(barrel, length, bore_r * 0.5, bore_r)
+	_kit(block, "GunFeed" + tag, Vector3(size.x * 0.5, size.y * 0.5, size.z * 0.5), Vector3(-size.x * 0.12, size.y * 0.62, 0.0), metal.darkened(0.15))
+	_kit(block, "GunCradle" + tag, Vector3(size.x * 0.34, size.y * 0.3, size.z * 1.1), Vector3(size.x * 0.28, -size.y * 0.1, 0.0), metal.darkened(0.3))
 
 
 func _mount_guns(holder: Node3D, class_id: String, y: float, height: float) -> void:
+	var tail := float(holder.get_meta("tail", -30.0))
+	var nose := float(holder.get_meta("nose", 40.0))
+	var span := nose - tail
 	var metal := Color("8e8680")
-	var bore := Color("1a1e24")
-	if class_id == "anvil":
-		_kit(holder, "MountGunP", Vector3(12.0, 6.8, 8.8), Vector3(-4.0, y, 22.0), metal)
-		_kit(holder, "MountGunS", Vector3(12.0, 6.8, 8.8), Vector3(-4.0, y, -22.0), metal)
-		_dress_barrel(_cyl(holder, "MountBarrelP", 1.55, 11.0, Vector3(5.0, y, 22.0), "x", bore), 11.0, 0.85, 1.55)
-		_dress_barrel(_cyl(holder, "MountBarrelS", 1.55, 11.0, Vector3(5.0, y, -22.0), "x", bore), 11.0, 0.85, 1.55)
-	elif class_id == "kestrel":
-		var port := _cyl(holder, "MountGunP", 0.95, 18.0, Vector3(4.0, y, 15.0), "x", bore)
-		port.rotation.y = -0.7
-		_dress_barrel(port, 18.0, 0.48, 0.95)
-		var starboard := _cyl(holder, "MountGunS", 0.95, 18.0, Vector3(4.0, y, -15.0), "x", bore)
-		starboard.rotation.y = 0.7
-		_dress_barrel(starboard, 18.0, 0.48, 0.95)
-		_kit(holder, "MountGunBracket", Vector3(4.2, 1.8, 9.2), Vector3(1.0, y, 0.0), metal)
-		_kit(holder, "GunFeedP", Vector3(4.2, 1.7, 2.0), Vector3(6.0, y + 0.4, 10.0), metal.darkened(0.15))
-		_kit(holder, "GunFeedS", Vector3(4.2, 1.7, 2.0), Vector3(6.0, y + 0.4, -10.0), metal.darkened(0.15))
-	elif class_id == "alidade":
-		var port := _cyl(holder, "MountGunP", 0.78, 16.0, Vector3(-18.0, y, 24.0), "x", bore)
-		port.rotation.y = -0.45
-		_dress_barrel(port, 16.0, 0.4, 0.78)
-		var starboard := _cyl(holder, "MountGunS", 0.78, 16.0, Vector3(-18.0, y, -24.0), "x", bore)
-		starboard.rotation.y = 0.45
-		_dress_barrel(starboard, 16.0, 0.4, 0.78)
-		_kit(holder, "MountGunBracket", Vector3(7.2, 1.2, 5.0), Vector3(-16.0, y, 24.0), metal)
-		_kit(holder, "MountGunBracketS", Vector3(7.2, 1.2, 5.0), Vector3(-16.0, y, -24.0), metal)
-	elif class_id == "lumen":
-		_kit(holder, "MountGunP", Vector3(4.4, 1.8, 2.8), Vector3(16.0, y * 0.7, 14.0), metal)
-		_kit(holder, "MountGunS", Vector3(4.4, 1.8, 2.8), Vector3(16.0, y * 0.7, -14.0), metal)
-		_dress_barrel(_cyl(holder, "MountBarrelP", 0.55, 14.0, Vector3(24.0, y * 0.7, 14.0), "x", bore), 14.0, 0.28, 0.55)
-		_dress_barrel(_cyl(holder, "MountBarrelS", 0.55, 14.0, Vector3(24.0, y * 0.7, -14.0), "x", bore), 14.0, 0.28, 0.55)
-	else:
-		var gun_z := _flank_z(class_id, 10.0, 2.8)
-		var gun_y := height * 0.58
-		_kit(holder, "MountGunP", Vector3(6.8, 3.8, 4.2), Vector3(10.0, gun_y, gun_z), metal)
-		_kit(holder, "MountGunS", Vector3(6.8, 3.8, 4.2), Vector3(10.0, gun_y, -gun_z), metal)
-		_dress_barrel(_cyl(holder, "MountBarrelP", 1.15, 22.0, Vector3(22.0, gun_y, gun_z), "x", bore), 22.0, 0.55, 1.15)
-		_dress_barrel(_cyl(holder, "MountBarrelS", 1.15, 22.0, Vector3(22.0, gun_y, -gun_z), "x", bore), 22.0, 0.55, 1.15)
-		_kit(holder, "GunFeedP", Vector3(3.4, 1.65, 1.8), Vector3(12.0, gun_y, gun_z), metal)
-		_kit(holder, "GunFeedS", Vector3(3.4, 1.65, 1.8), Vector3(12.0, gun_y, -gun_z), metal)
-		_kit(holder, "GunStrap", Vector3(2.2, 0.42, gun_z * 2.0), Vector3(10.0, gun_y + 0.85, 0.0), metal.darkened(0.12))
-		_kit(holder, "GunShoeP", Vector3(2.4, 0.55, 2.0), Vector3(10.0, gun_y - 0.2, gun_z * 0.62), metal.darkened(0.2))
-		_kit(holder, "GunShoeS", Vector3(2.4, 0.55, 2.0), Vector3(10.0, gun_y - 0.2, -gun_z * 0.62), metal.darkened(0.2))
+	var x := tail + span * 0.24
+	var zf := 0.8
+	var yaw := 0.0
+	var size := Vector3(6.8, 3.8, 4.2)
+	var bore := 1.15
+	var length := 22.0
+	match class_id:
+		"anvil":
+			x = -4.0
+			size = Vector3(10.0, 5.6, 7.0)
+			bore = 1.55
+			length = 11.0
+		"kestrel":
+			x = 4.0
+			yaw = 0.45
+			size = Vector3(5.0, 2.4, 3.4)
+			bore = 0.95
+			length = 18.0
+		"alidade":
+			x = -18.0
+			yaw = 0.4
+			size = Vector3(5.0, 2.2, 3.2)
+			bore = 0.78
+			length = 16.0
+		"lumen":
+			x = 16.0
+			size = Vector3(4.4, 1.8, 2.8)
+			bore = 0.55
+			length = 14.0
+	var reach := _skin_reach(holder, x)
+	var z := reach * zf
+	_flank_gun(holder, "P", x, z, -yaw, size, bore, length, metal)
+	_flank_gun(holder, "S", x, -z, yaw, size, bore, length, metal)
 
 
 func _mount_bay(holder: Node3D, class_id: String, y: float, height: float) -> void:
@@ -5565,31 +5708,40 @@ func _mount_bay(holder: Node3D, class_id: String, y: float, height: float) -> vo
 		_hardware(holder, "BayHingeS", Vector3(0.45, 0.45, 16.5), Vector3(5.7, height * 0.22 - 2.5, 0.0), metal.darkened(0.2))
 		_nav_lamp(holder, "MountBayLamp", Vector3(4.2, height * 0.42, 0.0), Color("ffd27a"), 0.7)
 	elif class_id == "kestrel":
-		var port := _hardware(holder, "MountBay", Vector3(14.0, 2.8, 4.5), Vector3(-4.0, y * 0.65, 13.0), metal)
-		port.rotation.y = 0.45
-		var starboard := _hardware(holder, "MountBayS", Vector3(14.0, 2.8, 4.5), Vector3(-4.0, y * 0.65, -13.0), metal)
-		starboard.rotation.y = -0.45
+		for side in [1.0, -1.0]:
+			var reach := _skin_reach(holder, -4.0)
+			var pod := _perch(holder, "MountBay" if side > 0.0 else "MountBayS", Vector3(14.0, 2.8, 4.5), -4.0, side * reach * 0.62, metal, 0.0, 0.3 * side)
+			_hardware(pod, "BayLatch", Vector3(1.0, 0.5, 4.8), Vector3(5.0, 1.5, 0.0), door)
 	else:
-		_tube(holder, "MountBay", 2.2, 12.0, Vector3(-8.0, y * 0.5, 3.3), "x", metal)
-		_tube(holder, "MountBayS", 2.2, 12.0, Vector3(-8.0, y * 0.5, -3.3), "x", metal)
-		_hardware(holder, "MountBayStrap", Vector3(1.0, 0.8, 8.0), Vector3(-8.0, y * 0.5 + 1.6, 0.0), door)
-		_hardware(holder, "BayLatchP", Vector3(0.9, 0.85, 2.4), Vector3(-2.2, y * 0.5 + 1.5, 3.3), door)
-		_hardware(holder, "BayLatchS", Vector3(0.9, 0.85, 2.4), Vector3(-2.2, y * 0.5 + 1.5, -3.3), door)
+		var tail := float(holder.get_meta("tail", -30.0))
+		var nose := float(holder.get_meta("nose", 40.0))
+		var bx := tail + (nose - tail) * 0.34
+		var reach := _skin_reach(holder, bx)
+		var lane := minf(reach * 0.62, 5.0)
+		for side in [1.0, -1.0]:
+			var top := _footprint_top(holder, bx, side * lane, 5.0, 2.0)
+			var pod := _tube(holder, "MountBay" if side > 0.0 else "MountBayS", 2.2, 12.0, Vector3(bx, top.y - 0.3 + 2.2, side * lane), "x", metal)
+			_hardware(pod, "BayLatch", Vector3(0.9, 0.85, 2.4), Vector3(5.0, 2.2, 0.0), door)
+			_hardware(pod, "BayCradle", Vector3(1.2, 1.0, 5.2), Vector3(-2.0, -1.8, 0.0), door.darkened(0.2))
+		var strap_top := _footprint_top(holder, bx, 0.0, 1.0, lane)
+		_hardware(holder, "MountBayStrap", Vector3(1.0, 0.8, lane * 2.0), Vector3(bx, strap_top.y + 4.0, 0.0), door)
 
 
 func _mount_probe(holder: Node3D, class_id: String, nose: float, y: float, height: float) -> void:
 	var metal := Color("b7c4c0")
 	var dart := Color("d7e6c8")
 	if class_id == "anvil":
-		_tube(holder, "MountProbe", 1.5, 10.0, Vector3(-10.0, height * 0.78, 7.0), "y", metal)
-		_tube(holder, "MountProbeS", 1.5, 10.0, Vector3(-10.0, height * 0.78, -7.0), "y", metal)
-		_hardware(holder, "MountProbeBed", Vector3(7.0, 1.2, 16.0), Vector3(-10.0, height * 0.66, 0.0), dart)
+		var bed := _perch(holder, "MountProbeBed", Vector3(7.0, 1.2, 16.0), -10.0, 0.0, dart)
+		_tube(holder, "MountProbe", 1.5, 10.0, bed.position + Vector3(0.0, 2.2, 5.0), "x", metal)
+		_tube(holder, "MountProbeS", 1.5, 10.0, bed.position + Vector3(0.0, 2.2, -5.0), "x", metal)
 	elif class_id == "kestrel":
-		_hardware(holder, "MountProbeBed", Vector3(5.0, 1.3, 3.2), Vector3(nose * 0.42, height * 0.14, 0.0), metal)
-		_tube(holder, "MountProbe", 0.85, 11.0, Vector3(nose * 0.55, height * 0.14, 0.0), "x", dart)
+		var bed := _hardware(holder, "MountProbeBed", Vector3(5.0, 1.3, 3.2), Vector3(nose * 0.42, height * 0.12, 0.0), metal)
+		_tube(holder, "MountProbe", 0.85, 11.0, bed.position + Vector3(5.0, 0.0, 0.0), "x", dart)
 	else:
-		_hardware(holder, "MountProbeBed", Vector3(16.0, 0.9, 1.8), Vector3(nose * 0.35, height * 0.78, 0.0), metal)
-		_tube(holder, "MountProbe", 0.55, 8.0, Vector3(nose * 0.55, height * 0.9, 0.0), "x", dart)
+		var tail := float(holder.get_meta("tail", -30.0))
+		var bx := tail + (nose - tail) * 0.82
+		var bed := _perch(holder, "MountProbeBed", Vector3(14.0, 0.9, 1.8), bx, 0.0, metal)
+		_tube(holder, "MountProbe", 0.55, 8.0, bed.position + Vector3(2.0, 0.9, 0.0), "x", dart)
 
 
 func _hardware(holder: Node3D, part_name: String, size: Vector3, at: Vector3, color: Color) -> MeshInstance3D:
@@ -5673,8 +5825,8 @@ func _rib_along(barrel: MeshInstance3D, count: int, radius: float, length: float
 func _dress_barrel(barrel: MeshInstance3D, length: float, bore: float, breech: float) -> void:
 	var cyl := barrel.mesh as CylinderMesh
 	if cyl != null:
-		cyl.bottom_radius = breech
-		cyl.top_radius = bore
+		cyl.top_radius = breech
+		cyl.bottom_radius = bore
 	var muzzle := MeshInstance3D.new()
 	muzzle.name = "Muzzle"
 	var ring := CylinderMesh.new()
@@ -5683,7 +5835,7 @@ func _dress_barrel(barrel: MeshInstance3D, length: float, bore: float, breech: f
 	ring.height = maxf(length * 0.07, 0.28)
 	ring.radial_segments = 16
 	muzzle.mesh = ring
-	muzzle.position = Vector3(0.0, length * 0.46, 0.0)
+	muzzle.position = Vector3(0.0, -length * 0.46, 0.0)
 	muzzle.material_override = _hull_mat(Color("241c18"))
 	barrel.add_child(muzzle)
 	var house := MeshInstance3D.new()
@@ -5694,7 +5846,7 @@ func _dress_barrel(barrel: MeshInstance3D, length: float, bore: float, breech: f
 	block.height = maxf(length * 0.2, 0.7)
 	block.radial_segments = 12
 	house.mesh = block
-	house.position = Vector3(0.0, -length * 0.36, 0.0)
+	house.position = Vector3(0.0, length * 0.36, 0.0)
 	house.material_override = _hull_mat(Color("6a625c"))
 	barrel.add_child(house)
 

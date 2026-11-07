@@ -79,7 +79,15 @@ func _show(spec: String) -> void:
 		else:
 			holder.queue_free()
 		holder = null
-	if kind == "ship":
+	if kind == "fit":
+		var class_id := str(parts[1])
+		var modules: Array = str(parts[2]).split(",")
+		holder = stage.call("pose_portrait", class_id, modules)
+		holder.rotation = Vector3.ZERO
+		if holder.get_parent() == null:
+			stage.add_child(holder)
+		holder.visible = true
+	elif kind == "ship":
 		var class_id := str(parts[1])
 		var modules: Array = []
 		var game := root.get_node("Game")
@@ -110,7 +118,7 @@ func _show(spec: String) -> void:
 	var box := _bounds(holder)
 	holder.position = -box.get_center()
 	var extent := maxf(box.size.x, maxf(box.size.y, box.size.z))
-	var dist := maxf(extent * 1.9, 28.0)
+	var dist := maxf(extent * (1.25 if kind == "fit" else 1.9), 28.0)
 	var dir := Vector3(-0.58, 0.42, 0.82)
 	if view == "bow":
 		dir = Vector3(0.9, 0.35, 0.55)
