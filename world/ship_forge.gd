@@ -225,6 +225,15 @@ func hull(color: Color, opts: Dictionary = {}) -> ShaderMaterial:
 	return mat
 
 
+func hull_fresh(color: Color, opts: Dictionary = {}) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = hull_shader
+	mat.set_shader_parameter("albedo", color)
+	for key in opts:
+		mat.set_shader_parameter(str(key), opts[key])
+	return mat
+
+
 func metal(color: Color, rough: float = 0.3, metallic: float = 0.8) -> StandardMaterial3D:
 	var key := "metal|%s|%0.2f|%0.2f" % [color.to_html(), rough, metallic]
 	if _mats.has(key):
