@@ -87,6 +87,44 @@ func _loners_small(sim: SectorSim, material: String, hub: Vector2, hub_r: float)
 	return true
 
 
+func _min_gap(sim: SectorSim, material: String, center: Vector2, radius: float) -> float:
+	var spots: Array = []
+	for rock in sim.asteroids:
+		var chip: Dictionary = rock
+		if str(chip.get("material", "")) != material:
+			continue
+		var at := Vector2(chip.pos)
+		if at.distance_to(center) <= radius:
+			spots.append(at)
+	return _pair_gap(spots)
+
+
+func _near_gap(rows: Array, center: Vector2, radius: float) -> float:
+	var spots: Array = []
+	for row in rows:
+		var at := Vector2(row.pos)
+		if at.distance_to(center) <= radius:
+			spots.append(at)
+	return _pair_gap(spots)
+
+
+func _meteor_spots(sim: SectorSim) -> Array:
+	var spots: Array = []
+	for rock in sim.meteors:
+		spots.append(Vector2(rock.pos))
+	return spots
+
+
+func _pair_gap(spots: Array) -> float:
+	var best := 1.0e9
+	for i in spots.size():
+		var a: Vector2 = spots[i]
+		for j in range(i + 1, spots.size()):
+			var b: Vector2 = spots[j]
+			best = minf(best, a.distance_to(b))
+	return best
+
+
 func _comets_small(sim: SectorSim) -> bool:
 	if sim.meteors.size() < 2:
 		return false
@@ -197,6 +235,18 @@ func _dock() -> void:
 	check(_cluster_count(sim, "ice_spall", sim.ice_pos, 90.0) >= 3, "ice is a group")
 	check(_cluster_count(sim, "copper_slag", sim.copper_pos, 90.0) >= 3, "copper is a group")
 	check(_cluster_count(sim, "nickel_cinder", sim.belt_pos, 90.0) >= 3, "nickel ore is a group")
+	check(_min_gap(sim, "ice_spall", sim.ice_pos, 90.0) >= 72.0, "ice rocks in a seam have sky between them")
+	check(_min_gap(sim, "copper_slag", sim.copper_pos, 90.0) >= 72.0, "copper rocks in a seam have sky between them")
+	check(_min_gap(sim, "nickel_cinder", sim.belt_pos, 90.0) >= 72.0, "nickel rocks in the reach have sky between them")
+	check(_near_gap(sim.trash, sim.trash_pos, 120.0) >= 80.0, "seized hulls sit apart in the hold field")
+	var pad_scrap: Array = []
+	for hull in sim.trash:
+		var piece: Dictionary = hull
+		if sim.beacon_pos.distance_to(piece.pos) < 520.0:
+			pad_scrap.append(piece.pos)
+	check(pad_scrap.size() >= 3 and _pair_gap(pad_scrap) >= 140.0, "pad scrap sits on separate bearings")
+	var comet_gap := _pair_gap(_meteor_spots(sim))
+	check(comet_gap >= 70.0, "a comet pair does not share one rock")
 	check(_loners_small(sim, "nickel_cinder", sim.belt_pos, 90.0), "loose asteroids sit as one or two")
 	check(_comets_small(sim), "comets sit as one or two")
 	var ice_mark := Vector2(sim.ice_pos)

@@ -29,7 +29,8 @@ const DOCK_BUTTON := 500.0
 ## The shell catch stops a chart dump. Cast off and W are not braked to a stop.
 const HAUL_BAND_CAP := 220.0
 ## Harvest groups sit this far off the pad and this far from each other.
-## Loose asteroids and comets stay as one or two rocks on their own seats.
+## Inside a group the rocks sit on a ring, with sky between them. Loose
+## asteroids and comets stay as one or two rocks on their own seats.
 const STOCK_KEEP := 1200.0
 const STOCK_SEP := 3600.0
 const STOCK_NEAR := 2200.0
@@ -2338,7 +2339,7 @@ func _build_static() -> void:
 		var hubs: Array = []
 		if origin != Vector2.ZERO:
 			hubs.append(origin)
-		_plant_trash_group(rng, origin, 4, 40.0, str(field.get("origin", "")))
+		_plant_trash_group(rng, origin, 4, 90.0, str(field.get("origin", "")))
 		var extra := maxi(int(field.count) - 4, 4)
 		var packs := 1
 		if extra > 4:
@@ -2351,7 +2352,7 @@ func _build_static() -> void:
 				n = mini(extra - p * 4, 4)
 			if n < 3:
 				n = 3
-			_plant_trash_group(rng, seat, n, 40.0, str(field.get("origin", "")))
+			_plant_trash_group(rng, seat, n, 90.0, str(field.get("origin", "")))
 	_spawn_belt(rng)
 	_scatter_flank_scrap(rng)
 	_build_meteors(rng)
@@ -3509,7 +3510,7 @@ func _spawn_belt(rng: RandomNumberGenerator) -> void:
 		belt_pos = origin
 		belt_span = span
 	if local and belt_pos != Vector2.ZERO:
-		_plant_cluster(rng, belt_pos, 5, 46.0, tint, "#f6c36a", "nickel_cinder", 18.0, composition)
+		_plant_cluster(rng, belt_pos, 5, 64.0, tint, "#f6c36a", "nickel_cinder", 18.0, composition)
 		_spawn_loners(rng, pad, composition, tint)
 		_spawn_seams(rng, pad, belt_pos)
 	else:
@@ -3701,17 +3702,35 @@ func _append_ore(rng: RandomNumberGenerator, at: Vector2, size: float, compositi
 	})
 
 
+## Seats around a mark. A seam of three or more opens to a wide ring so a keel
+## can pass between the pieces. Centers stay inside the 80 m cut slide.
+func _spread_ring(rng: RandomNumberGenerator, center: Vector2, count: int, gap: float) -> Array:
+	var n := maxi(count, 1)
+	var spots: Array = []
+	if n == 1:
+		spots.append(center)
+		return spots
+	var cap := 76.0
+	var ring := gap / (2.0 * sin(PI / float(n)))
+	if n >= 3:
+		ring = maxf(ring, cap)
+	ring = clampf(ring, gap * 0.45, cap)
+	var spin := rng.randf() * TAU
+	for i in n:
+		var wobble := rng.randf_range(0.99, 1.01)
+		spots.append(center + Vector2.from_angle(spin + TAU * float(i) / float(n)) * ring * wobble)
+	return spots
+
+
 func _plant_cluster(rng: RandomNumberGenerator, center: Vector2, count: int, radius: float, tint: String, vein: String, material: String, size0: float, composition: String = "") -> void:
 	var mix := composition
 	if mix == "":
 		mix = material
 	var n := maxi(count, 1)
+	var gap := maxf(size0 * 2.5, maxf(radius * 0.85, 40.0))
+	var spots: Array = _spread_ring(rng, center, n, gap)
 	for i in n:
-		var at := center
-		if i > 0 and n > 1:
-			var ang := rng.randf() * TAU
-			var rad := rng.randf_range(radius * 0.22, radius)
-			at = center + Vector2.from_angle(ang) * rad
+		var at: Vector2 = spots[i]
 		var size := size0 + float(i) * 2.4 + rng.randf_range(0.0, 3.5)
 		_append_ore(rng, at, size, mix, tint, vein, material, 5 + (i % 3))
 
@@ -3725,17 +3744,15 @@ func _plant_vein(rng: RandomNumberGenerator, home, pad: Vector2, first_at: Vecto
 		if g > 0 or first_at == Vector2.ZERO:
 			at = _stock_seat(rng, home, pad, hubs)
 		hubs.append(at)
-		_plant_cluster(rng, at, per_group, 48.0, tint, vein, material, size0, material)
+		_plant_cluster(rng, at, per_group, 70.0, tint, vein, material, size0, material)
 
 
 func _plant_trash_group(rng: RandomNumberGenerator, center: Vector2, count: int, radius: float, origin: String) -> void:
 	var n := maxi(count, 1)
+	var gap := maxf(radius, 76.0)
+	var spots: Array = _spread_ring(rng, center, n, gap)
 	for i in n:
-		var at := center
-		if i > 0 and n > 1:
-			var ang := rng.randf() * TAU
-			var rad := rng.randf_range(radius * 0.2, radius)
-			at = center + Vector2.from_angle(ang) * rad
+		var at: Vector2 = spots[i]
 		trash.append({
 			"pos": at,
 			"rot": rng.randf() * TAU,
@@ -3912,11 +3929,11 @@ func _scatter_flank_scrap(rng: RandomNumberGenerator) -> void:
 	if anchor == null:
 		return
 	var pad: Vector2 = anchor.pos + _dock_offset(anchor)
-	# Three chips stay in the pad sky. The harvestable plate rides with the hold.
+	# Three chips stay in the pad sky, on separate bearings. The harvestable plate rides with the hold.
 	var spots: Array[Vector2] = [
-		pad + Vector2(-40.0, 150.0),
-		pad + Vector2(-190.0, 40.0),
-		pad + Vector2(-70.0, 60.0),
+		pad + Vector2.from_angle(2.15) * 280.0,
+		pad + Vector2.from_angle(3.55) * 390.0,
+		pad + Vector2.from_angle(4.9) * 490.0,
 	]
 	for i in spots.size():
 		var at: Vector2 = spots[i]
@@ -4086,7 +4103,10 @@ func _build_meteors(rng: RandomNumberGenerator) -> void:
 		var walk := phase * span
 		var mate := Vector2.ZERO
 		if i % 2 == 1:
-			mate = Vector2(rng.randf_range(-22.0, 22.0), rng.randf_range(-18.0, 18.0))
+			var side := Vector2(-vector.y, vector.x)
+			if side.length() < 0.01:
+				side = Vector2.RIGHT
+			mate = side.normalized() * rng.randf_range(88.0, 108.0)
 		var offset: Vector2 = site + mate - (stream_origin + vector * walk)
 		var size := rng.randf_range(8.0, 14.0) if local_rain else rng.randf_range(4.0, 9.0)
 		meteors.append({
