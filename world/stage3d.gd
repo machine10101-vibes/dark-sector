@@ -219,18 +219,22 @@ void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
 	float facing = clamp(dot(n, eye), 0.0, 1.0);
-	float limb = pow(facing, 0.55);
-	float dark = mix(0.42, 1.0, limb);
-	float grain = fbm(n * 14.0 + vec3(TIME * 0.04));
-	float cells = fbm(n * 34.0 + vec3(TIME * 0.07, 1.2, 0.3));
-	float spot = smoothstep(0.58, 0.82, fbm(n * 4.5 + vec3(TIME * 0.015)));
-	float facula = smoothstep(0.72, 0.9, fbm(n * 9.0 + vec3(TIME * 0.02, 2.0, 0.4)));
-	vec3 hot = mix(albedo.rgb * 0.55, vec3(1.0, 0.97, 0.88), 0.7);
-	vec3 col = hot * dark * (0.62 + 0.5 * grain) * (0.7 + 0.45 * cells);
-	col = mix(col, col * vec3(0.45, 0.3, 0.18), spot * 0.55);
-	col = mix(col, vec3(1.0, 0.96, 0.86), facula * 0.35);
+	float limb = pow(facing, 0.5);
+	float grain = fbm(n * 9.0 + vec3(TIME * 0.03, 0.0, 1.0));
+	float cells = fbm(n * 30.0 + vec3(TIME * 0.06, 1.2, 0.3));
+	float flow = fbm(n * 3.0 + vec3(0.0, TIME * 0.02, 2.0));
+	float spot = smoothstep(0.62, 0.8, fbm(n * 4.2 + vec3(TIME * 0.01, 5.0, 0.0))) * smoothstep(0.9, 0.3, abs(n.y));
+	float flare = smoothstep(0.7, 0.9, fbm(n * 7.0 + vec3(TIME * 0.02, 2.0, 0.4)));
+	vec3 hot = mix(albedo.rgb * vec3(1.0, 0.95, 0.8), vec3(1.0, 0.97, 0.88), 0.32);
+	vec3 cool = albedo.rgb * vec3(1.0, 0.52, 0.22);
+	vec3 col = mix(cool, hot, smoothstep(0.1, 0.9, limb));
+	col *= 0.78 + 0.34 * cells;
+	col *= 0.9 + 0.2 * grain;
+	col = mix(col, cool * 0.5, spot * 0.65);
+	col = mix(col, vec3(1.0, 0.97, 0.9), flare * 0.35);
+	col *= 0.9 + 0.2 * flow;
 	ALBEDO = col;
-	EMISSION = col * (0.85 + 0.25 * facing);
+	EMISSION = col * (1.05 + 0.55 * limb);
 }
 "
 
@@ -246,35 +250,43 @@ void vertex() {
 void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.7);
-	ALBEDO = albedo.rgb;
-	EMISSION = albedo.rgb * 0.4;
-	ALPHA = fres * fres * 0.5;
+	float facing = clamp(abs(dot(n, eye)), 0.0, 1.0);
+	float glow = pow(smoothstep(0.0, 0.8, facing), 1.6);
+	ALBEDO = mix(albedo.rgb, vec3(1.0, 0.95, 0.85), glow * 0.5);
+	EMISSION = ALBEDO * (0.5 + glow);
+	ALPHA = glow * 0.42;
 }
 "
 
 const RAY_SHADER := "shader_type spatial;
 render_mode blend_add, unshaded, cull_disabled, depth_draw_never;
 uniform vec4 albedo : source_color = vec4(1.0, 0.78, 0.42, 1.0);
+float hr(float x) {
+	return fract(sin(x * 91.7 + 13.1) * 43758.5453);
+}
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	float r = length(p);
-	if (r > 0.995 || r < 0.42) {
+	if (r > 0.995 || r < 0.3) {
 		discard;
 	}
 	float ang = atan(p.y, p.x);
-	float a = ang / 6.2831853 + TIME * 0.012;
-	float spoke = smoothstep(0.16, 0.025, abs(fract(a * 6.0) - 0.5));
-	float thin = smoothstep(0.07, 0.01, abs(fract(a * 6.0 + 0.5) - 0.5));
-	float mid = smoothstep(1.0, 0.58, r);
-	float reach = smoothstep(1.0, 0.72, r);
-	float ray = max(spoke * mid, thin * reach);
-	if (ray < 0.12) {
+	float a = ang / 6.2831853 + TIME * 0.004;
+	float slot = floor(a * 22.0);
+	float width = 0.05 + 0.2 * hr(slot);
+	float reach = 0.35 + 0.6 * hr(slot + 5.0);
+	float spoke = smoothstep(width, 0.0, abs(fract(a * 22.0) - 0.5));
+	float thin = smoothstep(0.03, 0.0, abs(fract(a * 55.0 + 0.3) - 0.5)) * hr(floor(a * 55.0) + 9.0);
+	float fall = smoothstep(1.0, 0.3, r);
+	float ray = (spoke * smoothstep(1.0, 1.0 - reach, r) * 0.8 + thin * 0.5) * fall;
+	float halo = smoothstep(0.75, 0.3, r) * 0.18;
+	float total = ray + halo;
+	if (total < 0.03) {
 		discard;
 	}
-	ALBEDO = albedo.rgb * (1.15 + spoke);
-	EMISSION = ALBEDO;
-	ALPHA = ray;
+	ALBEDO = albedo.rgb * (1.1 + spoke * 0.4);
+	EMISSION = ALBEDO * total;
+	ALPHA = clamp(total * 0.55, 0.0, 1.0);
 }
 "
 
@@ -403,13 +415,29 @@ void fragment() {
 const GATE_SHADER := "shader_type spatial;
 render_mode blend_mix, unshaded, cull_disabled, depth_draw_never;
 uniform vec4 albedo : source_color = vec4(0.55, 0.85, 0.7, 1.0);
+varying vec3 lp;
+float gh(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+void vertex() {
+	lp = VERTEX;
+}
 void fragment() {
 	float r = clamp(UV.x, 0.0, 1.0);
-	float rim = smoothstep(0.62, 0.96, r);
-	float veil = (1.0 - r) * 0.22;
-	ALBEDO = albedo.rgb;
-	EMISSION = albedo.rgb * (0.35 + rim * 0.8);
-	ALPHA = rim * 0.62 + veil;
+	float a = atan(lp.z, lp.x) + 3.14159;
+	float rim = smoothstep(0.6, 0.97, r);
+	float swirl = sin(a * 3.0 + r * 11.0 - TIME * 1.3) * 0.5 + 0.5;
+	float swirl2 = sin(a * 5.0 - r * 17.0 + TIME * 0.9 + 1.7) * 0.5 + 0.5;
+	float arms = swirl * 0.6 + swirl2 * 0.4;
+	float core = smoothstep(0.35, 0.0, r);
+	float mote = step(0.985, gh(floor(vec2(a * 9.0, r * 26.0 + TIME * 2.0))));
+	float ripple = pow(max(sin(r * 30.0 - TIME * 4.0), 0.0), 6.0) * smoothstep(0.2, 0.9, r);
+	vec3 tint = albedo.rgb;
+	vec3 hot = mix(tint, vec3(1.0), 0.55);
+	float body = (1.0 - r) * 0.12 + arms * (0.1 + r * 0.12) + core * 0.22;
+	ALBEDO = mix(tint, hot, arms * 0.5 + core);
+	EMISSION = ALBEDO * (0.25 + rim * 1.3 + arms * 0.5 + ripple * 0.7 + mote * 2.0 + core * 0.9);
+	ALPHA = clamp(rim * 0.55 + body + ripple * 0.18 + mote * 0.6, 0.0, 0.92);
 }
 "
 
@@ -963,7 +991,7 @@ func _sync_props(sim) -> void:
 	var pad := _prop("beacon_pad")
 	if str(pad.get_meta("built", "")) != "yes":
 		pad.mesh = _bevel_box(Vector3(70.0, 1.8, 44.0), 0.45)
-		pad.material_override = _hull_mat(Color("5c5348"))
+		pad.material_override = _hull_mat(Color("857c6c"))
 		_pad_strip(pad, "PadSpine", Vector3(52.0, 0.12, 0.7), Vector3(0.0, 1.02, 0.0))
 		_pad_strip(pad, "PadPort", Vector3(58.0, 0.12, 0.4), Vector3(0.0, 1.02, 16.5))
 		_pad_strip(pad, "PadStbd", Vector3(58.0, 0.12, 0.4), Vector3(0.0, 1.02, -16.5))
@@ -1002,6 +1030,7 @@ func _sync_props(sim) -> void:
 		var chev_sa := pad.get_node("ChevronSA") as MeshInstance3D
 		chev_sa.rotation.y = 0.5
 		_dress_berth(pad)
+		_dress_pad_yard(pad)
 		pad.set_meta("built", "yes")
 	pad.visible = not on_chart
 	pad.position = chart(sim.beacon_pos, 1.2)
@@ -7402,35 +7431,29 @@ func _beam_at(poly: PackedVector2Array, x: float) -> float:
 
 
 func _dress_gate(hoop: MeshInstance3D, radius: float, tone: Color) -> void:
-	var lip := MeshInstance3D.new()
-	lip.name = "Lip"
-	var inner := TorusMesh.new()
-	inner.inner_radius = maxf(radius * 0.72, 6.0)
-	inner.outer_radius = maxf(radius * 0.84, 8.0)
-	inner.rings = 36
-	inner.ring_segments = 8
-	lip.mesh = inner
-	var iron := _metal(tone.darkened(0.45))
-	iron.emission_enabled = true
-	iron.emission = tone.darkened(0.15)
-	iron.emission_energy_multiplier = 0.35
-	lip.material_override = iron
-	hoop.add_child(lip)
-	var rail := maxf(radius - 1.0, 6.0)
-	for i in 8:
-		var tooth := MeshInstance3D.new()
-		tooth.name = "Chevron%d" % i
-		var bite := maxf(radius * 0.1, 2.2)
-		tooth.mesh = _bevel_box(Vector3(bite, maxf(radius * 0.04, 0.6), bite * 0.38), 0.12)
-		var ang := float(i) * TAU / 8.0 + 0.18
-		tooth.position = Vector3(cos(ang) * rail, 0.0, sin(ang) * rail)
-		tooth.rotation.y = -ang
-		var paint := _metal(tone.lightened(0.18))
-		paint.emission_enabled = true
-		paint.emission = tone
-		paint.emission_energy_multiplier = 1.2
-		tooth.material_override = paint
-		hoop.add_child(tooth)
+	var f = _forge
+	var steel := Color("5a6268")
+	var count := 28
+	var arc := TAU * radius / float(count)
+	for i in count:
+		var ang := float(i) * TAU / float(count)
+		var yaw := -ang - PI * 0.5
+		var plate := steel.lerp(tone, 0.12 + 0.1 * float(i % 3))
+		f.add(hoop, "GateArmor%d" % i, f.slab(Vector3(arc * 0.94, radius * 0.085, radius * 0.1), 0.88), f.hull_fresh(plate, {"tile": maxf(radius * 0.05, 2.0)}), Vector3(cos(ang) * radius, 0.0, sin(ang) * radius), Vector3(0.0, yaw, 0.0))
+		if i % 2 == 0:
+			var strip_at := Vector3(cos(ang) * (radius - radius * 0.07), radius * 0.0, sin(ang) * (radius - radius * 0.07))
+			f.add(hoop, "GateStrip%d" % i, f.slab(Vector3(arc * 1.1, radius * 0.018, radius * 0.018), 1.0), f.glow(tone.lightened(0.3), 2.2), strip_at, Vector3(0.0, yaw, 0.0))
+	for i in 4:
+		var ang := float(i) * TAU / 4.0 + PI * 0.25
+		var yaw := -ang - PI * 0.5
+		var out := Vector3(cos(ang), 0.0, sin(ang))
+		var pylon_at := out * (radius + radius * 0.14)
+		f.add(hoop, "Pylon%d" % i, f.slab(Vector3(radius * 0.2, radius * 0.18, radius * 0.1), 0.84), f.hull_fresh(steel.darkened(0.15), {"tile": maxf(radius * 0.06, 2.0)}), pylon_at, Vector3(0.0, yaw + PI * 0.5, 0.0))
+		f.add(hoop, "PylonCoil%d" % i, f.tube(radius * 0.035, radius * 0.035, radius * 0.24, 12), f.metal(Color("2a3238"), 0.4), out * (radius + radius * 0.26) + Vector3(0.0, radius * 0.12, 0.0), Vector3(0.0, -ang, 0.0))
+		f.add(hoop, "PylonLamp%d" % i, f.tube(radius * 0.02, radius * 0.02, radius * 0.08, 8), f.glow(tone.lightened(0.45), 2.6), out * (radius + radius * 0.4) + Vector3(0.0, radius * 0.12, 0.0), Vector3(0.0, -ang, 0.0))
+		var prong_at := out * (radius - radius * 0.2)
+		f.add(hoop, "Prong%d" % i, f.tube(radius * 0.025, radius * 0.012, radius * 0.26, 10), f.metal(Color("3a444a"), 0.35), prong_at, Vector3(0.0, -ang + PI, 0.0))
+		f.add(hoop, "ProngTip%d" % i, f.disc(radius * 0.022), f.glow(tone.lightened(0.5), 3.0), out * (radius - radius * 0.33) + Vector3(0.0, radius * 0.003, 0.0))
 	for i in 12:
 		var lamp := MeshInstance3D.new()
 		lamp.name = "GateLamp%d" % i
@@ -7442,7 +7465,7 @@ func _dress_gate(hoop: MeshInstance3D, radius: float, tone: Color) -> void:
 		bulb.rings = 6
 		lamp.mesh = bulb
 		var ang2 := float(i) * TAU / 12.0
-		lamp.position = Vector3(cos(ang2) * (radius + 5.0), 0.0, sin(ang2) * (radius + 5.0))
+		lamp.position = Vector3(cos(ang2) * radius, radius * 0.052, sin(ang2) * radius)
 		var glow := StandardMaterial3D.new()
 		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		glow.albedo_color = tone.lightened(0.4)
@@ -7452,21 +7475,52 @@ func _dress_gate(hoop: MeshInstance3D, radius: float, tone: Color) -> void:
 		lamp.material_override = glow
 		lamp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		hoop.add_child(lamp)
-	for i in 4:
-		var spoke := MeshInstance3D.new()
-		spoke.name = "Spoke%d" % i
-		var rod := CylinderMesh.new()
-		rod.top_radius = maxf(radius * 0.012, 0.45)
-		rod.bottom_radius = maxf(radius * 0.016, 0.55)
-		rod.height = maxf(radius * 0.55, 18.0)
-		rod.radial_segments = 8
-		spoke.mesh = rod
-		var ang3 := float(i) * TAU / 4.0 + 0.2
-		spoke.position = Vector3(cos(ang3) * radius * 0.55, 0.0, sin(ang3) * radius * 0.55)
-		spoke.rotation.z = PI * 0.5
-		spoke.rotation.y = -ang3
-		spoke.material_override = _metal(tone.darkened(0.4))
-		hoop.add_child(spoke)
+
+
+func _dress_pad_yard(pad: Node3D) -> void:
+	var f = _forge
+	var deck := 0.9
+	var steel := Color("6a7076")
+	var rust := Color("8a5a3e")
+	f.add(pad, "TowerBase", f.tube(5.0, 3.6, 10.0, 12), f.hull_fresh(steel.darkened(0.2), {"tile": 3.0}), Vector3(-29.0, deck + 5.0, -16.0), Vector3(0.0, 0.0, PI * 0.5))
+	f.add(pad, "TowerShaft", f.tube(2.4, 1.8, 14.0, 12), f.hull_fresh(steel, {"tile": 3.0}), Vector3(-29.0, deck + 17.0, -16.0), Vector3(0.0, 0.0, PI * 0.5))
+	f.add(pad, "TowerCab", f.slab(Vector3(9.0, 3.6, 9.0), 0.78), f.hull_fresh(steel.darkened(0.1), {"tile": 3.0}), Vector3(-29.0, deck + 25.0, -16.0))
+	f.add(pad, "TowerGlass", f.slab(Vector3(9.5, 2.0, 9.5), 0.9), f.glass(Color(0.14, 0.5, 0.6, 0.9), 0.9), Vector3(-29.0, deck + 25.4, -16.0))
+	f.add(pad, "TowerRoof", f.slab(Vector3(10.0, 0.7, 10.0), 0.8), f.hull_fresh(steel.darkened(0.25), {"tile": 3.0}), Vector3(-29.0, deck + 27.2, -16.0))
+	f.dish(pad, "TowerDish", 2.6, Vector3(-27.0, deck + 28.4, -14.0), Vector3(-0.6, 0.0, 0.0))
+	f.add(pad, "TowerMast", f.tube(0.18, 0.1, 6.0, 8), f.metal(Color("2a3036")), Vector3(-31.0, deck + 31.0, -18.0), Vector3(0.0, 0.0, PI * 0.5))
+	f.lamp(pad, "TowerBeacon", Vector3(-31.0, deck + 34.2, -18.0), Color("ff6a48"), 0.55)
+	for i in 3:
+		f.add(pad, "TowerBand%d" % i, f.slab(Vector3(9.2, 0.4, 9.2), 0.95), f.glow(Color("f0c27a"), 1.2), Vector3(-29.0, deck + 24.0 + float(i) * 0.0 - 0.0, -16.0) + Vector3(0.0, -1.2 + float(i) * 0.0, 0.0))
+		break
+	for i in 2:
+		f.add(pad, "FuelTank%d" % i, f.tube(2.2, 2.2, 9.0, 14), f.hull_fresh(Color("c9c4b4").darkened(0.15 * float(i)), {"tile": 3.0}), Vector3(-29.0 + float(i) * 0.0, deck + 2.4, 13.0 + float(i) * 5.2), Vector3(0.0, 0.0, 0.0))
+		f.add(pad, "FuelBand%d" % i, f.tube(2.3, 2.3, 0.8, 14), f.glow(Color("e0a040"), 1.0), Vector3(-29.0 + 2.0, deck + 2.4, 13.0 + float(i) * 5.2))
+		f.add(pad, "FuelDome%d" % i, f.slab(Vector3(1.4, 1.4, 1.4), 0.7), f.metal(Color("40464c")), Vector3(-29.0 - 4.9, deck + 2.4, 13.0 + float(i) * 5.2))
+	var palette := [Color("a85a3a"), Color("3f6a82"), Color("c49a42"), Color("5a7a52"), Color("8a4a46"), Color("4a5a78")]
+	for row in 3:
+		for col in 3 - mini(row, 1):
+			var box_color: Color = palette[(row * 3 + col) % palette.size()]
+			var at := Vector3(14.0 + float(col) * 7.2, deck + 1.5 + float(row) * 3.1, -18.5)
+			f.add(pad, "Container%d_%d" % [row, col], f.slab(Vector3(6.8, 3.0, 3.2), 0.97), f.hull_fresh(box_color, {"tile": 1.6}), at)
+			f.add(pad, "ContainerRib%d_%d" % [row, col], f.slab(Vector3(6.9, 0.2, 3.3), 1.0), f.metal(Color("23282c")), at + Vector3(0.0, 1.3, 0.0))
+	for i in 3:
+		var crate_at := Vector3(8.0 + float(i) * 6.0, deck + 1.0, 18.8)
+		f.add(pad, "Crate%d" % i, f.slab(Vector3(4.6, 2.0, 3.4), 0.9), f.hull_fresh(rust.lerp(steel, 0.3 * float(i)), {"tile": 1.2}), crate_at, Vector3(0.0, 0.1 * float(i), 0.0))
+	for sx in 2:
+		for sz in 2:
+			var mx := 32.5 if sx == 0 else -32.5
+			var mz := 20.0 if sz == 0 else -20.0
+			var pylon_at := Vector3(mx, deck + 4.5, mz)
+			f.add(pad, "FloodPole%d%d" % [sx, sz], f.tube(0.5, 0.3, 9.0, 8), f.metal(Color("2c3238")), pylon_at, Vector3(0.0, 0.0, PI * 0.5))
+			f.add(pad, "FloodBank%d%d" % [sx, sz], f.slab(Vector3(2.6, 1.3, 0.6), 0.9), f.glow(Color("e8f4ff"), 2.8), Vector3(mx - signf(mx) * 0.5, deck + 9.2, mz))
+	for z_edge in [-21.0, 21.0]:
+		f.add(pad, "EdgeLight%d" % int(z_edge), f.slab(Vector3(66.0, 0.18, 0.35), 1.0), f.glow(Color("9ee7c8"), 1.6), Vector3(0.0, deck + 0.05, z_edge))
+	for x_edge in [-34.0, 34.0]:
+		f.add(pad, "EndLight%d" % int(x_edge), f.slab(Vector3(0.35, 0.18, 40.0), 1.0), f.glow(Color("f0c27a"), 1.6), Vector3(x_edge, deck + 0.05, 0.0))
+	for i in 3:
+		var hx := 18.0 + float(i) * 8.0
+		f.add(pad, "HoseReel%d" % i, f.tube(0.9, 0.9, 1.6, 10), f.metal(Color("3a2c22"), 0.6, 0.2), Vector3(hx, deck + 0.9, 12.5), Vector3(0.0, 0.0, PI * 0.5) + Vector3(0.0, 0.0, 0.0))
 
 
 func _dress_berth(pad: Node3D) -> void:

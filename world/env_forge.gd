@@ -4,6 +4,76 @@ extends RefCounted
 ## faceted on purpose and carries its undisplaced direction in COLOR so the
 ## stone and ice shaders can paint craters and veins without stretching.
 
+
+const SKY_SHADER := "shader_type sky;
+float h31(vec3 p) {
+	p = fract(p * 0.1031);
+	p += dot(p, p.yzx + 33.33);
+	return fract((p.x + p.y) * p.z);
+}
+float n3(vec3 p) {
+	vec3 i = floor(p);
+	vec3 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	float a = mix(mix(h31(i), h31(i + vec3(1.0, 0.0, 0.0)), f.x), mix(h31(i + vec3(0.0, 1.0, 0.0)), h31(i + vec3(1.0, 1.0, 0.0)), f.x), f.y);
+	float b = mix(mix(h31(i + vec3(0.0, 0.0, 1.0)), h31(i + vec3(1.0, 0.0, 1.0)), f.x), mix(h31(i + vec3(0.0, 1.0, 1.0)), h31(i + vec3(1.0, 1.0, 1.0)), f.x), f.y);
+	return mix(a, b, f.z);
+}
+float fbm3(vec3 p) {
+	float v = 0.0;
+	float a = 0.5;
+	for (int i = 0; i < 5; i++) {
+		v += a * n3(p);
+		p = p * 2.07 + vec3(3.1, 1.7, 8.3);
+		a *= 0.5;
+	}
+	return v;
+}
+vec3 star_layer(vec3 d, float scale, float density, float size, float gain) {
+	vec3 p = d * scale;
+	vec3 c = floor(p);
+	vec3 f = fract(p);
+	float roll = h31(c);
+	if (roll > density) {
+		return vec3(0.0);
+	}
+	vec3 at = vec3(h31(c + 1.7), h31(c + 3.1), h31(c + 5.3)) * 0.8 + 0.1;
+	float dist = length(f - at);
+	float core = smoothstep(size, 0.0, dist);
+	float halo = smoothstep(size * 4.5, 0.0, dist) * 0.18;
+	float heat = h31(c + 9.4);
+	vec3 tone = mix(vec3(0.62, 0.78, 1.0), vec3(1.0, 0.82, 0.58), heat);
+	tone = mix(tone, vec3(1.0, 0.55, 0.38), smoothstep(0.88, 1.0, heat) * 0.7);
+	float mag = 0.35 + 0.65 * h31(c + 2.2);
+	float twinkle = 0.85 + 0.15 * sin(TIME * (0.8 + heat * 3.0) + roll * 40.0);
+	return tone * (core + halo) * mag * gain * twinkle;
+}
+void sky() {
+	vec3 d = normalize(EYEDIR);
+	vec3 pole = normalize(vec3(0.34, 0.82, -0.46));
+	float lat = dot(d, pole);
+	float band = exp(-lat * lat * 9.0);
+	float dust = fbm3(d * 3.4 + vec3(2.0, 7.0, 1.0));
+	float lanes = smoothstep(0.42, 0.72, fbm3(d * 7.0 + vec3(11.0, 3.0, 5.0)));
+	float cloud = fbm3(d * 1.7 + vec3(5.0, 1.0, 9.0));
+	vec3 base = vec3(0.012, 0.014, 0.024);
+	vec3 haze = mix(vec3(0.05, 0.07, 0.13), vec3(0.16, 0.1, 0.07), smoothstep(0.35, 0.8, dust));
+	vec3 col = base + haze * band * (0.5 + dust) * (1.0 - lanes * 0.7) * 0.8;
+	vec3 neb_a = vec3(0.06, 0.1, 0.2);
+	vec3 neb_b = vec3(0.16, 0.06, 0.1);
+	float far = smoothstep(0.45, 0.85, cloud);
+	col += mix(neb_a, neb_b, smoothstep(0.3, 0.9, fbm3(d * 2.3 + vec3(13.0)))) * far * 0.55;
+	float lift = 1.0 + band * 1.6;
+	col += star_layer(d, 34.0, 0.34, 0.09, 0.9 * lift);
+	col += star_layer(d, 62.0, 0.3, 0.1, 0.8 * lift);
+	col += star_layer(d, 118.0, 0.22, 0.13, 0.7 * lift);
+	col += star_layer(d, 12.0, 0.1, 0.07, 2.4);
+	float milk = band * smoothstep(0.35, 0.75, dust) * (1.0 - lanes * 0.8);
+	col += vec3(0.9, 0.82, 0.7) * pow(h31(floor(d * 260.0)), 18.0) * milk * 0.9;
+	COLOR = col;
+}
+"
+
 const ICO_FACES := [
 	[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
 	[1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],

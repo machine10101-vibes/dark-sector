@@ -74,7 +74,7 @@ func _anchor(sim, kind: String) -> Vector2:
 		"wreck":
 			return sim.wrecks[0].pos if sim.wrecks.size() > 0 else Vector2.ZERO
 		"star":
-			return sim.stars[0].pos if sim.stars.size() > 0 else Vector2.ZERO
+			return Vector2.ZERO
 	return Vector2.ZERO
 
 
