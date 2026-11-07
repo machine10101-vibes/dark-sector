@@ -3,6 +3,7 @@ extends Node
 ## Looks down on a 3D sector from above, a little off vertical.
 
 const EnvForge := preload("res://world/env_forge.gd")
+const FlightPad := preload("res://ui/flight_pad.gd")
 
 var sector: Node2D
 var world_vp: SubViewport
@@ -523,7 +524,8 @@ class ScaleReadout extends Control:
 		var wide_phone := short and screen.x > screen.y
 		if wide_phone:
 			# Stick owns the lower left. The channel beside it is clear of the gun.
-			return Vector2(128.0, screen.y - 22.0)
+			var well := FlightPad.metrics_of(screen, true).x
+			return Vector2(well + 32.0, screen.y - 22.0)
 		var top := _bars_top(screen)
 		var x := 16.0
 		var y := top - 26.0
@@ -539,11 +541,7 @@ class ScaleReadout extends Control:
 		var compact := screen.x < 900.0 or short
 		var pad_top := screen.y - 8.0
 		if compact:
-			var joy_size := 96.0 if short else 132.0
-			var gun := 64.0 if short else 84.0
-			var zoom_h := 36.0 if short else 40.0
-			var pad_h := maxf(joy_size, gun + zoom_h + 18.0)
-			pad_top = screen.y - 8.0 - pad_h - 12.0
+			pad_top = screen.y - 8.0 - FlightPad.reserved_of(screen, short) - 12.0
 		var secondary_h := 48.0
 		var primary_h := 64.0
 		var gap := 8.0

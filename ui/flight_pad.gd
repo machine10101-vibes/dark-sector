@@ -16,11 +16,37 @@ var hold_left := false
 var hold_right := false
 var boost_held := false
 var radius := 64.0
+var knob_r := 22.0
+
+
+## The well is the touch target. On a short phone it stays under the helm bars.
+## Travel is how far the thumb moves. The puck is the disc under it.
+static func metrics_of(screen: Vector2, short: bool) -> Vector3:
+	var well := 148.0 if short else 220.0
+	var gun := 64.0 if short else 84.0
+	var side := 70.0 if short else 76.0
+	var room := screen.x - (gun + side + 36.0) - 16.0
+	well = minf(well, maxf(128.0, room))
+	var ceiling := screen.y - (108.0 if short else 200.0)
+	well = minf(well, maxf(128.0, ceiling))
+	var puck := clampf(well * 0.22, 28.0, 46.0)
+	var bowl := well * 0.5 - 4.0
+	var travel := maxf(36.0, bowl - puck - 2.0)
+	return Vector3(well, travel, puck)
+
+
+## How high the action bars sit: above the stick and the gun cluster.
+static func reserved_of(screen: Vector2, short: bool) -> float:
+	var gun := 64.0 if short else 84.0
+	var zoom_h := 36.0 if short else 40.0
+	var cluster := gun + zoom_h + 18.0
+	return maxf(metrics_of(screen, short).x, cluster)
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	joy = Control.new()
+	joy.name = "Joy"
 	joy.mouse_filter = Control.MOUSE_FILTER_STOP
 	joy.gui_input.connect(_on_joy)
 	add_child(joy)
@@ -46,8 +72,10 @@ func _ready() -> void:
 func place(screen: Vector2, dock: float = 8.0, short: bool = false) -> void:
 	position = Vector2.ZERO
 	size = screen
-	var joy_size := 96.0 if short else 132.0
-	radius = 38.0 if short else 52.0
+	var fit := metrics_of(screen, short)
+	var joy_size := fit.x
+	radius = fit.y
+	knob_r = fit.z
 	var gun := 64.0 if short else 84.0
 	var zoom_h := 36.0 if short else 40.0
 	var base := screen.y - dock
@@ -74,12 +102,7 @@ func place(screen: Vector2, dock: float = 8.0, short: bool = false) -> void:
 
 
 func band_top(screen: Vector2, short: bool) -> float:
-	var joy_size := 96.0 if short else 132.0
-	var gun := 64.0 if short else 84.0
-	var zoom_h := 36.0 if short else 40.0
-	var cluster := gun + zoom_h + 18.0
-	var pad_h := maxf(joy_size, cluster)
-	return screen.y - 8.0 - pad_h - 12.0
+	return screen.y - 8.0 - reserved_of(screen, short) - 12.0
 
 
 func release() -> void:
@@ -213,7 +236,8 @@ func _release_joy() -> void:
 
 func _draw_joy() -> void:
 	var center := joy.size * 0.5
-	joy.draw_circle(center, radius, Color(0.04, 0.05, 0.07, 0.55))
-	joy.draw_arc(center, radius, 0.0, TAU, 40, Color("8a7344"), 2.0, true)
-	joy.draw_circle(center + knob, 22.0, Color("cbb892"))
-	joy.draw_circle(center + knob, 8.0, Color("e6d7bf"))
+	var bowl := maxf(radius + knob_r, center.x - 4.0)
+	joy.draw_circle(center, bowl, Color(0.04, 0.05, 0.07, 0.55))
+	joy.draw_arc(center, bowl, 0.0, TAU, 48, Color("8a7344"), 3.0, true)
+	joy.draw_circle(center + knob, knob_r, Color("cbb892"))
+	joy.draw_circle(center + knob, knob_r * 0.36, Color("e6d7bf"))
