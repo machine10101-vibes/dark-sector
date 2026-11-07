@@ -46,7 +46,26 @@ func _run() -> void:
 	check(rubble != null and rubble.code.find("unshaded") >= 0, "rubble stays lit without the sun")
 	check(planet != null and planet.code.find("VERTEX +=") >= 0 and planet.code.find("night_side") >= 0 and planet.code.find("blob") >= 0, "night-side city lamps are blobs on the limb")
 	var hull: Shader = stage.get("_hull_shader")
-	check(hull != null and hull.code.find("plate_gutter") >= 0 and hull.code.find("albedo.rgb") >= 0, "plate gutters darken the seams and the paint stays the hull color")
+	check(hull != null and hull.code.find("plate_gutter") >= 0 and hull.code.find("albedo.rgb") >= 0 and hull.code.find("plate_heat") >= 0, "plate gutters darken the seams, heat glows on top, and the paint stays the hull color")
+	check(absf(float(stage.call("_plate_heat", {"therm": 0.0})) ) < 0.001, "a cold keel leaves the plate dark")
+	check(absf(float(stage.call("_plate_heat", {"therm": 80.0})) - 0.8) < 0.001, "gun heat warms the plate")
+	check(float(stage.call("_plate_heat", {"therm": 40.0, "overheat": true})) >= 0.85, "held guns keep the plate hot")
+	var slide := {"rot": 0.0, "vel": Vector2(0.0, 160.0)}
+	check(float(stage.call("_slip_cant", slide)) > 0.5, "a sideways slide cants the plume")
+	check(absf(float(stage.call("_slip_cant", {"rot": 0.0, "vel": Vector2(160.0, 0.0)}))) < 0.001, "thrust along the nose leaves the plume centered")
+	var yaw_hull := Node3D.new()
+	stage.call("_fill_ship", yaw_hull, "vesper", [], [])
+	stage.call("_set_plate_heat", yaw_hull, 0.8)
+	var keel := yaw_hull.get_node_or_null("Keel") as MeshInstance3D
+	var skin: ShaderMaterial = null
+	if keel != null:
+		skin = keel.material_override as ShaderMaterial
+	check(skin != null and absf(float(skin.get_shader_parameter("plate_heat")) - 0.8) < 0.001, "the keel skin takes the plate heat")
+	stage.call("_place_plumes", yaw_hull, {"yaw_hold": 1.0, "rot": 0.0, "vel": Vector2.ZERO, "thrusting": false, "boosting": false, "strafe_hold": 0.0, "retro_hold": false})
+	var stbd := yaw_hull.get_node_or_null("JetStbd") as MeshInstance3D
+	var port := yaw_hull.get_node_or_null("JetPort") as MeshInstance3D
+	check(stbd != null and stbd.visible, "a positive yaw lights the starboard jet")
+	check(port != null and not port.visible, "a positive yaw leaves the port jet dark")
 	var vent := Node3D.new()
 	stage.call("_fill_ship", vent, "vesper", ["vent"], [])
 	check(vent.get_node_or_null("Gearvent0/VentFin") != null, "Ash Vent wears a flank fin")

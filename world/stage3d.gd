@@ -279,6 +279,7 @@ varying vec3 local_pos;
 varying vec3 local_nrm;
 uniform vec4 albedo : source_color = vec4(0.5, 0.55, 0.58, 1.0);
 uniform vec4 accent : source_color = vec4(0.0, 0.0, 0.0, 0.0);
+uniform float plate_heat = 0.0;
 float seam_of(vec3 p) {
 	float sx = smoothstep(0.488, 0.5, abs(fract(p.x * 0.09) - 0.5));
 	float sz = smoothstep(0.486, 0.5, abs(fract(p.z * 0.14) - 0.5));
@@ -363,6 +364,7 @@ void fragment() {
 	ROUGHNESS = mix(mix(0.48, 0.28, bare), 0.7, max(seam, port));
 	AO = mix(1.0, 0.58, seam);
 	EMISSION = vec3(1.0, 0.42, 0.14) * aft * 0.05 + vec3(1.0, 0.88, 0.52) * port * lit_port * 2.6 + vec3(0.5, 0.62, 0.74) * rim * 0.12;
+	EMISSION += vec3(1.0, 0.32, 0.06) * clamp(plate_heat, 0.0, 1.0) * (0.22 + aft * 1.15);
 }
 "
 
@@ -3518,6 +3520,7 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 		holder.scale = Vector3(6.0, 6.0, 6.0) if int(sim.layer) == ScaleFrame.CHART else Vector3.ONE
 		_banked(holder, ship.pos, float(ship.rot), 2.0, ship)
 	_pulse_lamps(holder)
+	_set_plate_heat(holder, _plate_heat(ship))
 	_light_turn_jets(holder, ship)
 	_place_plumes(holder, ship)
 	_place_wake(holder, ship)
@@ -6524,17 +6527,18 @@ func _place_plumes(holder: Node3D, ship: Dictionary) -> void:
 	var forward := Vector2.from_angle(float(ship.get("rot", 0.0)))
 	var vel := Vector2(ship.get("vel", Vector2.ZERO))
 	var stretch := clampf(vel.dot(forward) / 340.0, 0.0, 1.35)
-	var length := flick * lerpf(0.22, 3.15, burn) * lerpf(0.82, 1.18, clampf(stretch, 0.0, 1.0))
+	var length := flick * lerpf(0.22, 3.15, burn) * lerpf(0.55, 1.7, clampf(stretch, 0.0, 1.0))
 	var girth := lerpf(0.72, 2.15, burn) * (0.84 + 0.16 * flick)
 	var tail := float(holder.get_meta("tail", -20.0))
 	var crown := float(holder.get_meta("crown", 16.0))
 	var sheath := Color(1.0, 0.48, 0.12, 0.88).lerp(Color(0.45, 0.78, 1.0, 0.92), smoothstep(0.5, 0.92, burn))
 	var heart := Color(1.0, 0.9, 0.62, 0.92).lerp(Color(0.78, 0.92, 1.0, 0.96), smoothstep(0.5, 0.92, burn))
 	var gimbal := -float(holder.get_meta("bank", 0.0)) * 5.5
+	var cant := gimbal + _slip_cant(ship)
 	var exhaust := holder.get_node_or_null("Exhaust") as MeshInstance3D
 	if exhaust != null:
 		exhaust.visible = lit
-		exhaust.position.z = gimbal
+		exhaust.position.z = cant
 		exhaust.scale = Vector3(length, girth, girth)
 		var sheath_mat := exhaust.material_override as ShaderMaterial
 		if sheath_mat != null:
@@ -6542,7 +6546,7 @@ func _place_plumes(holder: Node3D, ship: Dictionary) -> void:
 	var core := holder.get_node_or_null("ExhaustCore") as MeshInstance3D
 	if core != null:
 		core.visible = lit
-		core.position.z = gimbal
+		core.position.z = cant
 		core.scale = Vector3(length * 0.92, girth * 0.72, girth * 0.72)
 		var white := core.material_override as ShaderMaterial
 		if white != null:
@@ -6562,15 +6566,16 @@ func _place_plumes(holder: Node3D, ship: Dictionary) -> void:
 		holder.add_child(bloom)
 	if bloom != null:
 		bloom.visible = burn > 0.62
-		bloom.position.z = gimbal
+		bloom.position.z = cant
 		if bloom.visible:
 			bloom.scale = Vector3(length * 1.08, girth * 1.65, girth * 1.65)
 			var haze := bloom.material_override as ShaderMaterial
 			if haze != null:
 				haze.set_shader_parameter("albedo", Color(0.35, 0.7, 1.0, 0.28 + 0.22 * burn))
 	var flank := maxf(crown * 0.16, 2.4)
-	_side_plume(holder, "JetPort", Vector3(tail + 0.4, crown * 0.3, flank), lit, strafe > 0.15, boosting, t)
-	_side_plume(holder, "JetStbd", Vector3(tail + 0.4, crown * 0.3, -flank), lit, strafe < -0.15, boosting, t + 0.4)
+	var yaw := float(ship.get("yaw_hold", 0.0))
+	_side_plume(holder, "JetPort", Vector3(tail + 0.4, crown * 0.3, flank), lit, strafe > 0.15 or yaw < -0.15, boosting, t)
+	_side_plume(holder, "JetStbd", Vector3(tail + 0.4, crown * 0.3, -flank), lit, strafe < -0.15 or yaw > 0.15, boosting, t + 0.4)
 	var nose := float(holder.get_meta("nose", 24.0))
 	var brake := _side_plume(holder, "RetroJet", Vector3(nose * 0.9, crown * 0.34, 0.0), retro, retro, false, t + 0.8)
 	if brake != null:
@@ -6743,6 +6748,31 @@ func _hull_part(part: String) -> bool:
 	if part.begins_with("Trim") and part.trim_prefix("Trim").is_valid_int():
 		return true
 	return false
+
+
+func _slip_cant(ship: Dictionary) -> float:
+	var vel: Vector2 = ship.get("vel", Vector2.ZERO)
+	if vel.length() < 20.0:
+		return 0.0
+	var forward := Vector2.from_angle(float(ship.get("rot", 0.0)))
+	var right := Vector2(-forward.y, forward.x)
+	return clampf(vel.dot(right) / 160.0, -1.0, 1.0) * 1.8
+
+
+func _plate_heat(ship: Dictionary) -> float:
+	var therm := clampf(float(ship.get("therm", 0.0)) / 100.0, 0.0, 1.0)
+	if bool(ship.get("overheat", false)):
+		therm = maxf(therm, 0.85)
+	return therm
+
+
+func _set_plate_heat(node: Node, heat: float) -> void:
+	if node is MeshInstance3D:
+		var mat: Material = (node as MeshInstance3D).material_override
+		if mat is ShaderMaterial and (mat as ShaderMaterial).shader == _hull_shader:
+			(mat as ShaderMaterial).set_shader_parameter("plate_heat", heat)
+	for child in node.get_children():
+		_set_plate_heat(child, heat)
 
 
 func _paint_hull(node: Node, color: Color, accent: Color = Color(0, 0, 0, 0)) -> void:
