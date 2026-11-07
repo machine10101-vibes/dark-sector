@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Renders ship and craft hulls to PNG on a real display.
 ## godot --path . --script res://tools/ship_studio.gd -- out_dir kind[:view] ...
-## A kind is a craft id, ship:<class_id>[:bare], npc:<class_id>[:post], or mothership. A view is bow, aft, top, or side.
+## A kind is a craft id, stock:<id>[:seed], ship:<class_id>[:bare], npc:<class_id>[:post], or mothership. A view is bow, aft, top, or side.
 
 var frames := 0
 var jobs: Array = []
@@ -96,6 +96,12 @@ func _show(spec: String) -> void:
 		holder = Node3D.new()
 		var post := str(parts[2]) if parts.size() > 2 and ["bow", "aft", "top", "side"].has(str(parts[2])) == false else ""
 		stage.call("_fill_ship", holder, str(parts[1]), [], [], [], post)
+		stage.add_child(holder)
+	elif kind == "stock":
+		holder = Node3D.new()
+		var chunk := MeshInstance3D.new()
+		stage.call("dress_stock", chunk, str(parts[1]), Color("8a6238"), Color("f59e38"), int(parts[2]) if parts.size() > 2 and str(parts[2]).is_valid_int() else 4)
+		holder.add_child(chunk)
 		stage.add_child(holder)
 	else:
 		holder = stage.call("pose_craft", kind)

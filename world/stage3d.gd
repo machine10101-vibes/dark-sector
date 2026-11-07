@@ -5,6 +5,7 @@ extends Node3D
 const ForgeKit := preload("res://world/ship_forge.gd")
 const CraftForge := preload("res://world/craft_forge.gd")
 const HullForge := preload("res://world/hull_forge.gd")
+const EnvForge := preload("res://world/env_forge.gd")
 
 const _NOISE := "float hash31(vec3 p) {
 	p = fract(p * 0.1031);
@@ -413,147 +414,147 @@ void fragment() {
 "
 
 const ROCK_SHADER := "shader_type spatial;
-varying vec3 wnorm;
+render_mode diffuse_burley, specular_schlick_ggx;
+varying vec3 q;
+varying float crat;
 uniform vec4 albedo : source_color = vec4(0.45, 0.42, 0.38, 1.0);
 uniform vec4 vein_color : source_color = vec4(0.96, 0.62, 0.22, 1.0);
 uniform float seed = 0.0;
 " + _NOISE + "void vertex() {
-	vec3 nrm = normalize(NORMAL);
-	float bowl = noise3(nrm * 3.4 + vec3(seed * 1.7, 0.4, 2.1));
-	float pit = smoothstep(0.64, 0.82, bowl);
-	float lip = smoothstep(0.52, 0.66, bowl) * (1.0 - pit);
-	float grit = noise3(nrm * 12.0 + vec3(seed));
-	VERTEX += nrm * (lip * 0.09 - pit * 0.18 + (grit - 0.5) * 0.035) * length(VERTEX);
-	wnorm = normalize((MODEL_MATRIX * vec4(nrm, 0.0)).xyz);
+	q = COLOR.rgb * 2.0 - vec3(1.0);
+	crat = COLOR.a;
 }
 void fragment() {
-	vec3 n = normalize(wnorm);
-	vec3 sun = normalize(vec3(0.35, 0.86, 0.22));
-	float ndl = clamp(dot(n, sun), 0.0, 1.0);
-	float grit = fbm(n * 6.0 + vec3(seed));
-	float cavity = smoothstep(0.32, 0.72, fbm(n * 3.2 + vec3(seed * 2.0, 1.0, 0.2)));
-	float pits = smoothstep(0.62, 0.82, noise3(n * 18.0 + vec3(seed)));
-	vec3 mineral = mix(albedo.rgb, albedo.rgb * vec3(1.15, 0.92, 0.78), grit * 0.45);
-	vec3 col = mineral * (0.34 + 0.9 * ndl);
-	col = mix(col, col * 0.42, cavity * 0.7);
-	col *= 1.0 - pits * 0.22;
-	float bowl = noise3(n * 3.4 + vec3(seed * 1.7, 0.4, 2.1));
-	float pit = smoothstep(0.64, 0.82, bowl);
-	float lip = smoothstep(0.52, 0.66, bowl) * (1.0 - pit);
-	col = mix(col, col * 0.18, pit * 0.96);
-	col += mineral * lip * 0.78;
-	float flake = smoothstep(0.78, 0.94, noise3(n * 28.0 + vec3(seed * 1.4)));
-	col = mix(col, col * vec3(0.55, 0.5, 0.46), flake * 0.55);
-	float fill = clamp(dot(n, normalize(vec3(-0.45, 0.15, 0.75))), 0.0, 1.0);
-	col += mineral * fill * 0.22;
-	float bounce = clamp(dot(n, normalize(vec3(0.2, -0.35, -0.6))), 0.0, 1.0);
-	col += mineral * vec3(0.55, 0.48, 0.4) * bounce * 0.18;
-	float vein = smoothstep(0.62, 0.84, fbm(n * 7.0 + vec3(seed, 2.2, 0.5)));
-	vec3 ore = vein_color.rgb;
-	col = mix(col, ore, vein * 0.7);
-	float fleck = smoothstep(0.78, 0.94, noise3(n * 22.0 + vec3(seed * 3.0)));
-	col = mix(col, vec3(0.92, 0.78, 0.42), fleck * vein * 0.55);
-	float rim = pow(1.0 - ndl, 2.2);
-	col += mineral * rim * 0.12;
+	vec3 p = q * 2.4 + vec3(seed);
+	float broad = fbm(p * 0.9);
+	float grain = fbm(q * 13.0 + vec3(seed, 0.4, 1.1));
+	float strata = sin((q.y + broad * 0.4) * 17.0 + seed) * 0.5 + 0.5;
+	vec3 mineral = albedo.rgb * (0.68 + 0.55 * broad);
+	mineral = mix(mineral, mineral * vec3(1.14, 0.92, 0.76), strata * 0.22);
+	float bowl = smoothstep(0.5, 0.12, crat);
+	float rim = smoothstep(0.53, 0.64, crat);
+	vec3 col = mineral * (0.82 + 0.32 * grain);
+	col *= mix(1.0, 0.56, bowl);
+	col = mix(col, col * 1.38, rim * 0.55);
+	col = mix(col, albedo.rgb * vec3(1.06, 1.0, 0.9) * 0.8, bowl * 0.4 * smoothstep(0.4, 0.7, grain));
+	float vein = smoothstep(0.6, 0.84, fbm(q * 5.5 + vec3(seed, 2.2, 0.5)));
+	vein *= 1.0 - bowl * 0.55;
+	col = mix(col, vein_color.rgb, vein * 0.64);
+	float fleck = smoothstep(0.84, 0.97, noise3(q * 58.0 + vec3(seed * 3.0)));
+	col = mix(col, vec3(0.95, 0.82, 0.5), fleck * (0.3 + vein * 0.5));
+	vec3 b = q * 34.0 + vec3(seed);
+	float h0 = noise3(b);
+	vec3 g = vec3(noise3(b + vec3(0.35, 0.0, 0.0)) - h0, noise3(b + vec3(0.0, 0.35, 0.0)) - h0, noise3(b + vec3(0.0, 0.0, 0.35)) - h0);
+	vec3 gv = (VIEW_MATRIX * MODEL_MATRIX * vec4(g, 0.0)).xyz;
+	NORMAL = normalize(NORMAL - gv * 0.55);
 	ALBEDO = col;
-	ROUGHNESS = mix(mix(0.72, 0.94, cavity), 0.38, vein);
-	METALLIC = mix(0.04, 0.48, vein);
-	EMISSION = ore * vein * 0.22 + vec3(0.85, 0.62, 0.28) * fleck * vein * 0.12;
+	ROUGHNESS = mix(mix(0.92, 0.78, grain), 0.36, vein);
+	METALLIC = mix(0.02, 0.5, vein);
+	SPECULAR = 0.35;
+	EMISSION = vein_color.rgb * vein * 0.14 + vec3(0.85, 0.62, 0.28) * fleck * vein * 0.1;
 }
 "
 
 const ICE_SHADER := "shader_type spatial;
 render_mode diffuse_burley, specular_schlick_ggx;
-varying vec3 wnorm;
-varying vec3 wpos;
+varying vec3 lp;
+varying float tip;
 uniform float seed = 0.0;
-void vertex() {
-	vec3 nrm = normalize(NORMAL);
-	vec3 p = normalize(VERTEX);
-	float cube = max(max(abs(p.x), abs(p.y)), abs(p.z));
-	float hex = max(abs(p.x + p.z * 0.6), abs(p.y));
-	float face = mix(cube, hex, 0.28);
-	VERTEX += nrm * (0.04 - face * 0.025) * length(VERTEX);
-	wnorm = normalize((MODEL_MATRIX * vec4(nrm, 0.0)).xyz);
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+" + _NOISE + "void vertex() {
+	lp = VERTEX;
+	tip = COLOR.a;
 }
 void fragment() {
-	vec3 n = normalize(wnorm);
-	vec3 sun = normalize(vec3(0.35, 0.86, 0.22));
-	float ndl = clamp(dot(n, sun), 0.0, 1.0);
-	float crack = smoothstep(0.492, 0.5, abs(fract(wpos.x * 0.07 + seed) - 0.5));
-	float sheet = smoothstep(0.494, 0.5, abs(fract(wpos.z * 0.09 + seed * 1.7) - 0.5));
-	float facet = smoothstep(0.496, 0.5, abs(fract(wpos.y * 0.05 + seed * 2.2) - 0.5));
-	float grit = fract(sin(dot(n.xy, vec2(41.3, 17.7)) + seed) * 913.1);
-	vec3 deep = vec3(0.06, 0.26, 0.52);
-	vec3 face = vec3(0.48, 0.72, 0.88);
-	vec3 frost = vec3(0.78, 0.9, 0.98);
-	vec3 ice = mix(deep, face, 0.16 + 0.68 * ndl);
-	ice = mix(ice, vec3(0.36, 0.6, 0.78), grit * 0.22);
-	ice = mix(ice, deep * 0.62, max(crack, sheet * 0.55) * 0.42);
-	ice = mix(ice, face * 0.92, facet * 0.16);
-	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.7);
-	ice = mix(ice, frost, fres * 0.62);
-	float cavity = smoothstep(0.15, 0.72, 1.0 - ndl);
-	ice = mix(ice, deep * 0.7, cavity * 0.45);
-	float spark = pow(clamp(dot(n, normalize(sun + eye)), 0.0, 1.0), 42.0);
-	ALBEDO = ice;
-	ROUGHNESS = mix(0.06, 0.48, max(crack, sheet));
-	METALLIC = 0.05;
-	SPECULAR = 0.95;
-	EMISSION = vec3(0.75, 0.9, 1.0) * (pow(ndl, 10.0) * 0.55 + fres * 0.24) + vec3(0.95, 0.98, 1.0) * spark * 0.65;
+	vec3 p = lp * 0.06 + vec3(seed);
+	float body = fbm(p * 1.3);
+	float vein = fbm(p * 3.4 + vec3(0.0, lp.y * 0.05, 0.0));
+	float crack = 1.0 - smoothstep(0.0, 0.05, abs(vein - 0.5));
+	float inner = fbm(p * 0.8 + vec3(4.0, seed, 1.0));
+	vec3 deep = vec3(0.03, 0.2, 0.46);
+	vec3 shallow = vec3(0.46, 0.78, 0.96);
+	vec3 frost = vec3(0.86, 0.95, 1.0);
+	vec3 col = mix(deep, shallow, 0.22 + 0.5 * body);
+	col = mix(col, deep * 0.7, smoothstep(0.55, 0.9, inner) * 0.5);
+	col = mix(col, frost, crack * 0.42);
+	col = mix(col, frost, tip * 0.5);
+	float snow = smoothstep(0.55, 1.0, NORMAL.y * 0.5 + 0.5) * smoothstep(0.4, 0.8, fbm(p * 2.2 + vec3(7.0)));
+	col = mix(col, vec3(0.9, 0.95, 0.98), snow * 0.55);
+	float fres = pow(clamp(1.0 - abs(dot(NORMAL, VIEW)), 0.0, 1.0), 2.2);
+	ALBEDO = col;
+	ROUGHNESS = mix(0.1, 0.5, snow + crack * 0.4);
+	METALLIC = 0.04;
+	SPECULAR = 0.9;
+	EMISSION = deep * 0.5 * (1.0 - tip) + vec3(0.55, 0.78, 1.0) * fres * 0.38 + vec3(0.7, 0.9, 1.0) * crack * 0.1 + shallow * tip * 0.22;
 }
 "
 
 const PLATE_SHADER := "shader_type spatial;
-render_mode unshaded;
+render_mode unshaded, cull_disabled;
 varying vec3 onorm;
+varying float inner;
 uniform vec4 albedo : source_color = vec4(0.72, 0.58, 0.4, 1.0);
 uniform float seed = 0.0;
 void vertex() {
 	onorm = NORMAL;
+	inner = 1.0 - COLOR.a;
+}
+float h21(vec2 p) {
+	return fract(sin(dot(p, vec2(19.0, 47.0)) + seed) * 311.7);
 }
 void fragment() {
 	vec3 n = normalize(onorm);
-	float sky = clamp(n.y * 0.55 + 0.48, 0.22, 1.0);
+	if (!FRONT_FACING) {
+		n = -n;
+	}
+	float sky = clamp(n.y * 0.55 + 0.52, 0.24, 1.0);
 	vec2 uv = UV * vec2(4.0, 2.4);
 	float seam_x = smoothstep(0.08, 0.0, abs(fract(uv.x) - 0.5) - 0.42);
 	float seam_y = smoothstep(0.08, 0.0, abs(fract(uv.y) - 0.5) - 0.42);
 	float seam = max(seam_x, seam_y);
 	vec2 cell = fract(uv * vec2(7.0, 4.0)) - vec2(0.5);
 	float rivet = smoothstep(0.12, 0.02, length(cell)) * seam;
-	vec3 paint = albedo.rgb * (0.62 + 0.5 * sky);
-	paint = mix(paint, paint * vec3(0.28, 0.3, 0.32), seam * 0.85);
-	paint = mix(paint, vec3(0.72, 0.66, 0.52), rivet);
-	float scorch = smoothstep(0.78, 0.96, fract(sin(dot(uv, vec2(19.0, 47.0)) + seed) * 311.0));
-	paint = mix(paint, vec3(0.16, 0.1, 0.07), scorch * 0.55);
+	float panel = h21(floor(uv));
+	vec3 paint = albedo.rgb * (0.56 + 0.5 * sky) * (0.86 + 0.28 * panel);
+	paint = mix(paint, paint * vec3(0.26, 0.28, 0.3), seam * 0.85);
+	paint = mix(paint, vec3(0.74, 0.68, 0.54), rivet);
+	float scorch = smoothstep(0.7, 0.96, h21(floor(uv * 2.0) + 3.0));
+	paint = mix(paint, vec3(0.14, 0.09, 0.06), scorch * 0.6);
 	float bare = smoothstep(0.2, 0.7, abs(n.x) + abs(n.z) * 0.4);
-	paint = mix(paint, vec3(0.68, 0.64, 0.56), bare * 0.28);
-	ALBEDO = paint;
+	paint = mix(paint, vec3(0.68, 0.64, 0.56), bare * 0.22);
+	float soot = smoothstep(0.35, 0.0, abs(uv.y - 1.2) - 0.8) * 0.0;
+	paint = mix(paint, vec3(0.12, 0.11, 0.11) * (0.7 + 0.5 * sky), clamp(inner * 0.85 + (FRONT_FACING ? 0.0 : 0.45), 0.0, 1.0));
+	ALBEDO = paint - vec3(soot);
 	EMISSION = vec3(0.9, 0.72, 0.4) * scorch * 0.08;
 }
 "
 
 const RUBBLE_SHADER := "shader_type spatial;
 render_mode unshaded;
+varying vec3 q;
 varying vec3 onorm;
+varying float crat;
 uniform vec4 albedo : source_color = vec4(0.62, 0.48, 0.34, 1.0);
 uniform float seed = 0.0;
-void vertex() {
+" + _NOISE + "void vertex() {
+	q = COLOR.rgb * 2.0 - vec3(1.0);
+	crat = COLOR.a;
 	onorm = NORMAL;
 }
 void fragment() {
 	vec3 n = normalize(onorm);
-	float salt = fract(sin(dot(floor(n * 5.0 + vec3(seed)), vec3(17.0, 43.0, 9.0))) * 12345.6);
-	vec3 stone = mix(albedo.rgb * 0.42, albedo.rgb * 1.45, salt);
-	float sky = clamp(n.y * 0.55 + 0.62, 0.4, 1.0);
-	float crease = smoothstep(0.15, 0.72, abs(n.x) + abs(n.z));
-	stone = mix(stone * 0.55, stone, crease);
-	float sun = clamp(n.y * 0.72 + n.x * 0.28 + 0.32, 0.22, 1.0);
-	float pit = smoothstep(0.72, 0.9, fract(sin(dot(n.xy, vec2(19.0, 47.0)) + seed) * 311.0));
-	stone = mix(stone, stone * 0.45, pit * 0.65);
-	ALBEDO = stone * sky * sun;
+	float broad = fbm(q * 2.6 + vec3(seed));
+	float grain = fbm(q * 14.0 + vec3(seed, 3.0, 1.0));
+	vec3 stone = albedo.rgb * (0.5 + 0.8 * broad) * (0.84 + 0.3 * grain);
+	float bowl = smoothstep(0.5, 0.12, crat);
+	float rim = smoothstep(0.53, 0.64, crat);
+	stone *= mix(1.0, 0.55, bowl);
+	stone = mix(stone, stone * 1.4, rim * 0.5);
+	float sun = clamp(dot(n, normalize(vec3(0.38, 0.82, 0.3))) * 0.5 + 0.5, 0.0, 1.0);
+	float fill = clamp(dot(n, normalize(vec3(-0.6, 0.2, -0.5))) * 0.5 + 0.5, 0.0, 1.0);
+	float cavity = smoothstep(0.0, 0.4, 1.0 - sun);
+	vec3 lit = stone * (0.34 + 0.9 * pow(sun, 1.4) + 0.18 * fill) * (1.0 - cavity * 0.18);
+	float rimlight = pow(1.0 - clamp(abs(n.y), 0.0, 1.0), 3.0);
+	ALBEDO = lit + albedo.rgb * rimlight * 0.08;
 }
 "
 
@@ -6789,8 +6790,6 @@ func dress_stock(chunk: MeshInstance3D, id: String, tint: Color, vein: Color, se
 		stone.set_shader_parameter("vein_color", vein)
 		stone.set_shader_parameter("seed", mix)
 		chunk.material_override = stone
-	if chunk.mesh != null:
-		chunk.mesh = _smooth_copy(chunk.mesh)
 	chunk.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
@@ -6921,92 +6920,19 @@ func _rock_shader_mat(color: Color, seed: float) -> ShaderMaterial:
 
 
 func _wreck_mesh(seed: int, radius: float) -> ArrayMesh:
-	var bucket := int(round(radius))
-	var key := "wreck|%d|%d" % [posmod(seed, 9), bucket]
+	var key := "wreck|%d|%d" % [posmod(seed, 9), int(round(radius))]
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = absi(seed) + 41
-	var spine := BoxMesh.new()
-	spine.size = Vector3(radius * 2.6, radius * 0.22, radius * 0.38)
-	st.append_from(spine, 0, Transform3D.IDENTITY)
-	var bow := BoxMesh.new()
-	bow.size = Vector3(radius * 0.85, radius * 0.18, radius * 0.62)
-	var bow_basis := Basis(Vector3(0.2, 1.0, 0.15).normalized(), 0.62)
-	st.append_from(bow, 0, Transform3D(bow_basis, Vector3(radius * 1.2, radius * 0.16, radius * 0.08)))
-	var plate := BoxMesh.new()
-	plate.size = Vector3(radius * 1.15, radius * 0.07, radius * 0.72)
-	var plate_basis := Basis(Vector3.UP, rng.randf_range(-0.35, 0.35)) * Basis(Vector3(1.0, 0.15, 0.2).normalized(), 0.85)
-	st.append_from(plate, 0, Transform3D(plate_basis, Vector3(-radius * 0.15, radius * 0.32, radius * 0.42)))
-	var rib := BoxMesh.new()
-	rib.size = Vector3(radius * 0.12, radius * 0.78, radius * 0.14)
-	st.append_from(rib, 0, Transform3D(Basis(Vector3.FORWARD, 0.45), Vector3(radius * 0.15, radius * 0.22, -radius * 0.36)))
-	var chunk := BoxMesh.new()
-	chunk.size = Vector3(radius * 0.48, radius * 0.28, radius * 0.42)
-	st.append_from(chunk, 0, Transform3D(Basis(Vector3.UP, rng.randf() * TAU), Vector3(-radius * 0.95, -radius * 0.04, -radius * 0.18)))
-	var hatch := CylinderMesh.new()
-	hatch.top_radius = radius * 0.2
-	hatch.bottom_radius = radius * 0.24
-	hatch.height = radius * 0.08
-	hatch.radial_segments = 14
-	st.append_from(hatch, 0, Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(radius * 0.15, radius * 0.3, 0.02)))
-	var lip := BoxMesh.new()
-	lip.size = Vector3(radius * 0.85, radius * 0.045, radius * 0.16)
-	st.append_from(lip, 0, Transform3D(Basis(Vector3.UP, 0.35), Vector3(radius * 0.95, radius * 0.02, -radius * 0.28)))
-	var spar := BoxMesh.new()
-	spar.size = Vector3(radius * 1.4, radius * 0.08, radius * 0.08)
-	st.append_from(spar, 0, Transform3D(Basis(Vector3.FORWARD, 0.2), Vector3(-radius * 0.2, -radius * 0.12, radius * 0.22)))
-	var tear := BoxMesh.new()
-	tear.size = Vector3(radius * 0.62, radius * 0.05, radius * 0.95)
-	st.append_from(tear, 0, Transform3D(Basis(Vector3(0.4, 0.9, 0.1).normalized(), 1.1), Vector3(radius * 0.35, radius * 0.18, -radius * 0.5)))
-	var pane := BoxMesh.new()
-	pane.size = Vector3(radius * 0.28, radius * 0.16, radius * 0.04)
-	st.append_from(pane, 0, Transform3D(Basis(Vector3.UP, 0.7), Vector3(-radius * 0.4, radius * 0.14, radius * 0.08)))
-	var bell := CylinderMesh.new()
-	bell.top_radius = radius * 0.08
-	bell.bottom_radius = radius * 0.22
-	bell.height = radius * 0.58
-	bell.radial_segments = 12
-	st.append_from(bell, 0, Transform3D(Basis(Vector3.FORWARD, PI * 0.5), Vector3(-radius * 1.38, radius * 0.08, 0.0)))
-	var antenna := CylinderMesh.new()
-	antenna.top_radius = radius * 0.02
-	antenna.bottom_radius = radius * 0.035
-	antenna.height = radius * 0.98
-	antenna.radial_segments = 8
-	st.append_from(antenna, 0, Transform3D(Basis(Vector3(0.3, 1.0, 0.1).normalized(), 0.42), Vector3(radius * 0.22, radius * 0.58, radius * 0.1)))
-	var strut := BoxMesh.new()
-	strut.size = Vector3(radius * 0.08, radius * 0.58, radius * 0.08)
-	st.append_from(strut, 0, Transform3D(Basis(Vector3.FORWARD, -0.7), Vector3(-radius * 0.55, radius * 0.3, radius * 0.32)))
-	var flake := BoxMesh.new()
-	flake.size = Vector3(radius * 0.4, radius * 0.045, radius * 0.55)
-	st.append_from(flake, 0, Transform3D(Basis(Vector3(0.2, 0.6, 0.8).normalized(), 1.4), Vector3(radius * 0.72, -radius * 0.12, radius * 0.35)))
-	var skin := BoxMesh.new()
-	skin.size = Vector3(radius * 0.92, radius * 0.05, radius * 0.48)
-	st.append_from(skin, 0, Transform3D(Basis(Vector3(0.15, 0.95, 0.25).normalized(), -0.55), Vector3(-radius * 0.35, radius * 0.4, -radius * 0.08)))
-	var rivet := BoxMesh.new()
-	rivet.size = Vector3(radius * 0.7, radius * 0.03, radius * 0.06)
-	st.append_from(rivet, 0, Transform3D(Basis(Vector3.UP, -0.2), Vector3(radius * 0.05, radius * 0.36, radius * 0.22)))
-	var mesh := st.commit()
+	var mesh: ArrayMesh = EnvForge.wreck(posmod(seed, 64) * 3 + int(round(radius)) % 5, radius)
 	_mesh_cache[key] = mesh
 	return mesh
 
 
 func _rubble_mesh(seed: int, radius: float) -> ArrayMesh:
-	var bucket := int(round(radius))
-	var key := "rubble|%d|%d" % [posmod(seed, 13), bucket]
+	var key := "rubble|%d|%d" % [posmod(seed, 7), int(round(radius))]
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = absi(seed) + 91
-	_add_crumple(st, rng, radius, Vector3.ZERO)
-	_add_crumple(st, rng, radius * 0.7, Vector3(radius * 0.98, radius * 0.12, radius * 0.18))
-	_add_crumple(st, rng, radius * 0.62, Vector3(-radius * 0.72, radius * 0.38, radius * 0.58))
-	_add_crumple(st, rng, radius * 0.48, Vector3(radius * 0.12, radius * 0.78, -radius * 0.66))
-	var mesh := st.commit()
+	var mesh: ArrayMesh = EnvForge.rubble(posmod(seed, 64) * 3 + int(round(radius)) % 5, radius)
 	_mesh_cache[key] = mesh
 	return mesh
 
@@ -7045,195 +6971,30 @@ func _add_crumple(st: SurfaceTool, rng: RandomNumberGenerator, radius: float, ce
 
 
 func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
-	var bucket := int(round(radius))
-	var key := "rockvol|%d|%d" % [posmod(seed, 11), bucket]
+	var key := "rock|%d|%d" % [posmod(seed, 11), int(round(radius))]
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var lat := 16
-	var lon := 24
-	var rng := RandomNumberGenerator.new()
-	rng.seed = absi(seed) + 17
-	var rads := PackedFloat32Array()
-	rads.resize((lat + 1) * lon)
-	var crater_y := 4 + posmod(seed, 7)
-	var crater_x := 3 + posmod(seed * 3, lon)
-	var crater_y2 := 8 + posmod(seed * 5, 6)
-	var crater_x2 := 11 + posmod(seed * 7, lon)
-	var crater_y3 := 6 + posmod(seed * 11, 8)
-	var crater_x3 := 17 + posmod(seed * 13, lon)
-	var wobble := 0.0
-	for yi in lat + 1:
-		for xi in lon:
-			wobble = 0.82 + rng.randf() * 0.22
-			if yi == 0 or yi == lat:
-				wobble = 0.9 + rng.randf() * 0.08
-			var dy := absi(yi - crater_y)
-			var dx := absi(xi - crater_x)
-			if dx > lon / 2:
-				dx = lon - dx
-			var ring := dy + dx
-			if ring <= 1:
-				wobble *= 0.62
-			elif ring == 2:
-				wobble *= 1.08
-			var dy2 := absi(yi - crater_y2)
-			var dx2 := absi(xi - crater_x2)
-			if dx2 > lon / 2:
-				dx2 = lon - dx2
-			var ring2 := dy2 + dx2
-			if ring2 <= 1:
-				wobble *= 0.7
-			elif ring2 == 2:
-				wobble *= 1.06
-			var dy3 := absi(yi - crater_y3)
-			var dx3 := absi(xi - crater_x3)
-			if dx3 > lon / 2:
-				dx3 = lon - dx3
-			var ring3 := dy3 + dx3
-			if ring3 <= 1:
-				wobble *= 0.66
-			elif ring3 == 2:
-				wobble *= 1.07
-			rads[yi * lon + xi] = wobble
-	var a := Vector3.ZERO
-	var b := Vector3.ZERO
-	var c := Vector3.ZERO
-	var d := Vector3.ZERO
-	var nrm := Vector3.UP
-	for y0 in lat:
-		for x0 in lon:
-			a = _rock_vert(y0, x0, lat, lon, rads, radius)
-			b = _rock_vert(y0, x0 + 1, lat, lon, rads, radius)
-			c = _rock_vert(y0 + 1, x0 + 1, lat, lon, rads, radius)
-			d = _rock_vert(y0 + 1, x0, lat, lon, rads, radius)
-			nrm = (b - a).cross(d - a)
-			if nrm.length_squared() < 0.0001:
-				nrm = a.normalized()
-			_rock_tri(st, a, b, d, nrm.normalized())
-			nrm = (c - b).cross(d - b)
-			if nrm.length_squared() < 0.0001:
-				nrm = d.normalized()
-			_rock_tri(st, b, c, d, nrm.normalized())
-	_add_rock_lobe(st, rng, radius * 0.48, Vector3(radius * 0.55, radius * 0.08, radius * 0.12), true)
-	_add_rock_lobe(st, rng, radius * 0.4, Vector3(-radius * 0.32, radius * 0.16, radius * 0.46), true)
-	_add_rock_lobe(st, rng, radius * 0.32, Vector3(radius * 0.06, -radius * 0.4, -radius * 0.34), true)
-	_add_rock_lobe(st, rng, radius * 0.28, Vector3(-radius * 0.46, -radius * 0.12, radius * 0.22), true)
-	_add_rock_lobe(st, rng, radius * 0.24, Vector3(radius * 0.36, radius * 0.32, -radius * 0.3), true)
-	_add_rock_lobe(st, rng, radius * 0.22, Vector3(-radius * 0.14, -radius * 0.44, radius * 0.36), true)
-	_add_rock_lobe(st, rng, radius * 0.26, Vector3(radius * 0.18, radius * 0.4, radius * 0.34), true)
-	_add_rock_lobe(st, rng, radius * 0.2, Vector3(-radius * 0.4, radius * 0.26, -radius * 0.22), true)
-	_add_rock_lobe(st, rng, radius * 0.3, Vector3(radius * 0.42, -radius * 0.22, radius * 0.18), true)
-	st.index()
-	st.generate_normals()
-	var mesh := st.commit()
+	var mesh: ArrayMesh = EnvForge.rock(posmod(seed, 64) * 3 + int(round(radius)) % 5, radius)
 	_mesh_cache[key] = mesh
 	return mesh
 
 
 func _crystal_mesh(seed: int, radius: float) -> ArrayMesh:
-	var bucket := int(round(radius))
-	var key := "crystal|%d|%d" % [posmod(seed, 11), bucket]
+	var key := "crystal|%d|%d" % [posmod(seed, 9), int(round(radius))]
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = absi(seed) + 53
-	var lat := 7
-	var lon := 10
-	var rads := PackedFloat32Array()
-	rads.resize((lat + 1) * lon)
-	for yi in lat + 1:
-		for xi in lon:
-			var step := 0.48 + float(rng.randi_range(0, 4)) * 0.16
-			if yi == 0 or yi == lat:
-				step = 0.62
-			rads[yi * lon + xi] = step
-	for y0 in lat:
-		for x0 in lon:
-			var a := _rock_vert(y0, x0, lat, lon, rads, radius)
-			var b := _rock_vert(y0, x0 + 1, lat, lon, rads, radius)
-			var c := _rock_vert(y0 + 1, x0 + 1, lat, lon, rads, radius)
-			var d := _rock_vert(y0 + 1, x0, lat, lon, rads, radius)
-			var nrm := (b - a).cross(d - a)
-			if nrm.length_squared() < 0.0001:
-				nrm = a.normalized()
-			_rock_tri(st, a, b, d, nrm.normalized())
-			nrm = (c - b).cross(d - b)
-			if nrm.length_squared() < 0.0001:
-				nrm = d.normalized()
-			_rock_tri(st, b, c, d, nrm.normalized())
-	for i in 5:
-		var long := radius * rng.randf_range(0.52, 0.92)
-		var thick := radius * rng.randf_range(0.2, 0.34)
-		var basis := Basis(Vector3(rng.randf() - 0.5, 1.0, rng.randf() - 0.5).normalized(), rng.randf_range(0.2, 1.1))
-		var xf := Transform3D(basis, Vector3(rng.randf_range(-0.16, 0.16), rng.randf_range(-0.08, 0.2), rng.randf_range(-0.16, 0.16)) * radius)
-		_add_box(st, xf, Vector3(thick, long, thick))
-	var mesh := st.commit()
+	var mesh: ArrayMesh = EnvForge.crystal(posmod(seed, 64) * 3 + int(round(radius)) % 5, radius)
 	_mesh_cache[key] = mesh
 	return mesh
 
 
 func _ice_mesh(seed: int, radius: float) -> ArrayMesh:
-	var bucket := int(round(radius))
-	var key := "icevol|%d|%d" % [posmod(seed, 11), bucket]
+	var key := "ice|%d|%d" % [posmod(seed, 11), int(round(radius))]
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var lat := 18
-	var lon := 26
-	var rng := RandomNumberGenerator.new()
-	rng.seed = absi(seed) + 71
-	var rads := PackedFloat32Array()
-	rads.resize((lat + 1) * lon)
-	var wobble := 0.0
-	for yi in lat + 1:
-		for xi in lon:
-			wobble = 0.9 + rng.randf() * 0.16
-			if yi == 0 or yi == lat:
-				wobble = 0.92 + rng.randf() * 0.08
-			if (yi + xi) % 5 == 0:
-				wobble *= 0.94
-			rads[yi * lon + xi] = wobble
-	var a := Vector3.ZERO
-	var b := Vector3.ZERO
-	var c := Vector3.ZERO
-	var d := Vector3.ZERO
-	var nrm := Vector3.UP
-	for y0 in lat:
-		for x0 in lon:
-			a = _rock_vert(y0, x0, lat, lon, rads, radius)
-			b = _rock_vert(y0, x0 + 1, lat, lon, rads, radius)
-			c = _rock_vert(y0 + 1, x0 + 1, lat, lon, rads, radius)
-			d = _rock_vert(y0 + 1, x0, lat, lon, rads, radius)
-			nrm = (b - a).cross(d - a)
-			if nrm.length_squared() < 0.0001:
-				nrm = a.normalized()
-			_rock_tri(st, a, b, d, nrm.normalized())
-			nrm = (c - b).cross(d - b)
-			if nrm.length_squared() < 0.0001:
-				nrm = d.normalized()
-			_rock_tri(st, b, c, d, nrm.normalized())
-	_add_rock_lobe(st, rng, radius * 0.58, Vector3(radius * 0.42, radius * 0.06, radius * 0.14), true)
-	_add_rock_lobe(st, rng, radius * 0.5, Vector3(-radius * 0.3, radius * 0.14, radius * 0.38), true)
-	_add_rock_lobe(st, rng, radius * 0.44, Vector3(radius * 0.1, -radius * 0.32, -radius * 0.3), true)
-	_add_rock_lobe(st, rng, radius * 0.4, Vector3(-radius * 0.4, -radius * 0.1, radius * 0.22), true)
-	_add_rock_lobe(st, rng, radius * 0.34, Vector3(radius * 0.32, radius * 0.24, -radius * 0.32), true)
-	_add_rock_lobe(st, rng, radius * 0.3, Vector3(-radius * 0.14, radius * 0.36, radius * 0.26), true)
-	for i in 2:
-		var shelf := Transform3D(
-			Basis(Vector3.UP, rng.randf_range(-0.2, 0.2)).rotated(Vector3.RIGHT, rng.randf_range(-0.12, 0.12)),
-			Vector3(rng.randf_range(-0.12, 0.12), rng.randf_range(-0.06, 0.1), rng.randf_range(-0.12, 0.12)) * radius
-		)
-		_add_box(st, shelf, Vector3(radius * 0.86, radius * 0.38, radius * 0.58))
-	st.index()
-	st.generate_normals()
-	var ice := st.commit()
-	_mesh_cache[key] = ice
-	return ice
+	var mesh: ArrayMesh = EnvForge.ice(posmod(seed, 64) * 3 + int(round(radius)) % 5, radius)
+	_mesh_cache[key] = mesh
+	return mesh
 
 
 func _add_rock_lobe(st: SurfaceTool, rng: RandomNumberGenerator, radius: float, center: Vector3, calm: bool = false) -> void:
