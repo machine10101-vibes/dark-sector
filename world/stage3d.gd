@@ -2,6 +2,9 @@ extends Node3D
 
 ## Sim-space meshes. X is chart X, Y is up, Z is negative chart Y.
 
+const ForgeKit := preload("res://world/ship_forge.gd")
+const CraftForge := preload("res://world/craft_forge.gd")
+
 const _NOISE := "float hash31(vec3 p) {
 	p = fract(p * 0.1031);
 	p += dot(p, p.yzx + 33.33);
@@ -726,6 +729,8 @@ var _corona_shader: Shader
 var _ray_shader: Shader
 var _hull_shader: Shader
 var _glass_shader: Shader
+var _forge
+var _smith
 var _plume_shader: Shader
 var _ring_shader: Shader
 var _nebula_shader: Shader
@@ -754,6 +759,8 @@ func _ready() -> void:
 	_hull_shader = _compile(HULL_SHADER)
 	_glass_shader = _compile(GLASS_SHADER)
 	_plume_shader = _compile(PLUME_SHADER)
+	_forge = ForgeKit.new(self, _plume_shader)
+	_smith = CraftForge.new(_forge)
 	_sun = DirectionalLight3D.new()
 	_sun.name = "Sun"
 	_sun.light_color = Color("f2e4c4")
@@ -5939,6 +5946,7 @@ func _dish_mesh(radius: float) -> ArrayMesh:
 func _sync_craft(sim) -> void:
 	_sync_base(sim)
 	var index := 0
+	var berth := 0
 	for item in sim.craft:
 		var row: Dictionary = item
 		var pos: Vector2 = row.pos
@@ -5953,10 +5961,12 @@ func _sync_craft(sim) -> void:
 				index += 1
 				continue
 			if str(row.get("home", "")) == "base" and typeof(sim.base) == TYPE_DICTIONARY and not sim.base.is_empty():
-				var beam := Vector2.from_angle(float(sim.base.get("rot", 0.0)) + PI * 0.5)
-				pos = sim.base.pos + beam * (36.0 + float(index) * 18.0)
-				rot = float(sim.base.get("rot", rot))
-				height = 8.0
+				var heading := float(sim.base.get("rot", 0.0))
+				var pad: Dictionary = _smith.pad_pose(berth)
+				berth += 1
+				pos = sim.base.pos + Vector2.from_angle(heading) * float(pad.fore) + Vector2.from_angle(heading + PI * 0.5) * float(pad.side)
+				rot = heading
+				height = CraftForge.PAD_HEIGHT
 			else:
 				var pose: Dictionary = CraftOrders.escort_pose(sim, row, index)
 				pos = pose.pos
@@ -6013,7 +6023,7 @@ func _dress_harvest_work(sim, holder: Node3D, row: Dictionary, _pos: Vector2) ->
 		orb.rings = 6
 		glow.mesh = orb
 		holder.add_child(glow)
-	glow.position = Vector3(5.4, 2.2, 0.0)
+	glow.position = Vector3(16.6, 2.35, 0.0) if kind == "harvest_drone" else Vector3(11.8, 1.8, 0.0)
 	var pulse := 0.65 + 0.35 * sin(float(sim.time) * 22.0)
 	glow.scale = Vector3.ONE * pulse
 	var tint := Color("ffe0a0") if kind == "harvest_drone" else Color("c8ffe8")
@@ -6058,299 +6068,7 @@ func _craft_bell(node: Node3D, part_name: String, at: Vector3, mouth: float, len
 
 
 func _assemble_craft(node: Node3D, kind: String) -> void:
-	var poly := _craft_poly(kind)
-	var height := 3.6
-	if kind == "lance_drone" or kind == "harvest_drone" or kind == "salvage_tender" or kind == "livestock_lighter":
-		height = 4.6
-	elif kind == "survey_probe":
-		height = 2.2
-	elif kind == "dart_drone" or kind == "fang_drone":
-		height = 2.55
-	elif kind == "sentry_drone":
-		height = 3.2
-	elif kind == "picket_drone":
-		height = 2.4
-	elif kind == "manifest_drone":
-		height = 2.6
-	elif kind == "hawser_drone":
-		height = 3.1
-	elif kind == "repair_drone":
-		height = 2.1
-	elif kind == "mothership":
-		height = 18.0
-	var mesh := _hull_loft(poly, height)
-	if mesh == null:
-		mesh = _prism(poly, height, 0.78)
-	if mesh == null:
-		return
-	var body := MeshInstance3D.new()
-	body.name = "Plate"
-	body.mesh = mesh
-	body.material_override = _hull_mat(_craft_color(kind))
-	node.add_child(body)
-	var cap_mesh := _prism(_inset_poly(poly, 0.68), 0.38, 0.9)
-	if cap_mesh != null:
-		var cap := MeshInstance3D.new()
-		cap.name = "Deck"
-		cap.mesh = cap_mesh
-		cap.position.y = height * 0.82
-		cap.material_override = _hull_mat(_craft_color(kind).lightened(0.08))
-		node.add_child(cap)
-	var lamp := MeshInstance3D.new()
-	lamp.name = "LampNose"
-	var bulb := SphereMesh.new()
-	bulb.radius = 0.38
-	bulb.height = 0.76
-	lamp.mesh = bulb
-	lamp.position = Vector3(6.8, height * 0.58, 0.0)
-	var glow := StandardMaterial3D.new()
-	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	glow.albedo_color = Color("f2e2c4")
-	glow.emission_enabled = true
-	glow.emission = Color("f2e2c4")
-	glow.emission_energy_multiplier = 1.6
-	lamp.material_override = glow
-	node.add_child(lamp)
-	var nozzle := MeshInstance3D.new()
-	nozzle.name = "Exhaust"
-	nozzle.mesh = _plume_mesh(5.2, 0.52)
-	nozzle.position = Vector3(-6.6, height * 0.4, 0.0)
-	var burn := ShaderMaterial.new()
-	burn.shader = _plume_shader
-	burn.set_shader_parameter("albedo", Color(0.95, 0.62, 0.28, 0.45))
-	burn.set_shader_parameter("core", 0.35)
-	nozzle.material_override = burn
-	node.add_child(nozzle)
-	_craft_bell(node, "BellMain", Vector3(-6.2, height * 0.36, 0.0), 1.35, 2.45)
-	if kind != "survey_probe" and kind != "dart_drone" and kind != "sentry_drone" and kind != "livestock_lighter" and kind != "picket_drone" and kind != "manifest_drone" and kind != "hawser_drone":
-		var canopy := MeshInstance3D.new()
-		canopy.name = "Glass"
-		canopy.mesh = _canopy_mesh(2.8, 1.25, 1.15)
-		canopy.position = Vector3(1.6, height * 0.98, 0.0)
-		var pane := StandardMaterial3D.new()
-		pane.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		pane.albedo_color = Color(0.45, 0.82, 0.88, 0.72)
-		pane.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		pane.emission_enabled = true
-		pane.emission = Color(0.55, 0.9, 0.95)
-		pane.emission_energy_multiplier = 1.6
-		canopy.material_override = pane
-		node.add_child(canopy)
-		_kit(node, "ChineP", Vector3(7.2, 0.42, 0.72), Vector3(0.1, height * 0.26, 2.05), Color("2a3034"))
-		_kit(node, "ChineS", Vector3(7.2, 0.42, 0.72), Vector3(0.1, height * 0.26, -2.05), Color("2a3034"))
-	_dress_craft(node, kind)
-
-
-func _dress_craft(node: Node3D, kind: String) -> void:
-	match kind:
-		"survey_probe":
-			_lens(node, "Dish", 6.4, Vector3(11.4, 2.85, 0.0), Color("d7e6ee"))
-			var dish := node.get_node("Dish") as Node3D
-			dish.rotation.z = -PI * 0.5
-			_cyl(node, "Boom", 0.42, 8.6, Vector3(7.2, 2.85, 0.0), "x", Color("8a9698"))
-			_kit(node, "Bus", Vector3(4.6, 1.15, 1.65), Vector3(-0.6, 2.55, 0.0), Color("2a3438"))
-			_kit(node, "WingP", Vector3(9.6, 0.32, 8.2), Vector3(0.2, 2.15, 8.6), Color("1a5a78"))
-			_kit(node, "WingS", Vector3(9.6, 0.32, 8.2), Vector3(0.2, 2.15, -8.6), Color("1a5a78"))
-			_kit(node, "CellP", Vector3(8.2, 0.12, 6.8), Vector3(0.2, 2.38, 8.6), Color("2a8ab0"))
-			_kit(node, "CellS", Vector3(8.2, 0.12, 6.8), Vector3(0.2, 2.38, -8.6), Color("2a8ab0"))
-			_kit(node, "Radiator", Vector3(3.6, 0.12, 4.2), Vector3(-3.8, 2.35, 0.0), Color("3a3330"))
-			_cyl(node, "Antenna", 0.08, 4.6, Vector3(-2.2, 5.1, 0.0), "y", Color("c8d0d4"))
-		"harvest_drone":
-			var wheel := MeshInstance3D.new()
-			wheel.name = "Cutter"
-			var torus := TorusMesh.new()
-			torus.inner_radius = 2.45
-			torus.outer_radius = 4.25
-			torus.rings = 22
-			torus.ring_segments = 16
-			wheel.mesh = torus
-			wheel.position = Vector3(8.6, 2.75, 0.0)
-			wheel.rotation.y = PI * 0.5
-			wheel.material_override = _metal(Color("d8d4c8"))
-			node.add_child(wheel)
-			for i in 12:
-				var ang := TAU * (1.0 / 12.0) * float(i)
-				_kit(node, "Tooth%d" % i, Vector3(0.72, 0.28, 1.05), Vector3(8.6, 2.75 + sin(ang) * 3.85, cos(ang) * 3.85), Color("e8e2d4"))
-			_kit(node, "ArmP", Vector3(8.2, 0.82, 0.82), Vector3(5.0, 3.75, 4.65), Color("8a6a38"))
-			_kit(node, "ArmS", Vector3(8.2, 0.82, 0.82), Vector3(5.0, 3.75, -4.65), Color("8a6a38"))
-			_kit(node, "JawP", Vector3(2.85, 3.65, 0.72), Vector3(10.2, 2.75, 3.55), Color("e2d6c0"))
-			_kit(node, "JawS", Vector3(2.85, 3.65, 0.72), Vector3(10.2, 2.75, -3.55), Color("e2d6c0"))
-			_kit(node, "Bucket", Vector3(4.8, 2.15, 5.6), Vector3(-2.0, 1.15, 0.0), Color("6a5438"))
-			_kit(node, "Hopper", Vector3(6.2, 3.15, 4.8), Vector3(-3.6, 3.55, 0.0), Color("c48a42"))
-			_cyl(node, "Bit", 1.05, 4.25, Vector3(10.8, 2.75, 0.0), "x", Color("e8e0d4"))
-			_kit(node, "Guard", Vector3(0.55, 3.45, 5.2), Vector3(6.4, 2.75, 0.0), Color("3a3630"))
-			_kit(node, "Cab", Vector3(2.65, 1.75, 2.35), Vector3(0.4, 5.05, 0.0), Color("4a3a28"))
-		"salvage_tender":
-			_kit(node, "Boom", Vector3(7.2, 0.28, 0.28), Vector3(1.7, 6.35, 0.0), Color("8a5a32"))
-			_kit(node, "ClawP", Vector3(1.15, 0.78, 0.18), Vector3(5.4, 5.55, 0.6), Color("e4d8c4"))
-			_kit(node, "ClawS", Vector3(1.15, 0.78, 0.18), Vector3(5.4, 5.55, -0.6), Color("e4d8c4"))
-			_cyl(node, "Winch", 0.68, 0.78, Vector3(-1.6, 5.2, 0.0), "z", Color("24282c"))
-			_kit(node, "AFrameP", Vector3(0.24, 4.6, 0.24), Vector3(-0.8, 4.5, 1.15), Color("6a4a2c"))
-			_kit(node, "AFrameS", Vector3(0.24, 4.6, 0.24), Vector3(-0.8, 4.5, -1.15), Color("6a4a2c"))
-			_kit(node, "Hook", Vector3(0.3, 1.2, 0.18), Vector3(5.8, 4.75, 0.0), Color("c4b8a4"))
-			_kit(node, "Cab", Vector3(2.2, 1.35, 1.8), Vector3(-2.4, 4.2, 0.0), Color("3a2a20"))
-		"away_shuttle":
-			_kit(node, "WingP", Vector3(4.2, 0.14, 3.8), Vector3(-0.9, 2.45, 5.1), Color("d4cfc2"))
-			_kit(node, "WingS", Vector3(4.2, 0.14, 3.8), Vector3(-0.9, 2.45, -5.1), Color("d4cfc2"))
-			_kit(node, "Door", Vector3(1.5, 1.7, 0.12), Vector3(1.8, 2.35, 1.65), Color("2a3034"))
-			_kit(node, "Ramp", Vector3(1.8, 0.12, 1.4), Vector3(-4.4, 0.85, 0.0), Color("4a453c"))
-			_craft_bell(node, "BellP", Vector3(-5.8, 1.55, 1.35), 0.55, 1.1)
-			_craft_bell(node, "BellS", Vector3(-5.8, 1.55, -1.35), 0.55, 1.1)
-		"dart_drone":
-			_cyl(node, "Spike", 0.38, 16.4, Vector3(7.4, 2.15, 0.0), "x", Color("9fe8f4"))
-			_kit(node, "FinP", Vector3(8.4, 0.42, 5.6), Vector3(-0.8, 1.85, 6.4), Color("2a8aa0"))
-			_kit(node, "FinS", Vector3(8.4, 0.42, 5.6), Vector3(-0.8, 1.85, -6.4), Color("2a8aa0"))
-			_kit(node, "VaneP", Vector3(3.2, 2.15, 0.12), Vector3(-2.6, 3.15, 0.85), Color("163848"))
-			_kit(node, "VaneS", Vector3(3.2, 2.15, 0.12), Vector3(-2.6, 3.15, -0.85), Color("163848"))
-			_cyl(node, "GunN", 0.18, 6.4, Vector3(8.8, 1.85, 0.0), "x", Color("16181a"))
-			_kit(node, "Canopy", Vector3(2.15, 0.42, 0.85), Vector3(1.8, 3.35, 0.0), Color("2a6878"))
-		"sting_drone":
-			_cyl(node, "GunA", 0.34, 6.2, Vector3(4.6, 3.35, 3.45), "x", Color("16181a"))
-			_cyl(node, "GunB", 0.34, 6.2, Vector3(4.6, 3.35, -3.45), "x", Color("16181a"))
-			_cyl(node, "GunC", 0.34, 6.2, Vector3(4.6, 2.15, 1.65), "x", Color("16181a"))
-			_cyl(node, "GunD", 0.34, 6.2, Vector3(4.6, 2.15, -1.65), "x", Color("16181a"))
-			_cyl(node, "Drum", 1.65, 3.4, Vector3(-0.4, 2.75, 0.0), "z", Color("6a4a22"))
-			_kit(node, "Belt", Vector3(2.6, 0.38, 3.4), Vector3(1.9, 3.05, 0.0), Color("2a2014"))
-			_craft_bell(node, "BellP", Vector3(-5.2, 1.5, 1.75), 0.95, 1.85)
-			_craft_bell(node, "BellS", Vector3(-5.2, 1.5, -1.75), 0.95, 1.85)
-			_kit(node, "Canopy", Vector3(2.45, 0.58, 1.35), Vector3(1.4, 4.55, 0.0), Color("5a4030"))
-		"wasp_drone":
-			_cyl(node, "GunP", 0.38, 7.4, Vector3(3.2, 3.25, 7.2), "x", Color("16181a"))
-			_cyl(node, "GunS", 0.38, 7.4, Vector3(3.2, 3.25, -7.2), "x", Color("16181a"))
-			_kit(node, "PodP", Vector3(4.2, 1.25, 1.25), Vector3(1.8, 3.2, 7.2), Color("2a2420"))
-			_kit(node, "PodS", Vector3(4.2, 1.25, 1.25), Vector3(1.8, 3.2, -7.2), Color("2a2420"))
-			_kit(node, "WingP", Vector3(7.6, 0.36, 5.4), Vector3(-0.2, 2.55, 5.8), Color("8a3a18"))
-			_kit(node, "WingS", Vector3(7.6, 0.36, 5.4), Vector3(-0.2, 2.55, -5.8), Color("8a3a18"))
-			_craft_bell(node, "BellP", Vector3(-5.4, 1.65, 2.15), 1.05, 2.05)
-			_craft_bell(node, "BellS", Vector3(-5.4, 1.65, -2.15), 1.05, 2.05)
-			_kit(node, "Stripe", Vector3(6.8, 0.14, 1.05), Vector3(0.4, 4.45, 0.0), Color("f0b44a"))
-			_kit(node, "Canopy", Vector3(2.7, 0.65, 1.4), Vector3(2.8, 4.85, 0.0), Color("5a3820"))
-		"fang_drone":
-			_kit(node, "Snout", Vector3(10.6, 1.25, 1.65), Vector3(6.8, 2.45, 0.0), Color("5a1824"))
-			_cyl(node, "Fang", 0.32, 7.4, Vector3(11.2, 2.85, 0.55), "x", Color("e8c8c4"))
-			_cyl(node, "FangS", 0.32, 7.4, Vector3(11.2, 2.85, -0.55), "x", Color("e8c8c4"))
-			_kit(node, "FinP", Vector3(5.4, 0.38, 4.15), Vector3(-1.0, 2.25, 5.6), Color("3a1018"))
-			_kit(node, "FinS", Vector3(5.4, 0.38, 4.15), Vector3(-1.0, 2.25, -5.6), Color("3a1018"))
-			_cyl(node, "GunV", 0.28, 6.2, Vector3(2.6, 1.25, 0.0), "x", Color("16181a"))
-			_kit(node, "Canopy", Vector3(2.65, 0.62, 1.25), Vector3(1.4, 4.25, 0.0), Color("2a1016"))
-		"lance_drone":
-			_kit(node, "Block", Vector3(8.4, 3.25, 4.6), Vector3(-0.2, 2.65, 0.0), Color("6a6e74"))
-			_cyl(node, "Lance", 0.82, 14.8, Vector3(7.8, 3.05, 0.0), "x", Color("d8dde4"))
-			_kit(node, "Collar", Vector3(2.65, 2.15, 2.15), Vector3(4.2, 3.05, 0.0), Color("c8b48a"))
-			_kit(node, "PlateP", Vector3(5.4, 0.42, 4.15), Vector3(-1.2, 2.05, 4.0), Color("8a8e96"))
-			_kit(node, "PlateS", Vector3(5.4, 0.42, 4.15), Vector3(-1.2, 2.05, -4.0), Color("8a8e96"))
-			_craft_bell(node, "BellP", Vector3(-6.2, 1.5, 2.05), 1.25, 2.45)
-			_craft_bell(node, "BellS", Vector3(-6.2, 1.5, -2.05), 1.25, 2.45)
-			_kit(node, "Canopy", Vector3(2.65, 0.65, 1.45), Vector3(1.15, 4.85, 0.0), Color("2a3038"))
-		"picket_drone":
-			_cyl(node, "Mast", 0.16, 5.2, Vector3(0.4, 4.6, 0.0), "y", Color("d7e6ee"))
-			_lens(node, "Dish", 2.4, Vector3(0.4, 6.8, 0.0), Color("e8f4f8"))
-			_nav_lamp(node, "LampBow", Vector3(6.4, 2.4, 0.0), Color("9fd0ff"), 0.28)
-			_kit(node, "FinP", Vector3(5.2, 0.18, 3.4), Vector3(-0.6, 1.8, 3.6), Color("1a5a78"))
-			_kit(node, "FinS", Vector3(5.2, 0.18, 3.4), Vector3(-0.6, 1.8, -3.6), Color("1a5a78"))
-		"manifest_drone":
-			_kit(node, "Slate", Vector3(3.2, 2.4, 0.18), Vector3(1.2, 3.6, 0.0), Color("1c2428"))
-			_lens(node, "Reader", 1.6, Vector3(2.6, 3.6, 0.55), Color("9fd0c8"))
-			_nav_lamp(node, "LampScan", Vector3(4.2, 3.2, 0.0), Color("7dffc2"), 0.26)
-			_kit(node, "Clip", Vector3(0.35, 0.7, 1.4), Vector3(2.6, 4.7, 0.0), Color("c8b48a"))
-		"hawser_drone":
-			_cyl(node, "Boom", 0.32, 11.0, Vector3(4.6, 3.4, 0.0), "x", Color("8a5a32"))
-			_kit(node, "Collar", Vector3(1.8, 1.5, 1.8), Vector3(9.4, 3.2, 0.0), Color("3a4248"))
-			_kit(node, "Cable", Vector3(7.2, 0.16, 0.16), Vector3(2.2, 3.55, 0.0), Color("c8b48a"))
-			_nav_lamp(node, "LampTow", Vector3(8.2, 3.6, 0.0), Color("f0c56a"), 0.28)
-		"sentry_drone":
-			_kit(node, "Turret", Vector3(3.4, 2.4, 3.4), Vector3(0.6, 4.15, 0.0), Color("c8b46a"))
-			_cyl(node, "Barrel", 0.46, 12.4, Vector3(6.2, 4.35, 0.0), "x", Color("d8dde4"))
-			_kit(node, "Mantlet", Vector3(1.8, 1.5, 1.8), Vector3(3.4, 4.35, 0.0), Color("6a6840"))
-			_kit(node, "Base", Vector3(8.4, 1.15, 7.2), Vector3(-0.4, 1.15, 0.0), Color("4a5240"))
-			_craft_bell(node, "BellP", Vector3(-5.6, 1.2, 2.4), 0.85, 1.6)
-			_craft_bell(node, "BellS", Vector3(-5.6, 1.2, -2.4), 0.85, 1.6)
-		"repair_drone":
-			_kit(node, "WeldArm", Vector3(4.2, 0.28, 0.28), Vector3(2.4, 2.6, 0.0), Color("d8d4c8"))
-			_kit(node, "Torch", Vector3(0.7, 0.7, 0.7), Vector3(4.6, 2.6, 0.0), Color("e8a040"))
-			_nav_lamp(node, "LampWeld", Vector3(4.8, 2.8, 0.0), Color("ffd27a"), 0.22)
-		"mothership":
-			_kit(node, "BayP", Vector3(28.0, 8.0, 1.2), Vector3(-8.0, 6.0, 30.0), Color("1a2024"))
-			_kit(node, "BayS", Vector3(28.0, 8.0, 1.2), Vector3(-8.0, 6.0, -30.0), Color("1a2024"))
-			_kit(node, "Tower", Vector3(10.0, 14.0, 8.0), Vector3(18.0, 16.0, 0.0), Color("3a4448"))
-			_nav_lamp(node, "LampKeep", Vector3(22.0, 24.0, 0.0), Color("f0c56a"), 1.4)
-		"livestock_lighter":
-			_kit(node, "Pen", Vector3(6.4, 2.6, 5.2), Vector3(-1.2, 3.4, 0.0), Color("c4b48a"))
-			_kit(node, "Stall", Vector3(2.4, 2.2, 2.2), Vector3(1.6, 3.2, 1.6), Color("8a6a38"))
-			_kit(node, "RailP", Vector3(6.2, 0.22, 0.22), Vector3(-1.2, 5.0, 2.5), Color("e8e0d0"))
-			_kit(node, "RailS", Vector3(6.2, 0.22, 0.22), Vector3(-1.2, 5.0, -2.5), Color("e8e0d0"))
-			_kit(node, "Ramp", Vector3(3.2, 0.18, 2.4), Vector3(-6.2, 1.15, 0.0), Color("6a5438"))
-			_kit(node, "Cab", Vector3(2.2, 1.4, 1.8), Vector3(3.4, 4.6, 0.0), Color("4a3a28"))
-		_:
-			_cyl(node, "GunP", 0.15, 3.8, Vector3(2.3, 3.05, 5.2), "x", Color("16181a"))
-			_cyl(node, "GunS", 0.15, 3.8, Vector3(2.3, 3.05, -5.2), "x", Color("16181a"))
-			_kit(node, "PodP", Vector3(2.1, 0.65, 0.65), Vector3(1.4, 3.0, 5.2), Color("2a2420"))
-			_kit(node, "PodS", Vector3(2.1, 0.65, 0.65), Vector3(1.4, 3.0, -5.2), Color("2a2420"))
-			_craft_bell(node, "BellP", Vector3(-5.0, 1.65, 1.55), 0.64, 1.35)
-			_craft_bell(node, "BellS", Vector3(-5.0, 1.65, -1.55), 0.64, 1.35)
-			_kit(node, "Canopy", Vector3(2.2, 0.5, 1.1), Vector3(3.0, 4.55, 0.0), Color("3a5058"))
-	_dress_craft_skin(node, kind)
-
-
-func _dress_craft_skin(node: Node3D, kind: String) -> void:
-	var skid_z := 1.55
-	var rcs_z := 2.15
-	if kind == "away_shuttle":
-		skid_z = 2.2
-		rcs_z = 3.4
-	elif kind == "harvest_drone":
-		skid_z = 2.4
-		rcs_z = 2.8
-	elif kind == "salvage_tender":
-		skid_z = 2.6
-		rcs_z = 2.9
-	_kit(node, "SkidP", Vector3(4.4, 0.22, 0.34), Vector3(-0.6, 0.32, skid_z), Color("3a3630"))
-	_kit(node, "SkidS", Vector3(4.4, 0.22, 0.34), Vector3(-0.6, 0.32, -skid_z), Color("3a3630"))
-	_kit(node, "PadP", Vector3(1.15, 0.16, 0.7), Vector3(-2.2, 0.18, skid_z), Color("1c1a16"))
-	_kit(node, "PadS", Vector3(1.15, 0.16, 0.7), Vector3(-2.2, 0.18, -skid_z), Color("1c1a16"))
-	_cyl(node, "RcsP", 0.18, 0.58, Vector3(-2.4, 2.35, rcs_z), "z", Color("1a1614"))
-	_cyl(node, "RcsS", 0.18, 0.58, Vector3(-2.4, 2.35, -rcs_z), "z", Color("1a1614"))
-	_cyl(node, "RcsAft", 0.16, 0.5, Vector3(-5.6, 2.55, 0.0), "x", Color("1a1614"))
-	_cyl(node, "RcsNose", 0.14, 0.42, Vector3(5.8, 2.2, 0.0), "x", Color("1a1614"))
-	_cyl(node, "Whip", 0.06, 1.85, Vector3(0.8, 5.55, 0.0), "y", Color("1a1e22"))
-	_nav_lamp(node, "RunP", Vector3(-1.4, 2.15, rcs_z + 0.35), Color("d4553a"), 0.2)
-	_nav_lamp(node, "RunS", Vector3(-1.4, 2.15, -rcs_z - 0.35), Color("7dcea0"), 0.2)
-
-
-func _craft_poly(kind: String) -> PackedVector2Array:
-	match kind:
-		"survey_probe":
-			return PackedVector2Array([Vector2(12, 0), Vector2(2, 1.7), Vector2(-8, 1.2), Vector2(-8, -1.2), Vector2(2, -1.7)])
-		"harvest_drone":
-			return PackedVector2Array([Vector2(8, 2.2), Vector2(4.2, 5.4), Vector2(-6.2, 5.0), Vector2(-6.2, -5.0), Vector2(4.2, -5.4), Vector2(8, -2.2)])
-		"salvage_tender":
-			return PackedVector2Array([Vector2(8, 3), Vector2(3, 5.2), Vector2(-7.5, 4.4), Vector2(-7.5, -4.4), Vector2(3, -5.2), Vector2(8, -3)])
-		"away_shuttle":
-			return PackedVector2Array([Vector2(9, 0), Vector2(1.5, 4), Vector2(-6.5, 3.2), Vector2(-6.5, -3.2), Vector2(1.5, -4)])
-		"dart_drone":
-			return PackedVector2Array([Vector2(13, 0), Vector2(2, 1.15), Vector2(-7, 0.85), Vector2(-7, -0.85), Vector2(2, -1.15)])
-		"sting_drone":
-			return PackedVector2Array([Vector2(7.5, 0), Vector2(2.5, 3.4), Vector2(-5.5, 2.8), Vector2(-5.5, -2.8), Vector2(2.5, -3.4)])
-		"fang_drone":
-			return PackedVector2Array([Vector2(14, 0), Vector2(3, 1.5), Vector2(-6, 2.2), Vector2(-6.5, 0), Vector2(-6, -2.2), Vector2(3, -1.5)])
-		"lance_drone":
-			return PackedVector2Array([Vector2(10, 0), Vector2(3, 3.2), Vector2(-6.5, 3.6), Vector2(-6.5, -3.6), Vector2(3, -3.2)])
-		"picket_drone":
-			return PackedVector2Array([Vector2(11, 0), Vector2(2, 1.4), Vector2(-6, 1.1), Vector2(-6, -1.1), Vector2(2, -1.4)])
-		"manifest_drone":
-			return PackedVector2Array([Vector2(8, 1.6), Vector2(3, 3.2), Vector2(-6, 2.8), Vector2(-6, -2.8), Vector2(3, -3.2), Vector2(8, -1.6)])
-		"hawser_drone":
-			return PackedVector2Array([Vector2(9, 2.2), Vector2(2, 4.2), Vector2(-7, 3.6), Vector2(-7, -3.6), Vector2(2, -4.2), Vector2(9, -2.2)])
-		"sentry_drone":
-			return PackedVector2Array([Vector2(6, 4.2), Vector2(2, 6.4), Vector2(-7, 6.2), Vector2(-7, -6.2), Vector2(2, -6.4), Vector2(6, -4.2)])
-		"repair_drone":
-			return PackedVector2Array([Vector2(6, 0), Vector2(1.2, 1.3), Vector2(-5, 1.1), Vector2(-5, -1.1), Vector2(1.2, -1.3)])
-		"mothership":
-			return PackedVector2Array([Vector2(86, 14), Vector2(36, 34), Vector2(-62, 30), Vector2(-74, 0), Vector2(-62, -30), Vector2(36, -34)])
-		"livestock_lighter":
-			return PackedVector2Array([Vector2(7, 3.2), Vector2(2, 5.6), Vector2(-8, 5.2), Vector2(-8, -5.2), Vector2(2, -5.6), Vector2(7, -3.2)])
-		_:
-			return PackedVector2Array([Vector2(11, 0), Vector2(1, 2), Vector2(-3.5, 6), Vector2(-1.2, 0), Vector2(-3.5, -6), Vector2(1, -2)])
+	_smith.build(node, kind, _craft_color(kind))
 
 
 func _craft_color(kind: String) -> Color:
