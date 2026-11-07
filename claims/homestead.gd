@@ -59,6 +59,8 @@ static func try_plant(sim) -> String:
 	var pocket: Dictionary = sim.defs.system.pocket
 	if sim.player.pos.distance_to(sim.pocket_pos) > float(pocket.radius):
 		return "The core wants the claimable pocket, not open space."
+	if _off_plot(sim):
+		return "The core wants the claim hollow, not this ground."
 	sim.spend_cargo("claim_core", 1)
 	_anchor(sim)
 	sim.say("The core takes. A dome, a plot, a pen, a crate, and a weak beacon sit on the hollow.")
@@ -109,6 +111,8 @@ static func tend(sim) -> String:
 		return blocked
 	if not _here(sim):
 		return "Tend the plot from inside the claim."
+	if _off_plot(sim):
+		return "The plot is in the hollow. Walk back to tend it."
 	if bool(sim.claim.get("frozen", false)) or not bool(sim.claim.get("core", false)):
 		return "The homestead is frozen. There is no living plot."
 	var plot: Dictionary = sim.claim.plot
@@ -146,6 +150,8 @@ static func feed(sim) -> String:
 		return "The hold-kine is dead."
 	if not bool(pen.get("aboard", false)) and not _here(sim):
 		return "Feed the kine at the pen, or while it is aboard."
+	if _off_plot(sim) and not bool(pen.get("aboard", false)):
+		return "The pen is in the hollow."
 	if int(sim.player.cargo.get("food_mass", 0)) > 0:
 		sim.spend_cargo("food_mass", 1)
 	elif int(sim.claim.crate.get("food", 0)) > 0:
@@ -864,6 +870,8 @@ static func _fail_crop(sim, why: String) -> void:
 static func _debark(sim) -> String:
 	if not _here(sim):
 		return "Put the kine down inside the claim."
+	if _off_plot(sim):
+		return "Put the kine down in the hollow."
 	sim.claim.pen.aboard = false
 	sim.player.kine_aboard = false
 	sim.say("The hold-kine is back in the pen.")
@@ -876,6 +884,10 @@ static func _haul_block(sim) -> String:
 	if sim.player.modules.has("farm_cassette") or sim.player.modules.has("livestock_pen"):
 		return ""
 	return "The hold-kine needs a farm cassette or a livestock pen. Anvil can carry one bare. Anyone else bolts the cassette or spends mass on a pen."
+
+
+static func _off_plot(sim) -> bool:
+	return int(sim.layer) == ScaleFrame.SITE and not sim.on_claim_land()
 
 
 static func _here(sim) -> bool:

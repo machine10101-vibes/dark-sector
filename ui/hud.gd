@@ -1161,7 +1161,12 @@ func _refresh_helm() -> void:
 	if moored == false and str(sim.defs.system.id) == "HC-V1-R1-S1" and int(sim.layer) == ScaleFrame.BAND and sim.beacon_pos != Vector2.ZERO:
 		var gap: float = sim.player.pos.distance_to(sim.beacon_pos)
 		dock_word = "  ·  Helion Dock %d m" % int(gap)
-	helm_zone.text = "%s  ·  %s  ·  %s%s%s" % [place, zoom_word, law_name, dock_word, link_word]
+	var land_word := ""
+	if int(sim.layer) == ScaleFrame.SITE:
+		var land: Dictionary = sim.land_at(sim.site_pos)
+		var land_name := "Open ground" if land.is_empty() else str(land.get("name", "Land"))
+		land_word = "  ·  %s" % land_name
+	helm_zone.text = "%s  ·  %s  ·  %s%s%s%s" % [place, zoom_word, law_name, dock_word, land_word, link_word]
 	helm_zone.add_theme_color_override("font_color", Law.color_of(law_name))
 	if haul_cue != null:
 		var cue := QuestBoard.cue_line(sim)

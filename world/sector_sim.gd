@@ -111,6 +111,8 @@ var band_id := ""
 var site_id := ""
 var local_origin := Vector2.ZERO
 var site_pos := Vector2.ZERO
+var site_land := ""
+var site_taken: Dictionary = {}
 var traffic: Array = []
 var said_city := false
 
@@ -971,6 +973,7 @@ func to_dict() -> Dictionary:
 		"layer": layer,
 		"band_id": band_id,
 		"site_id": site_id,
+		"site_taken": site_taken.duplicate(true),
 		"local_origin": Serde.vec_out(local_origin),
 		"pos": Serde.vec_out(player.pos if int(layer) != ScaleFrame.SITE else site_pos),
 		"site_pos": Serde.vec_out(site_pos),
@@ -1056,6 +1059,8 @@ func from_dict(data: Dictionary) -> void:
 	body_id = str(data.get("body_id", ""))
 	band_id = str(data.get("band_id", ""))
 	site_id = str(data.get("site_id", ""))
+	var taken = data.get("site_taken", {})
+	site_taken = taken.duplicate(true) if typeof(taken) == TYPE_DICTIONARY else {}
 	local_origin = Serde.vec_in(data.get("local_origin", [0.0, 0.0]))
 	site_pos = Serde.vec_in(data.get("site_pos", [0.0, 0.0]))
 	if int(layer) == ScaleFrame.SITE and data.has("pos"):
@@ -4189,14 +4194,21 @@ func enter_site() -> String:
 		site_id = str(pocket.get("id", "site"))
 	band_id = ""
 	site_pos = Vector2.ZERO
+	site_land = ""
 	player.vel = Vector2.ZERO
-	say("The dome is the floor. The keel stays in the sky.")
+	var others := _other_land_names()
+	if others == "":
+		say("The dome is the floor. The keel stays in the sky.")
+	else:
+		say("The dome is the floor. The keel stays in the sky. Walk the shard: %s." % others)
+	_notice_land()
 	return ""
 
 
 func _leave_site() -> void:
 	layer = ScaleFrame.BAND
 	site_pos = Vector2.ZERO
+	site_land = ""
 	player.vel = Vector2.ZERO
 	_bind_band()
 	say("Back on the keel. The valley is a pin under the band.")
@@ -4209,23 +4221,105 @@ func _walk_site(cmd: Dictionary, dt: float) -> void:
 	var forward := Vector2.from_angle(player.rot)
 	if thrust > 0.0:
 		site_pos += forward * 16.0 * dt
-	var span := _site_span() * 0.5
+	var span := site_reach()
 	if site_pos.length() > span:
 		site_pos = site_pos.limit_length(span)
 		if not said_city:
 			said_city = true
-			say("This valley ends. Other land is past the dome.")
+			say("The named land ends. Turn back toward the dome.")
+	_notice_land()
 
 
-func _site_span() -> float:
+func site_reach() -> float:
+	var reach := 260.0
 	var body = planet(body_id)
 	if body == null:
-		return 520.0
+		return reach
 	for biome in ScaleFrame.biomes_of(body):
 		var row: Dictionary = biome
-		if str(row.get("id", "")) == site_id or bool(row.get("claim", false)):
-			return float(row.get("span_m", 520.0))
-	return 520.0
+		var at := Vector2(float(row.get("x_m", 0.0)), float(row.get("y_m", 0.0)))
+		var rad := float(row.get("span_m", 520.0)) * 0.5
+		reach = maxf(reach, at.length() + rad + 80.0)
+	return reach
+
+
+func land_at(at: Vector2) -> Dictionary:
+	var body = planet(body_id)
+	if body == null:
+		return {}
+	var best: Dictionary = {}
+	var best_d := 1.0e12
+	for biome in ScaleFrame.biomes_of(body):
+		var row: Dictionary = biome
+		var center := Vector2(float(row.get("x_m", 0.0)), float(row.get("y_m", 0.0)))
+		var rad := float(row.get("span_m", 520.0)) * 0.5
+		var dist := at.distance_to(center)
+		if dist <= rad and dist < best_d:
+			best = row
+			best_d = dist
+	return best
+
+
+func on_claim_land() -> bool:
+	if int(layer) != ScaleFrame.SITE:
+		return true
+	var land := land_at(site_pos)
+	if land.is_empty():
+		return false
+	return bool(land.get("claim", false))
+
+
+func _other_land_names() -> String:
+	var body = planet(body_id)
+	if body == null:
+		return ""
+	var names: Array = []
+	for biome in ScaleFrame.biomes_of(body):
+		var row: Dictionary = biome
+		if bool(row.get("claim", false)):
+			continue
+		var place_name := str(row.get("name", ""))
+		if place_name != "":
+			names.append(place_name)
+	return ", ".join(names)
+
+
+func _notice_land() -> void:
+	var land := land_at(site_pos)
+	var id := str(land.get("id", ""))
+	if id == site_land:
+		return
+	site_land = id
+	if land.is_empty():
+		var others := _other_land_names()
+		if others != "":
+			say("Open ground. Named land: %s." % others)
+		return
+	if bool(land.get("claim", false)):
+		say("%s. The dome, the pen, and the plot are here." % str(land.get("name", "The hollow")))
+		return
+	if bool(site_taken.get(id, false)):
+		say("%s. This ground is already gathered." % str(land.get("name", "Land")))
+		return
+	var gift := _land_gift(id)
+	if gift.is_empty():
+		say(str(land.get("name", "Land")))
+		return
+	site_taken[id] = true
+	_add_cargo(str(gift.id), int(gift.n))
+	say(str(gift.line))
+
+
+func _land_gift(id: String) -> Dictionary:
+	match id:
+		"ash_shelf":
+			return {"id": "nickel_cinder", "n": 1, "line": "Ash Shelf. Cinder gravel comes up in the boot. One nickel cinder."}
+		"reed_basin":
+			return {"id": "ice_spall", "n": 1, "line": "Reed Basin. The water freezes in the scoop. One ice spall."}
+		"glass_scar":
+			return {"id": "salvage_parts", "n": 1, "line": "Glass Scar. A fitting sits in the glass. One keel salvage."}
+		_:
+			return {}
 
 
 func _bind_band() -> void:

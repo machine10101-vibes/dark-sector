@@ -21,6 +21,7 @@ func _init() -> void:
 	_layers()
 	_craft_trip()
 	_site()
+	_lands()
 	_listen()
 	if fails == 0:
 		print("SCALE PASS")
@@ -189,6 +190,51 @@ func _site() -> void:
 	check(sim.site_pos.length() < 400.0, "the walk stays inside the valley")
 	for actor in sim.actors:
 		check(str(actor.get("team", "")) != "animal", "animals are not loose in the well")
+
+
+func _lands() -> void:
+	var soil: Dictionary = Serde.load_json("res://data/first_soil.json")
+	var sim := make("vesper")
+	sim.defs.system = soil
+	sim.defs.systems[str(soil.id)] = soil
+	sim.seed_value = int(soil.seed)
+	sim._build_static()
+	sim.player.pos = sim.pocket_pos
+	sim.claim.owned = true
+	sim.claim.system_id = str(soil.id)
+	check(sim.enter_site() == "", "First Soil opens the hollow")
+	check(sim.site_reach() > 2000.0, "the walk reaches the other lands")
+	check(sim.on_claim_land(), "the drop starts on the claim hollow")
+	var nickel := int(sim.player.cargo.get("nickel_cinder", 0))
+	var ice := int(sim.player.cargo.get("ice_spall", 0))
+	var plate := int(sim.player.cargo.get("salvage_parts", 0))
+	sim.site_pos = Vector2(2400.0, 860.0)
+	sim._notice_land()
+	check(int(sim.player.cargo.get("nickel_cinder", 0)) == nickel + 1, "Ash Shelf gives one nickel cinder")
+	sim._notice_land()
+	check(int(sim.player.cargo.get("nickel_cinder", 0)) == nickel + 1, "Ash Shelf pays once")
+	sim.site_pos = Vector2(-1900.0, 1400.0)
+	sim._notice_land()
+	check(int(sim.player.cargo.get("ice_spall", 0)) == ice + 1, "Reed Basin gives one ice spall")
+	sim.site_pos = Vector2(700.0, -2100.0)
+	sim._notice_land()
+	check(int(sim.player.cargo.get("salvage_parts", 0)) == plate + 1, "Glass Scar gives one keel salvage")
+	sim.site_pos = Vector2.ZERO
+	sim._notice_land()
+	check(sim.on_claim_land(), "walking home returns to the hollow")
+	sim.site_pos = Vector2(2400.0, 860.0)
+	sim.claim.owned = false
+	var cores := int(sim.player.cargo.get("claim_core", 0))
+	sim._add_cargo("claim_core", 1)
+	var held := int(sim.player.cargo.get("claim_core", 0))
+	var refused := Homestead.try_plant(sim)
+	check(refused.contains("hollow"), "a core does not plant on Ash Shelf")
+	check(held == cores + 1 and int(sim.player.cargo.get("claim_core", 0)) == held, "the refused core stays in the hold")
+	var blob: Dictionary = sim.to_dict()
+	var guest := SectorSim.new(defs)
+	guest.new_game("vesper")
+	guest.from_dict(blob)
+	check(bool(guest.site_taken.get("ash_shelf", false)), "the shelf gather stays in the log")
 
 
 func _listen() -> void:

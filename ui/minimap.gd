@@ -59,6 +59,9 @@ func _draw() -> void:
 	draw_arc(center, span, 0.0, TAU, 48, Color(0.45, 0.7, 0.76, 0.28), 1.0)
 	draw_line(center + Vector2(-6, 0), center + Vector2(6, 0), Color(1, 1, 1, 0.12), 1.0)
 	draw_line(center + Vector2(0, -6), center + Vector2(0, 6), Color(1, 1, 1, 0.12), 1.0)
+	if int(sim.layer) == ScaleFrame.SITE:
+		_draw_site_map(sim, center, span, font)
+		return
 	if int(sim.layer) != ScaleFrame.BAND:
 		if font != null:
 			draw_string(font, Vector2(8, size.y * 0.5), "local sky", HORIZONTAL_ALIGNMENT_LEFT, size.x - 16, 12, Color("8aa8b0"))
@@ -275,6 +278,36 @@ func _draw_contacts(sim, player: Dictionary, origin: Vector2, center: Vector2, s
 		draw_circle(plotted.at, rad, ink)
 		if locking or str(ship.get("agent_id", "")) == lock_id:
 			draw_arc(plotted.at, rad + 3.0, 0.0, TAU, 16, ink, 1.2)
+
+
+func _draw_site_map(sim, center: Vector2, span: float, font) -> void:
+	var reach: float = maxf(sim.site_reach(), 400.0)
+	var scale := span / reach
+	var origin: Vector2 = sim.site_pos
+	var body = sim.planet(str(sim.body_id))
+	if body != null:
+		for biome in ScaleFrame.biomes_of(body):
+			var row: Dictionary = biome
+			var at := Vector2(float(row.get("x_m", 0.0)), float(row.get("y_m", 0.0)))
+			var plotted: Dictionary = _plot(at, origin, center, scale, span)
+			var point: Vector2 = plotted.at
+			var ink := Color("d7e6c8")
+			var bid := str(row.get("id", ""))
+			if bid == "ash_shelf":
+				ink = Color("e0b15a")
+			elif bid == "reed_basin":
+				ink = Color("8ec8e0")
+			elif bid == "glass_scar":
+				ink = Color("d5e6f0")
+			var rad := 5.0 if bool(plotted.inside) else 3.2
+			draw_circle(point, rad, ink)
+			if bool(plotted.inside) and font != null and size.x >= 140.0:
+				draw_string(font, point + Vector2(7, 4), str(row.get("name", "")), HORIZONTAL_ALIGNMENT_LEFT, 90, 11, ink)
+	_draw_chevron(center, float(sim.player.get("rot", 0.0)))
+	if font != null:
+		var land: Dictionary = sim.land_at(origin)
+		var caption := "Open ground" if land.is_empty() else str(land.get("name", "Land"))
+		draw_string(font, Vector2(8, size.y - 8), caption, HORIZONTAL_ALIGNMENT_LEFT, size.x - 16, 11, Color("d7e6c8"))
 
 
 func _draw_chevron(center: Vector2, rot: float) -> void:
