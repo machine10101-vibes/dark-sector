@@ -1637,15 +1637,18 @@ func _draw_capsule(pane: Control) -> void:
 	var cap := float(p.get("cap", 0.0))
 	var cap_max := maxf(float(p.get("cap_max", 1.0)), 1.0)
 	var half := (w - 28.0) * 0.5
+	var pct := HelmCombat.cap_percent(p)
 	_text(Vector2(10, 48), "CAP", 10, Color("9fb7be"), pane)
-	var segs := 8
-	var seg_w := (half - 28.0 - float(segs - 1) * 2.0) / float(segs)
+	var segs := 6
+	var seg_room := half - 56.0
+	var seg_w := (seg_room - float(segs - 1) * 2.0) / float(segs)
 	var lit_segs := int(ceil(cap / cap_max * float(segs) - 0.001))
 	for i in segs:
 		var col := CAP_C if i < lit_segs else DIM
 		if lit_segs <= 2 and i < lit_segs:
 			col = HOT_C
 		pane.draw_rect(Rect2(Vector2(34.0 + float(i) * (seg_w + 2.0), 42.0), Vector2(maxf(seg_w, 2.0), 5.0)), col)
+	_text_right(pane, 10.0 + half - 2.0, 48.0, "%d%%" % pct, 10, HOT_C if pct <= 20 else CAP_C)
 	var therm := float(p.get("therm", 0.0))
 	var hot := bool(p.get("overheat", false))
 	var hx := 10.0 + half + 8.0

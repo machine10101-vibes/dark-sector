@@ -621,6 +621,12 @@ static func radial(shooter: Dictionary, other: Dictionary) -> float:
 	return rv.dot(rel / dist)
 
 
+static func cap_percent(unit: Dictionary) -> int:
+	var cap_max := maxf(float(unit.get("cap_max", 1.0)), 1.0)
+	var cap := clampf(float(unit.get("cap", 0.0)), 0.0, cap_max)
+	return int(round(cap / cap_max * 100.0))
+
+
 static func radial_word(mps: float) -> String:
 	if absf(mps) < 8.0:
 		return "0"

@@ -117,6 +117,11 @@ func _capacitor_and_heat() -> void:
 	check(not sim.try_fire(p, gun), "an overheated gun stays cold")
 	HelmCombat.step_systems(sim, p, Fit.stats(defs, p), 9.0, false)
 	check(not bool(p.overheat), "the plates cool and the guns come back")
+	p.cap_max = 80.0
+	p.cap = 40.0
+	check(HelmCombat.cap_percent(p) == 50, "the vitals name a half capacitor")
+	p.cap = 0.0
+	check(HelmCombat.cap_percent(p) == 0, "an empty capacitor reads zero")
 	reached += 1
 
 
