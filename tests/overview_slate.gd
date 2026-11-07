@@ -101,6 +101,15 @@ func _run() -> void:
 	check(float(closing.get("radial", 0.0)) < -8.0, "the contacts row stores a closing radial")
 	check(glass.radial_color(-40.0).r > glass.radial_color(40.0).r, "a close paints warmer than an open")
 	check(glass.contact_tag(closing, {}) == "Skiff 24", "radial leaves the hull tag alone")
+	var hostile_row := {"wreck": false, "locking": false, "word": "hostile", "bounty": 24}
+	var calm_row := {"wreck": false, "locking": false, "word": "neutral", "bounty": 0}
+	var wrecked_row := {"wreck": true, "locking": false, "word": "wreck", "bounty": 0}
+	check(glass.keep_contact(hostile_row) and glass.keep_contact(calm_row) and glass.keep_contact(wrecked_row), "the overview starts on every contact")
+	check(glass.cycle_overview() == "hostile" and glass.overview_title() == "HOSTILE", "the header steps to hostiles")
+	check(glass.keep_contact(hostile_row) and not glass.keep_contact(calm_row) and not glass.keep_contact(wrecked_row), "hostile hides the hauler and the wreck")
+	check(glass.cycle_overview() == "wreck" and glass.keep_contact(wrecked_row) and not glass.keep_contact(hostile_row), "wrecks keeps the wreck")
+	check(glass.cycle_overview() == "neutral" and glass.keep_contact(calm_row) and not glass.keep_contact(hostile_row), "neutral keeps the hauler")
+	check(glass.cycle_overview() == "all" and glass.overview_title() == "CONTACTS", "the header returns to every contact")
 	home.player.pos = skiff.pos + Vector2(40, 0)
 	skiff.pos = Vector2(50000, 50000)
 	skiff.hp = 1.0

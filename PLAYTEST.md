@@ -188,6 +188,7 @@ Lane the chart. One keel. Quests, then Track.
 43. **Held guns.** Fire until the plates hold the guns. Open Heat with F. The first line names the plate the guns must fall to. The patrol chip stays HEAT. A shot still lands the way it did once the plates cool.
 44. **Deep Hold.** Lane there with a Claim Core. Stand in Deep Hold Pocket. Plant. A dome sits on the hollow. The helm says the den wrote the core down. The Den Keeper still files the job, and Black Sail heat still rises from that meet. Quiet Hollow still plants and does not say that line.
 45. **Closing speed.** Lock a hull that is flying at you. The contacts distance warms, the bracket signs a negative radial, and the lock draws a short vector along its way. Sweep names how many are closing. A still shot in optimal still lands. The hull tag stays Skiff 24.
+46. **Overview filter.** Click the contacts header. It steps through every contact, hostiles, wrecks, and neutrals, and the helm says which list is open. Brackets in the sky stay up. The hull tag stays Skiff 24.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd

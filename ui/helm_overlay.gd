@@ -13,6 +13,7 @@ const CAP_C := Color("ffe28a")
 const HOT_C := Color("ff7a3c")
 const QUEST_C := Color("ffd27a")
 const WARN_C := Color("ff6a5c")
+const OVERVIEW_FILTERS := ["all", "hostile", "wreck", "neutral"]
 const RING_SENSOR := Color(0.45, 0.82, 0.9, 0.28)
 const RING_OPT := Color(0.45, 0.92, 0.62, 0.42)
 const RING_FALL := Color(0.95, 0.72, 0.28, 0.36)
@@ -29,6 +30,7 @@ var warn: Control
 var order_row: HBoxContainer
 var order_buttons: Dictionary = {}
 var _brackets: Array = []
+var _overview_filter := "all"
 var _rows: Array = []
 var _orbit_pick := 1
 var _keep_pick := 0
@@ -340,6 +342,40 @@ func objectives_of(sim) -> Array:
 	return out
 
 
+func overview_title() -> String:
+	match _overview_filter:
+		"hostile":
+			return "HOSTILE"
+		"wreck":
+			return "WRECKS"
+		"neutral":
+			return "NEUTRAL"
+		_:
+			return "CONTACTS"
+
+
+func cycle_overview() -> String:
+	var at := OVERVIEW_FILTERS.find(_overview_filter)
+	if at < 0:
+		at = 0
+	_overview_filter = str(OVERVIEW_FILTERS[(at + 1) % OVERVIEW_FILTERS.size()])
+	return _overview_filter
+
+
+func keep_contact(row: Dictionary) -> bool:
+	var wreck := bool(row.get("wreck", false))
+	var hostile := bool(row.get("locking", false)) or str(row.get("word", "")).find("hostile") >= 0 or int(row.get("bounty", 0)) > 0
+	match _overview_filter:
+		"hostile":
+			return hostile and not wreck
+		"wreck":
+			return wreck
+		"neutral":
+			return not wreck and not hostile
+		_:
+			return true
+
+
 func radial_color(mps: float) -> Color:
 	if mps < -8.0:
 		return Color("ffb15c")
@@ -500,8 +536,15 @@ func _overview_input(event: InputEvent) -> void:
 	var press := event as InputEventMouseButton
 	if press.button_index != MOUSE_BUTTON_LEFT and press.button_index != MOUSE_BUTTON_RIGHT:
 		return
+	if press.position.y < 22.0:
+		if press.button_index == MOUSE_BUTTON_LEFT:
+			cycle_overview()
+			if Game.sim != null:
+				Game.sim.say("Overview: %s." % overview_title().to_lower())
+		overview.accept_event()
+		return
 	var index := int((press.position.y - 22.0) / 20.0)
-	if press.position.y < 22.0 or index < 0 or index >= _rows.size():
+	if index < 0 or index >= _rows.size():
 		return
 	var row: Dictionary = _rows[index]
 	_close_strike()
@@ -1656,9 +1699,13 @@ func _clip_text(pane: CanvasItem, at: Vector2, width: float, text: String, font_
 
 func _draw_overview(pane: Control) -> void:
 	var sim = Game.sim
-	_rows = _contacts(sim)
+	_rows = []
+	for raw in _contacts(sim):
+		var seen: Dictionary = raw
+		if keep_contact(seen):
+			_rows.append(seen)
 	_plate(pane, false)
-	_text(Vector2(10, 16), "CONTACTS", 10, Color("7ed0dc"), pane)
+	_text(Vector2(10, 16), overview_title(), 10, Color("7ed0dc"), pane)
 	_text_right(pane, pane.size.x - 10.0, 16.0, "%d" % _rows.size(), 10, Color("8aa8b0"))
 	pane.draw_line(Vector2(8, 20), Vector2(pane.size.x - 8, 20), Color(0.55, 0.86, 0.94, 0.25), 1.0)
 	var lock_id := str(sim.player.get("lock_id", ""))
