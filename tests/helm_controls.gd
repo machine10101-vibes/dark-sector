@@ -68,6 +68,14 @@ func _run() -> void:
 	check((pad.get("knob") as Vector2).length() < 0.1, "a touch release outside the stick centers it")
 	pad.release()
 	check(float(game.flight.get("thrust", 1.0)) == 0.0 and bool(game.flight.get("fire", true)) == false, "release drops the stick and the gun")
+	pad.place(Vector2(844.0, 390.0), 8.0, true)
+	var phone_joy := pad.get_node("Joy") as Control
+	check(phone_joy.size.x >= 140.0 and phone_joy.size.y >= 140.0, "a landscape phone stick is a large well")
+	check(float(pad.get("radius")) >= 36.0, "a phone thumb travels across that well")
+	check(float(pad.get("knob_r")) >= 28.0, "the phone puck is thumb sized")
+	pad.place(Vector2(390.0, 844.0), 8.0, false)
+	check(phone_joy.size.x >= 160.0, "a portrait phone stick stays large")
+	check(phone_joy.position.x + phone_joy.size.x < 390.0 - 84.0, "the portrait stick stays clear of the gun")
 
 	game.clear_flight()
 	sim.player.rot = 0.0
