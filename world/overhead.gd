@@ -152,7 +152,7 @@ func _aim() -> void:
 		density = 0.000004
 	elif layer == ScaleFrame.SITE:
 		height = 220.0 / zoom
-		far = 6000.0
+		far = 16000.0
 		density = 0.00004
 	elif layer == ScaleFrame.BAND:
 		# Berth keeps the cruise angle (back = height * 0.62, fov 50) and looks

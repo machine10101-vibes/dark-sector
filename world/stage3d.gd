@@ -3142,14 +3142,43 @@ func _sync_site(sim) -> void:
 		if _bodies.has(bid):
 			(_bodies[bid] as Node3D).visible = false
 	var ground := _prop("site_ground")
-	if ground.mesh == null:
-		var slab := BoxMesh.new()
-		slab.size = Vector3(520.0, 2.0, 520.0)
+	var reach: float = sim.site_reach()
+	var slab := ground.mesh as BoxMesh
+	if slab == null or slab.size.x < reach * 2.0 - 1.0:
+		slab = BoxMesh.new()
+		slab.size = Vector3(reach * 2.0, 2.0, reach * 2.0)
 		ground.mesh = slab
-		var turf := ShaderMaterial.new()
-		turf.shader = _ground_shader
-		ground.material_override = turf
-	ground.position = chart(sim.site_pos, -1.0)
+		if ground.material_override == null:
+			var turf := ShaderMaterial.new()
+			turf.shader = _ground_shader
+			ground.material_override = turf
+	ground.position = chart(Vector2.ZERO, -1.0)
+	var body = sim.planet(str(sim.body_id))
+	if body != null:
+		for biome in ScaleFrame.biomes_of(body):
+			var row: Dictionary = biome
+			var bid := str(row.get("id", ""))
+			if bid == "":
+				continue
+			var mark := _prop("land_%s" % bid)
+			if mark.mesh == null:
+				var post := CylinderMesh.new()
+				post.top_radius = 6.0
+				post.bottom_radius = 8.0
+				post.height = 18.0
+				mark.mesh = post
+				var ink := Color("d7e6c8")
+				if bid == "ash_shelf":
+					ink = Color("e0b15a")
+				elif bid == "reed_basin":
+					ink = Color("8ec8e0")
+				elif bid == "glass_scar":
+					ink = Color("d5e6f0")
+				mark.material_override = _hull_mat(ink)
+			var at := Vector2(float(row.get("x_m", 0.0)), float(row.get("y_m", 0.0)))
+			mark.position = chart(at, 9.0)
+			mark.visible = true
+			_tag(str(row.get("name", bid)), chart(at, 28.0), Color("d7e6c8"), 16)
 	var dome := _prop("site_dome")
 	if dome.mesh == null:
 		var ball := SphereMesh.new()
@@ -3163,7 +3192,7 @@ func _sync_site(sim) -> void:
 		glass.emission = Color("d7e6c8")
 		glass.emission_energy_multiplier = 0.15
 		dome.material_override = glass
-	dome.position = chart(sim.site_pos, 16.0)
+	dome.position = chart(Vector2.ZERO, 16.0)
 	var alive := bool(sim.claim.get("pen", {}).get("alive", false))
 	for i in 3:
 		var beast := _prop("kine%d" % i)
@@ -3173,7 +3202,7 @@ func _sync_site(sim) -> void:
 			beast.mesh = box
 			beast.material_override = _hull_mat(Color("c4b49a"))
 		var spot := Vector2.from_angle(float(i) * 2.1) * (8.0 + float(i) * 3.0)
-		beast.position = chart(sim.site_pos + spot, 0.8)
+		beast.position = chart(spot, 0.8)
 		beast.visible = alive
 	var lamp := _prop("grow_light")
 	if lamp.mesh == null:
@@ -3188,8 +3217,10 @@ func _sync_site(sim) -> void:
 		glow.emission = Color("d7e6a8")
 		glow.emission_energy_multiplier = 1.4
 		lamp.material_override = glow
-	lamp.position = chart(sim.site_pos + Vector2(18.0, 6.0), 7.0)
-	_tag("Quiet valley", chart(sim.site_pos, 24.0), Color("d7e6c8"), 14)
+	lamp.position = chart(Vector2(18.0, 6.0), 7.0)
+	var here: Dictionary = sim.land_at(sim.site_pos)
+	var here_name := "Open ground" if here.is_empty() else str(here.get("name", "Land"))
+	_tag(here_name, chart(sim.site_pos, 24.0), Color("f2fbff"), 14)
 
 
 func _body_node(bid: String) -> Node3D:
