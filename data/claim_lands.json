@@ -1,0 +1,61 @@
+{
+  "schema": "hc_v1_claim_lands",
+  "systems": [
+    {
+      "system_id": "HC-V1-R5-S2",
+      "biomes": [
+        {"id": "weather_pocket", "name": "Terminator Pocket", "x_m": 0, "y_m": 0, "span_m": 520, "claim": true, "tint": "d7e6c8"},
+        {"id": "hot_cheek", "name": "Hot Cheek", "x_m": 2300, "y_m": 720, "span_m": 900, "claim": false, "tint": "e07a3a", "gift": "nickel_cinder", "gift_n": 1, "gift_line": "Hot Cheek. Ember gravel comes up warm. One nickel cinder."},
+        {"id": "cold_cheek", "name": "Cold Cheek", "x_m": -1700, "y_m": 1300, "span_m": 980, "claim": false, "tint": "8aa0b8", "gift": "ice_spall", "gift_n": 1, "gift_line": "Cold Cheek. The frost takes the scoop. One ice spall."}
+      ]
+    },
+    {
+      "system_id": "HC-V1-R5-S4",
+      "biomes": [
+        {"id": "overlap_pocket", "name": "Overlap Hollow", "x_m": 0, "y_m": 0, "span_m": 520, "claim": true, "tint": "d7e6c8"},
+        {"id": "older_nail", "name": "Older Nail", "x_m": 2100, "y_m": -800, "span_m": 860, "claim": false, "tint": "c4924a", "gift": "hull_plate", "gift_n": 1, "gift_line": "Older Nail. The first stamp left a plate in the soil. One hull plate."},
+        {"id": "newer_paint", "name": "Newer Paint", "x_m": -1400, "y_m": 1600, "span_m": 900, "claim": false, "tint": "8a6840", "gift": "salvage_parts", "gift_n": 1, "gift_line": "Newer Paint. A fitting sits under the second stamp. One keel salvage."}
+      ]
+    },
+    {
+      "system_id": "HC-V1-R5-S6",
+      "biomes": [
+        {"id": "last_pocket", "name": "Last Pocket", "x_m": 0, "y_m": 0, "span_m": 520, "claim": true, "tint": "d7e6c8"},
+        {"id": "burned_stake", "name": "Burned Stake", "x_m": 2400, "y_m": 500, "span_m": 920, "claim": false, "tint": "a85a42", "gift": "nickel_cinder", "gift_n": 1, "gift_line": "Burned Stake. The ash still holds a cinder. One nickel cinder."},
+        {"id": "march_glass", "name": "March Glass", "x_m": -1500, "y_m": -1700, "span_m": 880, "claim": false, "tint": "6e3a32", "gift": "salvage_parts", "gift_n": 1, "gift_line": "March Glass. A raid left a fitting in the glass. One keel salvage."}
+      ]
+    },
+    {
+      "system_id": "HC-V1-R2-S6",
+      "biomes": [
+        {"id": "clause_pocket", "name": "Clause Pocket", "x_m": 0, "y_m": 0, "span_m": 520, "claim": true, "tint": "d7e6c8"},
+        {"id": "gutter_clause", "name": "Gutter Clause", "x_m": 2150, "y_m": 600, "span_m": 880, "claim": false, "tint": "d2a15a", "gift": "salvage_parts", "gift_n": 1, "gift_line": "Gutter Clause. The dead clause left a fitting. One keel salvage."},
+        {"id": "lease_nail", "name": "Lease Nail", "x_m": -1700, "y_m": -1100, "span_m": 860, "claim": false, "tint": "c4a882", "gift": "hull_plate", "gift_n": 1, "gift_line": "Lease Nail. The old lease still has a plate. One hull plate."}
+      ]
+    },
+    {
+      "system_id": "HC-V1-R7-S3",
+      "biomes": [
+        {"id": "tithe_outpost_pocket", "name": "Empty Tithe Pocket", "x_m": 0, "y_m": 0, "span_m": 520, "claim": true, "tint": "d7e6c8"},
+        {"id": "hunger_shelf", "name": "Hunger Shelf", "x_m": 2200, "y_m": 900, "span_m": 900, "claim": false, "tint": "c4a06a", "gift": "raw_mass", "gift_n": 1, "gift_line": "Hunger Shelf. Crate dust packs into one raw mass."},
+        {"id": "starved_glass", "name": "Starved Glass", "x_m": -1600, "y_m": 1400, "span_m": 880, "claim": false, "tint": "a08070", "gift": "salvage_parts", "gift_n": 1, "gift_line": "Starved Glass. A convoy fitting sits in the dust. One keel salvage."}
+      ]
+    },
+    {
+      "system_id": "HC-V1-R7-S5",
+      "biomes": [
+        {"id": "dead_hollow_pocket", "name": "Dead Hollow", "x_m": 0, "y_m": 0, "span_m": 520, "claim": true, "tint": "d7e6c8"},
+        {"id": "rib_field", "name": "Rib Field", "x_m": 2000, "y_m": 1100, "span_m": 900, "claim": false, "tint": "a08070", "gift": "hull_plate", "gift_n": 1, "gift_line": "Rib Field. A rib still has a plate. One hull plate."},
+        {"id": "frozen_stake", "name": "Frozen Stake", "x_m": -1800, "y_m": -900, "span_m": 860, "claim": false, "tint": "d5e6f0", "gift": "ice_spall", "gift_n": 1, "gift_line": "Frozen Stake. The frost gives up one ice spall."}
+      ]
+    },
+    {
+      "system_id": "HC-V1-R8-S5",
+      "biomes": [
+        {"id": "hollow_rock_pocket", "name": "Deep Hold Pocket", "x_m": 0, "y_m": 0, "span_m": 520, "claim": true, "tint": "d7e6c8"},
+        {"id": "den_floor", "name": "Den Floor", "x_m": 1900, "y_m": -1200, "span_m": 900, "claim": false, "tint": "6a7278", "gift": "hull_plate", "gift_n": 1, "gift_line": "Den Floor. A plate was walked into the rock. One hull plate."},
+        {"id": "thrown_glass", "name": "Thrown Glass", "x_m": -2100, "y_m": 700, "span_m": 920, "claim": false, "tint": "e4c8a4", "gift": "salvage_parts", "gift_n": 1, "gift_line": "Thrown Glass. The den left a fitting outside. One keel salvage."}
+      ]
+    }
+  ]
+}

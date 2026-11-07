@@ -4301,7 +4301,7 @@ func _notice_land() -> void:
 	if bool(site_taken.get(id, false)):
 		say("%s. This ground is already gathered." % str(land.get("name", "Land")))
 		return
-	var gift := _land_gift(id)
+	var gift := _land_gift(land)
 	if gift.is_empty():
 		say(str(land.get("name", "Land")))
 		return
@@ -4310,7 +4310,14 @@ func _notice_land() -> void:
 	say(str(gift.line))
 
 
-func _land_gift(id: String) -> Dictionary:
+func _land_gift(land: Dictionary) -> Dictionary:
+	var gid := str(land.get("gift", ""))
+	if gid != "":
+		var line := str(land.get("gift_line", ""))
+		if line == "":
+			line = str(land.get("name", "Land"))
+		return {"id": gid, "n": maxi(1, int(land.get("gift_n", 1))), "line": line}
+	var id := str(land.get("id", ""))
 	match id:
 		"ash_shelf":
 			return {"id": "nickel_cinder", "n": 1, "line": "Ash Shelf. Cinder gravel comes up in the boot. One nickel cinder."}

@@ -3167,13 +3167,7 @@ func _sync_site(sim) -> void:
 				post.bottom_radius = 8.0
 				post.height = 18.0
 				mark.mesh = post
-				var ink := Color("d7e6c8")
-				if bid == "ash_shelf":
-					ink = Color("e0b15a")
-				elif bid == "reed_basin":
-					ink = Color("8ec8e0")
-				elif bid == "glass_scar":
-					ink = Color("d5e6f0")
+				var ink := ScaleFrame.land_ink(row)
 				mark.material_override = _hull_mat(ink)
 			var at := Vector2(float(row.get("x_m", 0.0)), float(row.get("y_m", 0.0)))
 			mark.position = chart(at, 9.0)

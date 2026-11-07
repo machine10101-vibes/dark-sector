@@ -155,6 +155,7 @@ static func _fill(defs: Dictionary) -> void:
 	_overlay_systems(defs)
 	_load_indexes(defs)
 	_stamp(defs)
+	_stamp_lands(defs)
 
 
 static func _overlay_modules(defs: Dictionary) -> void:
@@ -292,6 +293,50 @@ static func _stamp(defs: Dictionary) -> void:
 		var lane_id := str(lane.get("id", "%s-%s" % [origin, dest]))
 		_ensure_gate(chart[origin], lane_id, dest, chart[dest], color, true)
 		_ensure_gate(chart[dest], lane_id, origin, chart[origin], color, false)
+
+
+static func _stamp_lands(defs: Dictionary) -> void:
+	var book = _read("res://data/claim_lands.json")
+	if typeof(book) != TYPE_DICTIONARY:
+		return
+	var chart: Dictionary = defs.get("systems", {})
+	for raw in book.get("systems", []):
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var spec: Dictionary = raw
+		var sid := str(spec.get("system_id", ""))
+		if sid == "" or not chart.has(sid):
+			continue
+		var system: Dictionary = chart[sid]
+		var pocket: Dictionary = system.get("pocket", {})
+		var anchor_id := str(pocket.get("anchor", ""))
+		if anchor_id == "":
+			continue
+		for body_raw in system.get("planets", []):
+			if typeof(body_raw) != TYPE_DICTIONARY:
+				continue
+			var body: Dictionary = body_raw
+			if str(body.get("id", "")) != anchor_id:
+				continue
+			var scale = body.get("scale", {})
+			if typeof(scale) != TYPE_DICTIONARY:
+				scale = {}
+			var existing = scale.get("biomes", [])
+			if typeof(existing) == TYPE_ARRAY and not existing.is_empty():
+				break
+			scale = scale.duplicate(true)
+			scale["radius_km"] = float(scale.get("radius_km", 140.0))
+			scale["across_km"] = float(scale.get("across_km", 280.0))
+			scale["soi_km"] = float(scale.get("soi_km", 1800.0))
+			if typeof(scale.get("bands", [])) != TYPE_ARRAY or (scale.get("bands", []) as Array).is_empty():
+				scale["bands"] = [{"id": "shard", "name": "Shard band", "alt_km": 48.0, "width_km": 70.0}]
+			var lands: Array = []
+			for land_raw in spec.get("biomes", []):
+				if typeof(land_raw) == TYPE_DICTIONARY:
+					lands.append((land_raw as Dictionary).duplicate(true))
+			scale["biomes"] = lands
+			body["scale"] = scale
+			break
 
 
 static func _ensure_gate(system: Dictionary, lane_id: String, dest: String, other: Dictionary, color: String, outbound: bool) -> void:

@@ -96,6 +96,21 @@ static func sites_of(row: Dictionary) -> Array:
 	return rows
 
 
+static func land_ink(row: Dictionary) -> Color:
+	var tint := str(row.get("tint", ""))
+	if tint != "":
+		return Color(tint)
+	match str(row.get("id", "")):
+		"ash_shelf":
+			return Color("e0b15a")
+		"reed_basin":
+			return Color("8ec8e0")
+		"glass_scar":
+			return Color("d5e6f0")
+		_:
+			return Color("d7e6c8")
+
+
 static func biomes_of(row: Dictionary) -> Array:
 	var scale := scale_of(row)
 	var rows = scale.get("biomes", [])
