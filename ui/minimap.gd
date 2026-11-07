@@ -71,6 +71,7 @@ func _draw() -> void:
 	_draw_gates(sim, origin, center, scale, span)
 	_draw_field(sim, origin, center, scale, span)
 	_draw_dock(sim, origin, center, scale, span)
+	_draw_sites(sim, origin, center, scale, span)
 	_draw_bands(sim, player, center, scale)
 	_draw_contacts(sim, player, origin, center, scale, span)
 	_draw_chevron(center, float(player.get("rot", 0.0)))
@@ -187,6 +188,25 @@ func _draw_dock(sim, origin: Vector2, center: Vector2, scale: float, span: float
 		at + Vector2(-arm, 0),
 	])
 	draw_colored_polygon(diamond, Color("9eecf5"))
+
+
+func _draw_sites(sim, origin: Vector2, center: Vector2, scale: float, span: float) -> void:
+	_mark_site(sim.belt_pos, origin, center, scale, span, Color("f0c27a"))
+	_mark_site(sim.ice_pos, origin, center, scale, span, Color("d5e6f0"))
+	_mark_site(sim.copper_pos, origin, center, scale, span, Color("c6e38a"))
+	_mark_site(sim.trash_pos, origin, center, scale, span, Color("e4c8a4"))
+	_mark_site(sim.stream_origin, origin, center, scale, span, Color("9ec8e8"))
+
+
+func _mark_site(at: Vector2, origin: Vector2, center: Vector2, scale: float, span: float, ink: Color) -> void:
+	if at == Vector2.ZERO:
+		return
+	var plotted: Dictionary = _plot(at, origin, center, scale, span)
+	var point: Vector2 = plotted.at
+	if bool(plotted.inside):
+		draw_arc(point, 5.5, 0.0, TAU, 12, ink, 1.5)
+	else:
+		draw_circle(point, 3.4, ink)
 
 
 func _draw_bands(sim, player: Dictionary, center: Vector2, scale: float) -> void:
