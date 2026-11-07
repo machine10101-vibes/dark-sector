@@ -291,14 +291,7 @@ func _draw_site_map(sim, center: Vector2, span: float, font) -> void:
 			var at := Vector2(float(row.get("x_m", 0.0)), float(row.get("y_m", 0.0)))
 			var plotted: Dictionary = _plot(at, origin, center, scale, span)
 			var point: Vector2 = plotted.at
-			var ink := Color("d7e6c8")
-			var bid := str(row.get("id", ""))
-			if bid == "ash_shelf":
-				ink = Color("e0b15a")
-			elif bid == "reed_basin":
-				ink = Color("8ec8e0")
-			elif bid == "glass_scar":
-				ink = Color("d5e6f0")
+			var ink := ScaleFrame.land_ink(row)
 			var rad := 5.0 if bool(plotted.inside) else 3.2
 			draw_circle(point, rad, ink)
 			if bool(plotted.inside) and font != null and size.x >= 140.0:

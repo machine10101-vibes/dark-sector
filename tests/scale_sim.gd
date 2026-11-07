@@ -22,6 +22,7 @@ func _init() -> void:
 	_craft_trip()
 	_site()
 	_lands()
+	_claim_grounds()
 	_listen()
 	if fails == 0:
 		print("SCALE PASS")
@@ -235,6 +236,76 @@ func _lands() -> void:
 	guest.new_game("vesper")
 	guest.from_dict(blob)
 	check(bool(guest.site_taken.get("ash_shelf", false)), "the shelf gather stays in the log")
+
+
+func _claim_grounds() -> void:
+	var defs: Dictionary = Catalog.boot()
+	var named := {
+		"HC-V1-R5-S2": "Hot Cheek",
+		"HC-V1-R5-S4": "Older Nail",
+		"HC-V1-R5-S6": "Burned Stake",
+		"HC-V1-R2-S6": "Gutter Clause",
+		"HC-V1-R7-S3": "Hunger Shelf",
+		"HC-V1-R7-S5": "Rib Field",
+		"HC-V1-R8-S5": "Den Floor",
+	}
+	for sid in named.keys():
+		var spec: Dictionary = defs.systems[sid]
+		var pocket: Dictionary = spec.pocket
+		var found := false
+		var claim := false
+		for body_raw in spec.planets:
+			var body: Dictionary = body_raw
+			if str(body.get("id", "")) != str(pocket.get("anchor", "")):
+				continue
+			for land_raw in ScaleFrame.biomes_of(body):
+				var land: Dictionary = land_raw
+				if str(land.get("name", "")) == str(named[sid]):
+					found = true
+				if bool(land.get("claim", false)):
+					claim = true
+		check(found and claim, "%s keeps a claim hollow and %s" % [str(spec.get("name", sid)), str(named[sid])])
+	var helion: Dictionary = defs.systems["HC-V1-R1-S1"]
+	var helion_lands := 0
+	for body_raw in helion.planets:
+		helion_lands += ScaleFrame.biomes_of(body_raw).size()
+	check(helion_lands == 0, "Helion Dock has no walkable land")
+	var soil: Dictionary = defs.systems["HC-V1-R5-S1"]
+	var ash := false
+	for body_raw in soil.planets:
+		for land_raw in ScaleFrame.biomes_of(body_raw):
+			var land: Dictionary = land_raw
+			if str(land.get("name", "")) == "Ash Shelf":
+				ash = true
+	check(ash, "First Soil keeps Ash Shelf")
+	var sim := SectorSim.new(defs)
+	sim.new_game("vesper")
+	sim.hold_npc = true
+	sim._arrive("HC-V1-R5-S2", "")
+	sim.player.pos = sim.pocket_pos
+	sim.claim.owned = true
+	sim.claim.system_id = "HC-V1-R5-S2"
+	check(sim.enter_site() == "", "Two Weathers opens the terminator")
+	check(sim.site_reach() > 2000.0, "the terminator walk reaches both cheeks")
+	check(sim.on_claim_land(), "the drop is the claim pocket")
+	var nickel := int(sim.player.cargo.get("nickel_cinder", 0))
+	var ice := int(sim.player.cargo.get("ice_spall", 0))
+	sim.site_pos = Vector2(2300.0, 720.0)
+	sim._notice_land()
+	check(int(sim.player.cargo.get("nickel_cinder", 0)) == nickel + 1, "Hot Cheek gives one nickel cinder")
+	sim._notice_land()
+	check(int(sim.player.cargo.get("nickel_cinder", 0)) == nickel + 1, "Hot Cheek pays once")
+	sim.site_pos = Vector2(-1700.0, 1300.0)
+	sim._notice_land()
+	check(int(sim.player.cargo.get("ice_spall", 0)) == ice + 1, "Cold Cheek gives one ice spall")
+	sim.site_pos = Vector2(2300.0, 720.0)
+	sim.claim.owned = false
+	var cores := int(sim.player.cargo.get("claim_core", 0))
+	sim._add_cargo("claim_core", 1)
+	var held := int(sim.player.cargo.get("claim_core", 0))
+	var refused := Homestead.try_plant(sim)
+	check(refused.contains("hollow"), "a core does not plant on Hot Cheek")
+	check(held == cores + 1 and int(sim.player.cargo.get("claim_core", 0)) == held, "the Hot Cheek core stays in the hold")
 
 
 func _listen() -> void:
