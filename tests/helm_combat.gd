@@ -365,6 +365,12 @@ func _awareness() -> void:
 	var gun: Dictionary = Fit.stats(defs, sim.player).gun
 	var still := {"pos": sim.player.pos + Vector2(300, 0), "vel": Vector2.ZERO}
 	check(HelmCombat.hit_chance(sim.player, still, gun) > 0.99, "awareness does not change a still optimal hit")
+	var inbound := {"pos": sim.player.pos + Vector2(400, 0), "vel": Vector2(-50, 0)}
+	var outbound := {"pos": sim.player.pos + Vector2(400, 0), "vel": Vector2(50, 0)}
+	check(HelmCombat.radial(sim.player, inbound) < -8.0, "a closing hull reads negative radial")
+	check(HelmCombat.radial(sim.player, outbound) > 8.0, "an opening hull reads positive radial")
+	check(HelmCombat.radial_word(HelmCombat.radial(sim.player, inbound)).begins_with("-"), "the bracket signs a close")
+	check(HelmCombat.hit_chance(sim.player, still, gun) > 0.99, "radial does not change a still optimal hit")
 	var bands: Dictionary = HelmCombat.range_bands(sim, sim.player)
 	check(absf(float(bands.optimal) - float(gun.optimal)) < 0.01, "range rings read the live gun")
 	check(absf(float(bands.falloff) - (float(gun.optimal) + float(gun.falloff))) < 0.01, "falloff ring is optimal plus falloff")
@@ -373,9 +379,9 @@ func _awareness() -> void:
 	var swept := false
 	for raw in sim.lines:
 		var line: Dictionary = raw
-		if str(line.text).begins_with("Sweep:"):
+		if str(line.text).begins_with("Sweep:") and str(line.text).find("closing") >= 0:
 			swept = true
-	check(swept, "a sweep speaks the count")
+	check(swept, "a sweep speaks the count and who is closing")
 	sim.tick(0.05, {"sweep": true})
 	check(str(sim.lines[0].text).find("cycling") >= 0, "a rushed sweep waits for the sensors")
 	var pay := HelmCombat.insurance_payout(defs, sim.player)

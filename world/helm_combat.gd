@@ -503,6 +503,7 @@ static func sweep(sim, unit: Dictionary) -> Dictionary:
 	var wrecks := 0
 	var ore := 0
 	var contacts := 0
+	var closing := 0
 	var rows: Array = []
 	for raw in targets(sim, unit, reach):
 		var row: Dictionary = raw
@@ -515,6 +516,8 @@ static func sweep(sim, unit: Dictionary) -> Dictionary:
 			hostile = stage == "guns" or bool(sim.pdo_alert)
 		if hostile:
 			hostiles += 1
+		if radial(unit, other) < -8.0:
+			closing += 1
 		rows.append({
 			"kind": "ship",
 			"id": str(row.id),
@@ -559,6 +562,7 @@ static func sweep(sim, unit: Dictionary) -> Dictionary:
 		"wrecks": wrecks,
 		"ore": ore,
 		"contacts": contacts,
+		"closing": closing,
 		"rows": rows,
 	}
 
@@ -572,10 +576,11 @@ static func try_sweep(sim, unit: Dictionary) -> String:
 	sim.quest_flags.sweep_at = float(sim.time)
 	var pulse: Dictionary = sweep(sim, unit)
 	sim.sweep = pulse
-	sim.say("Sweep: %d hostiles, %d wrecks, %d ore groups." % [
+	sim.say("Sweep: %d hostiles, %d wrecks, %d ore groups, %d closing." % [
 		int(pulse.hostiles),
 		int(pulse.wrecks),
 		int(pulse.ore),
+		int(pulse.closing),
 	])
 	sim.sfx("scan_done")
 	return ""
@@ -601,6 +606,28 @@ static func transversal(shooter: Dictionary, other: Dictionary) -> float:
 	var dist := maxf(1.0, rel.length())
 	var rv: Vector2 = other.vel - shooter.vel
 	return absf(rv.cross(rel / dist))
+
+
+## Rate of change of range. Negative means the other hull is closing.
+## Display only. Hit chance still uses transversal.
+static func radial(shooter: Dictionary, other: Dictionary) -> float:
+	var from: Vector2 = shooter.get("pos", Vector2.ZERO)
+	var at: Vector2 = other.get("pos", Vector2.ZERO)
+	var rel := at - from
+	var dist := maxf(1.0, rel.length())
+	var from_vel: Vector2 = shooter.get("vel", Vector2.ZERO)
+	var at_vel: Vector2 = other.get("vel", Vector2.ZERO)
+	var rv := at_vel - from_vel
+	return rv.dot(rel / dist)
+
+
+static func radial_word(mps: float) -> String:
+	if absf(mps) < 8.0:
+		return "0"
+	var shown := int(round(mps))
+	if shown > 0:
+		return "+%d" % shown
+	return str(shown)
 
 
 static func _lead(shooter: Dictionary, other: Dictionary, speed: float) -> Vector2:

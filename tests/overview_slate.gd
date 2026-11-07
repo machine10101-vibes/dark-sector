@@ -95,6 +95,12 @@ func _run() -> void:
 		elif str(actor.class_id) == "yawl":
 			saw_yawl = glass.contact_tag(posted, {}) == "Yawl 36"
 	check(saw_ketch and saw_yawl, "Ore Choir lists the ketch and the yawl before a lock")
+	skiff.vel = Vector2(40, 0)
+	home.player.vel = Vector2.ZERO
+	var closing := _row(glass, home, str(skiff.agent_id))
+	check(float(closing.get("radial", 0.0)) < -8.0, "the contacts row stores a closing radial")
+	check(glass.radial_color(-40.0).r > glass.radial_color(40.0).r, "a close paints warmer than an open")
+	check(glass.contact_tag(closing, {}) == "Skiff 24", "radial leaves the hull tag alone")
 	home.player.pos = skiff.pos + Vector2(40, 0)
 	skiff.pos = Vector2(50000, 50000)
 	skiff.hp = 1.0

@@ -267,6 +267,7 @@ func _contacts(sim) -> Array:
 			"unit": unit,
 			"wreck": false,
 			"locking": locking,
+			"radial": HelmCombat.radial(sim.player, unit),
 		})
 	for wreck in sim.wrecks:
 		if bool(wreck.get("stripped", false)):
@@ -287,6 +288,7 @@ func _contacts(sim) -> Array:
 			"unit": wreck,
 			"wreck": true,
 			"locking": false,
+			"radial": HelmCombat.radial(sim.player, wreck),
 		})
 	rows.sort_custom(func(a, b): return float(a.dist) < float(b.dist))
 	return rows
@@ -336,6 +338,14 @@ func objectives_of(sim) -> Array:
 			if at != Vector2.ZERO:
 				out.append({"title": "Tracking  ·  %s" % str(card.get("title", pinned)), "step": str(card.get("step", "")), "pos": at, "label": str(card.get("where", "mark"))})
 	return out
+
+
+func radial_color(mps: float) -> Color:
+	if mps < -8.0:
+		return Color("ffb15c")
+	if mps > 8.0:
+		return Color("7ed0dc")
+	return Color("c5d6dc")
 
 
 func _dist_word(meters: float) -> String:
@@ -1248,6 +1258,15 @@ func _draw() -> void:
 			_corners(sp, radius + 16.0, WARN_C, 2.0, 0.22)
 			draw_arc(sp, radius + 18.0, 0.0, TAU, 36, Color(WARN_C, 0.7 if bool(row.unit.get("lock_ok", false)) else 0.4), 1.6, true)
 		if is_lock:
+			var travel: Vector2 = unit.get("vel", Vector2.ZERO)
+			if travel.length() > 8.0:
+				var ahead: Vector3 = stage.chart(unit.pos + travel.normalized() * 48.0, 2.0)
+				if not cam.is_position_behind(ahead):
+					var tip: Vector2 = cam.unproject_position(ahead) - sp
+					if tip.length() > 2.0:
+						tip = tip.normalized() * 26.0
+						draw_line(sp, sp + tip, Color(col, 0.75), 1.4)
+						draw_circle(sp + tip, 2.2, Color(col, 0.9))
 			var ok := bool(sim.player.get("lock_ok", false))
 			var need := maxf(0.01, float(sim.player.get("lock_need", 1.0)))
 			var frac := 1.0 if ok else clampf(float(sim.player.get("lock_t", 0.0)) / need, 0.0, 1.0)
@@ -1256,7 +1275,7 @@ func _draw() -> void:
 				_corners(sp, radius + 12.0, Color(col, 0.6), 1.2, 0.2)
 		var tank_y := sp.y + radius + 6.0
 		_tank_strip(Vector2(sp.x - radius, tank_y), radius * 2.0, unit)
-		_text(Vector2(sp.x - radius, tank_y + 20.0), "%s · %s" % [_dist_word(row.dist), row.word], 10, Color(col.lerp(Color.WHITE, 0.35), 0.85))
+		_text(Vector2(sp.x - radius, tank_y + 20.0), "%s · %s · %s" % [_dist_word(row.dist), HelmCombat.radial_word(float(row.get("radial", 0.0))), row.word], 10, Color(col.lerp(Color.WHITE, 0.35), 0.85))
 	_draw_own(cam, stage, sim)
 	_draw_box()
 
@@ -1668,7 +1687,7 @@ func _draw_overview(pane: Control) -> void:
 		if int(row.get("bounty", 0)) > 0 and tag.find(str(row.get("hull", ""))) == 0:
 			tag_col = Color("e0a24a")
 		_text_right(pane, pane.size.x - 52.0, y + 14, tag, 10, tag_col)
-		_text_right(pane, pane.size.x - 8.0, y + 14, _dist_word(float(row.dist)), 11, Color("c5d6dc"))
+		_text_right(pane, pane.size.x - 8.0, y + 14, _dist_word(float(row.dist)), 11, radial_color(float(row.get("radial", 0.0))))
 		y += 20.0
 	if _rows.is_empty():
 		_text(Vector2(10, 40), "No contacts.", 11, Color("8aa8b0"), pane)
@@ -1737,7 +1756,7 @@ func _draw_card(pane: Control) -> void:
 		line = "Locking  %d%%" % int(frac * 100.0)
 	else:
 		var chance := HelmCombat.hit_chance(p, target, gun)
-		line = "LOCKED  ·  hit %d%%  ·  trans %d" % [int(round(chance * 100.0)), int(HelmCombat.transversal(p, target))]
+		line = "LOCKED  ·  hit %d%%  ·  trans %d  ·  rad %s" % [int(round(chance * 100.0)), int(HelmCombat.transversal(p, target)), HelmCombat.radial_word(HelmCombat.radial(p, target))]
 	_text(Vector2(10, 68), line, 10, Color("d5e4e8") if ok else Color("9fb7be"), pane)
 	var order: Dictionary = p.get("order", {})
 	for kind in order_buttons.keys():
