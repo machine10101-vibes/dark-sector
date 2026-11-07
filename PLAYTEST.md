@@ -192,6 +192,7 @@ Lane the chart. One keel. Quests, then Track.
 47. **Capacitor.** Watch the vitals bar. It names the capacitor as a percent beside the segments. Fire until it is empty. The gun holds, and a shot still lands once the capacitor is back.
 48. **System law.** Lane to Stamped Ice. The helm name reads STAMPED ICE · AMBER. A green sky reads green, a red sky reads red. Helion Dock stays Helion Dock. The patrol chip stays HEAT. On a short glass the name is only the system.
 49. **Hull in motion.** Fire until the plates warm. The hull picks up an orange glow, stronger at the stern, and the paint stays the keel's own color. Yaw. The jet on that side lights. Slide sideways and the plume cants off the centerline. Pour on speed along the nose and the flame lengthens. A still shot in optimal still lands.
+50. **Mothership and the wing.** On Fleet, Call mothership. A large base holds station behind the keel, with bays and a tower. A welder is on the keel. Fly alongside and Berth. The keel is stored, and the combat wing moves into the bay. Probes and the miner stay on the keel. Cast off. The base stays. Launch a fighter: it leaves the base, not the keel. Focus with no lock says to lock a ship first. Lock a hostile and Focus: the wing takes that ship. Screen holds station and fires the lock. Mend sends the welder to a hurt fighter. A still shot in optimal still lands.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd

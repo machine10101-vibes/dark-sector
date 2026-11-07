@@ -3134,7 +3134,12 @@ func _append_craft_orders(block: VBoxContainer, item, slim: bool = false) -> voi
 		block.add_child(ThemeKit.label("Loss is permanent until rebuild spends 1 raw mass.", 13, Color("c4512c")))
 	elif CraftOrders.is_attack(Game.sim, str(item.def_id)):
 		row.add_child(_craft_action("Launch", uid, "launch", slim))
+		row.add_child(_craft_action("Focus", uid, "focus", slim))
+		row.add_child(_craft_action("Screen", uid, "screen", slim))
 		row.add_child(_craft_action("Attack", uid, "attack", slim))
+		row.add_child(_craft_action("Return", uid, "return", slim))
+	elif str(item.def_id) == "repair_drone":
+		row.add_child(_craft_action("Mend", uid, "mend", slim))
 		row.add_child(_craft_action("Return", uid, "return", slim))
 	elif parked:
 		block.add_child(ThemeKit.label("Parked. It stays in the rack this slice.", 13, Color("8d826c")))
@@ -3211,12 +3216,18 @@ func _build_fleet() -> void:
 		child.queue_free()
 	fleet_rows = {}
 	var sim = Game.sim
-	fleet_box.add_child(ThemeKit.label("Wing orders cover every attack drone and fighter. Ships already outside and drones still on the rack take orders here too.", 13, Color("8d826c")))
+	fleet_box.add_child(ThemeKit.label("Four kinds of ship. The mothership berths the keel and the combat wing. You fly the keel. Form, Focus, Screen, Attack, and Recall order the wing. Probes, miners, and the welder stay on the keel.", 13, Color("8d826c")))
 	var wing := HBoxContainer.new()
 	wing.add_theme_constant_override("separation", 8)
 	var form := ThemeKit.button("Form")
 	form.pressed.connect(_fleet_order.bind("form"))
 	wing.add_child(form)
+	var focus := ThemeKit.button("Focus")
+	focus.pressed.connect(_fleet_order.bind("focus"))
+	wing.add_child(focus)
+	var screen := ThemeKit.button("Screen")
+	screen.pressed.connect(_fleet_order.bind("screen"))
+	wing.add_child(screen)
 	var attack := ThemeKit.button("Attack")
 	attack.pressed.connect(_fleet_order.bind("attack"))
 	wing.add_child(attack)
@@ -3224,6 +3235,18 @@ func _build_fleet() -> void:
 	recall.pressed.connect(_fleet_order.bind("recall"))
 	wing.add_child(recall)
 	fleet_box.add_child(wing)
+	var base_row := HBoxContainer.new()
+	base_row.add_theme_constant_override("separation", 8)
+	var call_base := ThemeKit.button("Call mothership")
+	call_base.pressed.connect(_call_base)
+	base_row.add_child(call_base)
+	var berth := ThemeKit.button("Berth")
+	berth.pressed.connect(_berth_base)
+	base_row.add_child(berth)
+	var mend := ThemeKit.button("Mend")
+	mend.pressed.connect(_mend_wing)
+	base_row.add_child(mend)
+	fleet_box.add_child(base_row)
 	fleet_target = ThemeKit.label("", 14, Color("d7e6c8"))
 	fleet_box.add_child(fleet_target)
 	var picks := HBoxContainer.new()
@@ -3241,10 +3264,13 @@ func _build_fleet() -> void:
 		_fit_fleet_pane()
 		return
 	var outside: Array = []
+	var bay: Array = []
 	var rack: Array = []
 	for item in sim.craft:
 		if str(item.state) != "docked" and str(item.state) != "lost":
 			outside.append(item)
+		elif str(item.get("home", "")) == "base" and CraftOrders.is_attack(sim, str(item.def_id)):
+			bay.append(item)
 		else:
 			rack.append(item)
 	fleet_box.add_child(ThemeKit.label("OUTSIDE", 15, Color("e6d7bf")))
@@ -3256,7 +3282,16 @@ func _build_fleet() -> void:
 		for item in outside:
 			_fleet_card(item, flying)
 		_pad_grid(flying)
-	fleet_box.add_child(ThemeKit.label("ON THE RACK", 15, Color("e6d7bf")))
+	fleet_box.add_child(ThemeKit.label("ABOARD THE MOTHERSHIP", 15, Color("e6d7bf")))
+	if bay.is_empty():
+		fleet_box.add_child(ThemeKit.label("The mothership bay is empty.", 13, Color("8d826c")))
+	else:
+		var stored := _inv_grid()
+		fleet_box.add_child(stored)
+		for item in bay:
+			_fleet_card(item, stored)
+		_pad_grid(stored)
+	fleet_box.add_child(ThemeKit.label("ON THE KEEL", 15, Color("e6d7bf")))
 	if rack.is_empty():
 		fleet_box.add_child(ThemeKit.label("The rack is clear.", 13, Color("8d826c")))
 	else:
@@ -3646,6 +3681,36 @@ func _hud_engage() -> void:
 	if socket == "":
 		socket = "nose"
 	Game.tap("engage", {"socket": socket, "lock": lock, "name": "Main gun"})
+
+
+func _call_base() -> void:
+	if Game.sim == null:
+		return
+	var message := CraftOrders.call_base(Game.sim)
+	if message != "":
+		Game.sim.say(message)
+	if panel_kind == "fleet":
+		_build_fleet()
+
+
+func _berth_base() -> void:
+	if Game.sim == null:
+		return
+	var message := CraftOrders.berth(Game.sim)
+	if message != "":
+		Game.sim.say(message)
+	if panel_kind == "fleet":
+		_build_fleet()
+
+
+func _mend_wing() -> void:
+	if Game.sim == null:
+		return
+	var message := CraftOrders.mend(Game.sim)
+	if message != "":
+		Game.sim.say(message)
+	if panel_kind == "fleet":
+		_build_fleet()
 
 
 func _fleet_order(verb: String) -> void:

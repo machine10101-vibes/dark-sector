@@ -5937,6 +5937,7 @@ func _dish_mesh(radius: float) -> ArrayMesh:
 
 
 func _sync_craft(sim) -> void:
+	_sync_base(sim)
 	var index := 0
 	for item in sim.craft:
 		var row: Dictionary = item
@@ -5951,10 +5952,16 @@ func _sync_craft(sim) -> void:
 			if int(sim.layer) != ScaleFrame.BAND or not bool(sim.player.get("alive", false)):
 				index += 1
 				continue
-			var pose: Dictionary = CraftOrders.escort_pose(sim, row, index)
-			pos = pose.pos
-			rot = float(pose.rot)
-			height = float(pose.height)
+			if str(row.get("home", "")) == "base" and typeof(sim.base) == TYPE_DICTIONARY and not sim.base.is_empty():
+				var beam := Vector2.from_angle(float(sim.base.get("rot", 0.0)) + PI * 0.5)
+				pos = sim.base.pos + beam * (36.0 + float(index) * 18.0)
+				rot = float(sim.base.get("rot", rot))
+				height = 8.0
+			else:
+				var pose: Dictionary = CraftOrders.escort_pose(sim, row, index)
+				pos = pose.pos
+				rot = float(pose.rot)
+				height = float(pose.height)
 		var key := "c%d" % index
 		index += 1
 		var kind := str(row.get("def_id", "fighter"))
@@ -5963,6 +5970,26 @@ func _sync_craft(sim) -> void:
 		_dress_harvest_work(sim, holder, row, pos)
 		if Game.zoom > 0.9 and str(row.get("state", "")) != "docked":
 			_tag(str(row.get("name", kind)), chart(pos + Vector2(14.0, 10.0), 8.0), Color("d7e6c8"), 12)
+
+
+func _sync_base(sim) -> void:
+	var node := get_node_or_null("Mothership") as Node3D
+	var live := false
+	if typeof(sim.base) == TYPE_DICTIONARY:
+		live = not (sim.base as Dictionary).is_empty()
+	if not live:
+		if node != null:
+			node.visible = false
+		return
+	if node == null:
+		node = Node3D.new()
+		node.name = "Mothership"
+		_assemble_craft(node, "mothership")
+		add_child(node)
+	node.visible = int(sim.layer) != ScaleFrame.CHART
+	_banked(node, sim.base.pos, float(sim.base.get("rot", 0.0)), 6.0)
+	if Game.zoom > 0.9 and node.visible:
+		_tag("Mothership", chart(sim.base.pos + Vector2(40.0, 24.0), 22.0), Color("d7e6c8"), 16)
 
 
 func _dress_harvest_work(sim, holder: Node3D, row: Dictionary, _pos: Vector2) -> void:
@@ -6047,6 +6074,10 @@ func _assemble_craft(node: Node3D, kind: String) -> void:
 		height = 2.6
 	elif kind == "hawser_drone":
 		height = 3.1
+	elif kind == "repair_drone":
+		height = 2.1
+	elif kind == "mothership":
+		height = 18.0
 	var mesh := _hull_loft(poly, height)
 	if mesh == null:
 		mesh = _prism(poly, height, 0.78)
@@ -6234,6 +6265,15 @@ func _dress_craft(node: Node3D, kind: String) -> void:
 			_kit(node, "Base", Vector3(8.4, 1.15, 7.2), Vector3(-0.4, 1.15, 0.0), Color("4a5240"))
 			_craft_bell(node, "BellP", Vector3(-5.6, 1.2, 2.4), 0.85, 1.6)
 			_craft_bell(node, "BellS", Vector3(-5.6, 1.2, -2.4), 0.85, 1.6)
+		"repair_drone":
+			_kit(node, "WeldArm", Vector3(4.2, 0.28, 0.28), Vector3(2.4, 2.6, 0.0), Color("d8d4c8"))
+			_kit(node, "Torch", Vector3(0.7, 0.7, 0.7), Vector3(4.6, 2.6, 0.0), Color("e8a040"))
+			_nav_lamp(node, "LampWeld", Vector3(4.8, 2.8, 0.0), Color("ffd27a"), 0.22)
+		"mothership":
+			_kit(node, "BayP", Vector3(28.0, 8.0, 1.2), Vector3(-8.0, 6.0, 30.0), Color("1a2024"))
+			_kit(node, "BayS", Vector3(28.0, 8.0, 1.2), Vector3(-8.0, 6.0, -30.0), Color("1a2024"))
+			_kit(node, "Tower", Vector3(10.0, 14.0, 8.0), Vector3(18.0, 16.0, 0.0), Color("3a4448"))
+			_nav_lamp(node, "LampKeep", Vector3(22.0, 24.0, 0.0), Color("f0c56a"), 1.4)
 		"livestock_lighter":
 			_kit(node, "Pen", Vector3(6.4, 2.6, 5.2), Vector3(-1.2, 3.4, 0.0), Color("c4b48a"))
 			_kit(node, "Stall", Vector3(2.4, 2.2, 2.2), Vector3(1.6, 3.2, 1.6), Color("8a6a38"))
@@ -6303,6 +6343,10 @@ func _craft_poly(kind: String) -> PackedVector2Array:
 			return PackedVector2Array([Vector2(9, 2.2), Vector2(2, 4.2), Vector2(-7, 3.6), Vector2(-7, -3.6), Vector2(2, -4.2), Vector2(9, -2.2)])
 		"sentry_drone":
 			return PackedVector2Array([Vector2(6, 4.2), Vector2(2, 6.4), Vector2(-7, 6.2), Vector2(-7, -6.2), Vector2(2, -6.4), Vector2(6, -4.2)])
+		"repair_drone":
+			return PackedVector2Array([Vector2(6, 0), Vector2(1.2, 1.3), Vector2(-5, 1.1), Vector2(-5, -1.1), Vector2(1.2, -1.3)])
+		"mothership":
+			return PackedVector2Array([Vector2(86, 14), Vector2(36, 34), Vector2(-62, 30), Vector2(-74, 0), Vector2(-62, -30), Vector2(36, -34)])
 		"livestock_lighter":
 			return PackedVector2Array([Vector2(7, 3.2), Vector2(2, 5.6), Vector2(-8, 5.2), Vector2(-8, -5.2), Vector2(2, -5.6), Vector2(7, -3.2)])
 		_:
@@ -6337,6 +6381,10 @@ func _craft_color(kind: String) -> Color:
 			return Color("c4844a")
 		"sentry_drone":
 			return Color("6e7a4a")
+		"repair_drone":
+			return Color("c9d4c4")
+		"mothership":
+			return Color("5c6a72")
 		"livestock_lighter":
 			return Color("c4b48a")
 		_:

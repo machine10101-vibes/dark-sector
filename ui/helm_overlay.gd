@@ -881,6 +881,8 @@ func _open_strike(hit: Dictionary, at: Vector2) -> void:
 				if wing.size() > 1:
 					_strike_button("Attack · the wing", _strike_wing.bind(str(hit.id)))
 			_strike_button("Form on me", _fleet_verb.bind("form"))
+			_strike_button("Screen the wing", _fleet_verb.bind("screen"))
+			_strike_button("Focus the lock", _fleet_verb.bind("focus"))
 			_strike_button("Recall the wing", _fleet_verb.bind("recall"))
 	elif kind == "gate":
 		_strike_button("Approach", _strike_approach.bind(hit))
@@ -917,7 +919,9 @@ func _open_command(at: Vector2) -> void:
 		_strike_button("Engage", _engage_lock)
 	_strike_label("FLEET")
 	_strike_button("Form on me", _fleet_verb.bind("form"))
+	_strike_button("Screen the wing", _fleet_verb.bind("screen"))
 	if lock != "":
+		_strike_button("Focus the lock", _fleet_verb.bind("focus"))
 		_strike_button("Attack with the wing", _strike_wing.bind(lock))
 	_strike_button("Recall the wing", _fleet_verb.bind("recall"))
 	_strike_label("SCAN")

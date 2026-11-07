@@ -64,6 +64,23 @@ func _run() -> void:
 	stage.call("_place_plumes", yaw_hull, {"yaw_hold": 1.0, "rot": 0.0, "vel": Vector2.ZERO, "thrusting": false, "boosting": false, "strafe_hold": 0.0, "retro_hold": false})
 	var stbd := yaw_hull.get_node_or_null("JetStbd") as MeshInstance3D
 	var port := yaw_hull.get_node_or_null("JetPort") as MeshInstance3D
+	var base_hull := Node3D.new()
+	stage.call("_assemble_craft", base_hull, "mothership")
+	check(base_hull.get_node_or_null("BayP") != null and base_hull.get_node_or_null("Tower") != null, "the mothership wears bays and a tower")
+	var weld_hull := Node3D.new()
+	stage.call("_assemble_craft", weld_hull, "repair_drone")
+	check(weld_hull.get_node_or_null("WeldArm") != null, "the welder wears an arm")
+	var base_plate := base_hull.get_node_or_null("Plate") as MeshInstance3D
+	var dart_hull := Node3D.new()
+	stage.call("_assemble_craft", dart_hull, "dart_drone")
+	var dart_plate := dart_hull.get_node_or_null("Plate") as MeshInstance3D
+	var base_span := 0.0
+	var dart_span := 1.0
+	if base_plate != null and base_plate.mesh != null:
+		base_span = base_plate.mesh.get_aabb().size.x
+	if dart_plate != null and dart_plate.mesh != null:
+		dart_span = dart_plate.mesh.get_aabb().size.x
+	check(base_span > dart_span * 3.0, "the mothership is the largest hull")
 	check(stbd != null and stbd.visible, "a positive yaw lights the starboard jet")
 	check(port != null and not port.visible, "a positive yaw leaves the port jet dark")
 	var vent := Node3D.new()

@@ -93,6 +93,7 @@ Player-visible what works now:
 - The vitals bar names the capacitor as a percent beside the segments. A dry capacitor still holds the gun. Hit chance and lock time stay the same.
 - The helm name carries the system's law color when the sky has one: green, amber, or red. Helion Dock has none, so the name stays Helion Dock. A short glass keeps the system name alone. The patrol chip stays HEAT.
 - Gun heat warms the hull plate. A cold keel stays dark. Held guns keep the plate hot. The paint color stays the hull color. A yaw lights the starboard or port jet. A sideways slide cants the plume, and the flame grows as speed along the nose climbs. Speed, turn rate, and hit chance stay the same.
+- Four kinds of ship. The mothership is a floating base: it berths the keel and stores the combat wing. The player flies the keel. Focus sends the wing at the lock only. Screen holds station and fires that lock. Attack still hunts. Probes, miners, and the welder stay on the keel. The welder patches a hurt fighter. Gun damage is unchanged.
 What is next (ordered):
 1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The module catalog is at the 40-part band, so the next module waits on a wider band. A new region pass stays blocked.
 Blocked by:

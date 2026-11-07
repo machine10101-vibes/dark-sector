@@ -4,6 +4,19 @@ extends RefCounted
 const LAYERS = ["orbit", "atmosphere", "surface", "crust", "biosign", "ruins", "legal"]
 
 
+static func tier(sim, def_id: String) -> String:
+	var kind := str(def_id)
+	if sim != null:
+		var spec = sim.defs.craft.get(kind, {})
+		if typeof(spec) == TYPE_DICTIONARY and str(spec.get("role", "")) == "base":
+			return "base"
+	if kind == "mothership":
+		return "base"
+	if is_attack(sim, kind):
+		return "fleet"
+	return "boat"
+
+
 static func is_attack(sim, def_id: String) -> bool:
 	var kind := str(def_id)
 	if kind == "fighter":
@@ -137,6 +150,8 @@ static func order(sim, uid: String, verb: String, node_id: String) -> String:
 		return _order_manifest(sim, craft, verb)
 	if str(craft.def_id) == "hawser_drone":
 		return _order_hawser(sim, craft, verb)
+	if str(craft.def_id) == "repair_drone":
+		return _order_repair(sim, craft, verb)
 	if str(craft.state) == "lost":
 		return "%s is lost. Rebuild it from returned mass." % craft.name
 	if is_attack(sim, str(craft.def_id)):
@@ -321,9 +336,17 @@ static func try_walk(sim) -> String:
 static func fleet(sim, verb: String) -> String:
 	if verb == "recall":
 		return _fleet_recall(sim)
-	if verb != "form" and verb != "attack":
+	if verb == "focus" and _lock_mark(sim) == "":
+		return "Lock a ship first."
+	if verb != "form" and verb != "attack" and verb != "screen" and verb != "focus":
 		return "That order is not on the board."
-	var wing: String = "attack" if verb == "attack" else "escort"
+	var wing := "escort"
+	if verb == "attack":
+		wing = "attack"
+	elif verb == "focus":
+		wing = "focus"
+	elif verb == "screen":
+		wing = "screen"
 	var sent := 0
 	var first := ""
 	for craft in sim.craft:
@@ -402,6 +425,8 @@ static func step(sim, craft, dt: float) -> void:
 					_step_manifest(sim, craft, dt)
 				"hawser_drone":
 					_step_hawser(sim, craft, dt)
+				"repair_drone":
+					_step_repair(sim, craft, dt)
 	if str(craft.state) != "lost":
 		_hazards(sim, craft)
 	if float(craft.hp) <= 0.0 and str(craft.state) != "lost":
@@ -736,17 +761,32 @@ static func _seat(sim, craft) -> int:
 
 
 static func _order_fighter(sim, craft, verb: String) -> String:
-	if verb != "launch" and verb != "attack" and verb != "escort":
+	if verb != "launch" and verb != "attack" and verb != "escort" and verb != "screen" and verb != "focus":
 		return "That order is not on the board."
 	var mark := ""
 	if verb == "attack":
 		mark = _attack_mark(sim)
+	elif verb == "focus":
+		mark = _lock_mark(sim)
+		if mark == "":
+			return "Lock a ship first."
 	if str(craft.state) == "docked":
 		_depart(sim, craft, mark)
 	craft.state = "escort"
-	craft.order = "attack" if verb == "attack" else "escort"
-	craft.target = mark
-	if verb == "attack" and mark != "":
+	if verb == "screen":
+		craft.order = "screen"
+		craft.target = ""
+	elif verb == "attack" or verb == "focus":
+		craft.order = "attack"
+		craft.target = mark
+	else:
+		craft.order = "escort"
+		craft.target = ""
+	if verb == "focus":
+		sim.say("%s takes the lock." % craft.name)
+	elif verb == "screen":
+		sim.say("%s holds the screen and fires the lock." % craft.name)
+	elif verb == "attack" and mark != "":
 		sim.say("%s breaks formation to attack." % craft.name)
 	elif verb == "attack":
 		sim.say("%s is out. It will hit whatever hunts the keel." % craft.name)
@@ -754,6 +794,16 @@ static func _order_fighter(sim, craft, verb: String) -> String:
 		sim.say("%s takes a station on the wing." % craft.name)
 	sim.sfx("launch")
 	return ""
+
+
+static func _lock_mark(sim) -> String:
+	var locked = HelmCombat.locked_unit(sim, sim.player)
+	if locked == null or not bool(locked.get("alive", false)):
+		return ""
+	var team := str(locked.get("team", ""))
+	if team == "captain" or team == "civilian":
+		return ""
+	return str(locked.get("agent_id", ""))
 
 
 static func _attack_mark(sim) -> String:
@@ -817,6 +867,9 @@ static func _step_fighter(sim, craft, dt: float) -> void:
 	if str(craft.def_id) == "sentry_drone":
 		_step_sentry(sim, craft, dt)
 		return
+	if str(craft.get("order", "")) == "screen" and str(craft.state) != "returning" and float(craft.battery) > 8.0:
+		_step_screen(sim, craft, dt)
+		return
 	if str(craft.state) == "returning" or float(craft.battery) <= 8.0:
 		craft.state = "returning"
 		_return_home(sim, craft, dt)
@@ -838,6 +891,24 @@ static func _step_fighter(sim, craft, dt: float) -> void:
 	else:
 		_fly_safe(sim, craft, slot, dt, float(craft.speed))
 	if craft.pos.distance_to(hostile.pos) < float(craft.gun.range) and _facing(craft, hostile.pos) < 0.5:
+		sim.try_fire(craft, craft.gun)
+
+
+static func _step_screen(sim, craft, dt: float) -> void:
+	var seat := _seat(sim, craft)
+	var catch := maxf(float(craft.speed), sim.player.vel.length() + 80.0)
+	var pose: Dictionary = escort_pose(sim, craft, seat)
+	_fly_safe(sim, craft, pose.pos, dt, catch)
+	var locked = HelmCombat.locked_unit(sim, sim.player)
+	if locked == null or not bool(locked.get("alive", false)):
+		return
+	var team := str(locked.get("team", ""))
+	if team == "captain" or team == "civilian":
+		return
+	var aim: Vector2 = locked.pos - craft.pos
+	if aim.length() > 1.0:
+		craft.rot = aim.angle()
+	if craft.pos.distance_to(locked.pos) < float(craft.gun.range) and _facing(craft, locked.pos) < 0.5:
 		sim.try_fire(craft, craft.gun)
 
 
@@ -1106,21 +1177,26 @@ static func _step_sentry(sim, craft, dt: float) -> void:
 
 
 static func _return_home(sim, craft, dt: float) -> void:
-	if not sim.player.alive:
+	var aboard := _aboard_base(sim, craft)
+	var dest: Vector2 = sim.base.pos if aboard else sim.player.pos
+	if not sim.player.alive and not aboard:
 		_fly_safe(sim, craft, sim.player.pos, dt, float(craft.speed))
 		return
 	var catch = maxf(float(craft.speed), sim.player.vel.length() + 90.0)
 	if float(craft.battery) <= 0.0:
 		catch = 70.0
-	var dist = _fly_safe(sim, craft, sim.player.pos, dt, catch)
+	var dist = _fly_safe(sim, craft, dest, dt, catch)
 	if dist < 46.0:
-		if sim.hangar_down():
+		if not aboard and sim.hangar_down():
 			if not bool(craft.get("hangar_said", false)):
 				craft.hangar_said = true
 				sim.say("The hangar is down. %s cannot come aboard." % craft.name)
 			return
 		_dock(sim, craft)
-		sim.say("%s is back in the rack." % craft.name)
+		if aboard:
+			sim.say("%s is back aboard the mothership." % craft.name)
+		else:
+			sim.say("%s is back in the rack." % craft.name)
 		sim.sfx("dock")
 
 
@@ -1128,7 +1204,10 @@ static func _dock(sim, craft) -> void:
 	craft.state = "docked"
 	craft.battery = float(craft.max_battery)
 	craft.vel = Vector2.ZERO
-	craft.pos = sim.player.pos
+	if _aboard_base(sim, craft):
+		craft.pos = sim.base.pos
+	else:
+		craft.pos = sim.player.pos
 	craft.work = 0.0
 	craft.layers_done = 0
 	craft.did_job = false
@@ -1139,12 +1218,173 @@ static func _dock(sim, craft) -> void:
 static func _depart(sim, craft, target: String) -> void:
 	craft.state = "outbound"
 	craft.target = target
-	craft.pos = sim.player.pos + Vector2.from_angle(sim.player.rot) * 36.0
-	craft.vel = sim.player.vel
-	craft.rot = sim.player.rot
+	var origin: Vector2 = sim.player.pos
+	var facing := float(sim.player.rot)
+	var kick: Vector2 = sim.player.vel
+	var push := 36.0
+	if _aboard_base(sim, craft):
+		origin = sim.base.pos
+		facing = float(sim.base.get("rot", facing))
+		kick = Vector2.ZERO
+		push = 80.0
+	craft.pos = origin + Vector2.from_angle(facing) * push
+	craft.vel = kick
+	craft.rot = facing
 	craft.work = 0.0
 	craft.layers_done = 0
 	craft.did_job = false
+
+
+static func _base_live(sim) -> bool:
+	return sim != null and typeof(sim.base) == TYPE_DICTIONARY and not sim.base.is_empty() and bool(sim.base.get("anchored", false))
+
+
+static func _aboard_base(sim, craft) -> bool:
+	return str(craft.get("home", "keel")) == "base" and is_attack(sim, str(craft.def_id)) and _base_live(sim)
+
+
+static func call_base(sim) -> String:
+	if sim == null or sim.player.is_empty():
+		return "No keel to call from."
+	if _base_live(sim):
+		return "The mothership is already holding station."
+	var back := Vector2.from_angle(float(sim.player.rot) + PI) * 720.0
+	sim.base = {
+		"name": "Mothership",
+		"pos": sim.player.pos + back,
+		"rot": float(sim.player.rot),
+		"anchored": true,
+		"hp": 800.0,
+		"max_hp": 800.0,
+	}
+	if _any_of(sim, "repair_drone") == null:
+		sim.craft.append(sim._make_craft("repair_drone", 1))
+	sim.say("Mothership holds station. Berth the keel to put the wing aboard.")
+	sim.sfx("launch")
+	return ""
+
+
+static func berth(sim) -> String:
+	if sim == null or sim.player.is_empty():
+		return "No keel to berth."
+	if not _base_live(sim):
+		return "Call the mothership first."
+	if sim.player.pos.distance_to(sim.base.pos) > 480.0:
+		return "Bring the keel alongside the mothership."
+	sim.player.moored = true
+	sim.player.pos = sim.base.pos
+	sim.player.dock_x = sim.base.pos.x
+	sim.player.dock_y = sim.base.pos.y
+	sim.player.vel = Vector2.ZERO
+	sim.player.thrusting = false
+	sim.quest_flags.berthed_base = true
+	sim.quest_flags.moor_latch = 0.55
+	var stored := 0
+	for craft in sim.craft:
+		if not is_attack(sim, str(craft.def_id)):
+			continue
+		if str(craft.state) == "lost":
+			continue
+		craft.home = "base"
+		stored += 1
+		if str(craft.state) == "docked":
+			craft.pos = sim.base.pos
+			continue
+		craft.state = "returning"
+		craft.order = "return"
+	sim.say("Berthed. The keel and %d wing ships are aboard the mothership." % stored)
+	sim.sfx("dock")
+	return ""
+
+
+static func mend(sim) -> String:
+	var craft = _first_docked(sim, "repair_drone")
+	if craft == null:
+		var any = _any_of(sim, "repair_drone")
+		if any == null:
+			return "The keel has no welder. Call the mothership."
+		if str(any.state) == "lost":
+			return "%s is lost. Rebuild it from returned mass." % any.name
+		craft = any
+	return _order_repair(sim, craft, "mend")
+
+
+static func _order_repair(sim, craft, verb: String) -> String:
+	if verb != "mend" and verb != "launch":
+		return "That order is not on the board."
+	if str(craft.state) == "lost":
+		return "%s is lost. Rebuild it from returned mass." % craft.name
+	var mark := _mend_mark(sim)
+	if mark == "":
+		return "Nothing is hurt."
+	if str(craft.state) == "docked":
+		_depart(sim, craft, mark)
+	else:
+		craft.target = mark
+		craft.state = "outbound"
+	craft.order = "mend"
+	craft.work = 0.0
+	craft.did_job = false
+	sim.say("%s goes to weld." % craft.name)
+	sim.sfx("launch")
+	return ""
+
+
+static func _mend_mark(sim) -> String:
+	var worst = null
+	var missing := 0.0
+	for item in sim.craft:
+		if not is_attack(sim, str(item.def_id)):
+			continue
+		if str(item.state) == "docked" or str(item.state) == "lost":
+			continue
+		var gap := float(item.max_hp) - float(item.hp)
+		if gap > missing:
+			worst = item
+			missing = gap
+	if worst != null:
+		return str(worst.uid)
+	if float(sim.player.hp) < float(sim.player.max_hp) - 0.5:
+		return "keel"
+	return ""
+
+
+static func _step_repair(sim, craft, dt: float) -> void:
+	if str(craft.state) == "returning" or float(craft.battery) <= 8.0:
+		craft.state = "returning"
+		craft.order = "return"
+		_return_home(sim, craft, dt)
+		return
+	var mark := str(craft.get("target", ""))
+	var dest: Vector2 = sim.player.pos
+	var patient = null
+	if mark == "keel":
+		patient = sim.player
+	else:
+		patient = _by_uid(sim, mark)
+		if patient == null or str(patient.get("state", "")) == "lost":
+			craft.state = "returning"
+			craft.order = "return"
+			_return_home(sim, craft, dt)
+			return
+		dest = patient.pos
+	var dist := _fly_safe(sim, craft, dest, dt, float(craft.speed))
+	if dist > 36.0:
+		craft.state = "outbound"
+		return
+	craft.state = "working"
+	craft.work = float(craft.work) + dt
+	if float(craft.work) < float(craft.work_step):
+		return
+	if bool(craft.did_job):
+		return
+	craft.did_job = true
+	var cap := float(patient.max_hp)
+	patient.hp = minf(cap, float(patient.hp) + 12.0)
+	sim.say("%s welded %s." % [craft.name, str(patient.get("name", "the keel"))])
+	craft.state = "returning"
+	craft.order = "return"
+	_return_home(sim, craft, dt)
 
 
 static func _send(sim, craft, place, order_name: String) -> void:

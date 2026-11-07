@@ -65,6 +65,8 @@ var fined := false
 var player: Dictionary = {}
 var actors: Array = []
 var craft: Array = []
+## The mothership. Empty until the helm calls it. Berths the keel and the combat wing.
+var base: Dictionary = {}
 var projectiles: Array = []
 ## Short-lived beam segments. Host writes them; guests read them.
 var beams: Array = []
@@ -181,6 +183,7 @@ func new_game(class_id: String) -> void:
 	law_target = ""
 	chat = []
 	craft = []
+	base = {}
 	var running = {}
 	for entry in hull.starting_craft:
 		var def_id = str(entry.id)
@@ -934,6 +937,7 @@ func to_dict() -> Dictionary:
 		"player": _ship_out(player),
 		"actors": actor_rows,
 		"craft": craft_rows,
+		"base": _base_out(),
 		"projectiles": shots,
 		"beams": _beams_out(),
 		"wrecks": wreck_rows,
@@ -989,6 +993,7 @@ func from_dict(data: Dictionary) -> void:
 	craft = []
 	for row in data.craft:
 		craft.append(_craft_in(row))
+	_base_in(data.get("base", {}))
 	projectiles = []
 	for row in data.get("projectiles", []):
 		var shot = row.duplicate(true)
@@ -1169,7 +1174,11 @@ func _step_ship(unit: Dictionary, cmd: Dictionary, dt: float) -> void:
 		unit.moored = false
 		cast_off = true
 		if str(unit.get("agent_id", "")) == str(player.agent_id):
-			say("Cast off. Helion Dock is behind you.")
+			if bool(quest_flags.get("berthed_base", false)):
+				quest_flags.berthed_base = false
+				say("Cast off. The mothership holds station.")
+			else:
+				say("Cast off. Helion Dock is behind you.")
 	var stats = Fit.stats(defs, unit)
 	cmd = HelmCombat.steer(self, unit, cmd, stats)
 	var spd_before := float(unit.vel.length())
@@ -2905,6 +2914,7 @@ func net_snapshot() -> Dictionary:
 		"projectiles": shots,
 		"beams": _beams_out(),
 		"craft": craft_rows,
+		"base": _base_out(),
 		"wrecks": wreck_rows,
 		"law_target": law_target,
 		"heat": heat.duplicate(true),
@@ -2968,6 +2978,7 @@ func apply_snapshot(data: Dictionary) -> void:
 	for row in data.get("craft", []):
 		if typeof(row) == TYPE_DICTIONARY:
 			craft.append(_craft_in(row))
+	_base_in(data.get("base", {}))
 	wrecks = []
 	for row in data.get("wrecks", []):
 		if typeof(row) != TYPE_DICTIONARY:
@@ -3248,6 +3259,7 @@ func _make_craft(def_id: String, index: int) -> Dictionary:
 		"layers_done": 0,
 		"target": "",
 		"order": "",
+		"home": "keel",
 		"did_job": false,
 		"fire_cd": 0.0,
 		"gun": spec.get("gun", {}).duplicate(true),
@@ -3415,6 +3427,23 @@ func _coord_dict(meters: Vector2, at_layer: int) -> Dictionary:
 	return coord.to_dict()
 
 
+func _base_out() -> Dictionary:
+	if base.is_empty():
+		return {}
+	var row: Dictionary = base.duplicate(true)
+	row.pos = Serde.vec_out(base.pos)
+	return row
+
+
+func _base_in(row: Dictionary) -> void:
+	if row.is_empty():
+		base = {}
+		return
+	base = row.duplicate(true)
+	base.pos = Serde.vec_in(base.pos)
+	base.anchored = true
+
+
 func _craft_out(item: Dictionary) -> Dictionary:
 	var row = item.duplicate(true)
 	row.pos = Serde.vec_out(item.pos)
@@ -3435,6 +3464,8 @@ func _craft_in(row: Dictionary) -> Dictionary:
 	item.rot = float(item.rot)
 	if not item.has("order"):
 		item.order = ""
+	if not item.has("home"):
+		item.home = "keel"
 	if not item.has("max_hp"):
 		item.max_hp = int(item.hp)
 	return item

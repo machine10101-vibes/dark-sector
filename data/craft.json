@@ -247,5 +247,31 @@
     "hp": 34,
     "work": 1.6,
     "radius": 12
+  },
+  "repair_drone": {
+    "id": "repair_drone",
+    "name": "Welder",
+    "job": "The smallest boat. It flies to a hurt wing ship or the keel and welds a plate. It does not fight.",
+    "role": "repair",
+    "length_m": 7,
+    "speed": 240,
+    "battery": 90,
+    "drain": 2.8,
+    "hp": 12,
+    "work": 2.0,
+    "radius": 5
+  },
+  "mothership": {
+    "id": "mothership",
+    "name": "Mothership",
+    "job": "A floating base. It berths the keel and the combat wing. Probes, miners, and the welder stay on the keel.",
+    "role": "base",
+    "length_m": 180,
+    "speed": 0,
+    "battery": 9999,
+    "drain": 0,
+    "hp": 800,
+    "work": 0,
+    "radius": 64
   }
 }
