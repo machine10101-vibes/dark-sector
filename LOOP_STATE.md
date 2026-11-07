@@ -91,8 +91,9 @@ Player-visible what works now:
 - Contacts and the locked bracket name closing speed. A close paints warm on the list, and the lock draws the way the hull is moving. Sweep counts how many are closing. Hit chance still uses transversal. The hull tag on a contact stays the same.
 - A click on the contacts header cycles every contact, hostiles, wrecks, and neutrals. Brackets in the sky stay up. The hull tag stays the same.
 - The vitals bar names the capacitor as a percent beside the segments. A dry capacitor still holds the gun. Hit chance and lock time stay the same.
+- The helm name carries the system's law color when the sky has one: green, amber, or red. Helion Dock has none, so the name stays Helion Dock. A short glass keeps the system name alone. The patrol chip stays HEAT.
 What is next (ordered):
-1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The module catalog is at the 40-part band, so the next module waits on a wider band. A new region pass stays blocked. The next helm work is the system's law color on the name.
+1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The module catalog is at the 40-part band, so the next module waits on a wider band. A new region pass stays blocked.
 Blocked by:
 - Nothing in this repo blocks the authored-hook pass. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):

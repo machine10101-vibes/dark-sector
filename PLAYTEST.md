@@ -190,6 +190,7 @@ Lane the chart. One keel. Quests, then Track.
 45. **Closing speed.** Lock a hull that is flying at you. The contacts distance warms, the bracket signs a negative radial, and the lock draws a short vector along its way. Sweep names how many are closing. A still shot in optimal still lands. The hull tag stays Skiff 24.
 46. **Overview filter.** Click the contacts header. It steps through every contact, hostiles, wrecks, and neutrals, and the helm says which list is open. Brackets in the sky stay up. The hull tag stays Skiff 24.
 47. **Capacitor.** Watch the vitals bar. It names the capacitor as a percent beside the segments. Fire until it is empty. The gun holds, and a shot still lands once the capacitor is back.
+48. **System law.** Lane to Stamped Ice. The helm name reads STAMPED ICE · AMBER. A green sky reads green, a red sky reads red. Helion Dock stays Helion Dock. The patrol chip stays HEAT. On a short glass the name is only the system.
 
 ```bash
 godot --headless --path . --script res://tests/ecosystem_sim.gd

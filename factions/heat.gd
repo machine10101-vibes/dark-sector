@@ -19,6 +19,21 @@ static func guns(sim) -> String:
 	return line
 
 
+static func security(system: Dictionary) -> String:
+	var law := str(system.get("law_color", "")).to_upper()
+	if law != "GREEN" and law != "AMBER" and law != "RED":
+		return ""
+	return law
+
+
+static func place_line(system: Dictionary, compact: bool) -> String:
+	var title := str(system.get("name", "")).to_upper()
+	var law := security(system)
+	if compact or law == "":
+		return title
+	return "%s  ·  %s" % [title, law]
+
+
 static func chip(sim) -> String:
 	var heat := float(sim.heat.get(sim._pdo_id(), 0.0))
 	var stage := str(sim.heat_stage())

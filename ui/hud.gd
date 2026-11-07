@@ -1099,7 +1099,16 @@ func _refresh_helm() -> void:
 	if dock_button != null:
 		dock_button.visible = sim.can_force_dock()
 	_place_board_button(compact)
-	helm_name.text = str(sim.defs.system.name).to_upper()
+	helm_name.text = HeatWords.place_line(sim.defs.system, compact)
+	var sec := HeatWords.security(sim.defs.system)
+	var name_col := Color("5ee0f0")
+	if not compact and sec == "GREEN":
+		name_col = Color("7fd8c0")
+	elif not compact and sec == "AMBER":
+		name_col = Color("f0c36a")
+	elif not compact and sec == "RED":
+		name_col = Color("f0a0a0")
+	helm_name.add_theme_color_override("font_color", name_col)
 	var tag := DockBoard.tag_of(sim)
 	show_tag = tag != ""
 	var screen := get_viewport().get_visible_rect().size

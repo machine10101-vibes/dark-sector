@@ -175,6 +175,14 @@ func _heat_ladder() -> void:
 	quiet.heat.red_keel = 8.0
 	check(HeatWords.chip(quiet).contains("Red Keel noted"), "Red Keel heat names itself on the chip")
 	check(quiet.heat_stage() == "clear", "gang heat does not change the patrol stage")
+	check(HeatWords.security(quiet.defs.system) == "", "Helion Dock keeps its name")
+	check(HeatWords.place_line(quiet.defs.system, false) == "HELION DOCK", "a blank law leaves the system name")
+	var amber := {"name": "Stamped Ice", "law_color": "amber"}
+	check(HeatWords.security(amber) == "AMBER", "Stamped Ice names amber law")
+	check(HeatWords.place_line(amber, false) == "STAMPED ICE  ·  AMBER", "the helm name carries the law")
+	check(HeatWords.place_line(amber, true) == "STAMPED ICE", "a short glass keeps the system name")
+	var calm := make("anvil")
+	check(HeatWords.chip(calm) == "HEAT  clean", "law color does not change the patrol word")
 	var hailed := make("anvil")
 	hailed.heat.helion_compact = 14.0
 	hailed.hold_npc = true
