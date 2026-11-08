@@ -62,6 +62,8 @@ var beacon_pos = Vector2.ZERO
 var star_radius := 180.0
 var trash_pos = Vector2.ZERO
 var pack_pos = Vector2.ZERO
+## Nickel planted when the belt's own mix is ice or copper. The chart mark follows it.
+var lane_nickel := Vector2.ZERO
 var fined := false
 var player: Dictionary = {}
 var actors: Array = []
@@ -2314,6 +2316,7 @@ func _keep_planets_apart() -> void:
 
 
 func _build_static() -> void:
+	lane_nickel = Vector2.ZERO
 	var rng = RandomNumberGenerator.new()
 	rng.seed = seed_value
 	planets = []
@@ -2382,6 +2385,7 @@ func _build_static() -> void:
 	pack_pos = Vector2.from_angle(pang) * (green_r + stand)
 	if green_body != null:
 		pack_pos = green_body.pos + Vector2.from_angle(pang) * (green_r + stand)
+	_fill_thin_sky(rng)
 	_build_gates()
 	_build_nodes()
 
@@ -4000,6 +4004,47 @@ func _scatter_flank_scrap(rng: RandomNumberGenerator) -> void:
 		plate_pos = _orbit_seat(anchor, 2.2, 1100.0, pad, 280.0)
 
 
+## Belts that are ice or copper still leave a nickel ring. Ice and copper
+## already come from the reach stock. The seat stays kilometers off the pad.
+func _fill_thin_sky(rng: RandomNumberGenerator) -> void:
+	var nickel := 0
+	var ice := 0
+	var copper := 0
+	for rock in asteroids:
+		var id := str(rock.get("material", ""))
+		if id == "nickel_cinder":
+			nickel += 1
+		elif id == "ice_spall":
+			ice += 1
+		elif id == "copper_slag":
+			copper += 1
+	if nickel > 0 and ice > 0 and copper > 0:
+		return
+	var home = planet(str(defs.system.get("pdo", {}).get("home", "")))
+	if home == null and planets.size() > 0:
+		home = planets[0]
+	if home == null:
+		return
+	var pad: Vector2 = Vector2(home.pos) + _dock_offset(home)
+	var avoid := _stock_hubs()
+	if nickel == 0:
+		var at := _stock_seat(rng, home, pad, avoid)
+		avoid.append(at)
+		_plant_cluster(rng, at, 4, 70.0, "#c4a06a", "#f6c36a", "nickel_cinder", 16.0, "nickel cinder")
+		lane_nickel = at
+	if ice == 0:
+		var ice_at := _stock_seat(rng, home, pad, avoid)
+		avoid.append(ice_at)
+		_plant_cluster(rng, ice_at, 4, 70.0, "#d5e6f0", "#f4fbff", "ice_spall", 16.0, "ice spall")
+		if ice_pos == Vector2.ZERO:
+			ice_pos = ice_at
+	if copper == 0:
+		var slag_at := _stock_seat(rng, home, pad, avoid)
+		_plant_cluster(rng, slag_at, 4, 70.0, "#6e8f58", "#d6ee8a", "copper_slag", 16.0, "copper slag")
+		if copper_pos == Vector2.ZERO:
+			copper_pos = slag_at
+
+
 func _pin_local_marks() -> void:
 	var belt: Dictionary = defs.system.get("belt", {})
 	var rain: Dictionary = defs.system.get("stream", {})
@@ -4022,6 +4067,12 @@ func _pin_local_marks() -> void:
 	_ensure_stock_node("ice_spall", "Ice Spall", ice_pos, "ice_spall", "Ice spall", 5)
 	_ensure_stock_node("copper_slag", "Copper Slag", copper_pos, "copper_slag", "Copper slag", 5)
 	_ensure_stock_node("hull_plate", "Hull Plate", plate_pos, "hull_plate", "Hull plate", 4)
+	if lane_nickel != Vector2.ZERO:
+		for row in nodes:
+			var mark: Dictionary = row
+			if str(mark.get("id", "")) == "lane_nickel":
+				mark.pos = lane_nickel
+				mark.radius = 80.0
 
 
 func _ensure_stock_node(nid: String, title: String, at: Vector2, res_id: String, res_name: String, amount: int) -> void:

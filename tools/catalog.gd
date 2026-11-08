@@ -156,6 +156,7 @@ static func _fill(defs: Dictionary) -> void:
 	_load_indexes(defs)
 	_stamp(defs)
 	_stamp_lands(defs)
+	_stamp_skies(defs)
 
 
 static func _overlay_modules(defs: Dictionary) -> void:
@@ -337,6 +338,181 @@ static func _stamp_lands(defs: Dictionary) -> void:
 			scale["biomes"] = lands
 			body["scale"] = scale
 			break
+
+
+## Quiet chart rows stay quiet in the JSON. The live board still puts a
+## wreck field, a comet lane, a pair of skiffs, and a nickel seam in every sky.
+static func _stamp_skies(defs: Dictionary) -> void:
+	var chart: Dictionary = defs.get("systems", {})
+	var seen := {}
+	for key in chart.keys():
+		var system: Dictionary = chart[key]
+		var field: Dictionary = system.get("trash", {})
+		if typeof(field) != TYPE_DICTIONARY:
+			continue
+		if int(field.get("count", 0)) <= 0:
+			continue
+		var origin := str(field.get("origin", ""))
+		if origin != "":
+			seen[origin] = str(key)
+	for key in chart.keys():
+		var system: Dictionary = chart[key]
+		var sid := str(key)
+		_fill_pirate_pack(system)
+		_fill_wreck_field(system, sid, seen)
+		_fill_comet_lane(system, sid)
+		_fill_nickel_mark(system, sid)
+
+
+static func _home_body(system: Dictionary) -> String:
+	var home := str(system.get("pdo", {}).get("home", ""))
+	if home != "":
+		return home
+	var planets: Array = system.get("planets", [])
+	if planets.is_empty() or typeof(planets[0]) != TYPE_DICTIONARY:
+		return ""
+	return str((planets[0] as Dictionary).get("id", ""))
+
+
+static func _lane_angle(sid: String, salt: int) -> float:
+	var mix := absi(sid.hash() + salt) % 1000
+	var ang := float(mix) / 1000.0 * TAU
+	if ang < 0.35:
+		ang = 1.15
+	return ang
+
+
+static func _fill_pirate_pack(system: Dictionary) -> void:
+	var pirates: Dictionary = system.get("pirates", {})
+	if typeof(pirates) != TYPE_DICTIONARY:
+		pirates = {}
+	if int(pirates.get("count", 0)) > 0:
+		return
+	pirates["count"] = 2
+	if float(pirates.get("standoff", 0.0)) < 640.0:
+		pirates["standoff"] = 1100.0
+	if float(pirates.get("angle", 0.0)) < 0.2:
+		pirates["angle"] = 2.4
+	system["pirates"] = pirates
+
+
+static func _fill_wreck_field(system: Dictionary, sid: String, seen: Dictionary) -> void:
+	var field: Dictionary = system.get("trash", {})
+	if typeof(field) != TYPE_DICTIONARY:
+		field = {}
+	if int(field.get("count", 0)) > 0:
+		return
+	var title := str(system.get("name", sid))
+	var origin := "a keel broken over %s" % title
+	if seen.has(origin):
+		origin = "a keel broken over %s" % sid
+	seen[origin] = sid
+	var home := _home_body(system)
+	var ang := _lane_angle(sid, 17)
+	var wreck_id := str(field.get("id", ""))
+	if wreck_id == "" or wreck_id == "none":
+		wreck_id = "lane_wreck"
+	field["id"] = wreck_id
+	field["name"] = "Broken Keel"
+	field["origin"] = origin
+	field["anchor"] = home
+	field["angle"] = ang
+	field["distance"] = 2400.0
+	field["count"] = 4
+	field["spread"] = 120.0
+	system["trash"] = field
+	var marks: Array = system.get("nodes", [])
+	for raw in marks:
+		if typeof(raw) == TYPE_DICTIONARY and str((raw as Dictionary).get("id", "")) == "lane_wreck":
+			return
+	marks.append({
+		"id": "lane_wreck",
+		"name": "Broken Keel",
+		"kind": "trash",
+		"anchor": home,
+		"angle": ang,
+		"distance": 2400.0,
+		"radius": 90.0,
+		"heat": "lease",
+		"resource": {
+			"id": "salvage_parts",
+			"name": "Keel salvage",
+			"amount": 4,
+		},
+		"layers": {
+			"orbit": "A broken keel left in the lane. The plates still take a tender.",
+			"legal": "Unmarked salvage. The field is not a Compact hold.",
+		},
+	})
+	system["nodes"] = marks
+
+
+static func _fill_comet_lane(system: Dictionary, sid: String) -> void:
+	var rain: Dictionary = system.get("stream", {})
+	if typeof(rain) != TYPE_DICTIONARY:
+		rain = {}
+	var rid := str(rain.get("id", ""))
+	if rid != "" and rid != "none":
+		return
+	var ang := _lane_angle(sid, 41)
+	system["stream"] = {
+		"id": "lane_gravel",
+		"name": "Lane Gravel",
+		"anchor": _home_body(system),
+		"angle": ang + 2.2,
+		"distance": 2800.0,
+		"vector": ang + 1.15,
+		"period": 18.0,
+		"span": 420.0,
+		"local": false,
+	}
+
+
+static func _fill_nickel_mark(system: Dictionary, sid: String) -> void:
+	if _belt_drops_nickel(system, sid):
+		return
+	var marks: Array = system.get("nodes", [])
+	for raw in marks:
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var res: Dictionary = (raw as Dictionary).get("resource", {})
+		if str(res.get("id", "")) == "nickel_cinder":
+			return
+		if str((raw as Dictionary).get("id", "")) == "lane_nickel":
+			return
+	var ang := _lane_angle(sid, 73)
+	marks.append({
+		"id": "lane_nickel",
+		"name": "Nickel Cinder",
+		"kind": "seam",
+		"anchor": _home_body(system),
+		"angle": ang + 4.1,
+		"distance": 3200.0,
+		"radius": 80.0,
+		"heat": "lease",
+		"resource": {
+			"id": "nickel_cinder",
+			"name": "Nickel cinder",
+			"amount": 4,
+		},
+		"layers": {
+			"orbit": "A nickel seam off the belt's own mix.",
+			"legal": "Open lease. The cut is the captain's.",
+		},
+	})
+	system["nodes"] = marks
+
+
+static func _belt_drops_nickel(system: Dictionary, sid: String) -> bool:
+	var belt: Dictionary = system.get("belt", {})
+	if typeof(belt) != TYPE_DICTIONARY:
+		return false
+	if int(belt.get("count", 0)) <= 0:
+		return false
+	if bool(belt.get("local", false)):
+		return true
+	var book := ["nickel_cinder", "ice_spall", "copper_slag"]
+	return book[absi(sid.hash()) % book.size()] == "nickel_cinder"
 
 
 static func _ensure_gate(system: Dictionary, lane_id: String, dest: String, other: Dictionary, color: String, outbound: bool) -> void:
