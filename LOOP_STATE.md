@@ -1,7 +1,7 @@
 LOOP STATE
 ==========
 Build: Godot 4.7.2 stable, GL Compatibility
-Slice just completed: Ring haul cue
+Slice just completed: Helm lock warning, range rings, sweep, insurance
 Player-visible what works now:
 - A fresh keel moors on a berth ring beside Aegis, in clear space. The pad is not a planet-sized disc, and the hull is not inside the city or the ice. The title-yard Needle stays in its own world, so Take does not leave a second, larger keel sitting on the pad.
 - Phone portrait and landscape keep Speed, Purse, the bars, the stick, the gun, and the scale in separate bands. The scale sits above the bars on a tall phone and beside the stick on a short one.
@@ -9,6 +9,9 @@ Player-visible what works now:
 - On the Helion pad, Market buys one glasswheat for 12 and sells it for 8 against the purse. Off the pad the stall refuses. The posted crop price does not move. A captain clicks the corp field and types `Red-Keel!!`; a repeated flight key does not append. Set tag stores Red-Keel on the helm as one line on a short phone, and on the dossier and the overhead name. The market glass on that phone still scrolls beside the helm, clear of Speed, Purse, the bars, the stick, and the gun. F5 writes the log without leaving the helm, and F9 brings the tag and the glasswheat back.
 - Take haul puts the line Ice ring N m — hold that way on the helm and in the log. The amber beam is the vector from the keel to the ice-ring drop, and the nose turns onto that vector. Cast off and W leave 0 m/s along the beam and climb through the tens toward a couple of hundred. The ice-ring number falls every second until the touch. The shell still refuses a chart dump until the ring has the crate. Touching the ring switches the line to Helion Dock N m — bring the crate back, swings the amber beam from the keel to the Helion pad, and puts the nose and the way-on on that beam. Holding it makes the Helion Dock number fall every second until Moored. Moored on the pad pays 120, or 200 if the scan already paid.
 - Cast off, fly out, and come back. When the card shows Helion Dock under 200 m the keel is Moored from any heading, speed, or stop, on Local or Tactical. Inside 500 m the Dock button forces that snap. A fresh cast-off that never leaves the bubble is not grabbed. The card meters are the range. The scale bar is zoom.
+- Every weapon, mast, pod, and gear piece reads the real hull skin. Turrets, the rack, and the laser bank take a station behind the bridge, scale to the hull width, and stand on a riser when the deck slopes. The mast and flank guns are seated on collars and blocks that follow the fuselage or wing top. Belts lie flush on the wall, belly gear hangs from the keel line, and deck gear is pulled down onto the deck. Barrel breech sits aft, the muzzle ring and heat band forward. `tests/hull_attach.gd` checks that no module part floats clear of any playable or stock hull.
+- Scenery is built to the same standard as the ships. Asteroids are cratered rock with ore veins, strata, and flecks. Ice is a faceted blue crystal cluster, and copper crystals are prism clusters. Wrecks are torn hull sections with ribs, holes, and loose plates. The sky is a procedural layered starfield with a galactic band and dust lanes. The star shows granulation, spots, and soft rays inside a facing-based corona. Gates are armored rings with pylons, coils, emitter prongs, lit strips, and a swirling event-horizon veil. The Helion pad carries a control tower with a glass cab and dish, container stacks, fuel tanks, flood poles, and edge lights, with the pad centre clear. The geometry lives in `world/env_forge.gd`, and `tools/env_studio.gd` renders scenery shots.
+- Every ship is built from lofted sci-fi geometry. The mothership carries hangar sponsons, six landing pads, a tower with a bridge canopy, five engine bells, flak turrets, and a docking collar. Probes, miners, tenders, welders, shuttles, and lighters have solar wings, dishes, drills, cranes, and lit thrusters. Every keel and NPC hull has a lofted fuselage, a swept wing plate, a glass bridge, a lit engine cluster, flush armor plates, tanks, vents, radiators, and a dock ring that follow the hull profile.
 - Take scan sends the probe to Aegis Prime. The ice ring is closer to the pad, and sealing it does not pay. When the Aegis Prime dossier seals while Moored, or on the next pad contact, Purse becomes 80. The ice-ring crate pays 120 on the next Moored pad, 200 if the scan was already paid, and the crate leaves the hold.
 - The title is the Helion sky: a lit Aegis limb, ice, a dock ring, and a twinkling starfield. The glass slate hugs New keel, Host, Join, and Continue instead of filling the window: on the left of a wide glass, at the top of a tall phone, with the limb and the keel in the open glass. New keel opens the hull on a turntable under a key light. Hover, or the top card on a phone, swaps Needle, Barn, and Beak. The yard dresses each keel with its own hardware: Needle a spine mast, Barn a wide bay, Beak wing guns. The same mast, bay, gun, and probe bolts still change sensor, hold, and damage. In flight those bolts wear that keel's mount, not a shared sticker. A wide desk keeps the full cards under the yard. A phone portrait stacks three short cards (callsign, class, Take) so they stay inside the glass, and the title slate is tall enough that Continue sits on the glass. A phone landscape puts the slate on the left, with Continue on the glass, and the three cards in one row on the right with Back directly under that row. Take the Needle still moors at Helion Dock. On the page, Host with no listen port still reaches that helm and the log says flying solo. Join returns to the slate with the same fallback. New keel never opens a socket. Continue stays dark until a log exists.
 - The helm glass keeps speed and purse as the strong chips, the haul cue under them, and Cast off, Dock, Board, Quests, and Probe in one bar that stays on the glass. Lane and the rest stay in a quieter strip. On a short phone, including landscape, that bar sits above the stick and the gun, and Speed and Purse stay clear of it. The web build still hides the origin overlay.
@@ -21,10 +24,83 @@ Player-visible what works now:
 - Aegis traffic is civic, cargo, and PDO shells, plus the yard. Belts and meteor streams are volumes. A probe scan is a flight you can watch, and the time scales with altitude and body size. A lost craft keeps kilometer coordinates.
 - The save and the listen snapshot share system id, body id, layer, a rebasing local origin in kilometers, and a local pos. Law and patrol guns stay on distance inside the band.
 - The older loop still resolves: lanes, claims, scans, harvest, heat, modules, quests, and the host log.
+- The helm names anyone locking you, and the glass draws a lock-warning chip with range. Optimal, falloff, and sensor rings sit on the sky and the corner map when you have a lock or someone has you. 4, or empty-space Command → Sensor sweep, pulses the same reach the overview already uses and speaks hostiles, wrecks, and ore groups. The map caption reads captains and hostiles in this system. A broken keel pays insurance into the purse; the wreck keeps the old hold split and posts as yours.
+- The helm glass now carries an ATTACK rail above Cast off. Every live gun is a button: the hull turret or gun first, then Cheek Gun, Heavy Turret, Beam Bank, Missile Rack, Stake Gun, and Point Defense when those mounts are bolted. Each family keeps its own color. A tap arms that socket on the locked ship; a second tap holds the guns. Combat math is unchanged.
+- Harvest now has two cuts. Harvest, or 2, sends a harvest drone if the keel racks one, or a survey probe if it does not. The craft flies to the seam the captain targeted — the last clicked ore, planet, or rock, or the approach mark — not the nearest ready seam. An unmarked Harvest still takes the nearest ready seam. Plasma, or 5, runs the keel torch on a seam inside 96 m. Both leave a beam and chips on the glass. A Beak with no drone still harvests with its probe. Raw stock sells on the Helion pad for GRT — nickel 6, ice 5, copper 7, plate 8, raw mass 4, salvage 9. The purse chip now reads GRT. Glasswheat buy 12 / sell 8 is unchanged. Combat math is unchanged.
+- The Helion market now holds a stall. A captain lists a crate from the hold at a GRT price they set. The crate leaves the hold until another keel on the pad buys it, or until they pull the slip. The stall keeps ice, nickel, copper, and glasswheat posted. A claim core and a dock crate will not list. Instant pad buyback is still there. Combat math is unchanged.
+- The stall desk now splits STALL / ON THE PAD / YOUR SLIPS, lists a stack at a per-crate ask, lets a buyer take one crate or the slip, and lets the seller Set a new ask without pulling. LAST holds the recent ticks. Instant pad rates sit under PAD RATE. Combat math is unchanged.
+- The Helion market glass now has Board, List, and Yard tabs. Same-ask lists stack on one slip, and Set onto the same ask merges. LIVE shows best ask and depth. Price and qty use ± steppers. Combat math is unchanged.
+- Market sits on the pad bar beside Board when the keel is on Helion, on the SHIP row beside Stock, and on 6. The stall glass opens from that button. Combat math is unchanged.
+- The helm glass is clipped cyan rail, not round beige boxes. Combat math is unchanged.
+- Helion Exchange is a Grand Exchange desk: six slots, Buy or Sell on an empty box, guide price, ±5% , Confirm offer, progress, Collect, and Abort. A new offer matches the best resting opposite at the older price and refunds leftover GRT. The stall still posts ice, nickel, copper, and glasswheat so a solo pad fills. Yard keeps instant glasswheat and stock rates. Combat math is unchanged.
+- Inventory is a 3D grid. Every crate in the hold — ore, glasswheat, claim core, dock crate — sits in a square with the same mesh that flies in the sky. Empty squares pad the row. Fleet is the same grid for fighters, probes, and drones. Combat math is unchanged.
+- Helion Exchange is a wide terminal. Each slot shows the 3D crate, fill, Collect, and Abort. A Collect box sits under the desk. Buy and Sell pick from a 3D catalog. Last lists recent fills. Yard sells glasswheat and raw stock from 3D cards. Opening a terminal hides the hold dump on the helm. Combat math is unchanged.
+- Fleet sells attack drones on the pad: Dart L1 interceptor, Sting L1 gunner, Wasp L2 striker, Fang L2 hunter, Lance L3 heavy, and the generic fighter. Each SKU has a 3D card, a GRT price, and a rack cap. Form, Attack, and Recall cover the whole wing. Combat math is unchanged.
+- The helm names the selected mark. A lock reads LOCK on the rail; a clicked seam reads MARK with range and ready/scan. The glass draws a diamond on that seam and a mark card when no ship is locked. Probe, or 1, scans the selected mark. An unmarked Probe still takes the next unread node. Harvest drone launch follows the same mark. The rail chips and labels carry a dark outline so they sit on the ice. Hold and craft lines stay short. Combat math is unchanged.
+- The amber helm cue now names the live job when no dock crate is out: Cast off, Scan Aegis, cut a seam, bolt a module, meet the Red Keel, lane to Quiet Hollow, or tend the garden. The amber beam follows that mark. Plant, Core, Tend, and Feed sit on the LAW row. Salvage sits on SHIP; a close wreck strips from the helm, and a far wreck sends the tender. Right-click a wreck for Approach and Salvage. The quest log leads with NEXT and hides dormant authored shorts. Combat math is unchanged.
+- Probe, or 1, scans an explicit harvest mark. An approach-only seam does not steal that launch; unmarked Probe still takes the nearer unread node. Bolt on SHIP installs the first spare (the mast on a stock Needle). Approach on SURVEY flies the live job — the Red Keel pack, a Quiet Hollow lane, a contract mark, or an in-system visit hook. Ash Hymn, Quay, Coda, and the other authored bodies name themselves on the cue and the log when the keel is in that system. Combat math is unchanged.
+- Approach takes an offered contract and flies the real mark: the pack for a cull, the lost craft for recover, the unread body for a survey, Helion Dock once food is in the hold, Quiet Hollow for a defend, the stream or trash for a window job. Sweep sits on SURVEY. Haul, Pen, and Turret sit on LAW with Tend and Feed. Combat math is unchanged.
+- Approach flies a live dock slip — the ice ring, the pad on the return, Seized Hold, or the Compact cutter. Take, or O, files the first open Helion slip when no contract is offered. Form, Attack, and Recall sit on COMBAT and cover the whole wing. Combat math is unchanged.
+- Return on SHIP recalls every craft that is out, so Lane can fire after a probe. Take scan sends the docked probe to Aegis Prime. Salvage strips a close trash or stream field from the helm. Walk on LAW surveys a plantable pocket. A defend contract names the 48 s hold on the amber cue. Combat math is unchanged.
+- Harvested ore now smelts. Ice, nickel, and raw mass Make an aluminum bar; nickel, plate, and salvage Make a steel bar. Aluminum Makes the attack wing — Dart, Sting, Wasp, Fang, Lance, and fighter — not the keel. Steel Makes yard guns, belts, and racks. Support craft still spend ore. Make sits on SHIP, Inventory, Yard, and the Fleet pad rack. GRT Buy stays. Combat math is unchanged.
+- Hull metal now reads as large plates with weld seams and edge wear, not grit. Needle, Barn, and Beak keep their own paint and trim. Fleet craft loft as small ships with bells, intakes, and role gear. Asteroids grow extra lobes; meteors mix rock and ice. Aegis keeps a thicker air rim. Combat math is unchanged.
+- Hull plates, armor, tanks, and beams now take their own metal so a keel is not one dark slab. The dock ring stands as a collar with clamps. Fleet craft grow towers, dishes, jaws, fins, and barrels that name the role. Asteroids add more lobes; ice crystals grow longer spines. Aegis keeps a thicker air rim. Combat math is unchanged.
+- Every keel now wears gunwales, a prow, a catwalk, and a funnel so the helm angle reads a ship, not a slab. Deck livery and hatches sit on the plates. Ice seams stay deep blue with cracks. Combat math is unchanged.
+- Keels now carry a light deck, brass gunwales, a real prow, twin stacks, and a lit window band so the helm 42° angle reads a ship. Ice seams are glacier chunks, not star crystals. Aegis keeps blue sea against land. Combat math is unchanged.
+- Armor belts stand off the skin. Battery cells are large silver cans on an olive tray. Courier tanks sit on the flanks. Hull plates weld bright. Clouds thin so Aegis shows sea. Combat math is unchanged.
+- Survey masts now raise a tall silver dish. Cheek guns are thick metal barrels on the flanks. Battery banks sit outboard as 6 m cans. Armor plates are thicker and proud. Aegis keeps patchy clouds so sea and land show. Fleet craft grow dishes, jaws, spikes, and barrels. Combat math is unchanged.
+- Hull paint now reads as painted plate, not black chrome. Windows glow. Aegis air thins so blue sea and green land show on the limb. Harvest drones wear a cutter wheel; probes keep a large dish. Combat math is unchanged.
+- Hull paint keeps each keel's own color instead of a pale wash. Courier tanks wear bands and caps. The island stands taller with lit panes. Fleet craft grow role gear: a toothed harvest wheel, a probe dish on a boom, a dart spike, and a sting ammo drum. Ice stays deep blue. Combat math is unchanged.
+- Hull plates now show dark gutters. Courier tanks sit on saddles with hoop bands, end caps, and feed pipes. Accent livery runs the flanks. Barn cargo stacks taller. Harvest drones wear a larger toothed cutter. Combat math is unchanged.
+- Nickel and loose rocks are cratered stone with gold veins. Ice stays a blue berg. Stern bells are an engine cluster with lit throats. Barn cargo reads as lidded containers. Aegis clouds thin so the sea and land stay open. Combat math is unchanged.
+- The rest of the Helion chart is flyable. Stamped Ice, Second Copy, Fine Print, Pollinator Road, and Silo Dark are on the lanes. Patrols, haulers, and packs keep a job: range officer, bailiff, tug, herdsman, clerk, raider, kite, ambush, claim jumper. Each of those skies opens a slate job when you arrive. Close on the named body to finish it. Water Lease starts on Clock Ice and finishes at Towline with ice spall in the hold. Combat math is unchanged.
+- Quests on the slate stay listed after you leave the system. Quests opens a guide: pin Track on a job and the helm line, the amber beam, and Approach follow that job's next step, with Start, Do, Finish, Reward, and Fail on the glass. Clear guide returns the helm to the live cue. A dock crate still owns the beam until it is delivered. Combat math is unchanged.
+- Patrols and haulers now fly the job the slate names. A range cutter runs a firing line through the yard and hails while the slate is cool. A bailiff takes the far side of the nearest civilian. A clerk or factor slides alongside inside 320 meters and reads the duty. An authored interceptor holds 200 to 260 meters. Helion's own pack still closes inside the old band. Pollinator Road files only after the Lighter Pilot is met inside 480 meters, then Moth Lane. Fine Print files only after the ambush sight at 520 meters, then Expired Charter. Silo Dark files only after the Vault Clerk is alongside, then Night Vault. Honest Scales files only after the gunnery range is met, then Lamp Yard. Post the Writ files only after Bailiff Holt is alongside, then Warrant House. In that system the guide points at the unfinished step. Combat math is unchanged.
+- The wing now flies the post on the card. A Dart crosses the bow. A Sting holds the beam. A Fang keeps long range. A Lance stays in close. A Sentry holds a point aft of the keel and fires the lock without chasing. The pad sells one Sentry for 96 GRT, and Make spends two aluminum bars and one steel bar. The livestock lighter wears a pen, a stall, and a ramp. Pirate skiffs wear the job: spike, kite fins, raider claws, an ambush baffle, or a claim stake. Compact cutters wear a range rail, a writ board, an escort lamp, a clerk's scale, flee bells, or a watch mast. Combat math is unchanged.
+- A Wasp holds the far quarter, behind the lock. A Picket holds the bow, calls the first ship it sees, and does not shoot. The pad sells one for 36 GRT. Make spends one aluminum bar and one ice spall. Traders and orbiting haulers run a freight leg out along the lane to the far world and back, inside their own radius. A Barn or cutter on that job wears cargo cans, a tow boom, pen rails, or flee bells. Combat math is unchanged.
+- A Manifest reads the nearest hauler and comes home. It names the hold and leaves the goods aboard. The pad sells one for 44 GRT. Make spends one aluminum bar and one copper slag. A trader carries ice and copper. A clerk carries a bar and ice. A tug carries plate and salvage. A herdsman carries fodder and milk. The wreck of that hull stays empty. Combat math is unchanged.
+- A Hawser takes a wreck by the collar and brings it alongside, inside the salvage ring. It leaves the hold on the wreck. The tender still waits until a wreck or a seized field is inside 720 m. The pad sells one Hawser for 52 GRT. Make spends one aluminum bar and one hull plate. On Form, a Dart sits ahead, a Sting holds the beam, a Fang holds the far beam, a Lance stays on the near bow, and a Wasp holds the far quarter. A fighter keeps the screen. Combat math is unchanged.
+- A Red Keel skiff carries a 24 GRT bounty. The captain's guns, or a wing credited to the captain, pay that bounty into the purse and the helm says the new total. The lock line and the target card name the bounty while the skiff is still flying. A Compact cutter posts no bounty, and a civilian wreck pays none. The slate still remembers the pack and still fines a cutter. Combat math is unchanged.
+- The Helion board lists every living Red Keel skiff as a warrant: name, job, and the 24 GRT bounty. Mark files that warrant. It stays on the helm while the keel is moored, and it flies once you cast off. A stick input clears it the way any other order does. The skiff wears an amber bounty plate and lamp. A wreck you approach names the hold and the one crate a strip takes, plus keel salvage. Combat math is unchanged.
+- An authored raider flies a Red Keel brig. The hull is longer than a skiff, wears a spine, a bounty plate, and the raider claws, and posts 64 GRT. The gun is a turret. Helion's own pack stays on skiffs, and the slate still remembers the pack. The warrant board names the brig with the job and the bounty. Combat math is unchanged.
+- An authored kite flies a Red Keel yawl. The hull is a long dart with a pale spar, a bounty plate, and the kite fins, and posts 36 GRT. The gun is a beam. Helion's own pack stays on skiffs, and the slate still remembers the pack. The warrant board names the yawl with the job and the bounty. Combat math is unchanged.
+- An authored ambush flies a Red Keel lugger. The hull is short and wide, wears a cowl, a short maw, a bounty plate, and the ambush baffle, and posts 48 GRT. The gun is a close turret and the shot drops. Helion's own pack stays on skiffs, and the slate still remembers the pack. The warrant board names the lugger with the job and the bounty. Combat math is unchanged.
+- An authored interceptor flies a Red Keel pinnace. The hull is a thin chase boat, wears a ram, a bounty plate, and the interceptor spike, and posts 40 GRT. The gun is a fast turret that lives in the 200 to 260 meter band. Helion's own pack stays on skiffs, and the slate still remembers the pack. The warrant board names the hull, the job, and the bounty. Combat math is unchanged.
+- An authored claim jumper flies a Red Keel ketch. The hull is a squat claim boat, wears ore bins, a bounty plate, and the claim stake, and posts 52 GRT. The gun is a short wide turret that lives inside the pocket. Helion's own pack stays on skiffs, and the slate still remembers the pack. The warrant board names the hull, the job, and the bounty. Combat math is unchanged.
+- The contacts list names the hull. A hostile row reads the callsign and the posted bounty, so a brig, a yawl, a pinnace, a lugger, and a ketch can be told apart before the lock. A neutral hauler reads its hull. Law, a lock warning, and a live order keep their own words. Combat math is unchanged.
+- Second Copy files only after the Print Factor is alongside inside 320 meters, then Print Yard. Tow the Yard files only after the Tug Factor is alongside inside 480 meters, then Tug Yard. Ore Choir files only after the claim jumper's rim pocket is seen inside 400 meters, then Choir Anvil. In that system the guide points at the unfinished step. The helm names the meet. Water Lease stays a route that finishes at Towline with ice spall in the hold. Combat math is unchanged.
+- Bonded Loft files only after the Bond Factor is alongside inside 320 meters, then the loft. Broken Charter files only after the Stamp Clerk is alongside, then First Stamp. Guest Lamp files only after the Lamp Host is alongside, then Guest Station. Two Weathers files only after the Weather Shepherd is alongside, then Hot Face. The Ledger scan contract stays its own job. Combat math is unchanged.
+- Lower Stack files only after the Shift Boss is alongside inside 320 meters, then Algae Stack. Clean Hands files only after the Fine Clerk is alongside, then Feedstock. Not Ours files only after the Orbit Clerk is alongside, then Garden Moon. After Hours files only after the Night Broker is alongside, then Night Market. The Exception files only after the License Warden is alongside, then Research Shard. The jurisdiction route stays its own run. Combat math is unchanged.
+- Last Beacon files only after the Buoy Keeper is alongside inside 320 meters, then Working Buoy. Empty Tithe files only after the Tithe Broker is alongside, then Tithe Outpost, and Red Keel heat rises. Deep Hold files only after the Den Keeper is alongside, then Hollow Rock, and Black Sail heat rises. Clockstream, Nameless Chart, Hullweather, and Iron Rain file only after the ambush sight at 520 meters of the home buoy, then the named body. Combat math is unchanged.
+- Perimeter files only after the ambush sight at 520 meters of the home buoy, then Last Stake. Cinder Parish files only after the Parish Tender is alongside inside 320 meters, then Pulpit. Quiet Sun files when the Porch Hauler is alongside inside the lamp shell. The lamp's center, without the hauler, stays open. Seedcut files only after the Orchard Cutter is alongside, then Night Orchard, and Black Sail heat rises. Combat math is unchanged.
+- Cadet Watch files only after Helion Compact Cutter 1 is alongside inside 320 meters, then Cadet Yard. Sporefall files only after Glass Choir Cutter 1 is alongside, then Blight Moon. Sealed Orchard files only after Glass Choir Cutter 1 is alongside, then Dead Dome. No Witness files only after the interceptor sight at 520 meters of the home buoy, then Classroom, and Red Keel heat rises. Combat math is unchanged.
+- Crossed Flags, Letter, The Joke, and Twin Wake file only after the interceptor sight at 520 meters of the home buoy, then False Green, Marque Rock, Plywood Fort, and Red Sail. Crossed Flags and Letter raise Red Keel heat. The Joke and Twin Wake raise Black Sail heat. Combat math is unchanged.
+- Claimwake files only after the interceptor sight at 520 meters of the home buoy, then Dead Hollow, and Red Keel heat rises. The pocket still takes a core. War Hulk files only after the ambush sight at 520 meters of the home buoy, then the hulk, and the slate grants one keel salvage. The Swallow recovery stays its own short. Combat math is unchanged.
+- A wreck's orbiting shard is torn plate, the same mesh family as the hulk, and the hulk carries a second skin plate and a rivet strip. Combat math is unchanged.
+- The helm heat chip still reads the patrol slate: clean, hailed, fined, or guns. When another faction is at 8 or more, the chip names that faction beside the patrol word. Patrol stage and gun math stay the same.
+- Green Wound files only after the Soil Clerk is alongside inside 320 meters, then the shard. The shell alone does not file it. Quiet Hollow still takes a core. The blight slate stays its own job. Combat math is unchanged.
+- Ash Vent sits in each starter yard. It bolts on the flank as a plated fin and a rivet strip. It lengthens the top-down outline and adds cooling to the gun heat. Hit chance, lock time, and patrol stage stay the same.
+- The helm key light follows the local star. A blue star cools the plate. An amber star warms it. Ship identity colors stay as they were.
+- Clause Pocket on Fine Print takes a core. The slot is filed beside the other homesteads. The ambush school and Fine Print stay their own job. Helion Dock and The Unlet stay closed.
+- F5 writes the log beside the live slate, then replaces it only after the new file reads back. A torn live log leaves Continue lit, and Continue opens the previous slate. Combat math is unchanged.
+- The vitals bar labels the gun meter GUNS, or HOT when the plates hold the guns. The heat slate names gun heat and plate cooling above the patrol factions. The patrol chip stays HEAT. Hit chance, lock time, and patrol stage stay the same.
+- Plate gutters on the hull shader run darker, so the seams read under the local star. The paint stays each keel's own color.
+- Empty Tithe Pocket takes a core. The Tithe Broker still files Empty Tithe, and that meet still raises Red Keel heat. Helion Dock and The Unlet stay closed.
+- Bolting an Ash Vent raises the plate cooling number on the heat slate, from 9 to 13 on a Needle. The patrol chip stays HEAT. Hit chance and lock time stay the same.
+- The host world log stages beside the live file and replaces it only after the new file reads back. A torn world log opens the previous world. Combat math is unchanged.
+- When the plates hold the guns, the heat slate names the fall they must reach before the guns come back. That number is the existing reset, 35. The patrol chip stays HEAT. Hit chance and lock time stay the same.
+- Deep Hold Pocket takes a core. The Den Keeper still files Deep Hold, and that meet still raises Black Sail heat. Helion Dock and The Unlet stay closed.
+- A core on Deep Hold writes den_pantry and the helm reads it. Quiet Hollow still takes a core and does not write that note. The Den Keeper job stays its own meet.
+- Contacts and the locked bracket name closing speed. A close paints warm on the list, and the lock draws the way the hull is moving. Sweep counts how many are closing. Hit chance still uses transversal. The hull tag on a contact stays the same.
+- A click on the contacts header cycles every contact, hostiles, wrecks, and neutrals. Brackets in the sky stay up. The hull tag stays the same.
+- The vitals bar names the capacitor as a percent beside the segments. A dry capacitor still holds the gun. Hit chance and lock time stay the same.
+- The helm name carries the system's law color when the sky has one: green, amber, or red. Helion Dock has none, so the name stays Helion Dock. A short glass keeps the system name alone. The patrol chip stays HEAT.
+- Gun heat warms the hull plate. A cold keel stays dark. Held guns keep the plate hot. The paint color stays the hull color. A yaw lights the starboard or port jet. A sideways slide cants the plume, and the flame grows as speed along the nose climbs. Speed, turn rate, and hit chance stay the same.
+- Four kinds of ship. The mothership is a floating base: it berths the keel and stores the combat wing. The player flies the keel. Focus sends the wing at the lock only. Screen holds station and fires that lock. Attack still hunts. Probes, miners, and the welder stay on the keel. The welder patches a hurt fighter. Gun damage is unchanged.
 What is next (ordered):
-1. Live-Ops 2 — player count per system, insurance/wreck tuning, more HC-V1 authored hooks, art loop Gate 2+ on three starters
+1. Art loop Gate 2+ on three starters has no spec in this repo. Do not invent one. The module catalog is at the 40-part band, so the next module waits on a wider band. A new region pass stays blocked.
 Blocked by:
-- Nothing in this repo blocks Live-Ops 2. Do not add a pillar, a second veil, or a new region pass.
+- Nothing in this repo blocks the authored-hook pass. Do not add a pillar, a second veil, or a new region pass.
 Open design decisions (max 5):
 - Planets stay on fixed positions until a later pass adds orbits.
 - The Unlet stays unplantable. Helion Dock and green capitals refuse a Claim Core.
@@ -32,28 +108,109 @@ Open design decisions (max 5):
 - The farm cassette carries a hold-kine. It does not grow a crop. Crops grow on a claim plot.
 - A pocket takes a core only when claim_slots.json names it. The red box on First Soil keeps the Perimeter atlas id.
 Files touched:
-- tests/slice1_sim.gd
-- world/sector_view.gd
-- quests/dock_board.gd
-- scripts/main.gd
-- data/craft.json
-- data/first_soil.json
-- data/ships.json
-- data/system.json
 - craft/orders.gd
-- tests/scale_sim.gd
+- quests/board.gd
+- quests/authored/visit_moth_lane.json
+- quests/authored/visit_expired_charter.json
+- quests/authored/visit_night_vault.json
+- quests/authored/visit_lamp_yard.json
+- quests/authored/visit_warrant_house.json
+- world/sector_sim.gd
+- tests/ecosystem_sim.gd
+- quests/dock_board.gd
+- quests/log.gd
+- ui/helm_overlay.gd
 - ui/hud.gd
 - world/overhead.gd
-- world/scale.gd
-- world/sector_sim.gd
-- world/sector_view.gd
+- world/helm_harvest.gd
 - world/stage3d.gd
-- world/overhead.gd
-- quests/dock_board.gd
-- scripts/web_moor_proof.gd
+- tests/slice6_sim.gd
 - tests/dock_board_sim.gd
-- tests/dock_market.gd
-- tests/layout_fit.gd
+- tests/harvest_cut.gd
+- tests/liveops_sim.gd
+- data/materials.json
+- data/craft.json
+- tests/fleet_posts.gd
+- tests/lane_picket.gd
+- tests/manifest_hold.gd
+- tests/hawser_tow.gd
+- ui/menu.gd
+- data/ships.json
+- tests/bounty_slate.gd
+- ui/helm_overlay.gd
+- world/helm_combat.gd
+- tests/wreck_warrant.gd
+- data/ships.json
+- ships/silhouette.gd
+- tests/brig_warrant.gd
+- tests/yawl_warrant.gd
+- tests/lugger_warrant.gd
+- quests/dock_board.gd
+- ui/hud.gd
+- tests/pinnace_warrant.gd
+- tests/ketch_warrant.gd
+- ui/helm_overlay.gd
+- tests/overview_slate.gd
+- quests/authored/visit_print_yard.json
+- quests/authored/visit_tug_yard.json
+- quests/authored/visit_choir_anvil.json
+- quests/authored/visit_bonded_loft.json
+- quests/authored/visit_first_stamp.json
+- quests/authored/visit_guest_station.json
+- quests/authored/visit_hot_face.json
+- quests/authored/visit_algae_stack.json
+- quests/authored/visit_feedstock.json
+- quests/authored/visit_garden_moon.json
+- quests/authored/visit_night_market.json
+- quests/authored/visit_research_shard.json
+- quests/authored/visit_working_buoy.json
+- quests/authored/visit_tithe_outpost.json
+- quests/authored/visit_hollow_rock.json
+- quests/authored/visit_clock_rock.json
+- quests/authored/visit_false_mark.json
+- quests/authored/visit_station_hulk.json
+- quests/authored/visit_anvil_heaven.json
+- quests/authored/visit_last_stake.json
+- quests/authored/visit_pulpit.json
+- quests/authored/visit_suburb_lamp.json
+- quests/authored/visit_night_orchard.json
+- quests/authored/visit_cadet_yard.json
+- quests/authored/visit_blight_moon.json
+- quests/authored/visit_dead_dome.json
+- quests/authored/visit_classroom.json
+- quests/authored/visit_false_green.json
+- quests/authored/visit_marque_rock.json
+- quests/authored/visit_plywood_fort.json
+- quests/authored/visit_red_sail.json
+- quests/authored/visit_dead_hollow.json
+- quests/authored/visit_war_hulk.json
+- world/stage3d.gd
+- factions/heat.gd
+- tests/slice4_sim.gd
+- data/first_soil.json
+- data/mob_roles.json
+- quests/authored/visit_green_wound.json
+- data/modules.json
+- data/ships.json
+- world/stage3d.gd
+- tests/slice8_sim.gd
+- tests/world_fidelity.gd
+- world/hc_v1/systems/HC-V1-R2-S6.json
+- world/hc_v1/claim_slots.json
+- tests/slice9_sim.gd
+- scripts/game.gd
+- tests/save_slate.gd
+- scripts/game.gd
+- factions/heat.gd
+- ui/hud.gd
+- ui/helm_overlay.gd
+- tests/slice4_sim.gd
+- world/stage3d.gd
+- tests/world_fidelity.gd
+- world/hc_v1/systems/HC-V1-R7-S3.json
+- world/hc_v1/claim_slots.json
+- tests/slice9_sim.gd
+- tests/slice4_sim.gd
+- tests/ecosystem_sim.gd
 - PLAYTEST.md
 - LOOP_STATE.md
-- README.md

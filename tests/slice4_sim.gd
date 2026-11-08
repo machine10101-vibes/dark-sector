@@ -16,6 +16,7 @@ func _init() -> void:
 	_pack()
 	_hunt_and_break()
 	_heat_ladder()
+	_vent_on_slate()
 	_hangar_and_repair()
 	_death_and_save()
 	_still_works()
@@ -150,7 +151,38 @@ func _hunt_and_break() -> void:
 	check(hunter.pos.distance_to(press.player.pos) < closing - 10.0, "keeping fire up holds the chase inside the lane")
 
 
+func _vent_on_slate() -> void:
+	var bare := make("vesper")
+	var before := HeatWords.guns(bare)
+	check(before.contains("Plate cooling 9"), "a bare keel cools at the hull rate")
+	check(bare.install("ash_vent").ok, "ash vent still bolts")
+	var after := HeatWords.guns(bare)
+	check(after.contains("Plate cooling 13"), "ash vent raises the cooling on the heat slate")
+	check(HeatWords.chip(bare) == "HEAT  clean", "bolting a vent does not touch the patrol word")
+
+
 func _heat_ladder() -> void:
+	var quiet := make("anvil")
+	check(HeatWords.chip(quiet) == "HEAT  clean", "a quiet slate reads clean")
+	quiet.player.therm = 40.0
+	var gun_line := HeatWords.guns(quiet)
+	check(gun_line.begins_with("Guns 40"), "the heat slate names gun heat")
+	check(gun_line.contains("Plate cooling"), "the heat slate names plate cooling")
+	check(HeatWords.chip(quiet) == "HEAT  clean", "gun heat does not change the patrol word")
+	quiet.player.overheat = true
+	check(HeatWords.guns(quiet).contains("held until the plates fall to 35"), "held guns name the plate they must fall to")
+	check(HeatWords.chip(quiet) == "HEAT  clean", "a held gun does not change the patrol word")
+	quiet.heat.red_keel = 8.0
+	check(HeatWords.chip(quiet).contains("Red Keel noted"), "Red Keel heat names itself on the chip")
+	check(quiet.heat_stage() == "clear", "gang heat does not change the patrol stage")
+	check(HeatWords.security(quiet.defs.system) == "", "Helion Dock keeps its name")
+	check(HeatWords.place_line(quiet.defs.system, false) == "HELION DOCK", "a blank law leaves the system name")
+	var amber := {"name": "Stamped Ice", "law_color": "amber"}
+	check(HeatWords.security(amber) == "AMBER", "Stamped Ice names amber law")
+	check(HeatWords.place_line(amber, false) == "STAMPED ICE  ·  AMBER", "the helm name carries the law")
+	check(HeatWords.place_line(amber, true) == "STAMPED ICE", "a short glass keeps the system name")
+	var calm := make("anvil")
+	check(HeatWords.chip(calm) == "HEAT  clean", "law color does not change the patrol word")
 	var hailed := make("anvil")
 	hailed.heat.helion_compact = 14.0
 	hailed.hold_npc = true

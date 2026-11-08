@@ -1,0 +1,22 @@
+{
+  "id": "authored_dead_hollow",
+  "title": "Claimwake",
+  "kind": "authored",
+  "giver": "Marchport",
+  "summary": "Start: enter Claimwake. The log opens the job and the helm marks the home buoy. Do: enter the interceptor sight, 520 meters of the home buoy. Dead homesteads. Reclaim is the pocket on the claim slate. Strip is the other choice. The law is red. Finish: after the sight is sprung, come inside Dead Hollow's shell. Red Keel heat rises. The pocket still takes a core. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "dead_hollow",
+  "system_id": "HC-V1-R7-S5",
+  "prelude": [
+    {
+      "id": "spring_sight",
+      "kind": "sight",
+      "role": "interceptor",
+      "range": 520,
+      "label": "the home buoy"
+    }
+  ],
+  "mutations": [
+    "rumor_dead_hollow",
+    "heat_red_keel"
+  ]
+}

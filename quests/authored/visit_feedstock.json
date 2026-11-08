@@ -1,0 +1,22 @@
+{
+  "id": "authored_feedstock",
+  "title": "Clean Hands",
+  "kind": "authored",
+  "giver": "Glass Choir",
+  "summary": "Start: enter Clean Hands. The log opens the job and the helm marks the Fine Clerk. Do: come within 320 meters of the Fine Clerk. The clerk slides alongside and reads a dirty hold as a fine. The warden patrol hails before the guns. Finish: after the clerk is met, come inside Feedstock's shell. The Choir writes standing. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "feedstock",
+  "system_id": "HC-V1-R4-S5",
+  "prelude": [
+    {
+      "id": "meet_clerk",
+      "kind": "alongside",
+      "action": "factor",
+      "range": 320,
+      "label": "Fine Clerk"
+    }
+  ],
+  "mutations": [
+    "rumor_feedstock",
+    "glass_standing_up"
+  ]
+}

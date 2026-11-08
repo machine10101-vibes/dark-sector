@@ -1,0 +1,22 @@
+{
+  "id": "authored_blight_moon",
+  "title": "Sporefall",
+  "kind": "authored",
+  "giver": "Glass Choir",
+  "summary": "Start: enter Sporefall. The log opens the job and the helm marks Glass Choir Cutter 1. Do: come within 320 meters of that cutter. Blight weather eats a harvest drone that parks in it. The wardens patrol and will burn a bad hold. Finish: after the cutter is met, come inside Blight Moon's shell. The Choir writes standing. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "blight_moon",
+  "system_id": "HC-V1-R4-S3",
+  "prelude": [
+    {
+      "id": "meet_warden",
+      "kind": "alongside",
+      "action": "patrol",
+      "range": 320,
+      "label": "Glass Choir Cutter 1"
+    }
+  ],
+  "mutations": [
+    "rumor_blight_moon",
+    "glass_standing_up"
+  ]
+}

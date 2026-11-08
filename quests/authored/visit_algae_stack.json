@@ -1,0 +1,22 @@
+{
+  "id": "authored_algae_stack",
+  "title": "Lower Stack",
+  "kind": "authored",
+  "giver": "Orbital Municipal Navy",
+  "summary": "Start: enter Lower Stack. The log opens the job and the helm marks the Shift Boss. Do: come within 320 meters of the Shift Boss. The boss slides alongside and reads the shift paper. The navy escort stays with the boss. The union bell is the other body. Finish: after the boss is met, come inside Algae Stack's shell. The navy writes standing. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "algae_stack",
+  "system_id": "HC-V1-R3-S2",
+  "prelude": [
+    {
+      "id": "meet_boss",
+      "kind": "alongside",
+      "action": "factor",
+      "range": 320,
+      "label": "Shift Boss"
+    }
+  ],
+  "mutations": [
+    "rumor_algae_stack",
+    "municipal_standing_up"
+  ]
+}

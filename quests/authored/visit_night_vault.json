@@ -1,0 +1,22 @@
+{
+  "id": "authored_night_vault",
+  "title": "Silo Dark",
+  "kind": "authored",
+  "giver": "Homestead",
+  "summary": "Start: enter Silo Dark. The log opens the job and the helm marks the Vault Clerk. Do: come within 320 meters of the Vault Clerk. The clerk slides alongside and names which silo still has a case. An ambush holds the buoy until 520 meters, and a raider wants the clerk. Finish: after the clerk is alongside, come inside Night Vault's shell. The Charter writes standing. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "night_vault",
+  "system_id": "HC-V1-R5-S5",
+  "prelude": [
+    {
+      "id": "alongside_clerk",
+      "kind": "alongside",
+      "action": "factor",
+      "range": 320,
+      "label": "Vault Clerk"
+    }
+  ],
+  "mutations": [
+    "rumor_night_vault",
+    "charter_standing_up"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "authored_red_sail",
+  "title": "Twin Wake",
+  "kind": "authored",
+  "giver": "Black Sail",
+  "summary": "Start: enter Twin Wake. The log opens the job and the helm marks the home buoy. Do: enter the interceptor sight, 520 meters of the home buoy. Two clans. The black sail is the other body. Pick a side by being here. Both will remember. Finish: after the sight is sprung, come inside Red Sail's shell. Black Sail heat rises. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "red_sail",
+  "system_id": "HC-V1-R8-S4",
+  "prelude": [
+    {
+      "id": "spring_sight",
+      "kind": "sight",
+      "role": "interceptor",
+      "range": 520,
+      "label": "the home buoy"
+    }
+  ],
+  "mutations": [
+    "rumor_red_sail",
+    "heat_black_sail"
+  ]
+}

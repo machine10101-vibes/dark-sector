@@ -1,0 +1,21 @@
+{
+  "id": "authored_station_hulk",
+  "title": "Hullweather",
+  "kind": "authored",
+  "giver": "Drift tender",
+  "summary": "Start: enter Hullweather. The log opens the job and the helm marks the home buoy. Do: enter the ambush sight, 520 meters of the home buoy. The ambush holds until a keel crosses that line. Derelicts the size of stations. Tender work is the living. Finish: after the sight is sprung, come inside Station Hulk's shell. A drift rumor. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "station_hulk",
+  "system_id": "HC-V1-R6-S4",
+  "prelude": [
+    {
+      "id": "spring_sight",
+      "kind": "sight",
+      "role": "ambush",
+      "range": 520,
+      "label": "the home buoy"
+    }
+  ],
+  "mutations": [
+    "rumor_station_hulk"
+  ]
+}

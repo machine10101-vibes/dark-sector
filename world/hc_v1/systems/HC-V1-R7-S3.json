@@ -97,8 +97,8 @@
     "angle": -0.8,
     "distance": 480,
     "radius": 200,
-    "plantable": false,
-    "why": "A starving outpost. Food prices are a wound. Garden smugglers are the only pantry."
+    "plantable": true,
+    "why": "The slot is filed. A core is a pantry. The Tithe Broker still files Empty Tithe."
   },
   "gates": [],
   "pdo": {

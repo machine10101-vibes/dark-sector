@@ -1,0 +1,22 @@
+{
+  "id": "authored_classroom",
+  "title": "No Witness",
+  "kind": "authored",
+  "giver": "Marchport",
+  "summary": "Start: enter No Witness. The log opens the job and the helm marks the home buoy. Do: enter the interceptor sight, 520 meters of the home buoy. An interceptor closes, a kite keeps range, and a raider takes whatever is flying. Open wreck rights. Nobody writes it down. Finish: after the sight is sprung, come inside Classroom's shell. Red Keel heat rises. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "classroom",
+  "system_id": "HC-V1-R7-S6",
+  "prelude": [
+    {
+      "id": "spring_sight",
+      "kind": "sight",
+      "role": "interceptor",
+      "range": 520,
+      "label": "the home buoy"
+    }
+  ],
+  "mutations": [
+    "rumor_classroom",
+    "heat_red_keel"
+  ]
+}

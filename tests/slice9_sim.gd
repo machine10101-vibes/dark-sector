@@ -240,6 +240,7 @@ func _claims() -> void:
 	sim._arrive("HC-V1-R5-S1", "soil_lane")
 	sim.player.pos = sim.pocket_pos
 	check(Homestead.try_plant(sim) == "", "Quiet Hollow is still a filed slot")
+	check(not bool(sim.quest_flags.get("den_pantry", false)), "Quiet Hollow does not write the den note")
 	var closed := make("anvil")
 	closed._arrive("HC-V1-R3-S4", "")
 	closed.player.pos = closed.pocket_pos
@@ -248,6 +249,27 @@ func _claims() -> void:
 	wake._arrive("HC-V1-R7-S5", "")
 	wake.player.pos = wake.pocket_pos
 	check(Homestead.try_plant(wake) == "", "Claimwake plants on its filed slot")
+	var clause := make("kestrel")
+	clause._arrive("HC-V1-R2-S6", "")
+	clause.player.pos = clause.pocket_pos
+	check(bool(clause.defs.system.pocket.plantable), "Clause Pocket is filed open")
+	check(Homestead.try_plant(clause) == "", "Clause Pocket takes a core")
+	var tithe := make("vesper")
+	tithe._arrive("HC-V1-R7-S3", "")
+	tithe.player.pos = tithe.pocket_pos
+	check(bool(tithe.defs.system.pocket.plantable), "Empty Tithe Pocket is filed open")
+	check(Homestead.try_plant(tithe) == "", "Empty Tithe Pocket takes a core")
+	var den := make("anvil")
+	den._arrive("HC-V1-R8-S5", "")
+	den.player.pos = den.pocket_pos
+	check(bool(den.defs.system.pocket.plantable), "Deep Hold Pocket is filed open")
+	check(Homestead.try_plant(den) == "", "Deep Hold Pocket takes a core")
+	check(bool(den.quest_flags.get("den_pantry", false)), "Deep Hold writes the den note")
+	var noted := false
+	for line in den.lines:
+		if str(line.get("text", "")).contains("writes the core down"):
+			noted = true
+	check(noted, "the helm reads the den note")
 
 
 func _life() -> void:

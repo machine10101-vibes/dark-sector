@@ -1,0 +1,42 @@
+{
+  "ash_vow": {
+    "id": "ash_vow",
+    "name": "Ash Vow",
+    "color": "#6e2420",
+    "accent": "#e8a090",
+    "line": "Ash Vow holds the amber and takes a hull that will not pay.",
+    "ships": ["Ash Vow", "Cinder Tongue", "Soot Hymn", "Last Coal"]
+  },
+  "salt_knife": {
+    "id": "salt_knife",
+    "name": "Salt Knife",
+    "color": "#2e455c",
+    "accent": "#9ec8e4",
+    "line": "Salt Knife cuts tow cables and leaves the buoy dark.",
+    "ships": ["Salt Knife", "Brine", "Keel Ice", "White Nick"]
+  },
+  "red_penny": {
+    "id": "red_penny",
+    "name": "Red Penny",
+    "color": "#8a2430",
+    "accent": "#f0c27a",
+    "line": "Red Penny paints a coin on the bow and hunts haulers.",
+    "ships": ["Red Penny", "Toll", "Second Coin", "Pocket"]
+  },
+  "glass_rat": {
+    "id": "glass_rat",
+    "name": "Glass Rat",
+    "color": "#4a3824",
+    "accent": "#e6d2a8",
+    "line": "Glass Rat strips lamp glass and runs for the lane.",
+    "ships": ["Glass Rat", "Wick Thief", "Pane", "Soot Lamp"]
+  },
+  "black_scrip": {
+    "id": "black_scrip",
+    "name": "Black Scrip",
+    "color": "#2a2e34",
+    "accent": "#c45a48",
+    "line": "Black Scrip forges a warrant and fires from the copy.",
+    "ships": ["Black Scrip", "False Seal", "Ink", "Second Writ"]
+  }
+}

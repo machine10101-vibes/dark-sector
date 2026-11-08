@@ -1,0 +1,22 @@
+{
+  "id": "authored_garden_moon",
+  "title": "Not Ours",
+  "kind": "authored",
+  "giver": "Orbital Municipal Navy",
+  "summary": "Start: enter Not Ours. The log opens the job and the helm marks the Orbit Clerk. Do: come within 320 meters of the Orbit Clerk. The clerk slides alongside and will not leave the moon to help you two lanes over. That refusal is the jurisdiction hole, which stays its own route. Finish: after the clerk is met, come inside Garden Moon's shell. The navy writes standing. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "garden_moon",
+  "system_id": "HC-V1-R3-S4",
+  "prelude": [
+    {
+      "id": "meet_clerk",
+      "kind": "alongside",
+      "action": "factor",
+      "range": 320,
+      "label": "Orbit Clerk"
+    }
+  ],
+  "mutations": [
+    "rumor_garden_moon",
+    "municipal_standing_up"
+  ]
+}

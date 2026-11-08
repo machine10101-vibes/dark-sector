@@ -1,0 +1,22 @@
+{
+  "id": "authored_false_green",
+  "title": "Crossed Flags",
+  "kind": "authored",
+  "giver": "Marchport",
+  "summary": "Start: enter Crossed Flags. The log opens the job and the helm marks the home buoy. Do: enter the interceptor sight, 520 meters of the home buoy. Two deserter squadrons wear Compact colors. The green is paint. The law is red. Finish: after the sight is sprung, come inside False Green's shell. Red Keel heat rises. Do not trust the paint. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "false_green",
+  "system_id": "HC-V1-R7-S4",
+  "prelude": [
+    {
+      "id": "spring_sight",
+      "kind": "sight",
+      "role": "interceptor",
+      "range": 520,
+      "label": "the home buoy"
+    }
+  ],
+  "mutations": [
+    "rumor_false_green",
+    "heat_red_keel"
+  ]
+}

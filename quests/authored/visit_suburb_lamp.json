@@ -1,0 +1,22 @@
+{
+  "id": "authored_suburb_lamp",
+  "title": "Quiet Sun",
+  "kind": "authored",
+  "giver": "Helion Compact",
+  "summary": "Start: enter Quiet Sun. The log opens the job and the helm marks the Porch Hauler. Do: come within 320 meters of the Porch Hauler. The hauler flies inside the lamp shell, and the amber work is the buoy gyre behind the porch. The suburb cutter hails. Finish: meet the hauler. The lamp's center, without the hauler, does not file it. The Compact writes standing. The porch is not a homestead. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "suburb_lamp",
+  "system_id": "HC-V1-R1-S6",
+  "prelude": [
+    {
+      "id": "meet_hauler",
+      "kind": "alongside",
+      "action": "orbit",
+      "range": 320,
+      "label": "Porch Hauler"
+    }
+  ],
+  "mutations": [
+    "rumor_suburb_lamp",
+    "compact_standing_up"
+  ]
+}

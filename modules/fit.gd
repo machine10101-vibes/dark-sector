@@ -8,7 +8,7 @@ const VMAX := 340.0
 
 const EFFECT_KEYS := [
 	"mass", "power_draw", "cargo", "sensor", "signature",
-	"gun_damage", "thrust", "strafe", "turn", "radius",
+	"gun_damage", "thrust", "strafe", "turn", "turn_grip", "radius",
 	"crew", "armor",
 	"shield", "armor_hp", "capacitor", "cap_regen", "cooling", "scan_res", "tracking",
 ]
@@ -105,6 +105,7 @@ static func stats(defs: Dictionary, ship: Dictionary) -> Dictionary:
 		"ttw": thrust / mass,
 		"com": com,
 		"turn": turn,
+		"turn_grip": clampf(float(effects.turn_grip), 0.0, 1.0),
 		"accel": thrust / mass * ACCEL_SCALE / lateral,
 		"strafe_accel": strafe_stat / mass * STRAFE_SCALE / lateral,
 		"damp": DAMP,

@@ -97,8 +97,8 @@
     "angle": -0.8,
     "distance": 480,
     "radius": 200,
-    "plantable": false,
-    "why": "Hidden docks in a hollow rock. Player dens, not a posted port."
+    "plantable": true,
+    "why": "The slot is filed. A den can take a core. The Den Keeper still files Deep Hold."
   },
   "gates": [],
   "pdo": {

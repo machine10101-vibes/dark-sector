@@ -1,0 +1,22 @@
+{
+  "id": "authored_night_orchard",
+  "title": "Seedcut",
+  "kind": "authored",
+  "giver": "Black Sail",
+  "summary": "Start: enter Seedcut. The log opens the job and the helm marks the Orchard Cutter. Do: come within 320 meters of the Orchard Cutter. The cutter orbits stolen vaults. The night stock is the black market. Finish: after the cutter is met, come inside Night Orchard's shell. Black Sail heat rises. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "night_orchard",
+  "system_id": "HC-V1-R8-S3",
+  "prelude": [
+    {
+      "id": "meet_cutter",
+      "kind": "alongside",
+      "action": "orbit",
+      "range": 320,
+      "label": "Orchard Cutter"
+    }
+  ],
+  "mutations": [
+    "rumor_night_orchard",
+    "heat_black_sail"
+  ]
+}

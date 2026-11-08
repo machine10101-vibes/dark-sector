@@ -2,6 +2,11 @@ extends Node3D
 
 ## Sim-space meshes. X is chart X, Y is up, Z is negative chart Y.
 
+const ForgeKit := preload("res://world/ship_forge.gd")
+const CraftForge := preload("res://world/craft_forge.gd")
+const HullForge := preload("res://world/hull_forge.gd")
+const EnvForge := preload("res://world/env_forge.gd")
+
 const _NOISE := "float hash31(vec3 p) {
 	p = fract(p * 0.1031);
 	p += dot(p, p.yzx + 33.33);
@@ -55,36 +60,40 @@ void fragment() {
 	float field = fbm(n * 3.1 + vec3(seed, 1.7, seed * 0.4));
 	float detail = fbm(n * 8.5 + vec3(seed * 2.0, 0.4, 3.0));
 	float ridges = fbm(n * 14.0 + vec3(seed * 1.3, 0.2, 2.2));
-	float land_w = smoothstep(0.42, 0.58, field);
-	vec3 deep = vec3(0.05, 0.16, 0.28);
-	vec3 shoal = vec3(0.16, 0.42, 0.46);
+	float land_w = smoothstep(0.28, 0.52, field);
+	vec3 deep = vec3(0.01, 0.07, 0.34);
+	vec3 shoal = vec3(0.05, 0.26, 0.52);
 	float depth = smoothstep(0.18, 0.48, field);
-	vec3 sea = mix(deep, mix(albedo.rgb, shoal, 0.45), depth);
-	vec3 coast = mix(albedo.rgb, vec3(0.72, 0.64, 0.42), 0.4);
-	vec3 ground = mix(albedo.rgb, land.rgb, 0.62) * (0.72 + 0.38 * detail);
+	vec3 sea = mix(deep, shoal, depth);
+	vec3 coast = mix(land.rgb, vec3(0.78, 0.62, 0.28), 0.62);
+	vec3 ground = mix(vec3(0.14, 0.34, 0.14), land.rgb, 0.36) * (0.72 + 0.42 * detail);
 	ground *= mix(0.62, 1.08, smoothstep(0.35, 0.72, ridges));
 	vec3 terrain = mix(sea, mix(coast, ground, smoothstep(0.48, 0.7, field)), land_w);
 	float polar = smoothstep(0.55, 0.92, abs(n.y));
 	float ice_cap = fbm(n * 6.0 + vec3(seed, 4.0, 0.2));
-	terrain = mix(terrain, vec3(0.86, 0.91, 0.94) * (0.85 + 0.2 * ice_cap), polar * 0.88);
+	terrain = mix(terrain, vec3(0.86, 0.91, 0.94) * (0.85 + 0.2 * ice_cap), polar * 0.28);
 	float bowl = noise3(n * 6.5 + vec3(seed * 2.2, 3.1, 0.4));
 	float crater = smoothstep(0.68, 0.84, bowl);
 	float rim_c = smoothstep(0.58, 0.7, bowl) * (1.0 - crater);
 	terrain = mix(terrain, terrain * vec3(0.45, 0.42, 0.4), crater * land_w * 0.85);
 	terrain += vec3(0.18, 0.16, 0.13) * rim_c * land_w;
-	float mottled = fbm(wpos * 0.0055 + vec3(seed, 2.2, 0.4));
+	float mottled = fbm(wpos * 0.004 + vec3(seed, 2.2, 0.4));
 	float fleck = fbm(wpos * 0.016 + n * 3.0);
-	terrain *= 0.74 + 0.38 * mottled;
+	terrain *= 0.94 + 0.1 * mottled;
 	terrain = mix(terrain, terrain * vec3(0.76, 0.92, 0.7), fleck * land_w * 0.45);
+	float ridge_hi = fbm(n * 22.0 + vec3(seed * 0.8, 3.2, 0.5));
+	terrain = mix(terrain, terrain * vec3(0.82, 0.78, 0.7), ridge_hi * land_w * 0.35);
+	float dune = fbm(n * 11.0 + vec3(seed, 0.8, 4.1));
+	terrain = mix(terrain, mix(terrain, vec3(0.7, 0.58, 0.38), 0.4), dune * land_w * (1.0 - polar) * 0.28);
 	if (city > 0.5) {
 		float districts = fbm(n * 6.5 + vec3(seed, 1.4, 0.2));
 		float roofs = fbm(n * 18.0 + vec3(seed * 1.5, 0.4, 2.0));
 		float parks = smoothstep(0.6, 0.82, fbm(n * 2.6 + vec3(seed, 2.0, 0.6)));
 		vec3 concrete = mix(albedo.rgb * 0.88, land.rgb * 0.92, roofs);
 		concrete *= 0.82 + 0.22 * districts;
-		vec3 urban = mix(concrete, mix(vec3(0.24, 0.42, 0.32), land.rgb, 0.45), parks * 0.5);
-		urban = mix(urban, vec3(0.9, 0.93, 0.95), polar * 0.65);
-		terrain = mix(terrain, urban, 0.58);
+		vec3 urban = mix(concrete * 0.72, mix(vec3(0.2, 0.34, 0.28), land.rgb, 0.4), parks * 0.5);
+		urban = mix(urban, vec3(0.72, 0.76, 0.78), polar * 0.42);
+		terrain = mix(terrain, urban, 0.16 * land_w);
 	}
 	float dist = length(CAMERA_POSITION_WORLD - wpos);
 	float near = 1.0 - smoothstep(320.0, 1700.0, dist);
@@ -93,7 +102,7 @@ void fragment() {
 	terrain *= mix(1.0, 0.58 + 0.85 * fine, near);
 	terrain = mix(terrain, terrain * vec3(0.55, 0.5, 0.4), scrub * near * land_w * 0.7);
 	vec3 night = terrain * 0.05 + vec3(0.015, 0.03, 0.055);
-	vec3 col = mix(night, terrain * (0.32 + 0.58 * day), day);
+	vec3 col = mix(night, terrain * (0.48 + 0.62 * day), day);
 	float twilight = smoothstep(-0.22, -0.02, ndl) * (1.0 - smoothstep(0.0, 0.18, ndl));
 	col += vec3(0.95, 0.38, 0.16) * twilight * 0.55;
 	col += vec3(0.25, 0.45, 0.72) * twilight * 0.22;
@@ -116,21 +125,24 @@ void fragment() {
 		float street = 1.0 - smoothstep(0.015, 0.07, min(block.x, block.y));
 		float district = smoothstep(0.34, 0.7, fbm(n * 2.4 + vec3(seed, 1.2, 0.4)));
 		float window = step(0.62, fract(sin(dot(floor(n.xz * 160.0), vec2(19.0, 47.0))) * 123.4));
-		lamps = max(street, window * 0.65) * district * night_side * mix(0.7, 1.0, land_w);
+		float blob = smoothstep(0.62, 0.9, noise3(n * 26.0 + vec3(seed, 2.4, 0.6)));
+		lamps = max(max(street, window * 0.72), blob * 0.88) * district * night_side * mix(0.75, 1.0, land_w);
 	}
-	float shore = 1.0 - smoothstep(0.0, 0.035, abs(field - 0.5));
-	col += vec3(0.9, 0.93, 0.88) * shore * day * 0.55 * (1.0 - city);
+	float shore = 1.0 - smoothstep(0.0, 0.026, abs(field - 0.5));
+	col += vec3(0.92, 0.94, 0.86) * shore * day * 0.7 * (1.0 - city);
 	if (city > 0.5) {
 		float pane = smoothstep(0.72, 0.9, fbm(n * 40.0 + vec3(seed, 0.2, 1.4)));
 		col = mix(col, vec3(0.75, 0.86, 0.9), pane * day * 0.18);
 	}
-	float cloud_shade = smoothstep(0.46, 0.74, fbm(n * 3.6 + vec3(seed, spin, 0.6)));
-	col *= 1.0 - cloud_shade * day * 0.42;
+	float cloud_shade = smoothstep(0.62, 0.88, fbm(n * 3.6 + vec3(seed, spin, 0.6)));
+	col *= 1.0 - cloud_shade * day * 0.12;
 	vec3 glow = vec3(1.0, 0.86, 0.38) * lamps * 8.0;
 	float rim = pow(clamp(1.0 - max(dot(n, eye), 0.0), 0.0, 1.0), 2.4);
-	col += vec3(0.55, 0.72, 0.88) * rim * 0.22 + glow;
+	float air = pow(clamp(1.0 - max(dot(n, eye), 0.0), 0.0, 1.0), 4.4);
+	col += vec3(0.4, 0.58, 0.78) * rim * 0.14 + glow;
+	col += vec3(0.32, 0.55, 0.82) * air * 0.22;
 	ALBEDO = col;
-	EMISSION = glow + vec3(0.45, 0.62, 0.78) * rim * 0.28 + vec3(0.9, 0.45, 0.18) * twilight * 0.15;
+	EMISSION = glow + vec3(0.38, 0.55, 0.7) * rim * 0.18 + vec3(0.32, 0.55, 0.82) * air * 0.14 + vec3(0.9, 0.45, 0.18) * twilight * 0.18;
 }
 "
 
@@ -151,8 +163,8 @@ void fragment() {
 	float cloud = fbm(n * 3.6 + vec3(seed, spin, 0.6));
 	float wisps = fbm(n * 9.0 + wpos * 0.004 + vec3(spin, 1.2, seed));
 	float puff = fbm(wpos * 0.012 + vec3(seed, spin * 2.0, 0.4));
-	float cover = smoothstep(0.46, 0.72, cloud) * (0.55 + 0.45 * wisps);
-	cover *= 0.75 + 0.25 * puff;
+	float cover = smoothstep(0.82, 0.96, cloud) * (0.1 + 0.16 * wisps);
+	cover *= 0.42 + 0.2 * puff;
 	float dist = length(CAMERA_POSITION_WORLD - wpos);
 	float near = 1.0 - smoothstep(320.0, 1700.0, dist);
 	float mote = fbm(wpos * 0.045 + vec3(seed, spin, 2.0));
@@ -165,7 +177,7 @@ void fragment() {
 	float belly = smoothstep(0.2, -0.45, ndl);
 	ALBEDO = mix(shade, lit, day) + vec3(1.0) * silver * 0.22;
 	ALBEDO = mix(ALBEDO, shade * 0.62, belly * cover);
-	ALPHA = cover * (0.4 + 0.68 * day);
+	ALPHA = cover * (0.08 + 0.18 * day);
 }
 "
 
@@ -190,7 +202,7 @@ void fragment() {
 	vec3 col = mix(tint.rgb, scatter, 0.72);
 	ALBEDO = col;
 	EMISSION = scatter * (0.15 + sun * 0.45) * grazing;
-	ALPHA = fres * (0.28 + 0.78 * sun) * (0.7 + 0.3 * grazing);
+	ALPHA = fres * (0.16 + 0.42 * sun) * (0.45 + 0.25 * grazing);
 }
 "
 
@@ -207,18 +219,22 @@ void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
 	float facing = clamp(dot(n, eye), 0.0, 1.0);
-	float limb = pow(facing, 0.55);
-	float dark = mix(0.42, 1.0, limb);
-	float grain = fbm(n * 14.0 + vec3(TIME * 0.04));
-	float cells = fbm(n * 34.0 + vec3(TIME * 0.07, 1.2, 0.3));
-	float spot = smoothstep(0.58, 0.82, fbm(n * 4.5 + vec3(TIME * 0.015)));
-	float facula = smoothstep(0.72, 0.9, fbm(n * 9.0 + vec3(TIME * 0.02, 2.0, 0.4)));
-	vec3 hot = mix(albedo.rgb * 0.55, vec3(1.0, 0.97, 0.88), 0.7);
-	vec3 col = hot * dark * (0.62 + 0.5 * grain) * (0.7 + 0.45 * cells);
-	col = mix(col, col * vec3(0.45, 0.3, 0.18), spot * 0.55);
-	col = mix(col, vec3(1.0, 0.96, 0.86), facula * 0.35);
+	float limb = pow(facing, 0.5);
+	float grain = fbm(n * 9.0 + vec3(TIME * 0.03, 0.0, 1.0));
+	float cells = fbm(n * 30.0 + vec3(TIME * 0.06, 1.2, 0.3));
+	float flow = fbm(n * 3.0 + vec3(0.0, TIME * 0.02, 2.0));
+	float spot = smoothstep(0.62, 0.8, fbm(n * 4.2 + vec3(TIME * 0.01, 5.0, 0.0))) * smoothstep(0.9, 0.3, abs(n.y));
+	float flare = smoothstep(0.7, 0.9, fbm(n * 7.0 + vec3(TIME * 0.02, 2.0, 0.4)));
+	vec3 hot = mix(albedo.rgb * vec3(1.0, 0.95, 0.8), vec3(1.0, 0.97, 0.88), 0.32);
+	vec3 cool = albedo.rgb * vec3(1.0, 0.52, 0.22);
+	vec3 col = mix(cool, hot, smoothstep(0.1, 0.9, limb));
+	col *= 0.78 + 0.34 * cells;
+	col *= 0.9 + 0.2 * grain;
+	col = mix(col, cool * 0.5, spot * 0.65);
+	col = mix(col, vec3(1.0, 0.97, 0.9), flare * 0.35);
+	col *= 0.9 + 0.2 * flow;
 	ALBEDO = col;
-	EMISSION = col * (0.85 + 0.25 * facing);
+	EMISSION = col * (1.05 + 0.55 * limb);
 }
 "
 
@@ -234,115 +250,43 @@ void vertex() {
 void fragment() {
 	vec3 n = normalize(wnorm);
 	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float fres = pow(clamp(1.0 - abs(dot(n, eye)), 0.0, 1.0), 1.7);
-	ALBEDO = albedo.rgb;
-	EMISSION = albedo.rgb * 0.4;
-	ALPHA = fres * fres * 0.5;
+	float facing = clamp(abs(dot(n, eye)), 0.0, 1.0);
+	float glow = pow(smoothstep(0.0, 0.8, facing), 1.6);
+	ALBEDO = mix(albedo.rgb, vec3(1.0, 0.95, 0.85), glow * 0.5);
+	EMISSION = ALBEDO * (0.5 + glow);
+	ALPHA = glow * 0.42;
 }
 "
 
 const RAY_SHADER := "shader_type spatial;
 render_mode blend_add, unshaded, cull_disabled, depth_draw_never;
 uniform vec4 albedo : source_color = vec4(1.0, 0.78, 0.42, 1.0);
+float hr(float x) {
+	return fract(sin(x * 91.7 + 13.1) * 43758.5453);
+}
 void fragment() {
 	vec2 p = UV * 2.0 - 1.0;
 	float r = length(p);
-	if (r > 0.995 || r < 0.42) {
+	if (r > 0.995 || r < 0.3) {
 		discard;
 	}
 	float ang = atan(p.y, p.x);
-	float a = ang / 6.2831853 + TIME * 0.012;
-	float spoke = smoothstep(0.16, 0.025, abs(fract(a * 6.0) - 0.5));
-	float thin = smoothstep(0.07, 0.01, abs(fract(a * 6.0 + 0.5) - 0.5));
-	float mid = smoothstep(1.0, 0.58, r);
-	float reach = smoothstep(1.0, 0.72, r);
-	float ray = max(spoke * mid, thin * reach);
-	if (ray < 0.12) {
+	float a = ang / 6.2831853 + TIME * 0.004;
+	float slot = floor(a * 22.0);
+	float width = 0.05 + 0.2 * hr(slot);
+	float reach = 0.35 + 0.6 * hr(slot + 5.0);
+	float spoke = smoothstep(width, 0.0, abs(fract(a * 22.0) - 0.5));
+	float thin = smoothstep(0.03, 0.0, abs(fract(a * 55.0 + 0.3) - 0.5)) * hr(floor(a * 55.0) + 9.0);
+	float fall = smoothstep(1.0, 0.3, r);
+	float ray = (spoke * smoothstep(1.0, 1.0 - reach, r) * 0.8 + thin * 0.5) * fall;
+	float halo = smoothstep(0.75, 0.3, r) * 0.18;
+	float total = ray + halo;
+	if (total < 0.03) {
 		discard;
 	}
-	ALBEDO = albedo.rgb * (1.15 + spoke);
-	EMISSION = ALBEDO;
-	ALPHA = ray;
-}
-"
-
-const HULL_SHADER := "shader_type spatial;
-render_mode diffuse_burley, specular_schlick_ggx;
-varying vec3 local_pos;
-varying vec3 local_nrm;
-varying vec3 wnorm;
-varying vec3 wpos;
-uniform vec4 albedo : source_color = vec4(0.5, 0.55, 0.58, 1.0);
-uniform vec4 accent : source_color = vec4(0.0, 0.0, 0.0, 0.0);
-float seam_of(vec3 p) {
-	float sx = smoothstep(0.455, 0.5, abs(fract(p.x * 0.2) - 0.5));
-	float sz = smoothstep(0.44, 0.5, abs(fract(p.z * 0.36) - 0.5));
-	float fx = smoothstep(0.478, 0.5, abs(fract(p.x * 0.82) - 0.5));
-	float fz = smoothstep(0.478, 0.5, abs(fract(p.z * 1.2) - 0.5));
-	return max(max(sx, sz), max(fx, fz) * 0.55);
-}
-float plate_h(vec3 p) {
-	float seam = seam_of(p);
-	vec2 cell = floor(p.xz * vec2(0.2, 0.36));
-	float id = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
-	float h = (0.28 + 0.72 * id) * (1.0 - seam);
-	float riv = seam * smoothstep(0.08, 0.0, abs(fract(p.x * 1.6) - 0.5)) * smoothstep(0.08, 0.0, abs(fract(p.z * 2.2) - 0.5));
-	h += riv * 1.15;
-	float scratch = smoothstep(0.9, 0.99, fract(sin(p.x * 6.4 + p.z * 19.0) * 91.3));
-	h -= scratch * 0.18;
-	return h;
-}
-void vertex() {
-	local_pos = VERTEX;
-	local_nrm = NORMAL;
-	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
-	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-}
-void fragment() {
-	vec3 n = normalize(local_nrm);
-	float h = plate_h(local_pos);
-	float hx = plate_h(local_pos + vec3(0.22, 0.0, 0.0));
-	float hz = plate_h(local_pos + vec3(0.0, 0.0, 0.22));
-	vec3 tangent = abs(n.y) > 0.92 ? vec3(1.0, 0.0, 0.0) : normalize(cross(n, vec3(0.0, 1.0, 0.0)));
-	vec3 bitangent = normalize(cross(n, tangent));
-	vec3 bumped = normalize(n + tangent * (h - hx) * 9.0 + bitangent * (h - hz) * 9.0);
-	vec3 world_n = normalize((MODEL_MATRIX * vec4(bumped, 0.0)).xyz);
-	NORMAL = normalize((VIEW_MATRIX * vec4(world_n, 0.0)).xyz);
-	float seam = clamp(seam_of(local_pos), 0.0, 1.0);
-	vec2 cell = floor(local_pos.xz * vec2(0.2, 0.36));
-	float id = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
-	vec3 col = albedo.rgb * (0.96 + 0.14 * id);
-	col = mix(col, col * vec3(0.42, 0.46, 0.5), seam * 0.9);
-	float edge_wear = smoothstep(0.28, 0.92, 1.0 - abs(n.y));
-	col = mix(col, mix(col, vec3(0.78, 0.76, 0.7), 0.45), edge_wear * 0.55);
-	float aft = smoothstep(-12.0, -28.0, local_pos.x);
-	float temper = smoothstep(-4.0, -16.0, local_pos.x) * (1.0 - aft);
-	col = mix(col, col * vec3(1.15, 0.78, 0.55), aft * 0.35);
-	col = mix(col, col * vec3(0.62, 0.74, 0.95), temper * 0.22);
-	float stripe = smoothstep(1.2, 0.08, abs(local_pos.z));
-	col = mix(col, col * vec3(1.06, 1.1, 1.04), stripe * clamp(n.y, 0.0, 1.0) * 0.35);
-	float livery = smoothstep(1.7, 0.2, abs(abs(local_pos.z) - 3.4));
-	livery *= smoothstep(-0.05, 0.55, n.y);
-	col = mix(col, accent.rgb, livery * accent.a * 0.9);
-	float belly = smoothstep(7.5, 0.6, local_pos.y);
-	col *= mix(1.0, 0.58, belly);
-	float brush = 0.92 + 0.08 * sin(local_pos.x * 3.1 + local_pos.z * 13.0);
-	float grain = fract(sin(dot(local_pos.xz, vec2(41.3, 17.1))) * 913.7);
-	col *= brush * (0.93 + 0.09 * grain);
-	float side = smoothstep(0.22, 0.7, 1.0 - abs(n.y));
-	float row = smoothstep(0.7, 0.08, abs(local_pos.y - 4.6));
-	float slot = smoothstep(0.22, 0.02, abs(fract(local_pos.x * 0.38) - 0.5));
-	float port = side * row * slot;
-	float lit_port = step(0.74, fract(sin(floor(local_pos.x * 0.38) * 17.13) * 91.7));
-	col = mix(col, vec3(0.03, 0.045, 0.06), port * 0.85);
-	ALBEDO = col;
-	float bare = clamp(edge_wear * (1.0 - seam), 0.0, 1.0);
-	METALLIC = mix(0.42, 0.86, bare * (1.0 - port));
-	ROUGHNESS = mix(mix(0.36, 0.2, bare), 0.8, max(seam, port));
-	AO = mix(1.0, 0.52, seam);
-	vec3 eye = normalize(CAMERA_POSITION_WORLD - wpos);
-	float fres = pow(clamp(1.0 - abs(dot(normalize(wnorm), eye)), 0.0, 1.0), 3.2);
-	EMISSION = col * fres * 0.04 + vec3(1.0, 0.42, 0.14) * aft * 0.07 + vec3(1.0, 0.78, 0.42) * port * lit_port * 0.85;
+	ALBEDO = albedo.rgb * (1.1 + spoke * 0.4);
+	EMISSION = ALBEDO * total;
+	ALPHA = clamp(total * 0.55, 0.0, 1.0);
 }
 "
 
@@ -471,91 +415,174 @@ void fragment() {
 const GATE_SHADER := "shader_type spatial;
 render_mode blend_mix, unshaded, cull_disabled, depth_draw_never;
 uniform vec4 albedo : source_color = vec4(0.55, 0.85, 0.7, 1.0);
+varying vec3 lp;
+float gh(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+void vertex() {
+	lp = VERTEX;
+}
 void fragment() {
 	float r = clamp(UV.x, 0.0, 1.0);
-	float rim = smoothstep(0.62, 0.96, r);
-	float veil = (1.0 - r) * 0.22;
-	ALBEDO = albedo.rgb;
-	EMISSION = albedo.rgb * (0.35 + rim * 0.8);
-	ALPHA = rim * 0.62 + veil;
+	float a = atan(lp.z, lp.x) + 3.14159;
+	float rim = smoothstep(0.6, 0.97, r);
+	float swirl = sin(a * 3.0 + r * 11.0 - TIME * 1.3) * 0.5 + 0.5;
+	float swirl2 = sin(a * 5.0 - r * 17.0 + TIME * 0.9 + 1.7) * 0.5 + 0.5;
+	float arms = swirl * 0.6 + swirl2 * 0.4;
+	float core = smoothstep(0.35, 0.0, r);
+	float mote = step(0.985, gh(floor(vec2(a * 9.0, r * 26.0 + TIME * 2.0))));
+	float ripple = pow(max(sin(r * 30.0 - TIME * 4.0), 0.0), 6.0) * smoothstep(0.2, 0.9, r);
+	vec3 tint = albedo.rgb;
+	vec3 hot = mix(tint, vec3(1.0), 0.55);
+	float body = (1.0 - r) * 0.12 + arms * (0.1 + r * 0.12) + core * 0.22;
+	ALBEDO = mix(tint, hot, arms * 0.5 + core);
+	EMISSION = ALBEDO * (0.25 + rim * 1.3 + arms * 0.5 + ripple * 0.7 + mote * 2.0 + core * 0.9);
+	ALPHA = clamp(rim * 0.55 + body + ripple * 0.18 + mote * 0.6, 0.0, 0.92);
 }
 "
 
 const ROCK_SHADER := "shader_type spatial;
-varying vec3 wnorm;
+render_mode diffuse_burley, specular_schlick_ggx;
+varying vec3 q;
+varying float crat;
 uniform vec4 albedo : source_color = vec4(0.45, 0.42, 0.38, 1.0);
+uniform vec4 vein_color : source_color = vec4(0.96, 0.62, 0.22, 1.0);
 uniform float seed = 0.0;
 " + _NOISE + "void vertex() {
-	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	q = COLOR.rgb * 2.0 - vec3(1.0);
+	crat = COLOR.a;
 }
 void fragment() {
-	vec3 n = normalize(wnorm);
-	vec3 sun = normalize(vec3(0.35, 0.86, 0.22));
-	float ndl = clamp(dot(n, sun), 0.0, 1.0);
-	float grit = fbm(n * 6.0 + vec3(seed));
-	float cavity = smoothstep(0.32, 0.72, fbm(n * 3.2 + vec3(seed * 2.0, 1.0, 0.2)));
-	float pits = smoothstep(0.62, 0.82, noise3(n * 18.0 + vec3(seed)));
-	vec3 mineral = mix(albedo.rgb, albedo.rgb * vec3(1.15, 0.92, 0.78), grit * 0.45);
-	vec3 col = mineral * (0.7 + 0.75 * ndl);
-	col = mix(col, col * 0.42, cavity * 0.7);
-	col *= 1.0 - pits * 0.22;
-	float vein = smoothstep(0.52, 0.74, fbm(n * 11.0 + vec3(seed, 2.2, 0.5)));
-	col = mix(col, mineral * vec3(0.62, 0.48, 0.32), vein * 0.42);
-	float fleck = smoothstep(0.78, 0.92, noise3(n * 28.0 + vec3(seed * 3.0)));
-	col = mix(col, mineral * vec3(1.2, 1.05, 0.82), fleck * 0.55);
-	float rim = pow(1.0 - ndl, 2.2);
-	col += mineral * rim * 0.12;
+	vec3 p = q * 2.4 + vec3(seed);
+	float broad = fbm(p * 0.9);
+	float grain = fbm(q * 13.0 + vec3(seed, 0.4, 1.1));
+	float strata = sin((q.y + broad * 0.4) * 17.0 + seed) * 0.5 + 0.5;
+	vec3 mineral = albedo.rgb * (0.68 + 0.55 * broad);
+	mineral = mix(mineral, mineral * vec3(1.14, 0.92, 0.76), strata * 0.22);
+	float bowl = smoothstep(0.5, 0.12, crat);
+	float rim = smoothstep(0.53, 0.64, crat);
+	vec3 col = mineral * (0.82 + 0.32 * grain);
+	col *= mix(1.0, 0.56, bowl);
+	col = mix(col, col * 1.38, rim * 0.55);
+	col = mix(col, albedo.rgb * vec3(1.06, 1.0, 0.9) * 0.8, bowl * 0.4 * smoothstep(0.4, 0.7, grain));
+	float vein = smoothstep(0.6, 0.84, fbm(q * 5.5 + vec3(seed, 2.2, 0.5)));
+	vein *= 1.0 - bowl * 0.55;
+	col = mix(col, vein_color.rgb, vein * 0.64);
+	float fleck = smoothstep(0.84, 0.97, noise3(q * 58.0 + vec3(seed * 3.0)));
+	col = mix(col, vec3(0.95, 0.82, 0.5), fleck * (0.3 + vein * 0.5));
+	vec3 b = q * 34.0 + vec3(seed);
+	float h0 = noise3(b);
+	vec3 g = vec3(noise3(b + vec3(0.35, 0.0, 0.0)) - h0, noise3(b + vec3(0.0, 0.35, 0.0)) - h0, noise3(b + vec3(0.0, 0.0, 0.35)) - h0);
+	vec3 gv = (VIEW_MATRIX * MODEL_MATRIX * vec4(g, 0.0)).xyz;
+	NORMAL = normalize(NORMAL - gv * 0.55);
 	ALBEDO = col;
-	ROUGHNESS = mix(mix(0.72, 0.96, cavity), 0.38, fleck);
-	METALLIC = mix(0.04, 0.35, fleck);
+	ROUGHNESS = mix(mix(0.92, 0.78, grain), 0.36, vein);
+	METALLIC = mix(0.02, 0.5, vein);
+	SPECULAR = 0.35;
+	EMISSION = vein_color.rgb * vein * 0.14 + vec3(0.85, 0.62, 0.28) * fleck * vein * 0.1;
 }
 "
 
 const ICE_SHADER := "shader_type spatial;
 render_mode diffuse_burley, specular_schlick_ggx;
-varying vec3 wnorm;
+varying vec3 lp;
+varying float tip;
 uniform float seed = 0.0;
-void vertex() {
-	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+" + _NOISE + "void vertex() {
+	lp = VERTEX;
+	tip = COLOR.a;
 }
 void fragment() {
-	vec3 n = normalize(wnorm);
-	vec3 sun = normalize(vec3(0.35, 0.86, 0.22));
-	float ndl = clamp(dot(n, sun), 0.0, 1.0);
-	float crack = smoothstep(0.47, 0.5, abs(fract(n.y * 6.5 + n.x * 4.0 + seed) - 0.5));
-	float grit = fract(sin(dot(n.xy, vec2(41.3, 17.7)) + seed) * 913.1);
-	vec3 deep = vec3(0.55, 0.68, 0.78);
-	vec3 face = vec3(0.9, 0.95, 0.98);
-	vec3 ice = mix(deep, face, 0.35 + 0.65 * ndl);
-	ice = mix(ice, vec3(0.62, 0.78, 0.9), grit * 0.18);
-	ice = mix(ice, deep * 0.72, crack * 0.7);
-	ALBEDO = ice;
-	ROUGHNESS = mix(0.16, 0.48, crack);
-	METALLIC = 0.02;
-	SPECULAR = 0.85;
-	EMISSION = vec3(0.75, 0.9, 1.0) * pow(ndl, 12.0) * 0.35;
+	vec3 p = lp * 0.06 + vec3(seed);
+	float body = fbm(p * 1.3);
+	float vein = fbm(p * 3.4 + vec3(0.0, lp.y * 0.05, 0.0));
+	float crack = 1.0 - smoothstep(0.0, 0.05, abs(vein - 0.5));
+	float inner = fbm(p * 0.8 + vec3(4.0, seed, 1.0));
+	vec3 deep = vec3(0.03, 0.2, 0.46);
+	vec3 shallow = vec3(0.46, 0.78, 0.96);
+	vec3 frost = vec3(0.86, 0.95, 1.0);
+	vec3 col = mix(deep, shallow, 0.22 + 0.5 * body);
+	col = mix(col, deep * 0.7, smoothstep(0.55, 0.9, inner) * 0.5);
+	col = mix(col, frost, crack * 0.42);
+	col = mix(col, frost, tip * 0.5);
+	float snow = smoothstep(0.55, 1.0, NORMAL.y * 0.5 + 0.5) * smoothstep(0.4, 0.8, fbm(p * 2.2 + vec3(7.0)));
+	col = mix(col, vec3(0.9, 0.95, 0.98), snow * 0.55);
+	float fres = pow(clamp(1.0 - abs(dot(NORMAL, VIEW)), 0.0, 1.0), 2.2);
+	ALBEDO = col;
+	ROUGHNESS = mix(0.1, 0.5, snow + crack * 0.4);
+	METALLIC = 0.04;
+	SPECULAR = 0.9;
+	EMISSION = deep * 0.5 * (1.0 - tip) + vec3(0.55, 0.78, 1.0) * fres * 0.38 + vec3(0.7, 0.9, 1.0) * crack * 0.1 + shallow * tip * 0.22;
+}
+"
+
+const PLATE_SHADER := "shader_type spatial;
+render_mode unshaded, cull_disabled;
+varying vec3 onorm;
+varying float inner;
+uniform vec4 albedo : source_color = vec4(0.72, 0.58, 0.4, 1.0);
+uniform float seed = 0.0;
+void vertex() {
+	onorm = NORMAL;
+	inner = 1.0 - COLOR.a;
+}
+float h21(vec2 p) {
+	return fract(sin(dot(p, vec2(19.0, 47.0)) + seed) * 311.7);
+}
+void fragment() {
+	vec3 n = normalize(onorm);
+	if (!FRONT_FACING) {
+		n = -n;
+	}
+	float sky = clamp(n.y * 0.55 + 0.52, 0.24, 1.0);
+	vec2 uv = UV * vec2(4.0, 2.4);
+	float seam_x = smoothstep(0.08, 0.0, abs(fract(uv.x) - 0.5) - 0.42);
+	float seam_y = smoothstep(0.08, 0.0, abs(fract(uv.y) - 0.5) - 0.42);
+	float seam = max(seam_x, seam_y);
+	vec2 cell = fract(uv * vec2(7.0, 4.0)) - vec2(0.5);
+	float rivet = smoothstep(0.12, 0.02, length(cell)) * seam;
+	float panel = h21(floor(uv));
+	vec3 paint = albedo.rgb * (0.56 + 0.5 * sky) * (0.86 + 0.28 * panel);
+	paint = mix(paint, paint * vec3(0.26, 0.28, 0.3), seam * 0.85);
+	paint = mix(paint, vec3(0.74, 0.68, 0.54), rivet);
+	float scorch = smoothstep(0.7, 0.96, h21(floor(uv * 2.0) + 3.0));
+	paint = mix(paint, vec3(0.14, 0.09, 0.06), scorch * 0.6);
+	float bare = smoothstep(0.2, 0.7, abs(n.x) + abs(n.z) * 0.4);
+	paint = mix(paint, vec3(0.68, 0.64, 0.56), bare * 0.22);
+	float soot = smoothstep(0.35, 0.0, abs(uv.y - 1.2) - 0.8) * 0.0;
+	paint = mix(paint, vec3(0.12, 0.11, 0.11) * (0.7 + 0.5 * sky), clamp(inner * 0.85 + (FRONT_FACING ? 0.0 : 0.45), 0.0, 1.0));
+	ALBEDO = paint - vec3(soot);
+	EMISSION = vec3(0.9, 0.72, 0.4) * scorch * 0.08;
 }
 "
 
 const RUBBLE_SHADER := "shader_type spatial;
 render_mode unshaded;
+varying vec3 q;
 varying vec3 onorm;
+varying float crat;
 uniform vec4 albedo : source_color = vec4(0.62, 0.48, 0.34, 1.0);
 uniform float seed = 0.0;
-void vertex() {
+" + _NOISE + "void vertex() {
+	q = COLOR.rgb * 2.0 - vec3(1.0);
+	crat = COLOR.a;
 	onorm = NORMAL;
 }
 void fragment() {
 	vec3 n = normalize(onorm);
-	float salt = fract(sin(dot(floor(n * 5.0 + vec3(seed)), vec3(17.0, 43.0, 9.0))) * 12345.6);
-	vec3 stone = mix(albedo.rgb * 0.42, albedo.rgb * 1.45, salt);
-	float sky = clamp(n.y * 0.55 + 0.62, 0.4, 1.0);
-	float crease = smoothstep(0.15, 0.72, abs(n.x) + abs(n.z));
-	stone = mix(stone * 0.55, stone, crease);
-	float sun = clamp(n.y * 0.72 + n.x * 0.28 + 0.32, 0.22, 1.0);
-	float pit = smoothstep(0.72, 0.9, fract(sin(dot(n.xy, vec2(19.0, 47.0)) + seed) * 311.0));
-	stone = mix(stone, stone * 0.45, pit * 0.65);
-	ALBEDO = stone * sky * sun;
+	float broad = fbm(q * 2.6 + vec3(seed));
+	float grain = fbm(q * 14.0 + vec3(seed, 3.0, 1.0));
+	vec3 stone = albedo.rgb * (0.5 + 0.8 * broad) * (0.84 + 0.3 * grain);
+	float bowl = smoothstep(0.5, 0.12, crat);
+	float rim = smoothstep(0.53, 0.64, crat);
+	stone *= mix(1.0, 0.55, bowl);
+	stone = mix(stone, stone * 1.4, rim * 0.5);
+	float sun = clamp(dot(n, normalize(vec3(0.38, 0.82, 0.3))) * 0.5 + 0.5, 0.0, 1.0);
+	float fill = clamp(dot(n, normalize(vec3(-0.6, 0.2, -0.5))) * 0.5 + 0.5, 0.0, 1.0);
+	float cavity = smoothstep(0.0, 0.4, 1.0 - sun);
+	vec3 lit = stone * (0.34 + 0.9 * pow(sun, 1.4) + 0.18 * fill) * (1.0 - cavity * 0.18);
+	float rimlight = pow(1.0 - clamp(abs(n.y), 0.0, 1.0), 3.0);
+	ALBEDO = lit + albedo.rgb * rimlight * 0.08;
 }
 "
 
@@ -637,6 +664,10 @@ var _corona_shader: Shader
 var _ray_shader: Shader
 var _hull_shader: Shader
 var _glass_shader: Shader
+var _forge
+var _smith
+var _hulls
+var _probe_hulls
 var _plume_shader: Shader
 var _ring_shader: Shader
 var _nebula_shader: Shader
@@ -644,9 +675,11 @@ var _gate_shader: Shader
 var _rock_shader: Shader
 var _ice_shader: Shader
 var _rubble_shader: Shader
+var _plate_shader: Shader
 var _wake_shader: Shader
 var _ground_shader: Shader
 var _fill: DirectionalLight3D
+var _rim: DirectionalLight3D
 var _beacon_light: OmniLight3D
 var _frame_delta := 0.016
 var _used: Dictionary = {}
@@ -660,22 +693,33 @@ var _yard_ready := false
 
 
 func _ready() -> void:
-	_hull_shader = _compile(HULL_SHADER)
 	_glass_shader = _compile(GLASS_SHADER)
 	_plume_shader = _compile(PLUME_SHADER)
+	_forge = ForgeKit.new(self, _plume_shader)
+	_hull_shader = _forge.hull_shader
+	_smith = CraftForge.new(_forge)
+	_hulls = HullForge.new(_forge)
+	_probe_hulls = HullForge.new(_forge)
 	_sun = DirectionalLight3D.new()
 	_sun.name = "Sun"
-	_sun.light_color = Color("fff0d4")
-	_sun.light_energy = 2.8 if portrait_mode else 2.05
+	_sun.light_color = Color("f2e4c4")
+	_sun.light_energy = 2.85 if portrait_mode else 2.45
 	_sun.shadow_enabled = false
 	add_child(_sun)
 	_fill = DirectionalLight3D.new()
 	_fill.name = "Fill"
 	_fill.light_color = Color(0.72, 0.8, 0.95)
-	_fill.light_energy = 1.05 if portrait_mode else 0.75
+	_fill.light_energy = 1.12 if portrait_mode else 0.92
 	_fill.shadow_enabled = false
 	_fill.basis = Basis(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0), Vector3(0.0, 1.0, 0.0))
 	add_child(_fill)
+	_rim = DirectionalLight3D.new()
+	_rim.name = "Rim"
+	_rim.light_color = Color(0.62, 0.78, 1.0)
+	_rim.light_energy = 0.82 if portrait_mode else 0.52
+	_rim.shadow_enabled = false
+	_rim.rotation_degrees = Vector3(-14.0, 132.0, 0.0)
+	add_child(_rim)
 	if portrait_mode:
 		# A card only needs the hull. The chart grid and the planet shaders stay out.
 		_sun.rotation_degrees = Vector3(-42.0, -28.0, 0.0)
@@ -692,6 +736,7 @@ func _ready() -> void:
 	_rock_shader = _compile(ROCK_SHADER)
 	_ice_shader = _compile(ICE_SHADER)
 	_rubble_shader = _compile(RUBBLE_SHADER)
+	_plate_shader = _compile(PLATE_SHADER)
 	_wake_shader = _compile(WAKE_SHADER)
 	_ground_shader = _compile(GROUND_SHADER)
 	_build_grid()
@@ -753,56 +798,100 @@ func chart(p: Vector2, height: float = 0.0) -> Vector3:
 	return Vector3(render.x, height, -render.y)
 
 
+func _pull_tag(sim, mark: Vector2) -> Vector2:
+	var pulled := Vector2(mark)
+	var pull := Vector2(sim.player.pos) - pulled
+	if pull.length() > 40.0:
+		pulled += pull.normalized() * minf(pull.length() * 0.12, 36.0)
+	return pulled
+
+
 func _sync_props(sim) -> void:
 	var on_chart := int(sim.layer) == ScaleFrame.CHART
 	var belt: Dictionary = sim.defs.system.get("belt", {})
 	var volume := ScaleFrame.belt_is_volume(belt)
-	var index := 0
-	var shown := 0
-	for rock in sim.asteroids:
-		if volume and shown >= 6:
-			break
-		shown += 1
-		var row: Dictionary = rock
+	var local_belt := bool(belt.get("local", false))
+	var order: Array = []
+	for i in sim.asteroids.size():
+		order.append(i)
+	var cap: int = sim.asteroids.size()
+	if volume and not local_belt and cap > 36:
+		cap = 36
+		order.sort_custom(func(a, b):
+			var ra: Dictionary = sim.asteroids[a]
+			var rb: Dictionary = sim.asteroids[b]
+			return sim.player.pos.distance_squared_to(ra.pos) < sim.player.pos.distance_squared_to(rb.pos)
+		)
+		order = order.slice(0, cap)
+	for n in order.size():
+		var index: int = order[n]
+		var row: Dictionary = sim.asteroids[index]
 		var chunk := _prop("rock%d" % index)
-		index += 1
+		var span := float(row.get("size", 12.0))
+		var radius := maxf(10.0, span * 0.78)
+		if local_belt:
+			radius = maxf(9.0, span * 0.62)
 		if str(chunk.get_meta("built", "")) != "yes":
-			var verts: PackedVector2Array = row.verts
-			var center := Vector2.ZERO
-			for point in verts:
-				center += point
-			if verts.size() > 0:
-				center /= float(verts.size())
-			var span := float(row.get("size", 12.0))
-			var radius := maxf(8.0, span * 0.72)
-			chunk.mesh = _rock_mesh(index + 3, radius)
-			var tumble := float(absi(hash(str(index))) % 628) * 0.01
-			var laid := _flat_xform(center, tumble, radius * 0.45)
-			laid.basis = laid.basis * Basis(Vector3(1.0, 0.0, 0.0), 0.55)
-			chunk.transform = laid
-			var stone := ShaderMaterial.new()
-			stone.shader = _rock_shader
-			stone.set_shader_parameter("albedo", Color(str(row.get("tint", "#6a6258"))))
-			stone.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
-			chunk.material_override = stone
+			var material_id := str(row.get("material", ""))
+			if material_id == "ice_spall":
+				chunk.mesh = _ice_mesh(index + 3, radius)
+				var ice := ShaderMaterial.new()
+				ice.shader = _ice_shader
+				ice.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
+				chunk.material_override = ice
+			elif material_id == "copper_slag":
+				chunk.mesh = _crystal_mesh(index + 7, radius)
+				var slag := ShaderMaterial.new()
+				slag.shader = _rock_shader
+				slag.set_shader_parameter("albedo", Color(str(row.get("tint", "#6e8f58"))))
+				slag.set_shader_parameter("vein_color", Color(str(row.get("vein", "#d6ee8a"))))
+				slag.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
+				chunk.material_override = slag
+			else:
+				chunk.mesh = _rock_mesh(index + 3, radius)
+				var stone := ShaderMaterial.new()
+				stone.shader = _rock_shader
+				stone.set_shader_parameter("albedo", Color(str(row.get("tint", "#8a6238"))))
+				stone.set_shader_parameter("vein_color", Color(str(row.get("vein", "#f59e38"))))
+				stone.set_shader_parameter("seed", float(absi(hash(str(index))) % 97) * 0.1)
+				chunk.material_override = stone
 			chunk.set_meta("built", "yes")
+		var tumble := float(sim.time) * 0.18 + float(absi(hash(str(index))) % 628) * 0.01
+		var laid := _flat_xform(row.pos, tumble, radius * 0.42)
+		laid.basis = laid.basis * Basis(Vector3(1.0, 0.2, 0.15).normalized(), 0.45 + float(index % 5) * 0.08)
+		chunk.transform = laid
 		chunk.visible = chunk.mesh != null and not on_chart
-	if volume:
+	if volume or local_belt:
 		_sync_belt_volume(sim, belt)
-	index = 0
+	if local_belt and sim.belt_pos != Vector2.ZERO and not on_chart:
+		var mark := Vector2(sim.belt_pos)
+		var pull := Vector2(sim.player.pos) - mark
+		if pull.length() > 40.0:
+			mark += pull.normalized() * minf(pull.length() * 0.12, 36.0)
+		_tag("%s  ·  nickel cinder" % str(belt.get("name", "Ore")), chart(mark, 48.0), Color("f0c27a"), 22)
+	if sim.ice_pos != Vector2.ZERO and not on_chart:
+		_tag("Ice spall", chart(_pull_tag(sim, sim.ice_pos), 36.0), Color("d5e6f0"), 16)
+	if sim.copper_pos != Vector2.ZERO and not on_chart:
+		_tag("Copper slag", chart(_pull_tag(sim, sim.copper_pos), 36.0), Color("c6e38a"), 16)
+	var index := 0
+	var tagged_scrap := false
 	for hull in sim.trash:
 		var row: Dictionary = hull
 		var scrap := _prop("trash%d" % index)
 		index += 1
 		var scale := float(row.get("scale", 1.0))
-		var radius := maxf(18.0, 26.0 * scale)
+		var radius := maxf(16.0, 20.0 * scale)
 		if str(scrap.get_meta("built", "")) != "yes":
-			scrap.mesh = _rubble_mesh(index + 40, radius)
+			scrap.mesh = _wreck_mesh(index + 40, radius)
 			var tones: Array = [Color("c49262"), Color("6e5340"), Color("a87448"), Color("d4b48a")]
-			scrap.material_override = _rubble_mat(tones[index % tones.size()], float(index) * 0.37)
+			scrap.material_override = _plate_mat(tones[index % tones.size()], float(index) * 0.37)
 			scrap.set_meta("built", "yes")
 		scrap.visible = not on_chart
-		scrap.transform = _flat_xform(row.pos, float(row.rot), radius * 0.72)
+		var tumble := float(row.rot) + float(sim.time) * 0.08
+		scrap.transform = _flat_xform(row.pos, tumble, radius * 0.55)
+		if not tagged_scrap and not on_chart and sim.player.pos.distance_to(row.pos) < 520.0:
+			_tag("Hull plate", chart(row.pos, radius + 28.0), Color("e4c8a4"), 16)
+			tagged_scrap = true
 	if sim.trash.size() > 0 and not on_chart:
 		_tag(str(sim.defs.system.trash.get("name", "Hold")), chart(sim.trash_pos, 160.0), Color("e4c8a4"), 20)
 	index = 0
@@ -830,7 +919,8 @@ func _sync_props(sim) -> void:
 			mat.metallic = 0.8
 			mat.roughness = 0.28
 			hoop.material_override = mat
-			hoop.set_meta("built", "yes")
+			_dress_gate(hoop, radius, tone)
+		hoop.set_meta("built", "yes")
 		var ang := float(row.get("angle", 0.0))
 		var through := Vector3(cos(ang), 0.0, -sin(ang))
 		var side := Vector3.UP.cross(through).normalized()
@@ -903,7 +993,7 @@ func _sync_props(sim) -> void:
 	var pad := _prop("beacon_pad")
 	if str(pad.get_meta("built", "")) != "yes":
 		pad.mesh = _bevel_box(Vector3(70.0, 1.8, 44.0), 0.45)
-		pad.material_override = _hull_mat(Color("5c5348"))
+		pad.material_override = _hull_mat(Color("857c6c"))
 		_pad_strip(pad, "PadSpine", Vector3(52.0, 0.12, 0.7), Vector3(0.0, 1.02, 0.0))
 		_pad_strip(pad, "PadPort", Vector3(58.0, 0.12, 0.4), Vector3(0.0, 1.02, 16.5))
 		_pad_strip(pad, "PadStbd", Vector3(58.0, 0.12, 0.4), Vector3(0.0, 1.02, -16.5))
@@ -941,6 +1031,8 @@ func _sync_props(sim) -> void:
 		chev_pa.rotation.y = -0.5
 		var chev_sa := pad.get_node("ChevronSA") as MeshInstance3D
 		chev_sa.rotation.y = 0.5
+		_dress_berth(pad)
+		_dress_pad_yard(pad)
 		pad.set_meta("built", "yes")
 	pad.visible = not on_chart
 	pad.position = chart(sim.beacon_pos, 1.2)
@@ -1035,6 +1127,8 @@ func _sync_props(sim) -> void:
 	_sync_nebula()
 	_sync_shots(sim)
 	_sync_beams(sim)
+	_sync_cuts(sim)
+	_sync_muzzles(sim)
 	_sync_impacts(sim)
 	_sync_wrecks(sim)
 	_sync_meteors(sim)
@@ -1204,54 +1298,17 @@ func _sync_shots(sim) -> void:
 	for shot in sim.projectiles:
 		var row: Dictionary = shot
 		var bolt := _prop("shot%d" % index)
-		if str(bolt.get_meta("tracer", "")) != "yes":
-			var rod := CylinderMesh.new()
-			rod.top_radius = 0.42
-			rod.bottom_radius = 1.05
-			rod.height = 18.0
-			rod.radial_segments = 8
-			bolt.mesh = rod
-			var head := MeshInstance3D.new()
-			head.name = "Head"
-			var tip := SphereMesh.new()
-			tip.radius = 1.15
-			tip.height = 2.3
-			tip.radial_segments = 10
-			tip.rings = 6
-			head.mesh = tip
-			head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			bolt.add_child(head)
-			var tail := MeshInstance3D.new()
-			tail.name = "Tail"
-			var fade := CylinderMesh.new()
-			fade.top_radius = 0.85
-			fade.bottom_radius = 0.15
-			fade.height = 14.0
-			fade.radial_segments = 8
-			tail.mesh = fade
-			tail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			bolt.add_child(tail)
-			var core := MeshInstance3D.new()
-			core.name = "Core"
-			var wire := CylinderMesh.new()
-			wire.top_radius = 0.16
-			wire.bottom_radius = 0.28
-			wire.height = 16.0
-			wire.radial_segments = 6
-			core.mesh = wire
-			core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			bolt.add_child(core)
-			var glow := MeshInstance3D.new()
-			glow.name = "Glow"
-			var halo := SphereMesh.new()
-			halo.radius = 1.8
-			halo.height = 3.6
-			halo.radial_segments = 10
-			halo.rings = 6
-			glow.mesh = halo
-			glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			bolt.add_child(glow)
-			bolt.set_meta("tracer", "yes")
+		var family := str(row.get("family", "bullet"))
+		var load := str(row.get("load", ""))
+		var socket := str(row.get("socket", ""))
+		var kind := "%s|%s|%s" % [family, load, socket]
+		if str(bolt.get_meta("kind", "")) != kind:
+			_clear_shot(bolt)
+			if family == "missile":
+				_build_missile_shot(bolt, load)
+			else:
+				_build_bullet_shot(bolt, load, socket)
+			bolt.set_meta("kind", kind)
 		var shot_vel: Vector2 = row.vel
 		var aim := Vector2.RIGHT
 		var speed := 0.0
@@ -1259,50 +1316,59 @@ func _sync_shots(sim) -> void:
 			aim = shot_vel.normalized()
 			speed = shot_vel.length()
 		var read := _fx_read(sim)
-		var missile := str(row.get("family", "")) == "missile"
-		var length := clampf(speed * 0.07, 18.0, 58.0) * read
-		var thick := lerpf(1.15, read, 0.4)
+		var missile := family == "missile"
+		var length := 6.4 * read
+		var thick := 2.15 * read
+		if load == "tungsten":
+			length *= 1.18
+			thick *= 0.68
+		elif load == "incendiary":
+			length *= 0.86
+			thick *= 1.22
+		if socket == "heavy_turret":
+			length = 7.2 * read
+			thick = 3.55 * read
+		elif socket == "stake_gun":
+			length = clampf(speed * 0.14, 78.0, 160.0) * read
+			thick = 0.68 * read
+		elif socket == "gun_sponson" or socket == "nose":
+			length = 5.8 * read
+			thick = 2.45 * read
 		if missile:
-			length = 14.0 * read
-			thick = 2.4 * read
-		thick *= 0.9 + 0.1 * sin(float(sim.time) * 36.0 + float(index) * 1.7)
+			if load == "siege":
+				length = 24.0 * read
+				thick = 2.65 * read
+			elif load == "breacher":
+				length = 17.5 * read
+				thick = 1.7 * read
+			else:
+				length = 21.0 * read
+				thick = 2.2 * read
+		thick *= 0.92 + 0.08 * sin(float(sim.time) * 36.0 + float(index) * 1.7)
 		var along := Vector3(aim.x, 0.0, -aim.y)
 		var side := Vector3(aim.y, 0.0, aim.x)
-		var rod_mesh := bolt.mesh as CylinderMesh
-		rod_mesh.height = length
-		rod_mesh.top_radius = 0.42 * thick
-		rod_mesh.bottom_radius = 1.05 * thick
 		bolt.basis = Basis(side, along, Vector3.UP)
-		bolt.position = chart(row.pos, 8.0) - along * length * 0.28
+		bolt.position = chart(row.pos, 8.0) - along * length * 0.22
 		var tint := _shot_tint(str(row.get("team", "")))
 		if missile:
-			tint = Color("d9d3c6")
+			if load == "breacher":
+				tint = Color("6a5a4a")
+			elif load == "siege":
+				tint = Color("b8b0a0")
+			else:
+				tint = Color("d9d3c6")
+		elif socket == "stake_gun":
+			tint = Color("e8f2ff")
+		elif socket == "heavy_turret":
+			tint = Color("ffb060")
+		elif load == "tungsten":
+			tint = Color("c5d4e6")
+		elif load == "incendiary":
+			tint = Color("ff7a32")
 		var flicker := 0.85 + 0.15 * sin(float(sim.time) * 48.0 + float(index))
-		_paint_bolt(bolt, tint, 1.9 * flicker, 1.0)
-		var head_node := bolt.get_node("Head") as MeshInstance3D
-		head_node.position = Vector3(0.0, length * 0.5, 0.0)
-		_paint_bolt(head_node, tint.lightened(0.42), 2.8 * flicker, 1.0)
-		var tail_node := bolt.get_node("Tail") as MeshInstance3D
-		var tail_mesh := tail_node.mesh as CylinderMesh
-		tail_mesh.height = length * 0.85
-		tail_node.position = Vector3(0.0, -length * 0.55, 0.0)
-		_paint_bolt(tail_node, tint, 0.7 * flicker, 0.35)
-		var core_node := bolt.get_node_or_null("Core") as MeshInstance3D
-		if core_node != null:
-			var core_mesh := core_node.mesh as CylinderMesh
-			core_mesh.height = length * 0.92
-			core_mesh.top_radius = 0.16 * thick
-			core_mesh.bottom_radius = 0.28 * thick
-			core_node.position = Vector3(0.0, length * 0.04, 0.0)
-			_paint_bolt(core_node, tint.lightened(0.55), 3.4 * flicker, 0.95)
-		var glow_node := bolt.get_node_or_null("Glow") as MeshInstance3D
-		if glow_node != null:
-			glow_node.position = Vector3(0.0, length * 0.42, 0.0)
-			var bulb := 1.6 + thick * 0.85
-			glow_node.scale = Vector3(bulb * 0.55, bulb * 1.4, bulb * 0.55)
-			_paint_bolt(glow_node, tint.lightened(0.3), 1.6 * flicker, 0.28)
+		_pose_shot(bolt, length, thick, tint, flicker, missile, socket)
 		if missile:
-			for puff in 3:
+			for puff in 6:
 				var crumb := _prop("smoke%d_%d" % [index, puff])
 				if str(crumb.get_meta("built", "")) != "yes":
 					var puff_mesh := SphereMesh.new()
@@ -1312,10 +1378,449 @@ func _sync_shots(sim) -> void:
 					puff_mesh.rings = 4
 					crumb.mesh = puff_mesh
 					crumb.set_meta("built", "yes")
-				var back := float(puff + 1) * 9.0 * read
-				crumb.position = bolt.position - along * back
-				crumb.scale = Vector3.ONE * (1.4 + float(puff) * 0.7) * read
-				_paint_bolt(crumb, Color("9a9388"), 0.35, 0.28 - float(puff) * 0.06)
+				var back := float(puff + 1) * 8.4 * read
+				crumb.position = bolt.position - along * back + Vector3(0.0, 0.5 * float(puff), 0.0)
+				crumb.scale = Vector3.ONE * (1.35 + float(puff) * 1.15) * read
+				_paint_bolt(crumb, Color("9a8e7c"), 0.28, 0.4 - float(puff) * 0.05)
+		index += 1
+
+
+func _clear_shot(bolt: MeshInstance3D) -> void:
+	for child in bolt.get_children():
+		bolt.remove_child(child)
+		child.queue_free()
+	bolt.mesh = null
+
+
+func _build_bullet_shot(bolt: MeshInstance3D, load: String, socket: String = "") -> void:
+	var rail := socket == "stake_gun"
+	var heavy := socket == "heavy_turret"
+	var rod := CylinderMesh.new()
+	if rail:
+		rod.top_radius = 0.14
+		rod.bottom_radius = 0.28
+	elif heavy:
+		rod.top_radius = 0.68
+		rod.bottom_radius = 1.52
+	elif load == "tungsten":
+		rod.top_radius = 0.32
+		rod.bottom_radius = 0.78
+	else:
+		rod.top_radius = 0.52
+		rod.bottom_radius = 1.12
+	rod.height = 8.0
+	rod.radial_segments = 10
+	bolt.mesh = rod
+	var head := MeshInstance3D.new()
+	head.name = "Head"
+	var tip := SphereMesh.new()
+	if rail:
+		tip.radius = 0.36
+	elif heavy:
+		tip.radius = 1.55
+	elif load == "tungsten":
+		tip.radius = 0.78
+	else:
+		tip.radius = 1.22
+	tip.height = tip.radius * 2.0
+	tip.radial_segments = 10
+	tip.rings = 6
+	head.mesh = tip
+	head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bolt.add_child(head)
+	var tail := MeshInstance3D.new()
+	tail.name = "Tail"
+	var fade := CylinderMesh.new()
+	fade.top_radius = 0.28 if rail else (1.22 if heavy else 0.82)
+	fade.bottom_radius = 0.05 if rail else 0.14
+	fade.height = 22.0 if rail else 6.5
+	fade.radial_segments = 8
+	tail.mesh = fade
+	tail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bolt.add_child(tail)
+	var core := MeshInstance3D.new()
+	core.name = "Core"
+	var wire := CylinderMesh.new()
+	wire.top_radius = 0.1
+	wire.bottom_radius = 0.2
+	wire.height = 7.0
+	wire.radial_segments = 6
+	core.mesh = wire
+	core.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bolt.add_child(core)
+	var glow := MeshInstance3D.new()
+	glow.name = "Glow"
+	var halo := SphereMesh.new()
+	halo.radius = 1.6
+	halo.height = 3.2
+	halo.radial_segments = 10
+	halo.rings = 6
+	glow.mesh = halo
+	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bolt.add_child(glow)
+	if heavy:
+		var band := MeshInstance3D.new()
+		band.name = "Band"
+		var ring := CylinderMesh.new()
+		ring.top_radius = 1.62
+		ring.bottom_radius = 1.62
+		ring.height = 1.55
+		ring.radial_segments = 12
+		band.mesh = ring
+		band.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		bolt.add_child(band)
+		var cap := MeshInstance3D.new()
+		cap.name = "Cap"
+		var ogive := CylinderMesh.new()
+		ogive.top_radius = 0.18
+		ogive.bottom_radius = 0.72
+		ogive.height = 2.4
+		ogive.radial_segments = 10
+		cap.mesh = ogive
+		cap.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		bolt.add_child(cap)
+	if rail:
+		var ghost := MeshInstance3D.new()
+		ghost.name = "Ghost"
+		var after := CylinderMesh.new()
+		after.top_radius = 0.06
+		after.bottom_radius = 0.18
+		after.height = 26.0
+		after.radial_segments = 6
+		ghost.mesh = after
+		ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		bolt.add_child(ghost)
+		var spark := MeshInstance3D.new()
+		spark.name = "Spark"
+		var bead := SphereMesh.new()
+		bead.radius = 0.55
+		bead.height = 1.1
+		bead.radial_segments = 8
+		bead.rings = 4
+		spark.mesh = bead
+		spark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		bolt.add_child(spark)
+	if not rail and not heavy:
+		var jacket := MeshInstance3D.new()
+		jacket.name = "Jacket"
+		var sleeve := CylinderMesh.new()
+		sleeve.top_radius = 0.62
+		sleeve.bottom_radius = 0.7
+		sleeve.height = 3.4
+		sleeve.radial_segments = 10
+		jacket.mesh = sleeve
+		jacket.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		bolt.add_child(jacket)
+
+
+func _build_missile_shot(bolt: MeshInstance3D, load: String = "splinter") -> void:
+	var body := CylinderMesh.new()
+	body.top_radius = 0.85
+	body.bottom_radius = 1.15
+	body.height = 14.0
+	body.radial_segments = 10
+	bolt.mesh = body
+	var skin := Color("c4bba8")
+	if load == "breacher":
+		skin = Color("5c5044")
+	elif load == "siege":
+		skin = Color("a89f8c")
+	_skin_metal(bolt, skin)
+	var nose := MeshInstance3D.new()
+	nose.name = "Head"
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.08
+	cone.bottom_radius = 0.85
+	cone.height = 3.6
+	cone.radial_segments = 10
+	nose.mesh = cone
+	nose.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_skin_metal(nose, skin.lightened(0.12))
+	bolt.add_child(nose)
+	var band := MeshInstance3D.new()
+	band.name = "Core"
+	var ring := CylinderMesh.new()
+	ring.top_radius = 1.22
+	ring.bottom_radius = 1.22
+	ring.height = 1.1
+	ring.radial_segments = 10
+	band.mesh = ring
+	band.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_skin_metal(band, Color("6a3a22"))
+	bolt.add_child(band)
+	for i in 4:
+		var fin := MeshInstance3D.new()
+		fin.name = "Fin%d" % i
+		var plate := BoxMesh.new()
+		plate.size = Vector3(0.12, 3.2, 2.1)
+		fin.mesh = plate
+		var ang := float(i) * PI * 0.5
+		fin.position = Vector3(cos(ang) * 1.15, -4.2, sin(ang) * 1.15)
+		fin.rotation.y = ang
+		fin.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		_skin_metal(fin, Color("8a8276"))
+		bolt.add_child(fin)
+	var plume := MeshInstance3D.new()
+	plume.name = "Tail"
+	var jet := CylinderMesh.new()
+	jet.top_radius = 0.35
+	jet.bottom_radius = 1.35
+	jet.height = 6.5
+	jet.radial_segments = 8
+	plume.mesh = jet
+	plume.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bolt.add_child(plume)
+	var glow := MeshInstance3D.new()
+	glow.name = "Glow"
+	var halo := SphereMesh.new()
+	halo.radius = 1.3
+	halo.height = 2.6
+	halo.radial_segments = 8
+	halo.rings = 4
+	glow.mesh = halo
+	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bolt.add_child(glow)
+	var seeker := MeshInstance3D.new()
+	seeker.name = "Seeker"
+	var lamp := SphereMesh.new()
+	lamp.radius = 0.38
+	lamp.height = 0.76
+	lamp.radial_segments = 8
+	lamp.rings = 4
+	seeker.mesh = lamp
+	seeker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	bolt.add_child(seeker)
+	var bell := MeshInstance3D.new()
+	bell.name = "Bell"
+	var nozzle := CylinderMesh.new()
+	nozzle.top_radius = 1.35
+	nozzle.bottom_radius = 0.7
+	nozzle.height = 1.8
+	nozzle.radial_segments = 10
+	bell.mesh = nozzle
+	bell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_skin_metal(bell, Color("4a4038"))
+	bolt.add_child(bell)
+
+
+func _pose_shot(bolt: MeshInstance3D, length: float, thick: float, tint: Color, flicker: float, missile: bool, socket: String = "") -> void:
+	var rod_mesh := bolt.mesh as CylinderMesh
+	if rod_mesh != null:
+		rod_mesh.height = length
+		if missile:
+			rod_mesh.top_radius = 0.55 * thick
+			rod_mesh.bottom_radius = 0.78 * thick
+		elif socket == "stake_gun":
+			rod_mesh.top_radius = 0.07 * thick
+			rod_mesh.bottom_radius = 0.16 * thick
+			_paint_bolt(bolt, tint, 5.2 * flicker, 1.0)
+		elif socket == "heavy_turret":
+			rod_mesh.top_radius = 0.72 * thick
+			rod_mesh.bottom_radius = 1.28 * thick
+			_paint_bolt(bolt, tint, 2.0 * flicker, 1.0)
+		else:
+			rod_mesh.top_radius = 0.58 * thick
+			rod_mesh.bottom_radius = 0.98 * thick
+			_paint_bolt(bolt, Color("d4a050"), 2.4 * flicker, 1.0)
+	var head_node := bolt.get_node_or_null("Head") as MeshInstance3D
+	if head_node != null:
+		head_node.position = Vector3(0.0, length * 0.5, 0.0)
+		if missile:
+			var cone := head_node.mesh as CylinderMesh
+			if cone != null:
+				cone.height = length * 0.22
+				cone.bottom_radius = 0.55 * thick
+		elif socket == "stake_gun":
+			_paint_bolt(head_node, Color("f4fbff"), 5.4 * flicker, 1.0)
+		elif socket == "heavy_turret":
+			_paint_bolt(head_node, Color("ffc070"), 2.6 * flicker, 1.0)
+		else:
+			_paint_bolt(head_node, Color("ff9a3a"), 3.2 * flicker, 1.0)
+	var tail_node := bolt.get_node_or_null("Tail") as MeshInstance3D
+	if tail_node != null:
+		var tail_mesh := tail_node.mesh as CylinderMesh
+		if tail_mesh != null:
+			if missile:
+				tail_mesh.height = length * 0.48
+			elif socket == "stake_gun":
+				tail_mesh.height = length * 1.15
+			elif socket == "heavy_turret":
+				tail_mesh.height = length * 0.55
+			else:
+				tail_mesh.height = length * 0.42
+		tail_node.position = Vector3(0.0, -length * (0.58 if missile else 0.55), 0.0)
+		if missile:
+			_paint_bolt(tail_node, Color("ff8a3a"), 3.8 * flicker, 0.74)
+		elif socket == "stake_gun":
+			_paint_bolt(tail_node, tint.lightened(0.45), 3.4 * flicker, 0.2)
+		elif socket == "heavy_turret":
+			_paint_bolt(tail_node, Color("ff7a28"), 2.6 * flicker, 0.48)
+		else:
+			_paint_bolt(tail_node, Color("ff8a28"), 1.6 * flicker, 0.38)
+	var core_node := bolt.get_node_or_null("Core") as MeshInstance3D
+	if core_node != null:
+		if missile:
+			core_node.position = Vector3(0.0, length * 0.08, 0.0)
+		else:
+			var core_mesh := core_node.mesh as CylinderMesh
+			if core_mesh != null:
+				core_mesh.height = length * 0.92
+				core_mesh.top_radius = 0.12 * thick
+				core_mesh.bottom_radius = 0.22 * thick
+			core_node.position = Vector3(0.0, length * 0.04, 0.0)
+			_paint_bolt(core_node, tint.lightened(0.55), 3.4 * flicker, 0.95)
+	var glow_node := bolt.get_node_or_null("Glow") as MeshInstance3D
+	if glow_node != null:
+		glow_node.position = Vector3(0.0, length * (-0.48 if missile else 0.42), 0.0)
+		var bulb := (1.1 if missile else 1.4) + thick * 0.7
+		glow_node.scale = Vector3(bulb * 0.55, bulb * (0.8 if missile else 1.3), bulb * 0.55)
+		if missile:
+			_paint_bolt(glow_node, Color("ffb060"), 2.4 * flicker, 0.4)
+		else:
+			_paint_bolt(glow_node, tint.lightened(0.3), 1.6 * flicker, 0.28)
+	if missile:
+		for i in 4:
+			var fin := bolt.get_node_or_null("Fin%d" % i) as MeshInstance3D
+			if fin == null:
+				continue
+			var ang := float(i) * PI * 0.5
+			fin.position = Vector3(cos(ang) * 0.85 * thick, -length * 0.32, sin(ang) * 0.85 * thick)
+		var seeker := bolt.get_node_or_null("Seeker") as MeshInstance3D
+		if seeker != null:
+			seeker.position = Vector3(0.0, length * 0.58, 0.0)
+			seeker.scale = Vector3.ONE * (0.55 + thick * 0.35)
+			_paint_bolt(seeker, Color("7ec8ff"), 2.8 * flicker, 0.95)
+		var bell := bolt.get_node_or_null("Bell") as MeshInstance3D
+		if bell != null:
+			bell.position = Vector3(0.0, -length * 0.48, 0.0)
+			bell.scale = Vector3(thick * 0.85, 1.0, thick * 0.85)
+	var band := bolt.get_node_or_null("Band") as MeshInstance3D
+	if band != null:
+		band.position = Vector3(0.0, length * 0.12, 0.0)
+		band.scale = Vector3(thick * 0.95, 1.0, thick * 0.95)
+		_paint_bolt(band, Color("c48a3a"), 1.6 * flicker, 0.95)
+	var ghost := bolt.get_node_or_null("Ghost") as MeshInstance3D
+	if ghost != null:
+		var ghost_mesh := ghost.mesh as CylinderMesh
+		if ghost_mesh != null:
+			ghost_mesh.height = length * 1.55
+			ghost_mesh.top_radius = 0.06 * thick
+			ghost_mesh.bottom_radius = 0.2 * thick
+		ghost.position = Vector3(0.0, -length * 0.22, 0.0)
+		_paint_bolt(ghost, tint.lightened(0.4), 2.2 * flicker, 0.24)
+	var jacket := bolt.get_node_or_null("Jacket") as MeshInstance3D
+	if jacket != null:
+		jacket.position = Vector3(0.0, -length * 0.08, 0.0)
+		jacket.scale = Vector3(thick * 0.85, 1.0, thick * 0.85)
+		_paint_bolt(jacket, Color("c48a3a"), 1.15 * flicker, 1.0)
+	var spark := bolt.get_node_or_null("Spark") as MeshInstance3D
+	if spark != null:
+		spark.position = Vector3(0.0, length * 0.52, 0.0)
+		spark.scale = Vector3.ONE * (0.85 + thick * 0.4)
+		_paint_bolt(spark, Color("f4fbff"), 6.4 * flicker, 1.0)
+	var cap := bolt.get_node_or_null("Cap") as MeshInstance3D
+	if cap != null:
+		cap.position = Vector3(0.0, length * 0.42, 0.0)
+		cap.scale = Vector3(thick * 0.9, 1.0, thick * 0.9)
+		_paint_bolt(cap, Color("ffc070"), 2.2 * flicker, 1.0)
+
+
+func _sync_cuts(sim) -> void:
+	if not sim.get("cuts"):
+		return
+	var index := 0
+	var read := _fx_read(sim)
+	for raw in sim.cuts:
+		var row: Dictionary = raw
+		var a2: Vector2 = row.from
+		var b2: Vector2 = row.to
+		var span: Vector2 = b2 - a2
+		var length := span.length()
+		if length < 2.0:
+			continue
+		var fade := clampf(1.0 - float(row.get("age", 0.0)) / HelmHarvest.CUT_LIFE, 0.05, 1.0)
+		var kind := str(row.get("kind", "plasma"))
+		var core := Color("d8fbff")
+		var edge := Color("3ad4ff")
+		if kind == "probe":
+			core = Color("c8ffe8")
+			edge = Color("4ad8a8")
+		elif kind == "drone":
+			core = Color("ffe0a0")
+			edge = Color("f0a04a")
+		var along := Vector3(span.x, 0.0, -span.y)
+		if along.length() < 0.2:
+			along = Vector3.RIGHT
+		along = along.normalized()
+		var mid := (a2 + b2) * 0.5
+		var rod := _prop("cut%d" % index)
+		if rod.mesh == null or not (rod.mesh is CylinderMesh):
+			var cyl := CylinderMesh.new()
+			cyl.radial_segments = 10
+			rod.mesh = cyl
+			var sheath := MeshInstance3D.new()
+			sheath.name = "Sheath"
+			var soft := CylinderMesh.new()
+			soft.radial_segments = 10
+			sheath.mesh = soft
+			rod.add_child(sheath)
+		var thick := 0.42 * read
+		if kind == "plasma":
+			thick = 0.62 * read
+		(rod.mesh as CylinderMesh).height = length
+		(rod.mesh as CylinderMesh).top_radius = thick * 0.45
+		(rod.mesh as CylinderMesh).bottom_radius = thick
+		rod.position = chart(mid, 6.4)
+		_aim_rod(rod, along)
+		_paint_bolt(rod, core, 3.8 * fade, clampf(fade, 0.08, 0.95))
+		var sheath_node := rod.get_node_or_null("Sheath") as MeshInstance3D
+		if sheath_node != null and sheath_node.mesh is CylinderMesh:
+			(sheath_node.mesh as CylinderMesh).height = length
+			(sheath_node.mesh as CylinderMesh).top_radius = thick * 1.8
+			(sheath_node.mesh as CylinderMesh).bottom_radius = thick * 2.6
+			_paint_bolt(sheath_node, edge, 2.2 * fade, clampf(fade * 0.55, 0.04, 0.7))
+		var spark := _prop("cutspark%d" % index)
+		if spark.mesh == null:
+			var orb := SphereMesh.new()
+			orb.radius = 1.0
+			orb.height = 2.0
+			orb.radial_segments = 10
+			orb.rings = 6
+			spark.mesh = orb
+		var pulse := 0.7 + 0.3 * sin(float(sim.time) * 28.0 + float(index))
+		spark.position = chart(b2, 6.8)
+		spark.scale = Vector3.ONE * (1.8 + fade * 2.4) * read * pulse
+		_paint_bolt(spark, core.lightened(0.25), 4.4 * fade, clampf(fade, 0.1, 0.95))
+		var hitch := _prop("cuthitch%d" % index)
+		if hitch.mesh == null:
+			var bloom := SphereMesh.new()
+			bloom.radius = 1.0
+			bloom.height = 2.0
+			bloom.radial_segments = 8
+			bloom.rings = 4
+			hitch.mesh = bloom
+		hitch.position = chart(a2, 8.2)
+		hitch.scale = Vector3.ONE * (1.1 + fade) * read
+		_paint_bolt(hitch, core, 2.8 * fade, clampf(fade * 0.8, 0.08, 0.85))
+		for chip_i in 3:
+			var flake := _prop("cutchip%d_%d" % [index, chip_i])
+			if flake.mesh == null:
+				var bit := SphereMesh.new()
+				bit.radius = 1.0
+				bit.height = 2.0
+				bit.radial_segments = 6
+				bit.rings = 3
+				flake.mesh = bit
+			var fly := float(row.get("age", 0.0))
+			var side := Vector3(-along.z, 0.0, along.x)
+			if side.length() < 0.2:
+				side = Vector3.RIGHT
+			side = side.normalized()
+			var slide := (float(chip_i) - 1.0) * 2.4 * read
+			var back := fly * (18.0 + float(chip_i) * 6.0) * read
+			flake.position = chart(b2, 7.2 + float(chip_i) * 0.8) - along * back + side * slide + Vector3(0.0, fly * 8.0, 0.0)
+			flake.scale = Vector3.ONE * (0.35 + fade * 0.25) * read
+			_paint_bolt(flake, edge.lightened(0.2), 1.6 * fade, clampf(fade, 0.12, 0.9))
 		index += 1
 
 
@@ -1355,12 +1860,302 @@ func _sync_beams(sim) -> void:
 		var sheath_node := rod.get_node("Sheath") as MeshInstance3D
 		(sheath_node.mesh as CylinderMesh).height = length
 		var hot := bool(beam.get("hot", false))
+		var family := str(beam.get("family", "laser"))
+		var load := str(beam.get("load", "standard"))
 		var core := Color("fff1d2") if hot else Color("ffb15a")
 		var edge := Color("ff6a1a")
+		if load == "infrared":
+			core = Color("ff6a3a") if hot else Color("c44a22")
+			edge = Color("ff3a10")
+		elif load == "ultraviolet":
+			core = Color("e4c8ff") if hot else Color("9a70e6")
+			edge = Color("7a40d8")
+		if family == "pd":
+			core = Color("e8f4ff")
+			edge = Color("8ec8ff")
 		var age := float(beam.get("age", 0.0))
-		var fade := clampf(1.0 - age / 0.32, 0.0, 1.0)
-		_paint_bolt(rod, core, 3.2 * fade, 0.95)
-		_paint_bolt(sheath_node, edge, 1.1 * fade, 0.28 * fade)
+		var life := 0.18 if family == "pd" else 0.32
+		var fade := clampf(1.0 - age / life, 0.0, 1.0)
+		var pulse_hz := 70.0
+		if load == "infrared":
+			pulse_hz = 22.0
+		elif load == "ultraviolet":
+			pulse_hz = 118.0
+		elif family == "pd":
+			pulse_hz = 160.0
+		var pulse := 0.82 + 0.18 * sin(float(sim.time) * pulse_hz + float(index))
+		var read := _fx_read(sim)
+		if family == "pd":
+			(rod.mesh as CylinderMesh).top_radius = 0.22 * read
+			(rod.mesh as CylinderMesh).bottom_radius = 0.4 * read
+			(sheath_node.mesh as CylinderMesh).top_radius = 0.75 * read
+			(sheath_node.mesh as CylinderMesh).bottom_radius = 1.15 * read
+		elif load == "infrared":
+			(rod.mesh as CylinderMesh).top_radius = 0.95 * read
+			(rod.mesh as CylinderMesh).bottom_radius = 1.45 * read
+			(sheath_node.mesh as CylinderMesh).top_radius = 3.1 * read
+			(sheath_node.mesh as CylinderMesh).bottom_radius = 4.4 * read
+		elif load == "ultraviolet":
+			(rod.mesh as CylinderMesh).top_radius = 0.48 * read
+			(rod.mesh as CylinderMesh).bottom_radius = 0.78 * read
+			(sheath_node.mesh as CylinderMesh).top_radius = 1.7 * read
+			(sheath_node.mesh as CylinderMesh).bottom_radius = 2.4 * read
+		else:
+			(rod.mesh as CylinderMesh).top_radius = 0.7 * read
+			(rod.mesh as CylinderMesh).bottom_radius = 1.15 * read
+			(sheath_node.mesh as CylinderMesh).top_radius = 2.4 * read
+			(sheath_node.mesh as CylinderMesh).bottom_radius = 3.4 * read
+		var needle := rod.get_node_or_null("Core") as MeshInstance3D
+		if needle == null:
+			needle = MeshInstance3D.new()
+			needle.name = "Core"
+			var wire := CylinderMesh.new()
+			wire.top_radius = 0.12
+			wire.bottom_radius = 0.16
+			wire.height = 1.0
+			wire.radial_segments = 8
+			needle.mesh = wire
+			needle.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			rod.add_child(needle)
+		(needle.mesh as CylinderMesh).height = length
+		if family == "pd":
+			(needle.mesh as CylinderMesh).top_radius = 0.1 * read
+			(needle.mesh as CylinderMesh).bottom_radius = 0.14 * read
+		else:
+			(needle.mesh as CylinderMesh).top_radius = 0.22 * read
+			(needle.mesh as CylinderMesh).bottom_radius = 0.32 * read
+		_paint_bolt(rod, core, 4.2 * fade * pulse, 0.95)
+		_paint_bolt(sheath_node, edge, 1.55 * fade, 0.38 * fade)
+		_paint_bolt(needle, core.lightened(0.5), 6.2 * fade * pulse, 1.0)
+		var bloom := _prop("lasebloom%d" % index)
+		if bloom.mesh == null:
+			var ball := SphereMesh.new()
+			ball.radius = 1.0
+			ball.height = 2.0
+			ball.radial_segments = 10
+			ball.rings = 6
+			bloom.mesh = ball
+		bloom.position = chart(a2, 7.0)
+		bloom.scale = Vector3.ONE * (4.2 if family != "pd" else 2.2) * read * fade
+		_paint_bolt(bloom, core.lightened(0.25), 4.6 * fade, clampf(fade, 0.05, 0.9))
+		if hot:
+			var scorch := _prop("lasemark%d" % index)
+			if scorch.mesh == null:
+				var spark := SphereMesh.new()
+				spark.radius = 1.0
+				spark.height = 2.0
+				spark.radial_segments = 8
+				spark.rings = 4
+				scorch.mesh = spark
+			scorch.position = chart(b2, 7.2)
+			scorch.scale = Vector3.ONE * (3.2 if family != "pd" else 1.6) * read * fade
+			_paint_bolt(scorch, core, 3.4 * fade, clampf(fade, 0.04, 0.8))
+		if family != "pd":
+			for ring_i in 3:
+				var corona := _prop("lasecorona%d_%d" % [index, ring_i])
+				if corona.mesh == null or not (corona.mesh is TorusMesh):
+					var halo := TorusMesh.new()
+					halo.rings = 16
+					halo.ring_segments = 8
+					corona.mesh = halo
+				var ring := corona.mesh as TorusMesh
+				var reach := (2.8 if load != "ultraviolet" else 1.9) * read * fade
+				reach *= 1.0 - float(ring_i) * 0.12
+				ring.inner_radius = reach * 0.5
+				ring.outer_radius = reach
+				var along_t := 10.0 + float(ring_i) * maxf(length * 0.22, 18.0)
+				corona.position = chart(a2, 7.4) + along * along_t
+				_paint_bolt(corona, edge.lightened(0.2), 2.4 * fade * pulse, clampf(fade * 0.5, 0.04, 0.72))
+		else:
+			for spark_i in 4:
+				var flake := _prop("pdflake%d_%d" % [index, spark_i])
+				if flake.mesh == null:
+					var chip := SphereMesh.new()
+					chip.radius = 1.0
+					chip.height = 2.0
+					chip.radial_segments = 6
+					chip.rings = 4
+					flake.mesh = chip
+				var ang := TAU * float(spark_i) / 4.0 + float(sim.time) * 9.0
+				var fly := 3.2 * read * (0.4 + fade)
+				flake.position = chart(b2, 8.0) + Vector3(cos(ang) * fly, 0.6 * float(spark_i % 2), -sin(ang) * fly)
+				flake.scale = Vector3.ONE * (0.7 + fade) * read
+				_paint_bolt(flake, core.lightened(0.3), 3.2 * fade, clampf(fade, 0.05, 0.85))
+		index += 1
+
+
+func _sync_muzzles(sim) -> void:
+	if not sim.get("muzzles"):
+		return
+	var index := 0
+	var read := _fx_read(sim)
+	for row in sim.muzzles:
+		var flash: Dictionary = row
+		var age := float(flash.get("age", 0.0))
+		var family := str(flash.get("family", "bullet"))
+		var socket := str(flash.get("socket", ""))
+		var load := str(flash.get("load", ""))
+		var life := 0.18
+		if socket == "heavy_turret":
+			life = 0.3
+		elif family == "missile":
+			life = 0.36
+		elif family == "laser":
+			life = 0.24
+		elif family == "pd":
+			life = 0.14
+		elif socket == "stake_gun":
+			life = 0.2
+		var fade := clampf(1.0 - age / life, 0.0, 1.0)
+		if fade <= 0.02:
+			continue
+		var tint := Color("ffd59a")
+		if family == "laser":
+			tint = Color("fff1d2")
+			if load == "infrared":
+				tint = Color("ff6a3a")
+			elif load == "ultraviolet":
+				tint = Color("e4c8ff")
+		elif family == "missile":
+			tint = Color("ffb060")
+		elif family == "pd":
+			tint = Color("d8eeff")
+		elif socket == "heavy_turret":
+			tint = Color("ff9a4a")
+		elif socket == "stake_gun":
+			tint = Color("e8f2ff")
+		var span := 3.2 * read * (0.45 + fade)
+		if socket == "heavy_turret":
+			span *= 2.45
+		elif socket == "stake_gun":
+			span *= 0.62
+		elif family == "missile":
+			span *= 1.65
+		elif family == "laser":
+			span *= 1.25
+		elif family == "pd":
+			span *= 0.62
+		var dir: Vector2 = flash.get("dir", Vector2.RIGHT)
+		var along := Vector3(dir.x, 0.0, -dir.y)
+		if along.length() < 0.2:
+			along = Vector3.RIGHT
+		along = along.normalized()
+		var ball := _prop("muzzle%d" % index)
+		if ball.mesh == null:
+			var orb := SphereMesh.new()
+			orb.radius = 1.0
+			orb.height = 2.0
+			orb.radial_segments = 10
+			orb.rings = 6
+			ball.mesh = orb
+		ball.position = chart(flash.pos, 8.4)
+		ball.scale = Vector3.ONE * span
+		_paint_bolt(ball, tint.lightened(0.28), 3.8 * fade, clampf(fade, 0.08, 0.92))
+		var cone := _prop("muzzlejet%d" % index)
+		if cone.mesh == null or not (cone.mesh is CylinderMesh):
+			var jet := CylinderMesh.new()
+			jet.radial_segments = 8
+			cone.mesh = jet
+		var jet_mesh := cone.mesh as CylinderMesh
+		var jet_len := span * (2.4 if socket == "stake_gun" else 1.55)
+		if family == "laser":
+			jet_len = span * 0.7
+		jet_mesh.height = jet_len
+		if socket == "stake_gun":
+			jet_mesh.top_radius = span * 0.08
+			jet_mesh.bottom_radius = span * 0.22
+		elif socket == "heavy_turret":
+			jet_mesh.top_radius = span * 0.22
+			jet_mesh.bottom_radius = span * 0.55
+		else:
+			jet_mesh.top_radius = span * 0.12
+			jet_mesh.bottom_radius = span * 0.38
+		cone.position = chart(flash.pos, 8.2) + along * jet_len * 0.35
+		_aim_rod(cone, along)
+		_paint_bolt(cone, tint, 2.6 * fade, clampf(fade * 0.75, 0.05, 0.8))
+		var side := Vector3(dir.y, 0.0, dir.x)
+		if side.length() < 0.2:
+			side = Vector3.RIGHT
+		side = side.normalized()
+		if socket == "gun_sponson" or socket == "nose":
+			var case := _prop("muzzlecase%d" % index)
+			if case.mesh == null or not (case.mesh is CylinderMesh):
+				var hull := CylinderMesh.new()
+				hull.radial_segments = 8
+				case.mesh = hull
+			var case_mesh := case.mesh as CylinderMesh
+			case_mesh.height = 2.8 * read
+			case_mesh.top_radius = 0.4 * read
+			case_mesh.bottom_radius = 0.52 * read
+			var fly := float(flash.get("age", 0.0))
+			case.position = chart(flash.pos, 8.6) + side * (4.2 + fly * 32.0) * read - along * fly * 12.0 * read + Vector3(0.0, fly * 9.0, 0.0)
+			case.rotation = Vector3(fly * 18.0, fly * 11.0, 0.4)
+			_paint_bolt(case, Color("d4a24a"), 0.9, clampf(fade, 0.16, 0.98))
+			var twin := _prop("muzzletwin%d" % index)
+			if twin.mesh == null:
+				var orb2 := SphereMesh.new()
+				orb2.radius = 1.0
+				orb2.height = 2.0
+				orb2.radial_segments = 8
+				orb2.rings = 4
+				twin.mesh = orb2
+			twin.position = chart(flash.pos, 8.4) + side * 1.9 * read
+			twin.scale = Vector3.ONE * span * 0.72
+			_paint_bolt(twin, tint.lightened(0.2), 3.2 * fade, clampf(fade, 0.08, 0.88))
+		elif socket == "heavy_turret":
+			var smoke := _prop("muzzlesmoke%d" % index)
+			if smoke.mesh == null or not (smoke.mesh is TorusMesh):
+				var puff := TorusMesh.new()
+				puff.rings = 16
+				puff.ring_segments = 8
+				smoke.mesh = puff
+			var ring := smoke.mesh as TorusMesh
+			var grow := (2.4 + (1.0 - fade) * 6.5) * read
+			ring.inner_radius = grow * 0.45
+			ring.outer_radius = grow
+			smoke.position = chart(flash.pos, 8.0) + along * 2.2 * read
+			_paint_bolt(smoke, Color("8a7a68"), 0.35, clampf(fade * 0.45, 0.04, 0.5))
+		elif socket == "stake_gun":
+			for arc_i in 3:
+				var arc := _prop("muzzlearc%d_%d" % [index, arc_i])
+				if arc.mesh == null or not (arc.mesh is CylinderMesh):
+					var sliver := CylinderMesh.new()
+					sliver.radial_segments = 6
+					arc.mesh = sliver
+				var sliver_mesh := arc.mesh as CylinderMesh
+				sliver_mesh.height = span * (2.8 + float(arc_i) * 0.6)
+				sliver_mesh.top_radius = 0.05 * read
+				sliver_mesh.bottom_radius = 0.14 * read
+				var yaw := (float(arc_i) - 1.0) * 0.22
+				var bolt_dir := along.rotated(Vector3.UP, yaw)
+				arc.position = chart(flash.pos, 8.8) + bolt_dir * sliver_mesh.height * 0.4
+				_aim_rod(arc, bolt_dir)
+				_paint_bolt(arc, Color("d8eeff"), 4.2 * fade, clampf(fade, 0.08, 0.9))
+		elif family == "missile":
+			var wake := _prop("muzzlewake%d" % index)
+			if wake.mesh == null:
+				var cloud := SphereMesh.new()
+				cloud.radius = 1.0
+				cloud.height = 2.0
+				cloud.radial_segments = 8
+				cloud.rings = 4
+				wake.mesh = cloud
+			wake.position = chart(flash.pos, 8.0) - along * (2.4 + (1.0 - fade) * 6.0) * read
+			wake.scale = Vector3.ONE * span * (1.4 + (1.0 - fade) * 1.8)
+			_paint_bolt(wake, Color("c4a078"), 0.6, clampf(fade * 0.4, 0.04, 0.45))
+		elif family == "laser":
+			var iris := _prop("muzzleiris%d" % index)
+			if iris.mesh == null or not (iris.mesh is CylinderMesh):
+				var disc := CylinderMesh.new()
+				disc.radial_segments = 14
+				iris.mesh = disc
+			var disc_mesh := iris.mesh as CylinderMesh
+			disc_mesh.height = 0.28 * read
+			disc_mesh.top_radius = span * 1.15
+			disc_mesh.bottom_radius = span * 1.15
+			iris.position = chart(flash.pos, 8.3)
+			_aim_rod(iris, along)
+			_paint_bolt(iris, tint.lightened(0.35), 3.6 * fade, clampf(fade * 0.7, 0.06, 0.85))
 		index += 1
 
 
@@ -1394,10 +2189,15 @@ func _sync_impacts(sim) -> void:
 	for row in sim.impacts:
 		var impact: Dictionary = row
 		var kind := str(impact.get("kind", "hit"))
+		var family := str(impact.get("family", ""))
 		var age := float(impact.get("age", 0.0))
 		var life := 0.34
 		if kind == "kill":
 			life = 0.62
+		elif kind == "flak":
+			life = 0.22
+		elif kind == "scorch":
+			life = 0.28
 		var t := clampf(age / life, 0.0, 1.0)
 		var fade := (1.0 - t) * (1.0 - t)
 		var tint := _shot_tint(str(impact.get("team", "")))
@@ -1405,6 +2205,12 @@ func _sync_impacts(sim) -> void:
 			tint = tint.lerp(Color("fff4e0"), 0.5)
 		elif kind == "fade":
 			tint = tint.darkened(0.25)
+		elif kind == "flak" or family == "pd":
+			tint = Color("c8e8ff")
+		elif kind == "scorch" or family == "laser":
+			tint = Color("ffb070")
+		elif family == "missile":
+			tint = tint.lerp(Color("ff8a3a"), 0.45)
 		var at: Vector2 = impact.pos
 		var read := _fx_read(sim)
 		var reach := lerpf(1.5, 7.0, t)
@@ -1412,6 +2218,12 @@ func _sync_impacts(sim) -> void:
 			reach = lerpf(1.5, 16.0, t)
 		elif kind == "fade":
 			reach = lerpf(0.6, 3.0, t)
+		elif kind == "flak":
+			reach = lerpf(1.1, 5.2, t)
+		elif kind == "scorch":
+			reach = lerpf(1.2, 4.4, t)
+		elif family == "missile":
+			reach = lerpf(2.2, 11.0, t)
 		reach *= read
 		var burst := _prop("burst%d" % index)
 		if burst.mesh == null:
@@ -1525,6 +2337,16 @@ func _shot_tint(team: String) -> Color:
 	return Color("e7b15a")
 
 
+func _skin_metal(node: MeshInstance3D, color: Color) -> void:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = color
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 0.32
+	node.material_override = mat
+
+
 func _paint_bolt(node: MeshInstance3D, color: Color, energy: float, alpha: float) -> void:
 	var mat := node.material_override as StandardMaterial3D
 	if mat == null:
@@ -1563,8 +2385,8 @@ func _sync_wrecks(sim) -> void:
 			hulk.set_meta("wid", wid)
 			hulk.set_meta("lit", float(sim.time))
 		if str(hulk.get_meta("built", "")) != "yes":
-			hulk.mesh = _rock_mesh(index + 11, 11.0)
-			hulk.material_override = _hull_mat(Color("5a4038"))
+			hulk.mesh = _wreck_mesh(index + 11, 11.0)
+			hulk.material_override = _plate_mat(Color("5a4038"), float(index) * 0.31)
 			hulk.set_meta("built", "yes")
 		var age_spin := float(sim.time) - float(hulk.get_meta("lit", sim.time))
 		var tumble := lerpf(2.4, 0.85, clampf(age_spin / 2.2, 0.0, 1.0))
@@ -1576,8 +2398,8 @@ func _sync_wrecks(sim) -> void:
 		hulk.transform = xf
 		var shard := _prop("wreckbit%d" % index)
 		if str(shard.get_meta("built", "")) != "yes":
-			shard.mesh = _rock_mesh(index + 21, 4.6)
-			shard.material_override = _rock_shader_mat(Color("3a2a26"), float(index))
+			shard.mesh = _wreck_mesh(index + 21, 3.4)
+			shard.material_override = _plate_mat(Color("6a5048"), float(index) * 0.17)
 			shard.set_meta("built", "yes")
 		var pos: Vector2 = row.pos
 		var orbit_ang := float(sim.time) * 0.9 + float(index) * 1.7
@@ -1628,17 +2450,78 @@ func _sync_wrecks(sim) -> void:
 
 func _sync_meteors(sim) -> void:
 	var index := 0
+	var on_chart := int(sim.layer) == ScaleFrame.CHART
 	for rock in sim.meteors:
 		var row: Dictionary = rock
 		var node := _prop("meteor%d" % index)
-		index += 1
-		var radius := maxf(36.0, float(row.get("size", 4.0)) * 8.0)
+		var radius := maxf(12.0, float(row.get("size", 8.0)) * 1.7)
 		if str(node.get_meta("built", "")) != "yes":
-			node.mesh = _rubble_mesh(index + 17, radius)
-			node.material_override = _rubble_mat(Color("a85a32"), float(index) * 0.37)
+			if index % 2 == 0:
+				node.mesh = _rock_mesh(index + 17, radius)
+				var stone := ShaderMaterial.new()
+				stone.shader = _rock_shader
+				stone.set_shader_parameter("albedo", Color("6a4a32"))
+				stone.set_shader_parameter("vein_color", Color("f0a24a"))
+				stone.set_shader_parameter("seed", float(index) * 0.37)
+				node.material_override = stone
+			else:
+				node.mesh = _ice_mesh(index + 17, radius)
+				var ice_body := ShaderMaterial.new()
+				ice_body.shader = _ice_shader
+				ice_body.set_shader_parameter("seed", float(index) * 0.37)
+				node.material_override = ice_body
 			node.set_meta("built", "yes")
-		node.position = chart(row.pos, radius * 0.7)
-		node.rotation = Vector3(float(index) * 0.4, float(index) * 0.7, 0.2)
+		node.visible = not on_chart
+		node.position = chart(row.pos, radius * 0.85)
+		node.rotation = Vector3(float(sim.time) * 0.7 + float(index), float(sim.time) * 0.45, 0.2)
+		var tail := _prop("mettail%d" % index)
+		index += 1
+		if tail.mesh == null:
+			tail.mesh = _ice_streak_mesh()
+			var burn := StandardMaterial3D.new()
+			burn.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			burn.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			burn.albedo_color = Color(0.84, 0.93, 1.0, 0.62)
+			burn.emission_enabled = true
+			burn.emission = Color("d5e6f0")
+			burn.emission_energy_multiplier = 1.35
+			tail.material_override = burn
+			tail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var vel := Vector2(row.get("vel", Vector2.RIGHT))
+		if vel.length() < 0.1:
+			vel = Vector2.RIGHT
+		vel = vel.normalized()
+		var back := chart(row.pos - vel * radius * 1.6, radius * 0.7)
+		tail.position = back
+		tail.visible = not on_chart
+		var aim := chart(row.pos, radius * 0.7) - back
+		if aim.length() > 0.1:
+			tail.look_at(chart(row.pos, radius * 0.7), Vector3.UP)
+		tail.scale = Vector3(radius * 0.28, radius * 0.28, radius * 3.2)
+		var heat := _prop("metheat%d" % (index - 1))
+		if heat.mesh == null:
+			var ball := SphereMesh.new()
+			ball.radius = 1.0
+			ball.height = 2.0
+			ball.radial_segments = 10
+			ball.rings = 6
+			heat.mesh = ball
+			var glow := StandardMaterial3D.new()
+			glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			glow.albedo_color = Color(1.0, 0.72, 0.42, 0.52)
+			glow.emission_enabled = true
+			glow.emission = Color("ffb070")
+			glow.emission_energy_multiplier = 1.85
+			heat.material_override = glow
+			heat.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		heat.position = chart(row.pos + vel * radius * 0.55, radius * 0.92)
+		heat.scale = Vector3.ONE * radius * 0.4
+		heat.visible = not on_chart
+	if index > 0 and not on_chart:
+		var lead: Dictionary = sim.meteors[0]
+		var spec: Dictionary = sim.defs.system.get("stream", {})
+		_tag("%s  ·  ice spall" % str(spec.get("name", "Gravel")), chart(lead.pos, 70.0), Color("d5e6f0"), 18)
 
 
 func _sync_claim(sim) -> void:
@@ -1773,6 +2656,8 @@ func _sync_star(sim) -> void:
 		_star_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(_star_glow)
 	var core := Color(str(sim.defs.system.star.color))
+	if _sun != null and not portrait_mode:
+		_sun.light_color = core.lightened(0.22).lerp(Color("f2e4c4"), 0.35)
 	(_star_mesh.mesh as SphereMesh).radius = radius
 	(_star_mesh.mesh as SphereMesh).height = radius * 2.0
 	(_star_mesh.material_override as ShaderMaterial).set_shader_parameter("albedo", core.lightened(0.12))
@@ -1968,6 +2853,50 @@ func _sync_density(sim) -> void:
 			nose.position = Vector3(12.0, 0.3, 0.0)
 			nose.material_override = _hull_mat(Color("9aa39a"))
 			craft.add_child(nose)
+			var glass := MeshInstance3D.new()
+			glass.name = "Glass"
+			var pane := BoxMesh.new()
+			pane.size = Vector3(3.4, 1.4, 3.2)
+			glass.mesh = pane
+			glass.position = Vector3(6.2, 2.4, 0.0)
+			var film := ShaderMaterial.new()
+			film.shader = _glass_shader
+			film.set_shader_parameter("albedo", Color(0.5, 0.8, 0.84, 0.38))
+			glass.material_override = film
+			craft.add_child(glass)
+			for raw_side in [1.0, -1.0]:
+				var flank := float(raw_side)
+				var tag := "P" if flank > 0.0 else "S"
+				var wing := MeshInstance3D.new()
+				wing.name = "Wing%s" % tag
+				var slab := BoxMesh.new()
+				slab.size = Vector3(8.0, 0.35, 4.4)
+				wing.mesh = slab
+				wing.position = Vector3(-1.5, 0.4, flank * 5.6)
+				wing.material_override = _hull_mat(Color("6a7270"))
+				craft.add_child(wing)
+				var rcs := MeshInstance3D.new()
+				rcs.name = "Rcs%s" % tag
+				var bell := CylinderMesh.new()
+				bell.top_radius = 0.28
+				bell.bottom_radius = 0.42
+				bell.height = 1.1
+				bell.radial_segments = 8
+				rcs.mesh = bell
+				rcs.position = Vector3(-8.4, 1.1, flank * 2.2)
+				rcs.rotation.z = PI * 0.5
+				rcs.material_override = _hull_mat(Color("241c18"))
+				craft.add_child(rcs)
+			var plume := MeshInstance3D.new()
+			plume.name = "Exhaust"
+			plume.mesh = _plume_mesh(10.0, 1.05)
+			plume.position = Vector3(-11.0, 0.2, 0.0)
+			var burn := ShaderMaterial.new()
+			burn.shader = _plume_shader
+			burn.set_shader_parameter("albedo", Color(0.95, 0.62, 0.28, 0.4))
+			burn.set_shader_parameter("core", 0.25)
+			plume.material_override = burn
+			craft.add_child(plume)
 		craft.position = chart(row.pos, 8.0)
 		craft.visible = int(sim.layer) == ScaleFrame.BAND
 	var pin := _prop("claim_pin")
@@ -2004,14 +2933,33 @@ func _sync_belt_volume(sim, belt: Dictionary) -> void:
 		var mat := StandardMaterial3D.new()
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.albedo_color = Color(0.45, 0.4, 0.34, 0.28)
+		mat.albedo_color = Color(0.72, 0.48, 0.28, 0.5)
+		mat.emission_enabled = true
+		mat.emission = Color(0.9, 0.55, 0.24)
+		mat.emission_energy_multiplier = 0.55
 		hoop.material_override = mat
 		hoop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var local := bool(belt.get("local", false))
+	if Vector2(sim.belt_pos) == Vector2.ZERO:
+		local = false
 	var radius := float(belt.get("radius", 1000.0))
 	var width := maxf(float(belt.get("width", 40.0)), 24.0)
-	(hoop.mesh as TorusMesh).inner_radius = maxf(radius - width, 8.0)
-	(hoop.mesh as TorusMesh).outer_radius = radius + width
-	hoop.position = chart(Vector2.ZERO, 0.0)
+	if local:
+		radius = maxf(float(sim.belt_span) * 0.85, 70.0)
+		width = 8.0
+		(hoop.mesh as TorusMesh).inner_radius = maxf(radius - width, 12.0)
+		(hoop.mesh as TorusMesh).outer_radius = radius + width
+		hoop.position = chart(Vector2(sim.belt_pos), 6.0)
+	else:
+		(hoop.mesh as TorusMesh).inner_radius = maxf(radius - width, 8.0)
+		(hoop.mesh as TorusMesh).outer_radius = radius + width
+		hoop.position = chart(Vector2.ZERO, 0.0)
+	var dust := hoop.material_override as StandardMaterial3D
+	if dust != null:
+		var haze := 0.34
+		if local:
+			haze = 0.12
+		dust.albedo_color = Color(0.72, 0.48, 0.28, haze)
 	hoop.visible = int(sim.layer) == ScaleFrame.BAND
 
 
@@ -2442,8 +3390,8 @@ func _sync_moon(node: Node3D, sim, row: Dictionary, radius: float) -> void:
 		moon = MeshInstance3D.new()
 		moon.name = "Moon"
 		var sphere := SphereMesh.new()
-		sphere.radial_segments = 40
-		sphere.rings = 20
+		sphere.radial_segments = 56
+		sphere.rings = 28
 		moon.mesh = sphere
 		var mat := ShaderMaterial.new()
 		mat.shader = _rock_shader
@@ -2479,25 +3427,32 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 	var shapes: Array = Silhouette.shapes_of(sim.defs, ship.modules)
 	var layers: Array = Silhouette.layers_of(sim.defs, ship.modules)
 	var sockets: Array = _weapon_sockets(ship.get("modules", []))
-	var mesh_key := class_id + "|" + str(shapes) + "|" + str(layers.size()) + "|" + "|".join(sockets)
+	var post := ""
+	if class_id == "skiff" or class_id == "brig" or class_id == "yawl" or class_id == "lugger" or class_id == "pinnace" or class_id == "ketch" or class_id == "cutter" or class_id == "anvil":
+		var brain: Dictionary = ship.get("ai", {})
+		post = str(brain.get("role", ""))
+		if post == "":
+			post = str(brain.get("action", ""))
+	var mesh_key := class_id + "|" + str(shapes) + "|" + str(layers.size()) + "|" + "|".join(sockets) + "|" + post
 	if str(holder.get_meta("mesh_key", "")) != mesh_key:
-		_fill_ship(holder, class_id, shapes, layers, sockets)
+		_fill_ship(holder, class_id, shapes, layers, sockets, post)
 		holder.set_meta("mesh_key", mesh_key)
 	var hull: Dictionary = sim.defs.ships[class_id]
 	var hp := clampf(float(ship.hp) / maxf(float(ship.max_hp), 1.0), 0.0, 1.0)
-	var body := Color(str(hull.color)).lerp(Color("3a1818"), (1.0 - hp) * 0.65)
+	var body_hex := str(ship.get("paint", ""))
+	if body_hex == "":
+		body_hex = str(hull.color)
+	var accent_hex := str(ship.get("accent", ""))
+	if accent_hex == "":
+		accent_hex = str(hull.accent)
+	var body := Color(body_hex).lerp(Color("3a1818"), (1.0 - hp) * 0.65)
 	var hurt := clampf(float(ship.get("hurt_cd", 0.0)) / 0.4, 0.0, 1.0)
 	body = body.lerp(Color("ffe6c8"), hurt * 0.62)
-	var accent := Color(str(hull.accent))
+	var accent := Color(accent_hex)
 	for child in holder.get_children():
 		var part := str(child.name)
 		if _hull_part(part):
-			var paint := body
-			if part == "Deck":
-				paint = body.lightened(0.16)
-			elif part.begins_with("Trim"):
-				paint = accent
-			_paint_hull(child, paint, accent)
+			_paint_hull(child, _skin_tone(part, body, accent), accent)
 	var thrusting := bool(ship.get("thrusting", false))
 	holder.set_meta("thrusting", thrusting)
 	if int(sim.layer) == ScaleFrame.SITE and key == "player":
@@ -2512,6 +3467,8 @@ func _place_ship(sim, ship: Dictionary, key: String) -> void:
 		holder.scale = Vector3(6.0, 6.0, 6.0) if int(sim.layer) == ScaleFrame.CHART else Vector3.ONE
 		_banked(holder, ship.pos, float(ship.rot), 2.0, ship)
 	_pulse_lamps(holder)
+	_set_plate_heat(holder, _plate_heat(ship))
+	_light_turn_jets(holder, ship)
 	_place_plumes(holder, ship)
 	_place_wake(holder, ship)
 	_place_jet_light(holder, ship)
@@ -2611,6 +3568,7 @@ func _combat_fx(holder: Node3D, sim, ship: Dictionary, band: bool) -> void:
 		var jig := sin(float(sim.time) * 54.0) * hurt * 0.9
 		holder.position += holder.basis * Vector3(jig * 0.35, jig, jig * 0.45)
 	_turret_fx(holder, sim, ship, band)
+	_weapon_live(holder, sim, ship, band)
 	_tank_fx(holder, sim, ship, band)
 
 
@@ -2789,112 +3747,15 @@ void fragment() {
 
 
 func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -> void:
-	var deck := Vector3(18.0, height, 0.0)
-	var deck_size := Vector3(14.0, 5.5, 6.0)
-	if class_id == "anvil":
-		deck = Vector3(10.0, height, 0.0)
-		deck_size = Vector3(12.0, 7.0, 14.0)
-	elif class_id == "kestrel":
-		deck = Vector3(12.0, height, 0.0)
-		deck_size = Vector3(12.0, 5.0, 8.0)
-	elif class_id == "cutter" or class_id == "skiff":
-		deck = Vector3(6.0, height, 0.0)
-		deck_size = Vector3(8.0, 4.0, 5.0)
-	var bridge := MeshInstance3D.new()
-	bridge.name = "Bridge"
-	bridge.mesh = _bevel_box(deck_size, 0.42)
-	bridge.position = deck + Vector3(0.0, deck_size.y * 0.5, 0.0)
-	bridge.material_override = _hull_mat(Color("1c2428"))
-	holder.add_child(bridge)
-	var glass := MeshInstance3D.new()
-	glass.name = "Glass"
-	var canopy_len := deck_size.x * 0.62
-	var canopy_w := deck_size.z * 0.52
-	var canopy_h := 2.7
-	glass.mesh = _canopy_mesh(canopy_len, canopy_w, canopy_h)
-	glass.position = bridge.position + Vector3(deck_size.x * 0.06, deck_size.y * 0.5, 0.0)
-	var pane := ShaderMaterial.new()
-	pane.shader = _glass_shader
-	pane.set_shader_parameter("albedo", Color(0.45, 0.78, 0.82, 0.4))
-	glass.material_override = pane
-	holder.add_child(glass)
-	var frame := MeshInstance3D.new()
-	frame.name = "Frame"
-	var brow := BoxMesh.new()
-	brow.size = Vector3(canopy_len * 0.42, 0.28, canopy_w * 1.08)
-	frame.mesh = brow
-	frame.position = glass.position + Vector3(-canopy_len * 0.22, canopy_h * 0.78, 0.0)
-	frame.material_override = _hull_mat(Color("1a2024"))
-	holder.add_child(frame)
-	var mast := MeshInstance3D.new()
-	mast.name = "Mast"
-	var rod := BoxMesh.new()
-	rod.size = Vector3(0.4, maxf(height * 0.42, 6.0), 0.4)
-	mast.mesh = rod
-	mast.position = bridge.position + Vector3(-deck_size.x * 0.2, deck_size.y * 0.5 + rod.size.y * 0.5, 0.0)
-	mast.material_override = _hull_mat(Color("242a30"))
-	holder.add_child(mast)
-	var bell := MeshInstance3D.new()
-	bell.name = "Bell"
-	bell.mesh = _bell_mesh(6.2, 0.9, 2.05)
-	bell.position = Vector3(tail + 0.4, height * 0.42, 0.0)
-	var hot := _metal(Color("2a2420"))
-	hot.emission_enabled = true
-	hot.emission = Color("e7b15a")
-	hot.emission_energy_multiplier = 0.08
-	bell.material_override = hot
-	holder.add_child(bell)
-	var nose := float(holder.get_meta("nose", 20.0))
-	var span := maxf(nose - tail, 12.0)
-	var spine := MeshInstance3D.new()
-	spine.name = "Spine"
-	spine.mesh = _bevel_box(Vector3(span * 0.72, 1.3, 1.5), 0.16)
-	spine.position = Vector3((nose + tail) * 0.5, height * 1.08, 0.0)
-	spine.material_override = _hull_mat(Color("14181c"))
-	holder.add_child(spine)
-	var fin_mesh := _bevel_box(Vector3(span * 0.22, 0.45, 2.6), 0.08)
-	var fin_port := MeshInstance3D.new()
-	fin_port.name = "FinPort"
-	fin_port.mesh = fin_mesh
-	fin_port.position = Vector3(tail * 0.35, height * 0.22, 3.4)
-	fin_port.material_override = _hull_mat(Color("12161a"))
-	holder.add_child(fin_port)
-	var fin_stbd := MeshInstance3D.new()
-	fin_stbd.name = "FinStbd"
-	fin_stbd.mesh = fin_mesh
-	fin_stbd.position = Vector3(tail * 0.35, height * 0.22, -3.4)
-	fin_stbd.material_override = _hull_mat(Color("12161a"))
-	holder.add_child(fin_stbd)
-	var throat := MeshInstance3D.new()
-	throat.name = "Throat"
-	throat.mesh = _bell_mesh(4.8, 0.45, 1.35)
-	throat.position = Vector3(tail - 0.2, height * 0.42, 0.0)
-	var coke := _metal(Color("1a120e"))
-	coke.emission_enabled = true
-	coke.emission = Color("ffb15a")
-	coke.emission_energy_multiplier = 0.35
-	throat.material_override = coke
-	holder.add_child(throat)
-	var flank := maxf(height * 0.16, 2.4)
-	for side in [1.0, -1.0]:
-		var nozzle := MeshInstance3D.new()
-		nozzle.name = "NozzleP" if side > 0.0 else "NozzleS"
-		nozzle.mesh = _bell_mesh(5.0, 0.62, 1.45)
-		nozzle.position = Vector3(tail + 0.6, height * 0.3, flank * side)
-		var iron := _metal(Color("241c18"))
-		iron.emission_enabled = true
-		iron.emission = Color("c47a3a")
-		iron.emission_energy_multiplier = 0.14
-		nozzle.material_override = iron
-		holder.add_child(nozzle)
-	_nav_lamp(holder, "LampNose", Vector3(nose * 0.86, height * 0.62, 0.0), Color("d8fff6"), 1.05)
-	_nav_lamp(holder, "LampPort", Vector3(tail * 0.55, height * 0.28, 2.1), Color("d4553a"), 0.75)
-	_nav_lamp(holder, "LampStbd", Vector3(tail * 0.55, height * 0.28, -2.1), Color("7dcea0"), 0.75)
+	var poly: PackedVector2Array = holder.get_meta("hull_poly")
+	_hulls.superstructure(holder, class_id, poly, height, tail)
+	_hulls.engines(holder, class_id, poly, height, tail)
 	var flame := MeshInstance3D.new()
 	flame.name = "Exhaust"
 	var reach := maxf(26.0, height * 1.7)
-	flame.mesh = _plume_mesh(reach, 2.4)
-	flame.position = Vector3(tail - 1.2, height * 0.42, 0.0)
+	var engine_r := float(holder.get_meta("engine_r", 2.0))
+	flame.mesh = _plume_mesh(reach, engine_r * 1.1)
+	flame.position = Vector3(tail - 1.2, height * 0.44, 0.0)
 	var burn := ShaderMaterial.new()
 	burn.shader = _plume_shader
 	burn.set_shader_parameter("albedo", Color(1.0, 0.62, 0.22, 0.8))
@@ -2905,8 +3766,8 @@ func _add_bridge(holder: Node3D, class_id: String, height: float, tail: float) -
 	var core := MeshInstance3D.new()
 	core.name = "ExhaustCore"
 	var jet_len := reach * 0.55
-	core.mesh = _plume_mesh(jet_len, 1.05)
-	core.position = Vector3(tail - 1.2, height * 0.42, 0.0)
+	core.mesh = _plume_mesh(jet_len, engine_r * 0.5)
+	core.position = Vector3(tail - 1.2, height * 0.44, 0.0)
 	var white := ShaderMaterial.new()
 	white.shader = _plume_shader
 	white.set_shader_parameter("albedo", Color(1.0, 0.94, 0.82, 0.9))
@@ -2928,77 +3789,1291 @@ func _ship_holder(key: String) -> Node3D:
 	return node
 
 
-func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array, sockets: Array = []) -> void:
+func _fill_ship(holder: Node3D, class_id: String, shapes: Array, layers: Array, sockets: Array = [], post: String = "") -> void:
 	for child in holder.get_children():
 		holder.remove_child(child)
 		child.free()
 	var geom := Silhouette.parts(class_id, shapes, layers)
 	var ext: Vector2 = Silhouette.extent(geom)
-	var height := clampf(maxf(ext.x, ext.y * 2.0) * 0.48, 14.0, 40.0)
+	var height := clampf(maxf(ext.x, ext.y * 2.0) * 0.36, 10.0, 28.0)
 	holder.set_meta("crown", height)
 	holder.set_meta("tail", float(geom.tail))
 	var nose := 0.0
 	for point in geom.hull:
 		nose = maxf(nose, point.x)
 	holder.set_meta("nose", nose)
-	var lower := height * 0.62
-	var hull_mesh := _prism(geom.hull, lower)
-	if hull_mesh != null:
-		var plate := MeshInstance3D.new()
-		plate.name = "Plate"
-		plate.mesh = hull_mesh
-		plate.material_override = _hull_mat(Color("888888"))
-		holder.add_child(plate)
-	var deck_poly := _inset_poly(geom.hull, 0.78)
-	var deck_mesh := _prism(deck_poly, height * 0.48)
-	if deck_mesh != null:
-		var deck := MeshInstance3D.new()
-		deck.name = "Deck"
-		deck.mesh = deck_mesh
-		deck.position.y = lower * 0.92
-		deck.material_override = _hull_mat(Color("9a9a9a"))
-		holder.add_child(deck)
-	var extra_i := 0
-	for extra in geom.extras:
-		var extra_mesh := _prism(extra, height * 0.72)
-		if extra_mesh == null:
-			continue
-		var trim := MeshInstance3D.new()
-		trim.name = "Trim%d" % extra_i
-		trim.mesh = extra_mesh
-		trim.position.y = height * 0.2
-		trim.material_override = _hull_mat(Color("cccccc"))
-		holder.add_child(trim)
-		extra_i += 1
-	var circle_i := 0
-	for circle in geom.circles:
-		var ball := MeshInstance3D.new()
-		ball.name = "TrimC%d" % circle_i
-		var sphere := SphereMesh.new()
-		var rad := float(circle.r)
-		sphere.radius = rad
-		sphere.height = rad * 2.0
-		ball.mesh = sphere
-		ball.position = Vector3(float(circle.x), height * 0.55, float(circle.y))
-		ball.material_override = _hull_mat(Color("cccccc"))
-		holder.add_child(ball)
-		var band := MeshInstance3D.new()
-		band.name = "TankBand%d" % circle_i
-		var belt := TorusMesh.new()
-		belt.inner_radius = rad * 0.9
-		belt.outer_radius = rad * 1.08
-		belt.rings = 16
-		belt.ring_segments = 8
-		band.mesh = belt
-		band.position = ball.position
-		band.material_override = _hull_mat(Color("5c564e"))
-		holder.add_child(band)
-		circle_i += 1
+	var palette := _hull_palette(class_id)
+	_hulls.build(holder, class_id, geom.hull, height, palette.paint, palette.deck, palette.trim)
+	holder.set_meta("hull_poly", geom.hull)
+	holder.set_meta("hull_class", class_id)
 	_add_bridge(holder, class_id, height, float(geom.tail))
 	_mount_roles(holder, class_id, shapes, height)
+	_mount_catalog(holder, class_id, shapes, height, sockets)
 	_mount_sockets(holder, class_id, sockets)
 	_dress_volume(holder, class_id, height)
+	_dress_post(holder, class_id, post, height)
 
+
+func _mount_catalog(holder: Node3D, class_id: String, shapes: Array, height: float, sockets: Array = []) -> void:
+	var lamp_count := 0
+	for raw in shapes:
+		if str(raw) == "lamp":
+			lamp_count += 1
+	var skipped_lamp := false
+	var seen := {}
+	for raw in shapes:
+		var shape := str(raw)
+		if shape == "" or shape in ["mast", "sponson", "blister", "probes", "turret", "rack", "defense", "stake"]:
+			continue
+		if shape == "lamp" and "laser_bank" in sockets and not skipped_lamp and lamp_count >= 1:
+			skipped_lamp = true
+			continue
+		var index := int(seen.get(shape, 0))
+		seen[shape] = index + 1
+		var berth: Dictionary = _berth(class_id, shape, index, height)
+		var root := Node3D.new()
+		root.name = "Gear%s%d" % [shape, index]
+		root.position = berth.at
+		root.rotation.y = float(berth.yaw)
+		holder.add_child(root)
+		_build_gear(root, class_id, shape, height, str(berth.kind))
+		_seat_gear(holder, root, shape, str(berth.kind))
+
+
+func _root_bounds(holder: Node3D, root: Node3D) -> AABB:
+	var acc := AABB()
+	var any := false
+	var base := Transform3D(Basis.IDENTITY, root.position) * Transform3D(Basis.from_euler(root.rotation), Vector3.ZERO)
+	for item in root.find_children("*", "MeshInstance3D", true, false):
+		var inst := item as MeshInstance3D
+		if inst.mesh == null:
+			continue
+		var chain := Transform3D.IDENTITY
+		var node: Node = inst
+		while node != null and node != root:
+			var n3 := node as Node3D
+			chain = Transform3D(Basis.from_euler(n3.rotation) * Basis.from_scale(n3.scale), n3.position) * chain
+			node = node.get_parent()
+		var box: AABB = (base * chain) * inst.get_aabb()
+		if any:
+			acc = acc.merge(box)
+		else:
+			acc = box
+			any = true
+	return acc
+
+
+func _keel_y(holder: Node3D, x: float, z: float) -> float:
+	var poly: PackedVector2Array = holder.get_meta("hull_poly")
+	return _probe_hulls.bottom_at(str(holder.get_meta("hull_class", "vesper")), poly, float(holder.get_meta("crown", 16.0)), x, z)
+
+
+func _flank_at(holder: Node3D, x: float, y: float) -> float:
+	var poly: PackedVector2Array = holder.get_meta("hull_poly")
+	return _probe_hulls.side_at(str(holder.get_meta("hull_class", "vesper")), poly, float(holder.get_meta("crown", 16.0)), x, y)
+
+
+## Pull a gear root onto the skin it was bolted to: down onto the deck, in to
+## the flank wall, or up under the keel line.
+func _seat_gear(holder: Node3D, root: Node3D, shape: String, kind: String) -> void:
+	if kind == "wrap":
+		return
+	var box := _root_bounds(holder, root)
+	if box.size == Vector3.ZERO:
+		return
+	var nose := float(holder.get_meta("nose", 40.0))
+	var tail := float(holder.get_meta("tail", -30.0))
+	if box.end.x > nose + 1.0:
+		root.position.x -= box.end.x - nose - 1.0
+		box.position.x -= box.end.x - nose - 1.0
+	elif box.position.x < tail:
+		root.position.x += tail - box.position.x
+		box.position.x = tail
+	var cx := box.position.x + box.size.x * 0.5
+	var cz := box.position.z + box.size.z * 0.5
+	var hanging := kind == "belly" or shape in ["keel", "hook", "shear", "collar"]
+	if hanging:
+		var keel := _keel_y(holder, cx, clampf(cz, -_skin_reach(holder, cx) * 0.9, _skin_reach(holder, cx) * 0.9))
+		root.position.y += (keel + 0.5) - box.end.y
+		return
+	if kind == "cheek":
+		var mid_y := box.position.y + box.size.y * 0.5
+		var wall := _flank_at(holder, cx, mid_y)
+		var side := 1.0 if cz >= 0.0 else -1.0
+		var inner := box.position.z if side > 0.0 else -box.end.z
+		root.position.z += side * ((wall - 0.6) - inner)
+		return
+	var reach := _skin_reach(holder, cx)
+	var lane := clampf(cz, -reach * 0.8, reach * 0.8)
+	root.position.z += lane - cz
+	var span := _footprint_top(holder, cx, lane, box.size.x * 0.5, box.size.z * 0.3)
+	var seat := lerpf(span.x, span.y, 0.4) - 0.3
+	root.position.y += seat - box.position.y
+	var gap := seat - span.x + 0.5
+	if gap > 0.4:
+		var skirt := MeshInstance3D.new()
+		skirt.name = "Skirt"
+		var foot := Vector3(maxf(box.size.x * 0.7, 1.2), gap + 0.5, maxf(box.size.z * 0.7, 1.2))
+		skirt.mesh = _bevel_box(foot, minf(0.2, gap * 0.3))
+		skirt.position = Vector3(box.position.x + box.size.x * 0.5 - root.position.x, -gap * 0.5 + 0.2, box.position.z + box.size.z * 0.5 - root.position.z)
+		skirt.material_override = _hull_mat(Color("40464a"))
+		root.add_child(skirt)
+
+
+func _deck_top(height: float) -> float:
+	return height * 0.62 * 0.92 + height * 0.48
+
+
+func _skin_z(class_id: String, along: float) -> float:
+	var geom: Dictionary = Silhouette.parts(class_id, [])
+	var hull: PackedVector2Array = geom.hull
+	var best := 0.0
+	var count := hull.size()
+	for i in count:
+		var a: Vector2 = hull[i]
+		var b: Vector2 = hull[(i + 1) % count]
+		var lo := minf(a.x, b.x)
+		var hi := maxf(a.x, b.x)
+		if along < lo - 0.01 or along > hi + 0.01:
+			continue
+		var span := b.x - a.x
+		var t := 0.0 if absf(span) < 0.001 else clampf((along - a.x) / span, 0.0, 1.0)
+		best = maxf(best, absf(lerpf(a.y, b.y, t)))
+	return best
+
+
+func _flank_z(class_id: String, along: float, extra: float = 0.0) -> float:
+	return maxf(_skin_z(class_id, along), 2.4) + extra
+
+
+func _outward_yaw(class_id: String, along: float, side: float) -> float:
+	var ahead := _skin_z(class_id, along + 3.0)
+	var behind := _skin_z(class_id, along - 3.0)
+	var dz := ahead - behind
+	var ox := -dz
+	var oz := 6.0
+	if side < 0.0:
+		ox = dz
+		oz = -6.0
+	return atan2(ox, oz)
+
+
+func _station_x(class_id: String, shape: String) -> float:
+	if class_id == "anvil":
+		match shape:
+			"pack":
+				return -2.0
+			"fans":
+				return -22.0
+			"keel":
+				return 20.0
+			"hold":
+				return -8.0
+			"hopper":
+				return -16.0
+			"cage":
+				return -12.0
+			"dome":
+				return 4.0
+			"ring":
+				return -6.0
+			"stack":
+				return 0.0
+			"vault":
+				return -20.0
+			"coop":
+				return -10.0
+			"pen":
+				return 8.0
+			"fighter":
+				return 14.0
+			"lighter":
+				return -24.0
+			"beacon":
+				return -6.0
+			"stakes":
+				return 6.0
+			"collar":
+				return 22.0
+			"hook":
+				return 18.0
+			"scale":
+				return -4.0
+			"locker":
+				return 12.0
+			"shear":
+				return 16.0
+			"baffle":
+				return -18.0
+			"bell":
+				return -8.0
+			"lamp":
+				return 16.0
+			_:
+				return -6.0
+	if class_id == "kestrel":
+		match shape:
+			"pack":
+				return -4.0
+			"fans":
+				return -12.0
+			"keel":
+				return 40.0
+			"hold":
+				return -8.0
+			"hopper":
+				return -14.0
+			"cage":
+				return -18.0
+			"dome":
+				return -2.0
+			"ring":
+				return 0.0
+			"stack":
+				return -6.0
+			"vault":
+				return -16.0
+			"coop":
+				return -10.0
+			"pen":
+				return -6.0
+			"fighter":
+				return 4.0
+			"lighter":
+				return -20.0
+			"beacon":
+				return 6.0
+			"stakes":
+				return -2.0
+			"collar":
+				return 42.0
+			"hook":
+				return 34.0
+			"scale":
+				return 2.0
+			"locker":
+				return 8.0
+			"shear":
+				return 26.0
+			"baffle":
+				return -16.0
+			"bell":
+				return -4.0
+			"lamp":
+				return 30.0
+			_:
+				return -8.0
+	match shape:
+		"pack":
+			return -8.0
+		"fans":
+			return -24.0
+		"vent":
+			return -18.0
+		"keel":
+			return 44.0
+		"hold":
+			return -16.0
+		"hopper":
+			return -20.0
+		"cage":
+			return -28.0
+		"dome":
+			return 2.0
+		"ring":
+			return -4.0
+		"stack":
+			return 6.0
+		"vault":
+			return -22.0
+		"coop":
+			return -12.0
+		"pen":
+			return -2.0
+		"fighter":
+			return 8.0
+		"lighter":
+			return -30.0
+		"beacon":
+			return -6.0
+		"stakes":
+			return 10.0
+		"collar":
+			return 46.0
+		"hook":
+			return 42.0
+		"scale":
+			return 0.0
+		"locker":
+			return 12.0
+		"shear":
+			return 36.0
+		"baffle":
+			return -18.0
+		"bell":
+			return -14.0
+		"lamp":
+			return 38.0
+		_:
+			return -10.0
+
+
+func _gear_kind(class_id: String, shape: String) -> String:
+	if shape == "belt" or shape == "ring" or shape == "jets":
+		return "wrap"
+	if shape == "cage":
+		return "belly"
+	if shape == "vent":
+		return "cheek"
+	if shape in ["keel", "collar", "hook", "lamp", "shear"]:
+		return "nose"
+	if class_id == "anvil":
+		if shape in ["baffle", "stakes"]:
+			return "cheek"
+		return "deck"
+	if class_id == "kestrel":
+		if shape in ["beacon", "bell", "scale", "vault", "locker"]:
+			return "deck"
+		return "wing"
+	if shape == "pack" or shape in ["dome", "stack", "vault", "scale", "bell", "beacon", "coop", "pen"]:
+		return "spine"
+	return "cheek"
+
+
+func _berth(class_id: String, shape: String, index: int, height: float) -> Dictionary:
+	var kind := _gear_kind(class_id, shape)
+	var deck_y := _deck_top(height)
+	var along := _station_x(class_id, shape)
+	if kind != "wrap":
+		along += float(index) * 4.5
+	var skin := _skin_z(class_id, along)
+	var side := 1.0 if index % 2 == 0 else -1.0
+	var at := Vector3.ZERO
+	var yaw := 0.0
+	if kind == "wrap":
+		at = Vector3.ZERO
+	elif kind == "spine":
+		at = Vector3(along, deck_y - 0.08, 0.0)
+	elif kind == "deck":
+		var z_off := 0.0
+		if class_id == "anvil":
+			z_off = side * minf(maxf(skin * 0.38, 4.0), 11.0)
+		elif class_id == "kestrel":
+			z_off = side * minf(maxf(skin * 0.22, 1.6), 3.2)
+		at = Vector3(along, deck_y - 0.08, z_off)
+	elif kind == "wing":
+		# Beak hardware sits on the wing panel, inboard of the tip, turned with the spar.
+		yaw = _outward_yaw(class_id, along, side)
+		var seat := side * maxf(skin * 0.52, 2.4)
+		at = Vector3(along, deck_y - 0.1, seat)
+	elif kind == "cheek":
+		yaw = _outward_yaw(class_id, along, side)
+		var normal := Vector3(sin(yaw), 0.0, cos(yaw))
+		var y := height * 0.30
+		var sink := 1.35 if class_id == "anvil" else 0.95
+		at = Vector3(along, y, side * skin) - normal * sink
+	elif kind == "belly":
+		at = Vector3(along, 0.15, side * minf(maxf(skin * 0.28, 0.8), 6.0))
+	else:
+		at = Vector3(along, height * 0.34, 0.0)
+		if shape == "lamp":
+			at.y = deck_y + 0.05
+		elif shape == "keel" and class_id == "anvil":
+			at.y = 0.35
+		elif shape == "keel" and class_id == "kestrel":
+			at.y = height * 0.18
+		elif shape == "shear":
+			at.y = height * 0.16
+		elif shape == "hook":
+			at.y = 0.55
+	return {"at": at, "yaw": yaw, "kind": kind}
+
+
+func _fit_scale(class_id: String) -> float:
+	if class_id == "anvil":
+		return 1.32
+	if class_id == "kestrel":
+		return 0.9
+	return 0.68
+
+
+func _kit(parent: Node3D, part_name: String, size: Vector3, at: Vector3, color: Color) -> MeshInstance3D:
+	var node := MeshInstance3D.new()
+	node.name = part_name
+	var box := BoxMesh.new()
+	box.size = size
+	node.mesh = box
+	node.position = at
+	node.material_override = _metal(color)
+	parent.add_child(node)
+	return node
+
+
+func _cyl(parent: Node3D, part_name: String, radius: float, length: float, at: Vector3, axis: String, color: Color) -> MeshInstance3D:
+	var node := _tube(parent, part_name, radius, length, at, axis, color)
+	node.material_override = _metal(color)
+	return node
+
+
+func _stud(parent: Node3D, at: Vector3, radius: float = 0.16, axis: Vector3 = Vector3.UP) -> void:
+	var bolt := MeshInstance3D.new()
+	bolt.name = "Stud"
+	var cap := CylinderMesh.new()
+	cap.top_radius = radius
+	cap.bottom_radius = radius * 1.18
+	cap.height = radius * 0.85
+	cap.radial_segments = 6
+	bolt.mesh = cap
+	bolt.position = at
+	var aim := axis.normalized() if axis.length_squared() > 0.0001 else Vector3.UP
+	if aim.dot(Vector3.UP) < 0.92:
+		bolt.basis = Basis(Quaternion(Vector3.UP, aim))
+	bolt.material_override = _metal(Color("c6b48a"))
+	parent.add_child(bolt)
+
+
+func _pane(color: Color) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(color.r, color.g, color.b, 0.42)
+	mat.metallic = 0.02
+	mat.roughness = 0.08
+	mat.emission_enabled = true
+	mat.emission = color
+	mat.emission_energy_multiplier = 0.18
+	return mat
+
+
+func _out_z(kind: String) -> float:
+	if kind == "cheek" or kind == "wing":
+		return 1.05
+	return 0.0
+
+
+func _fasten_deck(root: Node3D, half_x: float, half_z: float) -> void:
+	for raw_x in [-1.0, 1.0]:
+		for raw_z in [-1.0, 1.0]:
+			var sx := float(raw_x)
+			var sz := float(raw_z)
+			var at := Vector3(sx * half_x, 0.22, sz * half_z)
+			_kit(root, "Shoe", Vector3(0.55, 0.4, 0.55), at, Color("4a453c"))
+			_stud(root, at + Vector3(0.0, 0.26, 0.0), 0.14)
+
+
+func _fasten(root: Node3D, class_id: String, kind: String, half_x: float, half_z: float) -> void:
+	if kind == "wrap":
+		return
+	if kind == "cheek" or kind == "wing":
+		var reach := 2.6 if class_id == "anvil" else 1.7 if class_id == "kestrel" else 1.35
+		_kit(root, "Tongue", Vector3(maxf(half_x * 1.15, 1.2), 0.42, reach), Vector3(0.0, 0.28, -reach * 0.45), Color("4a453c"))
+		_stud(root, Vector3(-half_x * 0.55, 0.48, -0.15), 0.13, Vector3(0, 0, -1))
+		_stud(root, Vector3(half_x * 0.55, 0.48, -0.15), 0.13, Vector3(0, 0, -1))
+		if kind == "wing":
+			_fasten_deck(root, half_x, half_z)
+			_kit(root, "SparCap", Vector3(maxf(half_x * 2.1, 2.4), 0.22, 0.42), Vector3(0.0, 0.16, -0.05), Color("5c564c"))
+			for i in 3:
+				_stud(root, Vector3(-half_x + float(i) * half_x, 0.32, -0.05), 0.11)
+	elif kind == "belly":
+		_kit(root, "ChainA", Vector3(0.16, 2.8, 0.16), Vector3(-half_x * 0.45, 1.5, 0.0), Color("8a8274"))
+		_kit(root, "ChainB", Vector3(0.16, 2.8, 0.16), Vector3(half_x * 0.45, 1.5, 0.0), Color("8a8274"))
+		_stud(root, Vector3(0.0, 2.7, 0.0), 0.16)
+	elif kind == "nose":
+		_kit(root, "Neck", Vector3(1.4, 1.3, 2.2), Vector3(-1.1, 0.45, 0.0), Color("4e463c"))
+		_stud(root, Vector3(-0.7, 1.05, 0.7), 0.14)
+		_stud(root, Vector3(-0.7, 1.05, -0.7), 0.14)
+	elif kind == "spine":
+		for raw_x in [-0.7, 0.7]:
+			var bx := float(raw_x) * half_x
+			_kit(root, "SaddleL", Vector3(0.32, 1.1, 0.22), Vector3(bx, 0.55, -half_z - 0.35), Color("4a453c"))
+			_kit(root, "SaddleR", Vector3(0.32, 1.1, 0.22), Vector3(bx, 0.55, half_z + 0.35), Color("4a453c"))
+			_kit(root, "SaddleT", Vector3(0.32, 0.18, half_z * 2.0 + 0.9), Vector3(bx, 1.15, 0.0), Color("4a453c"))
+			_stud(root, Vector3(bx, 0.16, -half_z - 0.35), 0.12)
+			_stud(root, Vector3(bx, 0.16, half_z + 0.35), 0.12)
+	else:
+		_fasten_deck(root, half_x, half_z)
+
+
+func _build_gear(root: Node3D, class_id: String, shape: String, height: float, kind: String) -> void:
+	match shape:
+		"pack":
+			_gear_pack(root, class_id, kind)
+		"belt":
+			_gear_belt(root, class_id, height)
+		"jets":
+			_gear_jets(root, class_id, height)
+		"fans":
+			_gear_fans(root, class_id, kind)
+		"vent":
+			_gear_vent(root, class_id, kind)
+		"keel":
+			_gear_keel(root, class_id)
+		"hold":
+			_gear_hold(root, class_id, kind)
+		"hopper":
+			_gear_hopper(root, class_id, kind)
+		"dome":
+			_gear_dome(root, class_id, kind)
+		"ring":
+			_gear_ring(root, class_id, height)
+		"lamp":
+			_gear_lamp(root, class_id)
+		"fighter":
+			_gear_fighter(root, class_id, kind)
+		"lighter":
+			_gear_lighter(root, class_id, kind)
+		"beacon":
+			_gear_beacon(root, class_id)
+		"bell":
+			_gear_bell(root, class_id)
+		"baffle":
+			_gear_baffle(root, class_id, kind)
+		"collar":
+			_gear_collar(root, class_id)
+		"hook":
+			_gear_hook(root, class_id)
+		"vault":
+			_gear_vault(root, class_id, kind)
+		"locker":
+			_gear_locker(root, class_id, kind)
+		"stack":
+			_gear_stack(root, class_id, kind)
+		"scale":
+			_gear_scale(root, class_id, kind)
+		"pen":
+			_gear_pen(root, class_id, kind)
+		"coop":
+			_gear_coop(root, class_id, kind)
+		"cage":
+			_gear_cage(root, class_id)
+		"shear":
+			_gear_shear(root, class_id)
+		"stakes":
+			_gear_stakes(root, class_id, kind)
+		_:
+			_gear_locker(root, class_id, kind)
+
+
+func _gear_jets(root: Node3D, class_id: String, height: float) -> void:
+	var deck := _deck_top(height)
+	var fit := _fit_scale(class_id)
+	var stations: Array = []
+	if class_id == "anvil":
+		# Inboard of the deck edge (the deck is inset to 0.78 of the hull).
+		stations = [
+			{"x": 8.0, "y": deck - 0.55, "z_k": 0.5, "aim_x": -0.12, "scale": 2.7, "deck": true},
+			{"x": -16.0, "y": deck - 0.55, "z_k": 0.46, "aim_x": -0.18, "scale": 2.7, "deck": true},
+		]
+	elif class_id == "kestrel":
+		stations = [
+			{"x": 6.0, "y": deck - 0.4, "z_k": 0.34, "aim_x": -0.38, "scale": 2.15, "deck": true},
+			{"x": -16.0, "y": deck - 0.4, "z_k": 0.42, "aim_x": -0.48, "scale": 2.25, "deck": true},
+		]
+	elif class_id == "lumen":
+		stations = [
+			{"x": 36.0, "y": height * 0.3, "z_k": 0.7, "aim_x": 0.0, "scale": 0.95, "deck": false},
+			{"x": -28.0, "y": height * 0.28, "z_k": 0.68, "aim_x": 0.06, "scale": 0.95, "deck": false},
+		]
+	elif class_id == "casque":
+		stations = [
+			{"x": 2.0, "y": height * 0.32, "z_k": 0.62, "aim_x": -0.1, "scale": 1.85, "deck": false},
+			{"x": -18.0, "y": height * 0.28, "z_k": 0.55, "aim_x": -0.16, "scale": 1.75, "deck": false},
+		]
+	elif class_id == "alidade":
+		stations = [
+			{"x": 10.0, "y": deck - 0.35, "z_k": 0.28, "aim_x": -0.22, "scale": 1.45, "deck": true},
+			{"x": -24.0, "y": deck - 0.35, "z_k": 0.4, "aim_x": -0.42, "scale": 1.6, "deck": true},
+		]
+	else:
+		stations = [
+			{"x": 20.0, "y": height * 0.32, "z_k": 0.82, "aim_x": 0.0, "scale": 1.95, "deck": false},
+			{"x": -22.0, "y": height * 0.3, "z_k": 0.8, "aim_x": 0.08, "scale": 1.95, "deck": false},
+		]
+	var n := 0
+	for raw in stations:
+		var spec: Dictionary = raw
+		var along := float(spec.x)
+		var skin := _skin_z(class_id, along)
+		var y := float(spec.y)
+		var z_k := float(spec.z_k)
+		var sc := float(spec.scale)
+		var aim_x := float(spec.aim_x)
+		var on_deck := bool(spec.deck)
+		for raw_side in [1.0, -1.0]:
+			var side := float(raw_side)
+			var outward := Vector3(aim_x, 0.04, side).normalized()
+			var seat_z := side * maxf(skin * z_k, 1.6)
+			_jet_pod(root, "J%d" % n, Vector3(along, y, seat_z), outward, sc, on_deck, side)
+			n += 1
+	var chest_y := deck - 0.16 if class_id == "anvil" or class_id == "kestrel" or class_id == "alidade" else height * 0.16
+	_kit(root, "ValveChest", Vector3(2.4 * fit, 0.72 * fit, 1.15 * fit), Vector3(-2.0, chest_y, 0.0), Color("2c3238"))
+	_kit(root, "Stripe", Vector3(2.15 * fit, 0.08, 1.2 * fit), Vector3(-2.0, chest_y + 0.4 * fit, 0.0), Color("e0b33a"))
+	_stud(root, Vector3(-2.8, chest_y + 0.42 * fit, 0.32 * fit), 0.1)
+	_stud(root, Vector3(-1.2, chest_y + 0.42 * fit, -0.32 * fit), 0.1)
+
+
+func _jet_pod(root: Node3D, tag: String, at: Vector3, aim: Vector3, fit: float, on_deck: bool, side: float) -> void:
+	var out := aim.normalized()
+	var body := at - out * (0.55 * fit)
+	_kit(root, "Manifold%s" % tag, Vector3(1.4 * fit, 0.78 * fit, 0.95 * fit), body, Color("4e5862"))
+	_kit(root, "Band%s" % tag, Vector3(1.46 * fit, 0.1, 1.0 * fit), body + Vector3(0.0, 0.28 * fit, 0.0), Color("e0b33a"))
+	var tangent := out.cross(Vector3.UP)
+	if tangent.length_squared() < 0.01:
+		tangent = Vector3.RIGHT
+	tangent = tangent.normalized()
+	for raw_i in [-1.0, 1.0]:
+		var shift := float(raw_i)
+		var mouth := at + tangent * shift * 0.42 * fit
+		var which := 0 if shift < 0.0 else 1
+		_bell_nozzle(root, "Bell%s%d" % [tag, which], mouth, out, 0.28 * fit, 0.95 * fit)
+	var pipe_len := minf(maxf(absf(at.z) * 0.45, 1.2), 7.5)
+	var pipe_at := Vector3(body.x, body.y, body.z - side * pipe_len * 0.45)
+	_cyl(root, "Feed%s" % tag, 0.08 * fit + 0.05, pipe_len, pipe_at, "z", Color("14161a"))
+	if on_deck:
+		var shoe_h := 0.9 * fit
+		_kit(root, "Shoe%s" % tag, Vector3(1.05 * fit, shoe_h, 0.7 * fit), body + Vector3(0.0, -shoe_h * 0.45, 0.0), Color("3a342c"))
+		_stud(root, body + Vector3(-0.4 * fit, 0.42 * fit, 0.2 * fit), 0.12)
+		_stud(root, body + Vector3(0.4 * fit, 0.42 * fit, -0.2 * fit), 0.12)
+	else:
+		_kit(root, "Tongue%s" % tag, Vector3(0.7 * fit, 0.42 * fit, 1.6 * fit), body - out * (0.9 * fit), Color("3a342c"))
+		_stud(root, body - out * (0.35 * fit) + Vector3(0.0, 0.32 * fit, 0.0), 0.11, -out)
+		_stud(root, body - out * (0.35 * fit) + Vector3(0.28 * fit, -0.08, 0.0), 0.1, -out)
+
+
+func _bell_nozzle(parent: Node3D, part_name: String, at: Vector3, aim: Vector3, mouth: float, length: float) -> void:
+	var out := aim.normalized()
+	var node := MeshInstance3D.new()
+	node.name = part_name
+	var bell := CylinderMesh.new()
+	bell.top_radius = mouth
+	bell.bottom_radius = mouth * 0.34
+	bell.height = length
+	bell.radial_segments = 12
+	node.mesh = bell
+	node.position = at + out * (length * 0.32)
+	if out.dot(Vector3.UP) < 0.92:
+		node.basis = Basis(Quaternion(Vector3.UP, out))
+	node.material_override = _metal(Color("242a30"))
+	parent.add_child(node)
+	var throat := MeshInstance3D.new()
+	throat.name = "Throat"
+	var core := CylinderMesh.new()
+	core.top_radius = mouth * 0.28
+	core.bottom_radius = mouth * 0.14
+	core.height = length * 0.5
+	core.radial_segments = 10
+	throat.mesh = core
+	throat.position = Vector3(0.0, length * 0.06, 0.0)
+	var hot := StandardMaterial3D.new()
+	hot.albedo_color = Color("6a2e18")
+	hot.metallic = 0.15
+	hot.roughness = 0.4
+	hot.emission_enabled = true
+	hot.emission = Color("e07030")
+	hot.emission_energy_multiplier = 0.35
+	throat.material_override = hot
+	node.add_child(throat)
+	var lip := MeshInstance3D.new()
+	lip.name = "Lip"
+	var ring := TorusMesh.new()
+	ring.inner_radius = mouth * 0.78
+	ring.outer_radius = mouth * 1.08
+	ring.rings = 6
+	ring.ring_segments = 12
+	lip.mesh = ring
+	lip.position = Vector3(0.0, length * 0.38, 0.0)
+	lip.material_override = _metal(Color("8d969c"))
+	node.add_child(lip)
+
+
+func _gear_pack(root: Node3D, class_id: String, kind: String) -> void:
+	if class_id == "anvil":
+		_pack_bank(root, 4, 2, 1.15, 2.05, 1.55)
+		_fasten_deck(root, 4.8, 2.4)
+		_cyl(root, "Lead", 0.28, 3.6, Vector3(-5.6, 0.7, -1.2), "x", Color("14161a"))
+		_cyl(root, "Drop", 0.28, 1.4, Vector3(-7.2, 0.15, -1.2), "y", Color("14161a"))
+		_kit(root, "Gland", Vector3(0.7, 0.45, 0.7), Vector3(-7.2, 0.2, -1.2), Color("2a2420"))
+	elif class_id == "kestrel":
+		_pack_bank(root, 3, 2, 0.78, 1.15, 1.35)
+		_kit(root, "Fairing", Vector3(5.4, 0.7, 1.1), Vector3(0.2, 0.4, -0.15), Color("3a4038"))
+		_fasten(root, class_id, kind, 2.6, 1.2)
+		_cyl(root, "Lead", 0.2, 3.2, Vector3(-0.4, 0.45, -1.5), "z", Color("14161a"))
+	else:
+		_pack_spine(root)
+
+
+func _pack_spine(root: Node3D) -> void:
+	var olive := Color("2c3a28")
+	for raw_side in [1.0, -1.0]:
+		var s := float(raw_side)
+		_kit(root, "Tray", Vector3(22.4, 0.9, 4.4), Vector3(0.0, 0.42, s * 5.6), olive)
+		_kit(root, "Lip", Vector3(22.0, 0.46, 0.28), Vector3(0.0, 0.95, s * 7.7), Color("1a1e18"))
+		for i in 5:
+			var at := Vector3(-8.0 + float(i) * 4.0, 4.15, s * 5.6)
+			var cell := _cyl(root, "Cell", 1.85, 7.6, at, "y", Color("e8eef2"))
+			cell.position = at
+			var cap := _cyl(root, "Cap", 0.86, 0.36, at + Vector3(0.0, 3.95, 0.0), "y", Color("8a3a32") if i % 2 == 0 else Color("1c1e22"))
+			cap.position = at + Vector3(0.0, 3.95, 0.0)
+		_kit(root, "Bus", Vector3(18.4, 0.22, 0.5), Vector3(0.0, 8.05, s * 5.6), Color("c47a32"))
+	_cyl(root, "Pos", 0.38, 0.85, Vector3(7.6, 2.05, -4.55), "y", Color("d23b2a"))
+	_cyl(root, "Neg", 0.38, 0.85, Vector3(7.6, 2.05, 4.55), "y", Color("14161a"))
+	_kit(root, "Plus", Vector3(0.42, 0.12, 0.12), Vector3(7.6, 2.55, -4.55), Color("f2f2f2"))
+	_kit(root, "PlusBar", Vector3(0.12, 0.12, 0.42), Vector3(7.6, 2.55, -4.55), Color("f2f2f2"))
+	_cyl(root, "Lead", 0.28, 6.2, Vector3(-10.4, 1.05, 0.0), "x", Color("14161a"))
+	_cyl(root, "Drop", 0.28, 1.8, Vector3(-13.2, 0.15, 0.0), "y", Color("14161a"))
+	_kit(root, "Plug", Vector3(0.85, 0.55, 0.85), Vector3(-13.2, 0.2, 0.0), Color("2a2420"))
+	for raw_x in [-4.6, 4.8]:
+		var bx := float(raw_x)
+		_kit(root, "BandL", Vector3(0.38, 3.85, 0.28), Vector3(bx, 1.95, -6.4), Color("4a453c"))
+		_kit(root, "BandR", Vector3(0.38, 3.85, 0.28), Vector3(bx, 1.95, 6.4), Color("4a453c"))
+		_kit(root, "BandT", Vector3(0.38, 0.24, 12.9), Vector3(bx, 3.95, 0.0), Color("4a453c"))
+		_stud(root, Vector3(bx, 0.22, -6.4), 0.16)
+		_stud(root, Vector3(bx, 0.22, 6.4), 0.16)
+	_kit(root, "Hazard", Vector3(2.4, 0.08, 2.05), Vector3(-5.4, 0.62, 4.55), Color("e0b13a"))
+	_kit(root, "Harness", Vector3(15.2, 0.14, 0.22), Vector3(0.0, 0.72, 0.0), Color("1a1410"))
+	_kit(root, "Label", Vector3(2.2, 0.06, 1.05), Vector3(3.4, 0.64, 4.55), Color("e0b13a"))
+	_cyl(root, "Cable", 0.12, 4.8, Vector3(-9.2, 0.85, 1.15), "x", Color("14161a"))
+
+
+func _pack_bank(root: Node3D, cols: int, rows: int, fit: float, pitch_x: float, pitch_z: float) -> void:
+	var olive := Color("31402c")
+	var span_x := float(cols - 1) * pitch_x
+	var span_z := float(rows - 1) * pitch_z
+	_kit(root, "Tray", Vector3(span_x + 2.4 * fit, 0.5 * fit, span_z + 1.8 * fit), Vector3(0.0, 0.28 * fit, 0.0), olive)
+	_kit(root, "WallF", Vector3(0.16, 1.5 * fit, span_z + 1.6 * fit), Vector3((span_x * 0.5 + 1.0 * fit), 0.9 * fit, 0.0), Color("243028"))
+	_kit(root, "WallA", Vector3(0.16, 1.5 * fit, span_z + 1.6 * fit), Vector3(-(span_x * 0.5 + 1.0 * fit), 0.9 * fit, 0.0), Color("243028"))
+	for col in cols:
+		for row in rows:
+			var at := Vector3((-span_x * 0.5) + float(col) * pitch_x, 2.05 * fit, (-span_z * 0.5) + float(row) * pitch_z)
+			_cyl(root, "Cell", 1.15 * fit, 4.05 * fit, at, "y", Color("e8eef2"))
+			var cap_color := Color("8a3a32") if (col + row) % 2 == 0 else Color("1c1e22")
+			_cyl(root, "Cap", 0.52 * fit, 0.18 * fit, at + Vector3(0.0, 2.15 * fit, 0.0), "y", cap_color)
+	_kit(root, "Bus", Vector3(span_x + 0.8, 0.14 * fit, 0.28 * fit), Vector3(0.0, 4.15 * fit, 0.0), Color("b87333"))
+	_cyl(root, "Pos", 0.24 * fit, 0.5 * fit, Vector3(span_x * 0.5 + 0.2, 1.3 * fit, -span_z * 0.35), "y", Color("d23b2a"))
+	_cyl(root, "Neg", 0.24 * fit, 0.5 * fit, Vector3(span_x * 0.5 + 0.2, 1.3 * fit, span_z * 0.35), "y", Color("14161a"))
+	for i in 2:
+		_kit(root, "Eye", Vector3(0.7, 0.35, 0.35), Vector3(0.0, 0.7 * fit, (-span_z * 0.5 - 0.4) if i == 0 else (span_z * 0.5 + 0.4)), Color("8a8274"))
+
+
+func _gear_belt(root: Node3D, class_id: String, height: float) -> void:
+	var holder := root.get_parent() as Node3D
+	var courses := 1
+	var y0 := height * 0.28
+	var plate_h := 5.6
+	var plate_l := 6.8
+	var plate_t := 3.45
+	var bite := 0.08
+	var x0 := 14.0
+	var x1 := -30.0
+	var count := 8
+	var tone_a := Color("8b949e")
+	var tone_b := Color("5a636e")
+	if class_id == "anvil":
+		courses = 2
+		y0 = height * 0.2
+		plate_h = height * 0.22
+		plate_l = 8.2
+		plate_t = 4.2
+		bite = 0.1
+		x0 = 12.0
+		x1 = -28.0
+		count = 6
+		tone_a = Color("6a7380")
+		tone_b = Color("3c444c")
+	elif class_id == "kestrel":
+		y0 = height * 0.3
+		plate_h = 4.4
+		plate_l = 6.6
+		plate_t = 3.05
+		bite = 0.08
+		x0 = 16.0
+		x1 = -22.0
+		count = 7
+		tone_a = Color("9aa3ab")
+		tone_b = Color("5c656e")
+	for course in courses:
+		var y := y0 + float(course) * (plate_h * 0.78)
+		for i in count:
+			var t := float(i) / float(maxi(count - 1, 1))
+			var along := lerpf(x0, x1, t)
+			if course == 1:
+				along += plate_l * 0.42
+			for raw_side in [1.0, -1.0]:
+				var side := float(raw_side)
+				var skin := _flank_at(holder, along, y)
+				if skin < 1.1:
+					continue
+				var yaw := _outward_yaw(class_id, along, side)
+				var normal := Vector3(sin(yaw), 0.0, cos(yaw))
+				var tangent := Vector3(cos(yaw), 0.0, -sin(yaw))
+				var center := Vector3(along, y, side * skin) + normal * (plate_t * 0.5 - bite - 0.5)
+				var slab := _kit(root, "Slab", Vector3(plate_l, plate_h, plate_t), center, tone_a if (i + course) % 2 == 0 else tone_b)
+				slab.rotation.y = yaw
+				var lip := _kit(root, "Lip", Vector3(plate_l * 0.92, 0.14, 0.16), center + Vector3.UP * (plate_h * 0.42) + normal * (plate_t * 0.42), Color("d5dde6"))
+				lip.rotation.y = yaw
+				var gap := _kit(root, "Gap", Vector3(plate_l * 0.98, plate_h * 0.88, 0.08), center - normal * (plate_t * 0.48), Color("121416"))
+				gap.rotation.y = yaw
+				for raw_fx in [-1.0, 1.0]:
+					var face := float(raw_fx)
+					var rivet_at: Vector3 = center + tangent * face * plate_l * 0.36 + normal * (plate_t * 0.58)
+					_stud(root, rivet_at, 0.13, normal)
+				if class_id == "anvil":
+					var shoe_at := center + Vector3.UP * (plate_h * 0.42) - normal * 0.15
+					var shoe := _kit(root, "Hanger", Vector3(1.1, 0.9, 0.7), shoe_at, Color("4a453c"))
+					shoe.rotation.y = yaw
+					_stud(root, shoe_at + normal * 0.2, 0.15, normal)
+	if class_id == "vesper":
+		for i in 5:
+			var along := lerpf(10.0, -26.0, float(i) / 4.0)
+			var beam := maxf(_flank_at(holder, along, height * 0.25) * 1.7, 2.0)
+			_kit(root, "Belly", Vector3(4.6, 0.55, beam), Vector3(along, _keel_y(holder, along, 0.0) + 0.1, 0.0), Color("3a424c"))
+			_stud(root, Vector3(along - 1.2, 0.4, 0.0), 0.11)
+			_stud(root, Vector3(along + 1.2, 0.4, 0.0), 0.11)
+	elif class_id == "kestrel":
+		_kit(root, "Belly", Vector3(14.0, 0.42, 2.8), Vector3(-2.0, 0.12, 0.0), Color("3a424c"))
+		for i in 4:
+			_stud(root, Vector3(-6.0 + float(i) * 3.2, 0.38, 0.0), 0.11)
+
+
+func _gear_fans(root: Node3D, class_id: String, kind: String) -> void:
+	var z0 := _out_z(kind)
+	if class_id == "anvil":
+		_kit(root, "Plinth", Vector3(7.2, 0.45, 4.2), Vector3(0.0, 0.22, z0), Color("4a453c"))
+		_fan_unit(root, Vector3(-1.5, 1.55, z0 - 1.15), 1.45)
+		_fan_unit(root, Vector3(1.5, 1.55, z0 + 1.15), 1.45)
+		_cyl(root, "Duct", 0.32, 3.4, Vector3(-3.8, 0.55, z0), "x", Color("6a5344"))
+		_fasten(root, class_id, "deck", 3.4, 2.0)
+	elif class_id == "kestrel":
+		_kit(root, "Core", Vector3(6.4, 0.28, 2.4), Vector3(0.0, 0.2, z0), Color("5c646c"))
+		for i in 8:
+			_kit(root, "Fin", Vector3(6.0, 0.85, 0.1), Vector3(0.0, 0.7, z0 - 1.05 + float(i) * 0.3), Color("d5dde4"))
+		_cyl(root, "Pipe", 0.18, 2.4, Vector3(0.0, 0.35, z0 - 1.6), "z", Color("b87333"))
+		_fasten(root, class_id, kind, 3.0, 1.2)
+	else:
+		for i in 7:
+			_kit(root, "Fin", Vector3(0.12, 1.7, 0.85), Vector3(-1.15 + float(i) * 0.38, 0.95, z0 + 0.35), Color("e4eaee"))
+		_kit(root, "Header", Vector3(2.8, 0.32, 0.36), Vector3(0.0, 0.35, z0 + 0.1), Color("b87333"))
+		_cyl(root, "Pipe", 0.16, 1.6, Vector3(0.0, 0.4, z0 - 0.7), "z", Color("6a5344"))
+		_fasten(root, class_id, kind, 1.5, 0.7)
+
+
+func _gear_vent(root: Node3D, class_id: String, kind: String) -> void:
+	var z0 := _out_z(kind)
+	_kit(root, "VentSkin", Vector3(4.6, 0.08, 1.6), Vector3(0.0, 0.35, z0), Color("8a8478"))
+	_kit(root, "VentFin", Vector3(3.2, 1.15, 0.12), Vector3(0.2, 0.95, z0), Color("c4b8a4"))
+	_kit(root, "VentRivet", Vector3(3.4, 0.05, 0.16), Vector3(0.0, 0.48, z0 + 0.55), Color("6a645c"))
+	_cyl(root, "VentDuct", 0.22, 1.8, Vector3(-2.2, 0.4, z0), "x", Color("5c564e"))
+	_fasten(root, class_id, kind, 2.2, 0.8)
+
+
+func _fan_unit(root: Node3D, at: Vector3, radius: float) -> void:
+	var shroud := MeshInstance3D.new()
+	shroud.name = "Shroud"
+	var torus := TorusMesh.new()
+	torus.inner_radius = radius * 0.78
+	torus.outer_radius = radius
+	torus.rings = 16
+	torus.ring_segments = 8
+	shroud.mesh = torus
+	shroud.position = at
+	shroud.material_override = _metal(Color("5c646c"))
+	root.add_child(shroud)
+	var hub := _cyl(root, "Hub", radius * 0.22, 0.28, at + Vector3(0.0, 0.16, 0.0), "y", Color("1c2228"))
+	hub.position = at + Vector3(0.0, 0.16, 0.0)
+	for i in 3:
+		var pivot := Node3D.new()
+		pivot.name = "BladePivot"
+		pivot.position = at + Vector3(0.0, 0.18, 0.0)
+		pivot.rotation.y = float(i) * TAU / 3.0
+		root.add_child(pivot)
+		_kit(pivot, "Blade", Vector3(radius * 1.15, 0.06, radius * 0.22), Vector3(radius * 0.42, 0.0, 0.0), Color("eef3f6"))
+
+
+func _gear_keel(root: Node3D, class_id: String) -> void:
+	if class_id == "anvil":
+		_kit(root, "Shoe", Vector3(14.0, 1.6, 4.2), Vector3(4.0, -0.4, 0.0), Color("6a6560"))
+		_kit(root, "Skeg", Vector3(8.0, 3.2, 0.7), Vector3(6.5, -2.2, 0.0), Color("8d9398"))
+		for i in 4:
+			_kit(root, "Web", Vector3(0.28, 2.4, 3.4), Vector3(1.5 + float(i) * 2.6, -1.3, 0.0), Color("c6b48a"))
+		_fasten(root, class_id, "nose", 2.0, 1.6)
+	elif class_id == "kestrel":
+		_kit(root, "Beak", Vector3(16.0, 0.7, 1.3), Vector3(6.0, 0.2, 0.0), Color("d5dde2"))
+		_kit(root, "Root", Vector3(4.0, 1.4, 2.4), Vector3(-0.5, 0.4, 0.0), Color("4e463c"))
+		for i in 3:
+			_stud(root, Vector3(-1.2, 0.9, -0.7 + float(i) * 0.7), 0.12)
+	else:
+		_kit(root, "Spar", Vector3(18.0, 0.9, 1.15), Vector3(8.0, 0.35, 0.0), Color("8d9398"))
+		_kit(root, "Fish", Vector3(3.2, 1.5, 2.2), Vector3(0.4, 0.45, 0.0), Color("4e463c"))
+		for i in 4:
+			_kit(root, "Web", Vector3(0.22, 0.7, 1.5), Vector3(3.0 + float(i) * 3.4, 0.85, 0.0), Color("c6b48a"))
+		_cyl(root, "Stay", 0.12, 8.0, Vector3(6.0, -0.15, 0.45), "x", Color("1c2024"))
+		_stud(root, Vector3(0.2, 1.05, 0.7), 0.12)
+		_stud(root, Vector3(0.2, 1.05, -0.7), 0.12)
+
+
+func _gear_hold(root: Node3D, class_id: String, kind: String) -> void:
+	var fit := _fit_scale(class_id)
+	var z0 := _out_z(kind)
+	var body := Color("1f4e79")
+	if kind == "cheek":
+		_cyl(root, "Tank", 1.15 * fit, 8.0, Vector3(0.0, 0.2, z0 + 0.4), "x", body)
+		for i in 3:
+			_kit(root, "Band", Vector3(0.28, 0.22, 2.5 * fit), Vector3(-2.4 + float(i) * 2.4, 0.2, z0 + 0.4), Color("c6b48a"))
+		_kit(root, "Door", Vector3(0.2, 1.3 * fit, 1.3 * fit), Vector3(4.1, 0.2, z0 + 0.4), Color("d7e6c8"))
+		_fasten(root, class_id, kind, 3.2, 0.8)
+	else:
+		var sx := 6.4 * fit
+		var sy := 3.2 * fit
+		var sz := 2.8 * fit
+		_kit(root, "Box", Vector3(sx, sy, sz), Vector3(0.0, sy * 0.5, z0), body)
+		for i in 4:
+			_kit(root, "Corr", Vector3(sx * 0.92, 0.12, 0.14), Vector3(0.0, 0.55 + float(i) * sy * 0.22, z0 + sz * 0.48), body.lightened(0.25))
+		_kit(root, "Door", Vector3(0.16, sy * 0.72, sz * 0.7), Vector3(sx * 0.5, sy * 0.48, z0), Color("14324f"))
+		_kit(root, "Cast", Vector3(0.55, 0.55, 0.55), Vector3(sx * 0.42, 0.35, z0 + sz * 0.38), Color("1a1916"))
+		_kit(root, "CastB", Vector3(0.55, 0.55, 0.55), Vector3(-sx * 0.42, 0.35, z0 - sz * 0.38), Color("1a1916"))
+		_fasten(root, class_id, kind, sx * 0.42, sz * 0.42)
+
+
+func _gear_hopper(root: Node3D, class_id: String, kind: String) -> void:
+	var fit := _fit_scale(class_id)
+	var z0 := _out_z(kind)
+	var rust := Color("8c3a24")
+	_kit(root, "Bin", Vector3(4.8 * fit, 2.4 * fit, 3.2 * fit), Vector3(0.0, 1.5 * fit, z0), rust)
+	_kit(root, "Funnel", Vector3(3.2 * fit, 1.3 * fit, 2.2 * fit), Vector3(0.0, 3.1 * fit, z0), Color("a34a2e"))
+	_kit(root, "Mouth", Vector3(1.4 * fit, 0.8 * fit, 1.2 * fit), Vector3(2.6 * fit, 0.7 * fit, z0), Color("6a5344"))
+	_kit(root, "Ladder", Vector3(0.12, 2.2 * fit, 0.7 * fit), Vector3(-2.3 * fit, 1.6 * fit, z0 + 1.5 * fit), Color("c6b48a"))
+	for i in 4:
+		_kit(root, "Rung", Vector3(0.28, 0.08, 0.7 * fit), Vector3(-2.15 * fit, 0.7 * fit + float(i) * 0.5 * fit, z0 + 1.5 * fit), Color("d7c48a"))
+	_fasten(root, class_id, kind, 2.2 * fit, 1.4 * fit)
+
+
+func _gear_dome(root: Node3D, class_id: String, kind: String) -> void:
+	var fit := _fit_scale(class_id)
+	var z0 := _out_z(kind)
+	var rad := 2.5 * fit
+	_kit(root, "Pad", Vector3(rad * 2.3, 0.4, rad * 2.3), Vector3(0.0, 0.22, z0), Color("6d6558"))
+	var glass := MeshInstance3D.new()
+	glass.name = "Glass"
+	var dome := SphereMesh.new()
+	dome.radius = rad
+	dome.height = rad * 1.7
+	dome.radial_segments = 18
+	dome.rings = 10
+	glass.mesh = dome
+	glass.position = Vector3(0.0, rad * 0.85, z0)
+	glass.material_override = _pane(Color("7eb8a2"))
+	root.add_child(glass)
+	for i in 4:
+		var rib := _kit(root, "RibBar", Vector3(0.1, rad * 1.5, 0.1), Vector3(0.0, rad * 0.85, z0), Color("d7e6c8"))
+		rib.rotation.y = float(i) * PI * 0.25
+		rib.position = Vector3(cos(float(i) * TAU / 4.0) * rad * 0.75, rad * 0.8, z0 + sin(float(i) * TAU / 4.0) * rad * 0.75)
+	_kit(root, "Soil", Vector3(rad * 1.6, 0.25, rad * 1.6), Vector3(0.0, 0.5, z0), Color("5a4632"))
+	_fasten(root, class_id, kind, rad, rad)
+
+
+func _gear_ring(root: Node3D, class_id: String, height: float) -> void:
+	var radius := 13.5
+	var y := height * 0.46
+	var along := -4.0
+	if class_id == "anvil":
+		radius = 20.0
+		y = height * 0.42
+		along = -6.0
+	elif class_id == "kestrel":
+		radius = 10.5
+		y = height * 0.4
+		along = 0.0
+	var holder := root.get_parent() as Node3D
+	y = (_skin_top(holder, along, 0.0) + _keel_y(holder, along, 0.0)) * 0.5
+	var hoop := MeshInstance3D.new()
+	hoop.name = "Hoop"
+	var torus := TorusMesh.new()
+	torus.inner_radius = radius - 0.7
+	torus.outer_radius = radius + 0.15
+	torus.rings = 28
+	torus.ring_segments = 8
+	hoop.mesh = torus
+	hoop.position = Vector3(along, y, 0.0)
+	hoop.rotation.z = PI * 0.5
+	hoop.material_override = _metal(Color("9a8e7c"))
+	root.add_child(hoop)
+	for i in 8:
+		var pivot := Node3D.new()
+		pivot.position = Vector3(along, y, 0.0)
+		pivot.rotation.x = float(i) * TAU / 8.0 + 0.18
+		root.add_child(pivot)
+		var pane := _kit(pivot, "Pane", Vector3(0.35, 0.12, 2.4), Vector3(0.0, radius, 0.0), Color("d7fff0"))
+		pane.material_override = _pane(Color("9ee7c8"))
+	var skin := _skin_z(class_id, along)
+	for raw_side in [1.0, -1.0]:
+		var side := float(raw_side)
+		var inner := maxf(skin * 0.55, 1.2)
+		var length := maxf(radius - inner, 1.0)
+		var mid := inner + length * 0.5
+		_kit(root, "Strut", Vector3(0.4, 0.4, length), Vector3(along, y, side * mid), Color("6d6558"))
+		_stud(root, Vector3(along, y, side * inner), 0.16)
+	_kit(root, "StrutUp", Vector3(0.4, maxf(radius - height * 0.2, 1.2), 0.4), Vector3(along, y + radius * 0.45, 0.0), Color("6d6558"))
+	_kit(root, "CollarBand", Vector3(1.6, 1.2, maxf(skin * 1.4, 2.4)), Vector3(along, y, 0.0), Color("4e463c"))
+
+
+func _gear_lamp(root: Node3D, class_id: String) -> void:
+	var fit := _fit_scale(class_id)
+	var length := 14.0 if class_id == "vesper" else 8.0 if class_id == "kestrel" else 6.5
+	_kit(root, "Rail", Vector3(length, 0.28, 0.36), Vector3(length * 0.35, 0.4, 0.0), Color("c4b49a"))
+	for i in 4:
+		var at := Vector3(1.2 + float(i) * (length / 4.5), 0.85, 0.0)
+		var lamp := MeshInstance3D.new()
+		lamp.name = "Bulb"
+		var bulb := SphereMesh.new()
+		bulb.radius = 0.38 * fit
+		bulb.height = 0.76 * fit
+		lamp.mesh = bulb
+		lamp.position = at
+		var glow := StandardMaterial3D.new()
+		glow.albedo_color = Color("e7d7a2")
+		glow.emission_enabled = true
+		glow.emission = Color("e7d7a2")
+		glow.emission_energy_multiplier = 0.8
+		lamp.material_override = glow
+		root.add_child(lamp)
+		_kit(root, "Cup", Vector3(0.5, 0.28, 0.5), at + Vector3(0.0, -0.28, 0.0), Color("2a2420"))
+	_cyl(root, "Loom", 0.1, length * 0.8, Vector3(length * 0.3, 0.22, 0.22), "x", Color("14161a"))
+	_fasten(root, class_id, "nose", 1.2, 0.6)
+
+
+func _gear_fighter(root: Node3D, class_id: String, kind: String) -> void:
+	var z0 := _out_z(kind)
+	var fit := _fit_scale(class_id)
+	_kit(root, "Rail", Vector3(8.5 * fit, 0.35, 1.4 * fit), Vector3(0.0, 0.25, z0), Color("5c584f"))
+	_kit(root, "Dart", Vector3(6.2 * fit, 0.7 * fit, 1.1 * fit), Vector3(0.4, 0.85 * fit, z0), Color("d7e6c8"))
+	_kit(root, "Nose", Vector3(1.6 * fit, 0.4 * fit, 0.45 * fit), Vector3(3.6 * fit, 0.85 * fit, z0), Color("e7f2ea"))
+	_kit(root, "WingP", Vector3(2.2 * fit, 0.12, 1.6 * fit), Vector3(0.2, 0.85 * fit, z0 + 0.9 * fit), Color("b7c4c0"))
+	_kit(root, "WingS", Vector3(2.2 * fit, 0.12, 1.6 * fit), Vector3(0.2, 0.85 * fit, z0 - 0.9 * fit), Color("b7c4c0"))
+	_kit(root, "ClampA", Vector3(0.35, 0.7 * fit, 1.5 * fit), Vector3(-2.2 * fit, 0.55, z0), Color("c6b48a"))
+	_kit(root, "ClampB", Vector3(0.35, 0.7 * fit, 1.5 * fit), Vector3(2.0 * fit, 0.55, z0), Color("c6b48a"))
+	_fasten(root, class_id, kind, 3.6 * fit, 0.8 * fit)
+
+
+func _gear_lighter(root: Node3D, class_id: String, kind: String) -> void:
+	var z0 := _out_z(kind)
+	var fit := _fit_scale(class_id)
+	_kit(root, "Sill", Vector3(7.0 * fit, 0.4, 3.2 * fit), Vector3(0.0, 0.25, z0), Color("5c5348"))
+	_kit(root, "Hull", Vector3(5.2 * fit, 1.6 * fit, 2.2 * fit), Vector3(0.3, 1.15 * fit, z0), Color("c4a882"))
+	_kit(root, "Cabin", Vector3(2.0 * fit, 1.1 * fit, 1.6 * fit), Vector3(-0.8 * fit, 2.2 * fit, z0), Color("3a3834"))
+	_kit(root, "Ramp", Vector3(2.4 * fit, 0.16, 1.8 * fit), Vector3(3.4 * fit, 0.45, z0), Color("8a8274"))
+	_fasten(root, class_id, kind, 3.0 * fit, 1.4 * fit)
+
+
+func _gear_beacon(root: Node3D, class_id: String) -> void:
+	var fit := _fit_scale(class_id)
+	_cyl(root, "Mast", 0.22 * fit, 6.5 * fit, Vector3(0.0, 3.2 * fit, 0.0), "y", Color("8a8274"))
+	var head := _kit(root, "Head", Vector3(1.1 * fit, 0.8 * fit, 1.1 * fit), Vector3(0.0, 6.4 * fit, 0.0), Color("e7b15a"))
+	var glow := StandardMaterial3D.new()
+	glow.albedo_color = Color("e7b15a")
+	glow.emission_enabled = true
+	glow.emission = Color("e7b15a")
+	glow.emission_energy_multiplier = 0.7
+	head.material_override = glow
+	_kit(root, "Base", Vector3(1.6 * fit, 0.4, 1.6 * fit), Vector3(0.0, 0.25, 0.0), Color("4e463c"))
+	_cyl(root, "GuyA", 0.06, 4.5 * fit, Vector3(0.8 * fit, 2.2 * fit, 0.0), "y", Color("1c2024"))
+	_cyl(root, "GuyB", 0.06, 4.5 * fit, Vector3(-0.8 * fit, 2.2 * fit, 0.0), "y", Color("1c2024"))
+	_fasten_deck(root, 0.9 * fit, 0.9 * fit)
+
+
+func _gear_bell(root: Node3D, class_id: String) -> void:
+	var fit := _fit_scale(class_id)
+	_kit(root, "Yoke", Vector3(2.4 * fit, 0.35, 0.35), Vector3(0.0, 3.4 * fit, 0.0), Color("8a8274"))
+	_cyl(root, "Post", 0.28 * fit, 3.2 * fit, Vector3(0.0, 1.6 * fit, 0.0), "y", Color("5c584f"))
+	var bell := MeshInstance3D.new()
+	bell.name = "Bell"
+	bell.mesh = _bell_mesh(2.2 * fit, 0.45 * fit, 1.15 * fit)
+	bell.position = Vector3(0.6 * fit, 2.6 * fit, 0.0)
+	bell.rotation.z = PI * 0.5
+	bell.material_override = _metal(Color("d7c48a"))
+	root.add_child(bell)
+	_fasten_deck(root, 1.1 * fit, 1.1 * fit)
+
+
+func _gear_baffle(root: Node3D, class_id: String, kind: String) -> void:
+	var z0 := _out_z(kind)
+	var fit := _fit_scale(class_id)
+	_kit(root, "Frame", Vector3(5.5 * fit, 2.4 * fit, 0.28), Vector3(0.0, 1.2 * fit, z0 - 0.2), Color("3a3834"))
+	for i in 5:
+		var slat := _kit(root, "Slat", Vector3(5.0 * fit, 0.16, 0.7 * fit), Vector3(0.0, 0.45 + float(i) * 0.42 * fit, z0 + 0.25), Color("6e6558"))
+		slat.rotation.x = -0.55
+	_fasten(root, class_id, kind, 2.4 * fit, 0.5)
+
+
+func _gear_collar(root: Node3D, class_id: String) -> void:
+	var radius := 2.4 if class_id == "vesper" else 4.6 if class_id == "anvil" else 3.2
+	var ring := MeshInstance3D.new()
+	ring.name = "Ring"
+	var torus := TorusMesh.new()
+	torus.inner_radius = radius * 0.72
+	torus.outer_radius = radius
+	torus.rings = 18
+	torus.ring_segments = 8
+	ring.mesh = torus
+	ring.rotation.z = PI * 0.5
+	ring.position = Vector3(1.4, 0.2, 0.0)
+	ring.material_override = _metal(Color("8d8680"))
+	root.add_child(ring)
+	_kit(root, "Neck", Vector3(2.6, 1.2, 1.8), Vector3(-0.6, 0.35, 0.0), Color("4e463c"))
+	for raw_side in [1.0, -1.0]:
+		var s := float(raw_side)
+		_kit(root, "Padeye", Vector3(0.7, 0.7, 0.28), Vector3(1.2, 0.2, s * radius * 0.55), Color("c6b48a"))
+		_stud(root, Vector3(-0.2, 0.85, s * 0.55), 0.14)
+	_cyl(root, "Pin", 0.18, radius * 1.4, Vector3(1.2, radius * 0.15, 0.0), "z", Color("c6b48a"))
+
+
+func _gear_hook(root: Node3D, class_id: String) -> void:
+	var fit := _fit_scale(class_id)
+	_kit(root, "Shank", Vector3(3.6 * fit, 0.45, 0.45), Vector3(1.4 * fit, 0.3, 0.0), Color("c6b48a"))
+	_kit(root, "Bill", Vector3(0.45, 1.6 * fit, 0.45), Vector3(3.2 * fit, -0.5 * fit, 0.0), Color("c6b48a"))
+	_kit(root, "Point", Vector3(1.1 * fit, 0.35, 0.4), Vector3(2.6 * fit, -1.2 * fit, 0.0), Color("e7d7a2"))
+	var shackle := MeshInstance3D.new()
+	shackle.name = "Shackle"
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.35 * fit
+	torus.outer_radius = 0.55 * fit
+	torus.rings = 12
+	torus.ring_segments = 6
+	shackle.mesh = torus
+	shackle.position = Vector3(-0.2, 0.35, 0.0)
+	shackle.material_override = _metal(Color("8d8680"))
+	root.add_child(shackle)
+	_fasten(root, class_id, "nose", 1.0, 0.6)
+
+
+func _gear_vault(root: Node3D, class_id: String, kind: String) -> void:
+	var fit := _fit_scale(class_id)
+	var z0 := _out_z(kind)
+	_kit(root, "Safe", Vector3(3.4 * fit, 2.6 * fit, 2.4 * fit), Vector3(0.0, 1.4 * fit, z0), Color("4a5560"))
+	var door := _cyl(root, "Door", 0.7 * fit, 0.28, Vector3(1.75 * fit, 1.45 * fit, z0), "x", Color("2a3138"))
+	door.position = Vector3(1.75 * fit, 1.45 * fit, z0)
+	var wheel := MeshInstance3D.new()
+	wheel.name = "Wheel"
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.28 * fit
+	torus.outer_radius = 0.42 * fit
+	torus.rings = 12
+	torus.ring_segments = 6
+	wheel.mesh = torus
+	wheel.position = Vector3(1.95 * fit, 1.45 * fit, z0)
+	wheel.rotation.z = PI * 0.5
+	wheel.material_override = _metal(Color("c6b48a"))
+	root.add_child(wheel)
+	_kit(root, "Hinge", Vector3(0.16, 1.6 * fit, 0.2), Vector3(1.7 * fit, 1.45 * fit, z0 + 0.85 * fit), Color("8a8274"))
+	_fasten(root, class_id, kind, 1.5 * fit, 1.1 * fit)
+
+
+func _gear_locker(root: Node3D, class_id: String, kind: String) -> void:
+	var fit := _fit_scale(class_id)
+	var z0 := _out_z(kind)
+	_kit(root, "Cab", Vector3(2.2 * fit, 3.4 * fit, 1.5 * fit), Vector3(0.0, 1.8 * fit, z0), Color("3e4650"))
+	_kit(root, "Seam", Vector3(0.06, 3.0 * fit, 1.35 * fit), Vector3(1.12 * fit, 1.8 * fit, z0), Color("12161a"))
+	_kit(root, "Handle", Vector3(0.16, 0.5 * fit, 0.12), Vector3(1.22 * fit, 1.7 * fit, z0 + 0.28 * fit), Color("c6b48a"))
+	_kit(root, "Plate", Vector3(0.08, 0.4, 0.9 * fit), Vector3(1.16 * fit, 2.8 * fit, z0), Color("d7c48a"))
+	_fasten(root, class_id, kind, 1.0 * fit, 0.7 * fit)
+
+
+func _gear_stack(root: Node3D, class_id: String, kind: String) -> void:
+	var fit := _fit_scale(class_id)
+	var z0 := _out_z(kind)
+	_kit(root, "Frame", Vector3(3.6 * fit, 3.2 * fit, 2.2 * fit), Vector3(0.0, 1.7 * fit, z0), Color("6a7a62"))
+	for i in 4:
+		var tray := _kit(root, "Tray", Vector3(3.2 * fit, 0.18, 1.9 * fit), Vector3(0.0, 0.6 * fit + float(i) * 0.7 * fit, z0), Color("1f4e3a"))
+		tray.material_override = _pane(Color("7eb88a"))
+	_cyl(root, "Feed", 0.12, 2.6 * fit, Vector3(1.5 * fit, 1.6 * fit, z0), "y", Color("3d6f86"))
+	_fasten(root, class_id, kind, 1.6 * fit, 1.0 * fit)
+
+
+func _gear_scale(root: Node3D, class_id: String, kind: String) -> void:
+	var fit := _fit_scale(class_id)
+	var z0 := _out_z(kind)
+	_kit(root, "Deck", Vector3(4.2 * fit, 0.28, 2.6 * fit), Vector3(0.0, 0.3, z0), Color("6a7a62"))
+	_cyl(root, "Post", 0.18, 2.4 * fit, Vector3(-1.4 * fit, 1.5 * fit, z0), "y", Color("4a5560"))
+	_kit(root, "Beam", Vector3(3.2 * fit, 0.16, 0.16), Vector3(0.1, 2.6 * fit, z0), Color("c6b48a"))
+	_cyl(root, "Pan", 0.55 * fit, 0.2, Vector3(1.1 * fit, 2.15 * fit, z0), "y", Color("d7c48a"))
+	_kit(root, "House", Vector3(1.6 * fit, 1.5 * fit, 1.4 * fit), Vector3(-1.3 * fit, 1.1 * fit, z0), Color("3e4650"))
+	_fasten(root, class_id, kind, 1.8 * fit, 1.1 * fit)
+
+
+func _gear_pen(root: Node3D, class_id: String, kind: String) -> void:
+	var fit := _fit_scale(class_id)
+	var z0 := _out_z(kind)
+	var hx := 3.2 * fit
+	var hz := 2.2 * fit
+	_kit(root, "Floor", Vector3(hx * 2.0, 0.2, hz * 2.0), Vector3(0.0, 0.15, z0), Color("8a6a48"))
+	for raw_x in [-1.0, 1.0]:
+		for raw_z in [-1.0, 1.0]:
+			_cyl(root, "Post", 0.12, 1.8 * fit, Vector3(float(raw_x) * hx, 1.0 * fit, z0 + float(raw_z) * hz), "y", Color("c4b49a"))
+	_kit(root, "RailP", Vector3(hx * 2.0, 0.12, 0.12), Vector3(0.0, 1.55 * fit, z0 + hz), Color("d7c48a"))
+	_kit(root, "RailS", Vector3(hx * 2.0, 0.12, 0.12), Vector3(0.0, 1.55 * fit, z0 - hz), Color("d7c48a"))
+	_kit(root, "RailF", Vector3(0.12, 0.12, hz * 2.0), Vector3(hx, 1.15 * fit, z0), Color("d7c48a"))
+	_kit(root, "Gate", Vector3(0.12, 1.2 * fit, hz * 1.2), Vector3(-hx, 0.8 * fit, z0), Color("6a5344"))
+	_fasten(root, class_id, kind, hx * 0.8, hz * 0.8)
+
+
+func _gear_coop(root: Node3D, class_id: String, kind: String) -> void:
+	var fit := _fit_scale(class_id)
+	var z0 := _out_z(kind)
+	_kit(root, "House", Vector3(3.4 * fit, 2.0 * fit, 2.4 * fit), Vector3(0.0, 1.1 * fit, z0), Color("8a6a48"))
+	var roof_l := _kit(root, "RoofL", Vector3(3.8 * fit, 0.16, 1.5 * fit), Vector3(0.0, 2.3 * fit, z0 - 0.55 * fit), Color("6a3a2a"))
+	roof_l.rotation.x = 0.45
+	var roof_r := _kit(root, "RoofR", Vector3(3.8 * fit, 0.16, 1.5 * fit), Vector3(0.0, 2.3 * fit, z0 + 0.55 * fit), Color("6a3a2a"))
+	roof_r.rotation.x = -0.45
+	_cyl(root, "Vent", 0.16, 1.1 * fit, Vector3(0.8 * fit, 2.6 * fit, z0), "y", Color("4a5560"))
+	for i in 4:
+		_kit(root, "Wire", Vector3(0.05, 1.5 * fit, 0.05), Vector3(-1.5 * fit + float(i) * 0.35, 1.1 * fit, z0 + 1.2 * fit), Color("c5ccd2"))
+	_fasten(root, class_id, kind, 1.5 * fit, 1.1 * fit)
+
+
+func _gear_cage(root: Node3D, class_id: String) -> void:
+	var fit := _fit_scale(class_id)
+	var hx := 1.8 * fit
+	var hy := 1.2 * fit
+	var hz := 1.3 * fit
+	_kit(root, "Floor", Vector3(hx * 2.0, 0.12, hz * 2.0), Vector3(0.0, -1.6 * fit, 0.0), Color("5c6a62"))
+	_kit(root, "Lid", Vector3(hx * 2.0, 0.12, hz * 2.0), Vector3(0.0, -0.3, 0.0), Color("5c6a62"))
+	for raw_x in [-1.0, 1.0]:
+		for raw_z in [-1.0, 1.0]:
+			_kit(root, "Bar", Vector3(0.1, hy * 1.6, 0.1), Vector3(float(raw_x) * hx, -0.95 * fit, float(raw_z) * hz), Color("c5ccd2"))
+	for i in 3:
+		_kit(root, "Mesh", Vector3(hx * 2.0, 0.06, 0.06), Vector3(0.0, -1.4 * fit + float(i) * 0.4 * fit, hz), Color("9aa8a4"))
+	_kit(root, "ChainA", Vector3(0.12, 2.2, 0.12), Vector3(-hx * 0.6, 0.7, 0.0), Color("8a8274"))
+	_kit(root, "ChainB", Vector3(0.12, 2.2, 0.12), Vector3(hx * 0.6, 0.7, 0.0), Color("8a8274"))
+	_stud(root, Vector3(0.0, 1.7, 0.0), 0.14)
+
+
+func _gear_shear(root: Node3D, class_id: String) -> void:
+	var fit := _fit_scale(class_id)
+	_kit(root, "Ram", Vector3(3.2 * fit, 0.55, 0.55), Vector3(1.2 * fit, 0.45, 0.0), Color("4a5560"))
+	var blade := _kit(root, "Blade", Vector3(4.4 * fit, 0.22, 1.5 * fit), Vector3(4.0 * fit, 0.15, 0.0), Color("e7eef2"))
+	blade.rotation.z = -0.22
+	_kit(root, "Tooth", Vector3(0.7, 0.35, 1.3 * fit), Vector3(6.0 * fit, -0.15, 0.0), Color("d5dde2"))
+	_cyl(root, "Hose", 0.1, 2.2 * fit, Vector3(0.2, 0.3, 0.4), "x", Color("1c2024"))
+	_fasten(root, class_id, "nose", 1.2, 0.7)
+
+
+func _gear_stakes(root: Node3D, class_id: String, kind: String) -> void:
+	var fit := _fit_scale(class_id)
+	var z0 := _out_z(kind)
+	_kit(root, "Rack", Vector3(3.4 * fit, 0.35, 0.8 * fit), Vector3(0.0, 0.3, z0), Color("c4b49a"))
+	for i in 4:
+		var stake := _cyl(root, "Stake", 0.1 * fit, 3.2 * fit, Vector3(-1.2 * fit + float(i) * 0.8 * fit, 1.7 * fit, z0 + 0.15), "y", Color("d7c48a"))
+		stake.rotation.z = -0.18
+		var tip := MeshInstance3D.new()
+		tip.name = "Tip"
+		var cone := CylinderMesh.new()
+		cone.top_radius = 0.02
+		cone.bottom_radius = 0.12 * fit
+		cone.height = 0.45 * fit
+		cone.radial_segments = 8
+		tip.mesh = cone
+		tip.position = Vector3(0.0, 1.7 * fit, 0.0)
+		tip.material_override = _metal(Color("e7eef2"))
+		stake.add_child(tip)
+	_fasten(root, class_id, kind, 1.6 * fit, 0.5)
 
 func _weapon_sockets(module_ids: Array) -> Array:
 	var known := ["gun_sponson", "heavy_turret", "laser_bank", "missile_rack", "point_defense", "stake_gun"]
@@ -3010,50 +5085,88 @@ func _weapon_sockets(module_ids: Array) -> Array:
 	return out
 
 
-func _socket_at(holder: Node3D, class_id: String, socket_name: String) -> Vector3:
+const BRIDGE_U := {"vesper": 0.63, "anvil": 0.73, "kestrel": 0.55, "lumen": 0.64, "casque": 0.6, "alidade": 0.51}
+const SOCKET_REF := {"heavy_turret": 4.8, "gun_sponson": 3.6, "point_defense": 2.4, "laser_bank": 3.0, "missile_rack": 3.4, "stake_gun": 3.6}
+const SOCKET_BASE := {"heavy_turret": 0.7, "gun_sponson": 0.7, "point_defense": 0.7, "laser_bank": 1.6, "missile_rack": 0.8, "stake_gun": 0.7}
+const SOCKET_BUILT := {"heavy_turret": 1.85, "gun_sponson": 1.45, "point_defense": 0.85, "laser_bank": 1.0, "missile_rack": 1.0, "stake_gun": 1.45}
+
+
+func _skin_top(holder: Node3D, x: float, z: float) -> float:
+	var poly: PackedVector2Array = holder.get_meta("hull_poly")
+	return _probe_hulls.top_at(str(holder.get_meta("hull_class", "vesper")), poly, float(holder.get_meta("crown", 16.0)), x, z)
+
+
+func _skin_reach(holder: Node3D, x: float) -> float:
+	var poly: PackedVector2Array = holder.get_meta("hull_poly")
+	return _probe_hulls.reach_at(str(holder.get_meta("hull_class", "vesper")), poly, float(holder.get_meta("crown", 16.0)), x)
+
+
+## Lowest and highest skin height under a footprint, so a mount can sit on the
+## high point and a plinth can fill down to the low one.
+func _footprint_top(holder: Node3D, x: float, z: float, rx: float, rz: float) -> Vector2:
+	var low := 1.0e9
+	var high := -1.0e9
+	for ix in 3:
+		for iz in 3:
+			var px := x + (float(ix) - 1.0) * rx
+			var pz := z + (float(iz) - 1.0) * rz
+			var reach := _skin_reach(holder, px)
+			pz = clampf(pz, -reach * 0.96, reach * 0.96)
+			var top := _skin_top(holder, px, pz)
+			low = minf(low, top)
+			high = maxf(high, top)
+	return Vector2(low, high)
+
+
+func _station_of(holder: Node3D, class_id: String, socket_name: String) -> Vector2:
 	var nose := float(holder.get_meta("nose", 40.0))
-	var crown := float(holder.get_meta("crown", 16.0))
-	if class_id == "anvil":
-		match socket_name:
-			"heavy_turret":
-				return Vector3(2.0, crown * 1.08, 0.0)
-			"missile_rack":
-				return Vector3(-6.0, crown * 0.28, 24.0)
-			"gun_sponson":
-				return Vector3(8.0, crown * 0.42, 20.0)
-			"laser_bank":
-				return Vector3(nose * 0.35, crown * 0.22, 0.0)
-			"point_defense":
-				return Vector3(-nose * 0.2, crown * 0.7, -16.0)
-			_:
-				return Vector3(0.0, crown * 0.4, 12.0)
-	if class_id == "kestrel":
-		match socket_name:
-			"gun_sponson":
-				return Vector3(6.0, crown * 0.48, 13.0)
-			"laser_bank":
-				return Vector3(nose * 0.78, crown * 0.08, 0.0)
-			"missile_rack":
-				return Vector3(-4.0, crown * 0.32, 0.0)
-			"heavy_turret":
-				return Vector3(0.0, crown * 1.02, 0.0)
-			"point_defense":
-				return Vector3(-14.0, crown * 0.4, 8.0)
-			_:
-				return Vector3(nose * 0.2, crown * 0.3, 8.0)
+	var tail := float(holder.get_meta("tail", -30.0))
+	var span := nose - tail
+	var bridge := float(BRIDGE_U.get(class_id, 0.6))
+	var u := bridge
+	var zf := 0.0
 	match socket_name:
-		"gun_sponson":
-			return Vector3(nose * 0.22, crown * 0.62, 7.4)
-		"laser_bank":
-			return Vector3(nose * 0.86, crown * 0.28, 0.0)
-		"missile_rack":
-			return Vector3(nose * 0.02, crown * 0.78, 0.0)
 		"heavy_turret":
-			return Vector3(-4.0, crown * 1.05, 0.0)
+			u = bridge - 0.3
+		"missile_rack":
+			u = bridge - 0.5
 		"point_defense":
-			return Vector3(-nose * 0.32, crown * 0.36, 5.5)
+			u = bridge - 0.17
+			zf = 0.62
+		"gun_sponson":
+			u = bridge - 0.17
+			zf = -0.62
+		"laser_bank":
+			u = minf(bridge + 0.3, 0.9)
+		"stake_gun":
+			u = minf(bridge + 0.2, 0.82)
 		_:
-			return Vector3(nose * 0.12, crown * 0.3, -8.0)
+			u = bridge - 0.2
+	u = clampf(u, 0.1, 0.92)
+	var x := tail + span * u
+	var reach := _skin_reach(holder, x)
+	return Vector2(x, zf * minf(reach, 14.0))
+
+
+func _socket_fit(holder: Node3D, socket_name: String, x: float) -> float:
+	var reach := _skin_reach(holder, x)
+	return clampf(reach / float(SOCKET_REF.get(socket_name, 3.6)), 0.55, 1.0)
+
+
+func _socket_at(holder: Node3D, class_id: String, socket_name: String) -> Vector3:
+	var xz := _station_of(holder, class_id, socket_name)
+	var fit := _socket_fit(holder, socket_name, xz.x)
+	var built := float(SOCKET_BUILT.get(socket_name, 1.0))
+	var radius := 2.8 * built * fit
+	if socket_name == "laser_bank":
+		radius = 4.6 * fit
+	elif socket_name == "missile_rack":
+		radius = 5.0 * built * fit
+	var span := _footprint_top(holder, xz.x, xz.y, radius * 0.7, radius * 0.5)
+	var base := float(SOCKET_BASE.get(socket_name, 0.7)) * built * fit
+	if socket_name == "laser_bank":
+		base = 1.6 * fit
+	return Vector3(xz.x, lerpf(span.x, span.y, 0.5) - 0.35 + base, xz.y)
 
 
 func _mount_sockets(holder: Node3D, class_id: String, sockets: Array) -> void:
@@ -3062,17 +5175,49 @@ func _mount_sockets(holder: Node3D, class_id: String, sockets: Array) -> void:
 		var node := Node3D.new()
 		node.name = name
 		node.position = _socket_at(holder, class_id, name)
+		var fit := _socket_fit(holder, name, node.position.x)
 		holder.add_child(node)
 		if name == "laser_bank":
-			_build_laser(node, class_id)
+			_build_laser(node, class_id, fit)
 		elif name == "missile_rack":
-			_build_rack(node, class_id)
+			_build_rack(node, class_id, fit)
 		elif name == "point_defense":
-			_build_turret(node, 0.55, false)
+			_build_turret(node, 0.85 * fit, false)
 		elif name == "heavy_turret":
-			_build_turret(node, 1.35, true)
+			_build_turret(node, 1.85 * fit, true)
 		else:
-			_build_turret(node, 0.85, false)
+			_build_turret(node, 1.45 * fit, false)
+		_plinth(holder, node, name, fit)
+
+
+## A riser from the weapon's base down to the lowest skin under it, so the
+## hardpoint reads welded to the hull on a sloping deck.
+func _plinth(holder: Node3D, node: Node3D, socket_name: String, fit: float) -> void:
+	var built := float(SOCKET_BUILT.get(socket_name, 1.0))
+	var radius := 2.4 * built * fit
+	var base_depth := float(SOCKET_BASE.get(socket_name, 0.7)) * built * fit
+	var length_x := radius
+	var width_z := radius
+	if socket_name == "laser_bank":
+		length_x = 4.2 * fit
+		width_z = 2.1 * fit
+		base_depth = 1.6 * fit
+	elif socket_name == "missile_rack":
+		length_x = 5.0 * built * fit
+		width_z = 3.0 * built * fit
+		base_depth = 0.8 * built * fit
+	var span := _footprint_top(holder, node.position.x, node.position.z, length_x, width_z * 0.6)
+	var floor_y := span.x - 0.5 - node.position.y
+	var top_y := -base_depth + 0.15
+	var depth := top_y - floor_y
+	if depth < 0.25:
+		return
+	var riser := MeshInstance3D.new()
+	riser.name = "Plinth"
+	riser.mesh = _bevel_box(Vector3(length_x * 1.7, depth, width_z * 1.7), minf(0.4, depth * 0.3))
+	riser.position = Vector3(0.0, (top_y + floor_y) * 0.5, 0.0)
+	riser.material_override = _hull_mat(Color("4a4f54"))
+	node.add_child(riser)
 
 
 func _build_turret(node: Node3D, scale: float, heavy: bool) -> void:
@@ -3086,7 +5231,7 @@ func _build_turret(node: Node3D, scale: float, heavy: bool) -> void:
 	base.height = 1.4 * scale
 	base.radial_segments = 14
 	drum.mesh = base
-	drum.material_override = _hull_mat(metal)
+	drum.material_override = _metal(metal)
 	node.add_child(drum)
 	var head := MeshInstance3D.new()
 	head.name = "Head"
@@ -3094,12 +5239,12 @@ func _build_turret(node: Node3D, scale: float, heavy: bool) -> void:
 	cap.size = Vector3(3.8, 1.5, 3.2) * scale
 	head.mesh = cap
 	head.position = Vector3(0.6 * scale, 1.15 * scale, 0.0)
-	head.material_override = _hull_mat(metal.lightened(0.12))
+	head.material_override = _metal(metal.lightened(0.12))
 	node.add_child(head)
-	var length := 8.4 * scale if heavy else 6.2 * scale
+	var length := 11.4 * scale if heavy else 8.6 * scale
 	for side in [-1.0, 1.0]:
-		var barrel := _tube(node, "Barrel%s" % ("P" if side > 0.0 else "S"), 0.38 * scale, length, Vector3(length * 0.55, 1.2 * scale, side * 0.85 * scale), "x", bore)
-		_dress_barrel(barrel, length, 0.16 * scale, 0.28 * scale)
+		var barrel := _cyl(node, "Barrel%s" % ("P" if side > 0.0 else "S"), 0.55 * scale, length, Vector3(length * 0.55, 1.2 * scale, side * 0.95 * scale), "x", bore)
+		_dress_barrel(barrel, length, 0.24 * scale, 0.42 * scale)
 		var tip := MeshInstance3D.new()
 		tip.name = "Heat%s" % ("P" if side > 0.0 else "S")
 		var band := CylinderMesh.new()
@@ -3108,7 +5253,7 @@ func _build_turret(node: Node3D, scale: float, heavy: bool) -> void:
 		band.height = 0.7 * scale
 		band.radial_segments = 10
 		tip.mesh = band
-		tip.position = Vector3(length * 0.42, 0.0, 0.0)
+		tip.position = Vector3(0.0, -length * 0.42, 0.0)
 		tip.material_override = _hull_mat(Color("7a3e2c"))
 		barrel.add_child(tip)
 	if heavy:
@@ -3120,11 +5265,21 @@ func _build_turret(node: Node3D, scale: float, heavy: bool) -> void:
 		feed.position = Vector3(-0.4 * scale, 0.4 * scale, 1.6 * scale)
 		feed.material_override = _hull_mat(Color("b08a3e"))
 		node.add_child(feed)
+	_tube(node, "CoolP", 0.16 * scale, 4.2 * scale, Vector3(0.15 * scale, 2.05 * scale, 1.35 * scale), "x", Color("3d6f86"))
+	_tube(node, "CoolS", 0.16 * scale, 4.2 * scale, Vector3(0.15 * scale, 2.05 * scale, -1.35 * scale), "x", Color("3d6f86"))
+	var tank := MeshInstance3D.new()
+	tank.name = "Tank"
+	var jug := BoxMesh.new()
+	jug.size = Vector3(1.45, 1.15, 1.7) * scale
+	tank.mesh = jug
+	tank.position = Vector3(-1.45 * scale, 0.15 * scale, 0.0)
+	tank.material_override = _hull_mat(Color("2a3438"))
+	node.add_child(tank)
 	_nav_lamp(node, "Run", Vector3(-1.2 * scale, 1.6 * scale, 0.0), Color("9fd0c8"), 0.35 * scale)
 
 
-func _build_laser(node: Node3D, class_id: String) -> void:
-	var scale := 1.15 if class_id == "vesper" else 1.0
+func _build_laser(node: Node3D, class_id: String, fit: float = 1.0) -> void:
+	var scale := (1.15 if class_id == "vesper" else 1.0) * fit
 	var housing := MeshInstance3D.new()
 	housing.name = "Housing"
 	var box := BoxMesh.new()
@@ -3134,6 +5289,15 @@ func _build_laser(node: Node3D, class_id: String) -> void:
 	node.add_child(housing)
 	_tube(node, "Coolant", 0.28 * scale, 8.0 * scale, Vector3(0.2 * scale, 1.8 * scale, 1.5 * scale), "x", Color("3d6f86"))
 	_tube(node, "CoolantS", 0.28 * scale, 8.0 * scale, Vector3(0.2 * scale, 1.8 * scale, -1.5 * scale), "x", Color("3d6f86"))
+	for i in 5:
+		var fin := MeshInstance3D.new()
+		fin.name = "Fin%d" % i
+		var plate := BoxMesh.new()
+		plate.size = Vector3(7.2, 0.12, 0.85) * scale
+		fin.mesh = plate
+		fin.position = Vector3(-0.2 * scale, 2.15 * scale, (-1.7 + float(i) * 0.85) * scale)
+		fin.material_override = _hull_mat(Color("d5dde4"))
+		node.add_child(fin)
 	for side in [-1.0, 1.0]:
 		var lens := MeshInstance3D.new()
 		lens.name = "Lens%s" % ("P" if side > 0.0 else "S")
@@ -3157,8 +5321,8 @@ func _build_laser(node: Node3D, class_id: String) -> void:
 	_paint_bolt(iris, Color("ffd2a1"), 1.6, 0.85)
 
 
-func _build_rack(node: Node3D, class_id: String) -> void:
-	var scale := 1.45 if class_id == "anvil" else 1.0
+func _build_rack(node: Node3D, class_id: String, fit: float = 1.0) -> void:
+	var scale := (1.45 if class_id == "anvil" else 1.0) * fit
 	var bed := MeshInstance3D.new()
 	bed.name = "Bed"
 	var slab := BoxMesh.new()
@@ -3186,14 +5350,193 @@ func _build_rack(node: Node3D, class_id: String) -> void:
 			ring.rings = 10
 			ring.ring_segments = 6
 			mouth.mesh = ring
-			mouth.position = Vector3(5.1 * scale, 0.0, 0.0)
-			mouth.rotation.z = PI * 0.5
+			mouth.position = Vector3(0.0, -5.1 * scale, 0.0)
 			mouth.material_override = _hull_mat(Color("2a2420"))
 			tube.add_child(mouth)
 			i += 1
 	var hose := _tube(node, "Hose", 0.22 * scale, 6.0 * scale, Vector3(-2.0 * scale, 0.2 * scale, 2.4 * scale), "x", Color("1c2024"))
 	hose.rotation.y = 0.4
 	_nav_lamp(node, "Seeker", Vector3(4.8 * scale, 2.4 * scale, 0.0), Color("9ecfff"), 0.28 * scale)
+
+
+func _weapon_live(holder: Node3D, sim, ship: Dictionary, band: bool) -> void:
+	if not band:
+		return
+	var read := _fx_read(sim)
+	for socket_name in ["gun_sponson", "heavy_turret", "stake_gun", "laser_bank", "missile_rack", "point_defense"]:
+		var sock := holder.get_node_or_null(socket_name) as Node3D
+		if sock == null:
+			continue
+		var life := _socket_life(sim, ship, socket_name)
+		_kick_mount(sock, socket_name, life)
+		_glow_mount(sock, socket_name, life, read)
+
+
+func _socket_life(sim, ship: Dictionary, socket: String) -> float:
+	var cool := 0.34
+	if socket == "heavy_turret":
+		cool = 0.72
+	elif socket == "laser_bank":
+		cool = 0.42
+	elif socket == "missile_rack":
+		cool = 1.7
+	elif socket == "point_defense":
+		cool = 0.22
+	elif socket == "stake_gun":
+		cool = 0.5
+	for mount in Fit.mounts(sim.defs, ship):
+		if str(mount.get("socket", "")) == socket:
+			cool = float(mount.get("cooldown", cool))
+			break
+	var cd := float(ship.get("mount_cd", {}).get(socket, 0.0))
+	if cd <= 0.0:
+		return 0.0
+	var window := 0.16
+	if socket == "missile_rack":
+		window = 0.34
+	elif socket == "heavy_turret":
+		window = 0.22
+	elif socket == "point_defense":
+		window = 0.1
+	var since := cool - cd
+	if since < 0.0 or since > window:
+		return 0.0
+	return 1.0 - since / window
+
+
+func _kick_mount(sock: Node3D, socket: String, life: float) -> void:
+	var kick := 0.0
+	if socket == "heavy_turret":
+		kick = 3.4 * life
+	elif socket == "stake_gun":
+		kick = 2.1 * life
+	elif socket == "gun_sponson":
+		kick = 1.45 * life
+	elif socket == "point_defense":
+		kick = 0.7 * life
+	for name in ["BarrelP", "BarrelS"]:
+		var barrel := sock.get_node_or_null(name) as MeshInstance3D
+		if barrel == null:
+			continue
+		if not barrel.has_meta("rest_x"):
+			barrel.set_meta("rest_x", barrel.position.x)
+		var rest := float(barrel.get_meta("rest_x"))
+		barrel.position.x = rest - kick
+	if socket == "missile_rack":
+		var door := sock.get_node_or_null("Door") as MeshInstance3D
+		if door != null:
+			if not door.has_meta("rest_y"):
+				door.set_meta("rest_y", door.position.y)
+			door.position.y = float(door.get_meta("rest_y")) + life * 1.1
+
+
+func _glow_mount(sock: Node3D, socket: String, life: float, read: float = 1.0) -> void:
+	var flash := sock.get_node_or_null("SockFlash") as MeshInstance3D
+	if flash == null:
+		flash = MeshInstance3D.new()
+		flash.name = "SockFlash"
+		var ball := SphereMesh.new()
+		ball.radius = 1.4
+		ball.height = 2.8
+		ball.radial_segments = 10
+		ball.rings = 6
+		flash.mesh = ball
+		flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var flare := MeshInstance3D.new()
+		flare.name = "Flare"
+		var rod := CylinderMesh.new()
+		rod.top_radius = 0.25
+		rod.bottom_radius = 1.1
+		rod.height = 6.2
+		rod.radial_segments = 8
+		flare.mesh = rod
+		flare.position = Vector3(3.2, 0.0, 0.0)
+		flare.rotation = Vector3(0.0, 0.0, -PI * 0.5)
+		flare.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		flash.add_child(flare)
+		sock.add_child(flash)
+	flash.visible = life > 0.02
+	if life > 0.02:
+		var tint := Color("ffd59a")
+		if socket == "laser_bank":
+			tint = Color("fff1d2")
+		elif socket == "missile_rack":
+			tint = Color("ffb060")
+		elif socket == "point_defense":
+			tint = Color("d8eeff")
+		elif socket == "heavy_turret":
+			tint = Color("ff9a4a")
+		elif socket == "stake_gun":
+			tint = Color("e8f2ff")
+		flash.position = Vector3(5.2, 1.1, 0.0)
+		if socket == "laser_bank":
+			flash.position = Vector3(5.6, 0.2, 0.0)
+		elif socket == "missile_rack":
+			flash.position = Vector3(5.4, 1.5, 0.0)
+		elif socket == "stake_gun":
+			flash.position = Vector3(6.4, 1.1, 0.0)
+		var span := 0.55 + life * 1.15
+		if socket == "heavy_turret":
+			span = 0.85 + life * 2.05
+		elif socket == "stake_gun":
+			span = 0.38 + life * 0.85
+		elif socket == "point_defense":
+			span = 0.32 + life * 0.7
+		span *= clampf(read, 1.0, 3.2)
+		flash.scale = Vector3(span, span, span)
+		_paint_bolt(flash, tint.lightened(0.3), 2.2 + life * 3.4, 0.9)
+		var flare_node := flash.get_node_or_null("Flare") as MeshInstance3D
+		if flare_node != null:
+			flare_node.visible = socket != "laser_bank"
+			var jet := flare_node.mesh as CylinderMesh
+			if jet != null:
+				if socket == "stake_gun":
+					jet.height = 9.4
+					jet.top_radius = 0.12
+					jet.bottom_radius = 0.55
+				elif socket == "heavy_turret":
+					jet.height = 5.4
+					jet.top_radius = 0.42
+					jet.bottom_radius = 1.55
+				elif socket == "missile_rack":
+					jet.height = 7.8
+					jet.top_radius = 0.3
+					jet.bottom_radius = 1.25
+				else:
+					jet.height = 6.2
+					jet.top_radius = 0.25
+					jet.bottom_radius = 1.1
+			_paint_bolt(flare_node, tint, 1.4 + life * 2.4, 0.5)
+	for pair in [["BarrelP", "HeatP"], ["BarrelS", "HeatS"]]:
+		var barrel := sock.get_node_or_null(str(pair[0])) as Node3D
+		if barrel == null:
+			continue
+		var band := barrel.get_node_or_null(str(pair[1])) as MeshInstance3D
+		if band == null:
+			continue
+		if life > 0.02:
+			_paint_bolt(band, Color("ff6a28"), 1.1 + life * 3.6, 0.92)
+		else:
+			band.material_override = _hull_mat(Color("7a3e2c"))
+	if socket == "laser_bank":
+		for name in ["LensP", "LensS", "Iris"]:
+			var lens := sock.get_node_or_null(name) as MeshInstance3D
+			if lens == null:
+				continue
+			var glow := 2.4 + life * 5.5
+			_paint_bolt(lens, Color("ffd2a1") if name == "Iris" else Color("ff7a1a"), glow, 0.92)
+	if socket == "missile_rack":
+		for i in 4:
+			var tube := sock.get_node_or_null("Tube%d" % i) as Node3D
+			if tube == null:
+				continue
+			var mouth := tube.get_node_or_null("Mouth") as MeshInstance3D
+			if mouth == null:
+				continue
+			if life > 0.02:
+				_paint_bolt(mouth, Color("ff8a3a"), 1.6 + life * 3.0, 0.85)
+			else:
+				mouth.material_override = _hull_mat(Color("2a2420"))
 
 
 func _pose_sockets(holder: Node3D, ship: Dictionary) -> void:
@@ -3227,6 +5570,12 @@ func _signature_mount(class_id: String) -> Array:
 			return ["cargo_blister"]
 		"kestrel":
 			return ["gun_sponson"]
+		"lumen":
+			return ["sensor_mast", "laser_bank"]
+		"casque":
+			return ["missile_rack"]
+		"alidade":
+			return ["gun_sponson"]
 		_:
 			return []
 
@@ -3244,56 +5593,105 @@ func _mount_roles(holder: Node3D, class_id: String, shapes: Array, height: float
 		_mount_probe(holder, class_id, nose, y, height)
 
 
-func _mount_mast(holder: Node3D, class_id: String, nose: float, y: float, height: float) -> void:
+func _perch(holder: Node3D, part_name: String, size: Vector3, x: float, z: float, color: Color, rim: float = 0.0, yaw: float = 0.0) -> MeshInstance3D:
+	var reach := _skin_reach(holder, x)
+	var cz := clampf(z, -reach * 0.96, reach * 0.96)
+	var span := _footprint_top(holder, x, cz, size.x * 0.5, size.z * 0.3)
+	var seat := lerpf(span.x, span.y, 0.4) - 0.3
+	var block := _hardware(holder, part_name, size, Vector3(x, seat + size.y * 0.5 + rim, cz), color)
+	block.rotation.y = yaw
+	var gap := seat - span.x + 0.5
+	if gap > 0.3:
+		var skirt := MeshInstance3D.new()
+		skirt.name = "Skirt"
+		skirt.mesh = _bevel_box(Vector3(size.x * 0.82, gap + 0.6, size.z * 0.82), 0.12)
+		skirt.position = Vector3(0.0, -size.y * 0.5 - gap * 0.5 + 0.1 - rim, 0.0)
+		skirt.material_override = _hull_mat(Color("40464a"))
+		block.add_child(skirt)
+	return block
+
+
+func _mast_at(holder: Node3D, x: float, z: float, boom_h: float, dish_r: float, foot: float, stays: bool = true) -> void:
 	var metal := Color("c4b49a")
-	var dish := Color("9fd0c8")
-	if class_id == "anvil":
-		_hardware(holder, "MountMastCollar", Vector3(10.0, 2.4, 10.0), Vector3(2.0, height * 0.86, 0.0), metal)
-		var boom := _tube(holder, "MountMast", 1.5, 12.0, Vector3(2.0, height + 5.0, 0.0), "y", metal)
-		_rib_along(boom, 3, 1.5, 12.0)
-		_hardware(holder, "MastBox", Vector3(3.2, 1.1, 3.2), Vector3(2.0, height * 0.95, 0.0), metal.darkened(0.22))
-		_lens(holder, "MountMastDish", 5.2, Vector3(2.0, height + 12.0, 0.0), dish)
-	elif class_id == "kestrel":
-		_hardware(holder, "MountMastCollar", Vector3(4.0, 1.6, 6.0), Vector3(2.0, y, 12.0), metal)
-		var boom := _tube(holder, "MountMast", 0.55, 16.0, Vector3(10.0, y + 3.0, 18.0), "x", metal)
-		boom.rotation = Vector3(0.4, 0.85, 0.1)
-		_rib_along(boom, 4, 0.55, 16.0)
-		_lens(holder, "MountMastDish", 2.6, Vector3(18.0, y + 6.0, 24.0), dish)
-	else:
-		_hardware(holder, "MountMastCollar", Vector3(7.0, 1.3, 2.2), Vector3(nose - 4.0, y, 0.0), metal)
-		var boom := _tube(holder, "MountMast", 0.48, 16.0, Vector3(nose + 6.0, y + 0.4, 0.0), "x", metal)
-		_rib_along(boom, 4, 0.48, 16.0)
-		_tube(holder, "MastStay", 0.28, 15.0, Vector3(nose + 6.0, y - 0.85, 0.55), "x", metal.darkened(0.18))
-		_hardware(holder, "MastBox", Vector3(2.6, 1.15, 1.8), Vector3(nose - 1.4, y + 0.15, 0.7), metal.darkened(0.28))
-		_tube(holder, "MastLoom", 0.32, 12.0, Vector3(nose + 4.0, y - 0.35, 0.35), "x", Color("1c2024"))
-		_lens(holder, "MountMastDish", 2.4, Vector3(nose + 15.0, y + 0.4, 0.0), dish)
+	var base := _perch(holder, "MountMastCollar", Vector3(foot, 2.0, foot), x, z, metal)
+	var at := base.position
+	var pole_r := clampf(dish_r * 0.1, 0.5, 1.7)
+	var boom := _cyl(holder, "MountMast", pole_r, boom_h, Vector3(at.x, at.y + 1.0 + boom_h * 0.5, at.z), "y", metal)
+	_rib_along(boom, 4, pole_r, boom_h)
+	_kit(holder, "MastBox", Vector3(foot * 0.72, 1.4, foot * 0.72), Vector3(at.x, at.y + 1.7, at.z), metal.darkened(0.22))
+	if stays:
+		for i in 3:
+			var ang := float(i) * TAU / 3.0 + 0.5
+			var stay := _cyl(holder, "MastStay%d" % i, pole_r * 0.28, boom_h * 0.62, Vector3(at.x + cos(ang) * foot * 0.28, at.y + 1.0 + boom_h * 0.31, at.z + sin(ang) * foot * 0.28), "y", metal.darkened(0.18))
+			stay.rotation = Vector3(-sin(ang) * 0.13, 0.0, -cos(ang) * 0.13)
+	_lens(holder, "MountMastDish", dish_r, Vector3(at.x, at.y + 1.0 + boom_h + dish_r * 0.08, at.z), Color("c8e8e2"))
 
 
-func _mount_guns(holder: Node3D, class_id: String, y: float, _height: float) -> void:
+func _mount_mast(holder: Node3D, class_id: String, nose: float, y: float, height: float) -> void:
+	var tail := float(holder.get_meta("tail", -30.0))
+	var span := nose - tail
+	match class_id:
+		"anvil":
+			_mast_at(holder, 2.0, 0.0, height * 1.3, 12.0, 9.0)
+		"kestrel":
+			var x := 2.0
+			_mast_at(holder, x, _skin_reach(holder, x) * 0.55, height * 0.9, 5.4, 4.0)
+		"lumen":
+			_mast_at(holder, tail + span * 0.8, 0.0, 9.0, 6.0, 4.0, false)
+		"casque":
+			_mast_at(holder, nose - 8.0, 0.0, height * 1.2, 11.0, 6.0)
+		"alidade":
+			_mast_at(holder, nose - 8.0, 0.0, height * 1.0, 8.0, 4.4)
+		_:
+			_mast_at(holder, tail + span * 0.78, 0.0, height * 1.1, 10.0, 5.0)
+
+
+func _flank_gun(holder: Node3D, tag: String, x: float, z: float, yaw: float, size: Vector3, bore_r: float, length: float, metal: Color) -> void:
+	var block := _perch(holder, "MountGun" + tag, size, x, z, metal, 0.0, yaw)
+	var barrel := _cyl(block, "MountBarrel" + tag, bore_r, length, Vector3(size.x * 0.5 + length * 0.5 - 0.8, size.y * 0.12, 0.0), "x", Color("1a1e24"))
+	_dress_barrel(barrel, length, bore_r * 0.5, bore_r)
+	_kit(block, "GunFeed" + tag, Vector3(size.x * 0.5, size.y * 0.5, size.z * 0.5), Vector3(-size.x * 0.12, size.y * 0.62, 0.0), metal.darkened(0.15))
+	_kit(block, "GunCradle" + tag, Vector3(size.x * 0.34, size.y * 0.3, size.z * 1.1), Vector3(size.x * 0.28, -size.y * 0.1, 0.0), metal.darkened(0.3))
+
+
+func _mount_guns(holder: Node3D, class_id: String, y: float, height: float) -> void:
+	var tail := float(holder.get_meta("tail", -30.0))
+	var nose := float(holder.get_meta("nose", 40.0))
+	var span := nose - tail
 	var metal := Color("8e8680")
-	var bore := Color("1a1e24")
-	if class_id == "anvil":
-		_hardware(holder, "MountGunP", Vector3(11.0, 6.0, 8.0), Vector3(-4.0, y, 22.0), metal)
-		_hardware(holder, "MountGunS", Vector3(11.0, 6.0, 8.0), Vector3(-4.0, y, -22.0), metal)
-		_dress_barrel(_tube(holder, "MountBarrelP", 1.2, 7.0, Vector3(4.0, y, 22.0), "x", bore), 7.0, 0.72, 1.2)
-		_dress_barrel(_tube(holder, "MountBarrelS", 1.2, 7.0, Vector3(4.0, y, -22.0), "x", bore), 7.0, 0.72, 1.2)
-	elif class_id == "kestrel":
-		var port := _tube(holder, "MountGunP", 0.62, 14.0, Vector3(4.0, y, 15.0), "x", bore)
-		port.rotation.y = -0.7
-		_dress_barrel(port, 14.0, 0.34, 0.72)
-		var starboard := _tube(holder, "MountGunS", 0.62, 14.0, Vector3(4.0, y, -15.0), "x", bore)
-		starboard.rotation.y = 0.7
-		_dress_barrel(starboard, 14.0, 0.34, 0.72)
-		_hardware(holder, "MountGunBracket", Vector3(3.2, 1.2, 8.0), Vector3(1.0, y, 0.0), metal)
-		_hardware(holder, "GunFeedP", Vector3(3.4, 1.3, 1.6), Vector3(6.0, y + 0.4, 10.0), metal.darkened(0.15))
-		_hardware(holder, "GunFeedS", Vector3(3.4, 1.3, 1.6), Vector3(6.0, y + 0.4, -10.0), metal.darkened(0.15))
-	else:
-		_hardware(holder, "MountGunP", Vector3(2.6, 1.3, 1.8), Vector3(10.0, y * 0.7, 6.2), metal)
-		_hardware(holder, "MountGunS", Vector3(2.6, 1.3, 1.8), Vector3(10.0, y * 0.7, -6.2), metal)
-		_dress_barrel(_tube(holder, "MountBarrelP", 0.36, 14.0, Vector3(18.0, y * 0.7, 6.2), "x", bore), 14.0, 0.2, 0.42)
-		_dress_barrel(_tube(holder, "MountBarrelS", 0.36, 14.0, Vector3(18.0, y * 0.7, -6.2), "x", bore), 14.0, 0.2, 0.42)
-		_hardware(holder, "GunFeedP", Vector3(2.4, 1.15, 1.3), Vector3(12.0, y * 0.7, 6.2), metal)
-		_hardware(holder, "GunFeedS", Vector3(2.4, 1.15, 1.3), Vector3(12.0, y * 0.7, -6.2), metal)
+	var x := tail + span * 0.24
+	var zf := 0.8
+	var yaw := 0.0
+	var size := Vector3(6.8, 3.8, 4.2)
+	var bore := 1.15
+	var length := 22.0
+	match class_id:
+		"anvil":
+			x = -4.0
+			size = Vector3(10.0, 5.6, 7.0)
+			bore = 1.55
+			length = 11.0
+		"kestrel":
+			x = 4.0
+			yaw = 0.45
+			size = Vector3(5.0, 2.4, 3.4)
+			bore = 0.95
+			length = 18.0
+		"alidade":
+			x = -18.0
+			yaw = 0.4
+			size = Vector3(5.0, 2.2, 3.2)
+			bore = 0.78
+			length = 16.0
+		"lumen":
+			x = 16.0
+			size = Vector3(4.4, 1.8, 2.8)
+			bore = 0.55
+			length = 14.0
+	var reach := _skin_reach(holder, x)
+	var z := reach * zf
+	_flank_gun(holder, "P", x, z, -yaw, size, bore, length, metal)
+	_flank_gun(holder, "S", x, -z, yaw, size, bore, length, metal)
 
 
 func _mount_bay(holder: Node3D, class_id: String, y: float, height: float) -> void:
@@ -3310,37 +5708,46 @@ func _mount_bay(holder: Node3D, class_id: String, y: float, height: float) -> vo
 		_hardware(holder, "BayHingeS", Vector3(0.45, 0.45, 16.5), Vector3(5.7, height * 0.22 - 2.5, 0.0), metal.darkened(0.2))
 		_nav_lamp(holder, "MountBayLamp", Vector3(4.2, height * 0.42, 0.0), Color("ffd27a"), 0.7)
 	elif class_id == "kestrel":
-		var port := _hardware(holder, "MountBay", Vector3(14.0, 2.8, 4.5), Vector3(-4.0, y * 0.65, 13.0), metal)
-		port.rotation.y = 0.45
-		var starboard := _hardware(holder, "MountBayS", Vector3(14.0, 2.8, 4.5), Vector3(-4.0, y * 0.65, -13.0), metal)
-		starboard.rotation.y = -0.45
+		for side in [1.0, -1.0]:
+			var reach := _skin_reach(holder, -4.0)
+			var pod := _perch(holder, "MountBay" if side > 0.0 else "MountBayS", Vector3(14.0, 2.8, 4.5), -4.0, side * reach * 0.62, metal, 0.0, 0.3 * side)
+			_hardware(pod, "BayLatch", Vector3(1.0, 0.5, 4.8), Vector3(5.0, 1.5, 0.0), door)
 	else:
-		_tube(holder, "MountBay", 2.4, 12.0, Vector3(-8.0, y * 0.5, 7.5), "x", metal)
-		_tube(holder, "MountBayS", 2.4, 12.0, Vector3(-8.0, y * 0.5, -7.5), "x", metal)
-		_hardware(holder, "MountBayStrap", Vector3(1.0, 0.8, 16.0), Vector3(-8.0, y * 0.5 + 2.0, 0.0), door)
-		_hardware(holder, "BayLatchP", Vector3(0.9, 0.85, 3.6), Vector3(-2.2, y * 0.5 + 2.15, 7.5), door)
-		_hardware(holder, "BayLatchS", Vector3(0.9, 0.85, 3.6), Vector3(-2.2, y * 0.5 + 2.15, -7.5), door)
+		var tail := float(holder.get_meta("tail", -30.0))
+		var nose := float(holder.get_meta("nose", 40.0))
+		var bx := tail + (nose - tail) * 0.34
+		var reach := _skin_reach(holder, bx)
+		var lane := minf(reach * 0.62, 5.0)
+		for side in [1.0, -1.0]:
+			var top := _footprint_top(holder, bx, side * lane, 5.0, 2.0)
+			var pod := _tube(holder, "MountBay" if side > 0.0 else "MountBayS", 2.2, 12.0, Vector3(bx, top.y - 0.3 + 2.2, side * lane), "x", metal)
+			_hardware(pod, "BayLatch", Vector3(0.9, 0.85, 2.4), Vector3(5.0, 2.2, 0.0), door)
+			_hardware(pod, "BayCradle", Vector3(1.2, 1.0, 5.2), Vector3(-2.0, -1.8, 0.0), door.darkened(0.2))
+		var strap_top := _footprint_top(holder, bx, 0.0, 1.0, lane)
+		_hardware(holder, "MountBayStrap", Vector3(1.0, 0.8, lane * 2.0), Vector3(bx, strap_top.y + 4.0, 0.0), door)
 
 
 func _mount_probe(holder: Node3D, class_id: String, nose: float, y: float, height: float) -> void:
 	var metal := Color("b7c4c0")
 	var dart := Color("d7e6c8")
 	if class_id == "anvil":
-		_tube(holder, "MountProbe", 1.5, 10.0, Vector3(-10.0, height * 0.78, 7.0), "y", metal)
-		_tube(holder, "MountProbeS", 1.5, 10.0, Vector3(-10.0, height * 0.78, -7.0), "y", metal)
-		_hardware(holder, "MountProbeBed", Vector3(7.0, 1.2, 16.0), Vector3(-10.0, height * 0.66, 0.0), dart)
+		var bed := _perch(holder, "MountProbeBed", Vector3(7.0, 1.2, 16.0), -10.0, 0.0, dart)
+		_tube(holder, "MountProbe", 1.5, 10.0, bed.position + Vector3(0.0, 2.2, 5.0), "x", metal)
+		_tube(holder, "MountProbeS", 1.5, 10.0, bed.position + Vector3(0.0, 2.2, -5.0), "x", metal)
 	elif class_id == "kestrel":
-		_hardware(holder, "MountProbeBed", Vector3(5.0, 1.3, 3.2), Vector3(nose * 0.42, height * 0.14, 0.0), metal)
-		_tube(holder, "MountProbe", 0.85, 11.0, Vector3(nose * 0.55, height * 0.14, 0.0), "x", dart)
+		var bed := _hardware(holder, "MountProbeBed", Vector3(5.0, 1.3, 3.2), Vector3(nose * 0.42, height * 0.12, 0.0), metal)
+		_tube(holder, "MountProbe", 0.85, 11.0, bed.position + Vector3(5.0, 0.0, 0.0), "x", dart)
 	else:
-		_hardware(holder, "MountProbeBed", Vector3(16.0, 0.9, 1.8), Vector3(nose * 0.35, height * 0.78, 0.0), metal)
-		_tube(holder, "MountProbe", 0.55, 8.0, Vector3(nose * 0.55, height * 0.9, 0.0), "x", dart)
+		var tail := float(holder.get_meta("tail", -30.0))
+		var bx := tail + (nose - tail) * 0.82
+		var bed := _perch(holder, "MountProbeBed", Vector3(14.0, 0.9, 1.8), bx, 0.0, metal)
+		_tube(holder, "MountProbe", 0.55, 8.0, bed.position + Vector3(2.0, 0.9, 0.0), "x", dart)
 
 
 func _hardware(holder: Node3D, part_name: String, size: Vector3, at: Vector3, color: Color) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	node.name = part_name
-	node.mesh = _bevel_box(size, 0.22)
+	node.mesh = _bevel_box(size, 0.07)
 	node.position = at
 	node.material_override = _hull_mat(color)
 	holder.add_child(node)
@@ -3372,7 +5779,7 @@ func _lens(holder: Node3D, part_name: String, radius: float, at: Vector3, color:
 	node.name = part_name
 	node.mesh = _dish_mesh(radius)
 	node.position = at
-	node.material_override = _hull_mat(Color(color.r, color.g, color.b).darkened(0.35))
+	node.material_override = _metal(Color(color.r, color.g, color.b).lightened(0.08))
 	holder.add_child(node)
 	var feed := MeshInstance3D.new()
 	feed.name = "Feed"
@@ -3383,7 +5790,7 @@ func _lens(holder: Node3D, part_name: String, radius: float, at: Vector3, color:
 	horn.rings = 6
 	feed.mesh = horn
 	feed.position = Vector3(0.0, radius * 0.05, 0.0)
-	feed.material_override = _hull_mat(Color("e7fff8"))
+	feed.material_override = _metal(Color("e7fff8"))
 	node.add_child(feed)
 	var lip := MeshInstance3D.new()
 	lip.name = "Lip"
@@ -3393,7 +5800,7 @@ func _lens(holder: Node3D, part_name: String, radius: float, at: Vector3, color:
 	torus.rings = 18
 	torus.ring_segments = 8
 	lip.mesh = torus
-	lip.material_override = _hull_mat(Color("9a8e7c"))
+	lip.material_override = _metal(Color("d2c4a4"))
 	node.add_child(lip)
 
 
@@ -3418,8 +5825,8 @@ func _rib_along(barrel: MeshInstance3D, count: int, radius: float, length: float
 func _dress_barrel(barrel: MeshInstance3D, length: float, bore: float, breech: float) -> void:
 	var cyl := barrel.mesh as CylinderMesh
 	if cyl != null:
-		cyl.bottom_radius = breech
-		cyl.top_radius = bore
+		cyl.top_radius = breech
+		cyl.bottom_radius = bore
 	var muzzle := MeshInstance3D.new()
 	muzzle.name = "Muzzle"
 	var ring := CylinderMesh.new()
@@ -3428,7 +5835,7 @@ func _dress_barrel(barrel: MeshInstance3D, length: float, bore: float, breech: f
 	ring.height = maxf(length * 0.07, 0.28)
 	ring.radial_segments = 16
 	muzzle.mesh = ring
-	muzzle.position = Vector3(0.0, length * 0.46, 0.0)
+	muzzle.position = Vector3(0.0, -length * 0.46, 0.0)
 	muzzle.material_override = _hull_mat(Color("241c18"))
 	barrel.add_child(muzzle)
 	var house := MeshInstance3D.new()
@@ -3439,7 +5846,7 @@ func _dress_barrel(barrel: MeshInstance3D, length: float, bore: float, breech: f
 	block.height = maxf(length * 0.2, 0.7)
 	block.radial_segments = 12
 	house.mesh = block
-	house.position = Vector3(0.0, -length * 0.36, 0.0)
+	house.position = Vector3(0.0, length * 0.36, 0.0)
 	house.material_override = _hull_mat(Color("6a625c"))
 	barrel.add_child(house)
 
@@ -3487,27 +5894,90 @@ func _dish_mesh(radius: float) -> ArrayMesh:
 
 
 func _sync_craft(sim) -> void:
-	var parked := 0
+	_sync_base(sim)
 	var index := 0
+	var berth := 0
 	for item in sim.craft:
 		var row: Dictionary = item
 		var pos: Vector2 = row.pos
 		var rot := float(row.rot)
-		if int(sim.layer) == ScaleFrame.CHART and str(row.get("state", "")) != "docked":
+		var height := 1.5
+		var docked := str(row.get("state", "")) == "docked"
+		if int(sim.layer) == ScaleFrame.CHART and not docked:
+			index += 1
 			continue
-		if str(row.get("state", "")) == "docked" and bool(sim.player.get("alive", false)):
-			var side := Vector2.from_angle(float(sim.player.rot) + PI * 0.5)
-			var back := Vector2.from_angle(float(sim.player.rot) + PI)
-			pos = sim.player.pos + back * (34.0 + float(parked) * 16.0) + side * (18.0 if parked % 2 == 0 else -18.0)
-			rot = float(sim.player.rot)
-			parked += 1
+		if docked:
+			if int(sim.layer) != ScaleFrame.BAND or not bool(sim.player.get("alive", false)):
+				index += 1
+				continue
+			if str(row.get("home", "")) == "base" and typeof(sim.base) == TYPE_DICTIONARY and not sim.base.is_empty():
+				var heading := float(sim.base.get("rot", 0.0))
+				var pad: Dictionary = _smith.pad_pose(berth)
+				berth += 1
+				pos = sim.base.pos + Vector2.from_angle(heading) * float(pad.fore) + Vector2.from_angle(heading + PI * 0.5) * float(pad.side)
+				rot = heading
+				height = CraftForge.PAD_HEIGHT
+			else:
+				var pose: Dictionary = CraftOrders.escort_pose(sim, row, index)
+				pos = pose.pos
+				rot = float(pose.rot)
+				height = float(pose.height)
 		var key := "c%d" % index
 		index += 1
 		var kind := str(row.get("def_id", "fighter"))
 		var holder := _craft_holder(key, kind)
-		_banked(holder, pos, rot, 1.5)
+		_banked(holder, pos, rot, height)
+		_dress_harvest_work(sim, holder, row, pos)
 		if Game.zoom > 0.9 and str(row.get("state", "")) != "docked":
 			_tag(str(row.get("name", kind)), chart(pos + Vector2(14.0, 10.0), 8.0), Color("d7e6c8"), 12)
+
+
+func _sync_base(sim) -> void:
+	var node := get_node_or_null("Mothership") as Node3D
+	var live := false
+	if typeof(sim.base) == TYPE_DICTIONARY:
+		live = not (sim.base as Dictionary).is_empty()
+	if not live:
+		if node != null:
+			node.visible = false
+		return
+	if node == null:
+		node = Node3D.new()
+		node.name = "Mothership"
+		_assemble_craft(node, "mothership")
+		add_child(node)
+	node.visible = int(sim.layer) != ScaleFrame.CHART
+	_banked(node, sim.base.pos, float(sim.base.get("rot", 0.0)), 6.0)
+	if Game.zoom > 0.9 and node.visible:
+		_tag("Mothership", chart(sim.base.pos + Vector2(40.0, 24.0), 22.0), Color("d7e6c8"), 16)
+
+
+func _dress_harvest_work(sim, holder: Node3D, row: Dictionary, _pos: Vector2) -> void:
+	if str(row.get("state", "")) != "working":
+		return
+	var kind := str(row.get("def_id", ""))
+	var order_name := str(row.get("order", ""))
+	if kind != "harvest_drone" and not (kind == "survey_probe" and order_name == "cut"):
+		return
+	var bit := holder.get_node_or_null("Bit") as Node3D
+	if bit != null:
+		bit.rotation.x = float(sim.time) * 16.0
+	var glow := holder.get_node_or_null("CutGlow") as MeshInstance3D
+	if glow == null:
+		glow = MeshInstance3D.new()
+		glow.name = "CutGlow"
+		var orb := SphereMesh.new()
+		orb.radius = 1.15
+		orb.height = 2.3
+		orb.radial_segments = 10
+		orb.rings = 6
+		glow.mesh = orb
+		holder.add_child(glow)
+	glow.position = Vector3(16.6, 2.35, 0.0) if kind == "harvest_drone" else Vector3(11.8, 1.8, 0.0)
+	var pulse := 0.65 + 0.35 * sin(float(sim.time) * 22.0)
+	glow.scale = Vector3.ONE * pulse
+	var tint := Color("ffe0a0") if kind == "harvest_drone" else Color("c8ffe8")
+	_paint_bolt(glow, tint, 3.4 * pulse, 0.7)
 
 
 func _craft_holder(key: String, kind: String) -> Node3D:
@@ -3520,75 +5990,35 @@ func _craft_holder(key: String, kind: String) -> Node3D:
 	var node := Node3D.new()
 	node.name = key
 	node.set_meta("kind", kind)
-	var poly := _craft_poly(kind)
-	var mesh := _prism(poly, 4.6, 0.82)
-	if mesh != null:
-		var body := MeshInstance3D.new()
-		body.name = "Plate"
-		body.mesh = mesh
-		body.material_override = _hull_mat(_craft_color(kind))
-		node.add_child(body)
-		var cap_mesh := _prism(_inset_poly(poly, 0.72), 2.2, 0.8)
-		if cap_mesh != null:
-			var cap := MeshInstance3D.new()
-			cap.name = "Deck"
-			cap.mesh = cap_mesh
-			cap.position.y = 3.8
-			cap.material_override = _hull_mat(_craft_color(kind).lightened(0.12))
-			node.add_child(cap)
-		var lamp := MeshInstance3D.new()
-		lamp.name = "LampNose"
-		var bulb := SphereMesh.new()
-		bulb.radius = 0.55
-		bulb.height = 1.1
-		lamp.mesh = bulb
-		lamp.position = Vector3(8.0, 4.2, 0.0)
-		var glow := StandardMaterial3D.new()
-		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		glow.albedo_color = Color("f2e2c4")
-		glow.emission_enabled = true
-		glow.emission = Color("f2e2c4")
-		glow.emission_energy_multiplier = 1.4
-		lamp.material_override = glow
-		node.add_child(lamp)
-		var canopy := MeshInstance3D.new()
-		canopy.name = "Glass"
-		var pane_mesh := BoxMesh.new()
-		pane_mesh.size = Vector3(2.8, 0.9, 1.4)
-		canopy.mesh = pane_mesh
-		canopy.position = Vector3(2.4, 5.2, 0.0)
-		var pane := ShaderMaterial.new()
-		pane.shader = _glass_shader
-		pane.set_shader_parameter("albedo", Color(0.55, 0.82, 0.86, 0.35))
-		canopy.material_override = pane
-		node.add_child(canopy)
-		var nozzle := MeshInstance3D.new()
-		nozzle.name = "Exhaust"
-		nozzle.mesh = _plume_mesh(6.5, 0.7)
-		nozzle.position = Vector3(-7.2, 2.2, 0.0)
-		var burn := ShaderMaterial.new()
-		burn.shader = _plume_shader
-		burn.set_shader_parameter("albedo", Color(0.95, 0.62, 0.28, 0.45))
-		burn.set_shader_parameter("core", 0.35)
-		nozzle.material_override = burn
-		node.add_child(nozzle)
+	_assemble_craft(node, kind)
 	add_child(node)
 	_craft[key] = node
 	return node
 
 
-func _craft_poly(kind: String) -> PackedVector2Array:
-	match kind:
-		"survey_probe":
-			return PackedVector2Array([Vector2(12, 0), Vector2(2, 1.7), Vector2(-8, 1.2), Vector2(-8, -1.2), Vector2(2, -1.7)])
-		"harvest_drone":
-			return PackedVector2Array([Vector2(5.5, 4.6), Vector2(5.5, -4.6), Vector2(-5, -4), Vector2(-5, 4)])
-		"salvage_tender":
-			return PackedVector2Array([Vector2(8, 3), Vector2(3, 5.2), Vector2(-7.5, 4.4), Vector2(-7.5, -4.4), Vector2(3, -5.2), Vector2(8, -3)])
-		"away_shuttle":
-			return PackedVector2Array([Vector2(9, 0), Vector2(1.5, 4), Vector2(-6.5, 3.2), Vector2(-6.5, -3.2), Vector2(1.5, -4)])
-		_:
-			return PackedVector2Array([Vector2(11, 0), Vector2(1, 2), Vector2(-3.5, 6), Vector2(-1.2, 0), Vector2(-3.5, -6), Vector2(1, -2)])
+func pose_craft(kind: String) -> Node3D:
+	var node := Node3D.new()
+	node.name = "Craft"
+	node.set_meta("kind", kind)
+	_assemble_craft(node, kind)
+	return node
+
+
+func _craft_bell(node: Node3D, part_name: String, at: Vector3, mouth: float, length: float) -> void:
+	var bell := MeshInstance3D.new()
+	bell.name = part_name
+	bell.mesh = _bell_mesh(length, mouth * 0.42, mouth)
+	bell.position = at
+	var iron := _metal(Color("1c1612"))
+	iron.emission_enabled = true
+	iron.emission = Color("c47a3a")
+	iron.emission_energy_multiplier = 0.2
+	bell.material_override = iron
+	node.add_child(bell)
+
+
+func _assemble_craft(node: Node3D, kind: String) -> void:
+	_smith.build(node, kind, _craft_color(kind))
 
 
 func _craft_color(kind: String) -> Color:
@@ -3601,6 +6031,30 @@ func _craft_color(kind: String) -> Color:
 			return Color("c47a4a")
 		"away_shuttle":
 			return Color("d7d2c4")
+		"dart_drone":
+			return Color("4ec8e0")
+		"sting_drone":
+			return Color("e0a24a")
+		"wasp_drone":
+			return Color("e07038")
+		"fang_drone":
+			return Color("8a2030")
+		"lance_drone":
+			return Color("8a8e96")
+		"picket_drone":
+			return Color("9fd0e8")
+		"manifest_drone":
+			return Color("8ea4a8")
+		"hawser_drone":
+			return Color("c4844a")
+		"sentry_drone":
+			return Color("6e7a4a")
+		"repair_drone":
+			return Color("c9d4c4")
+		"mothership":
+			return Color("5c6a72")
+		"livestock_lighter":
+			return Color("c4b48a")
 		_:
 			return Color("c4512c")
 
@@ -3789,17 +6243,18 @@ func _place_plumes(holder: Node3D, ship: Dictionary) -> void:
 	var forward := Vector2.from_angle(float(ship.get("rot", 0.0)))
 	var vel := Vector2(ship.get("vel", Vector2.ZERO))
 	var stretch := clampf(vel.dot(forward) / 340.0, 0.0, 1.35)
-	var length := flick * lerpf(0.22, 3.15, burn) * lerpf(0.82, 1.18, clampf(stretch, 0.0, 1.0))
+	var length := flick * lerpf(0.22, 3.15, burn) * lerpf(0.55, 1.7, clampf(stretch, 0.0, 1.0))
 	var girth := lerpf(0.72, 2.15, burn) * (0.84 + 0.16 * flick)
 	var tail := float(holder.get_meta("tail", -20.0))
 	var crown := float(holder.get_meta("crown", 16.0))
 	var sheath := Color(1.0, 0.48, 0.12, 0.88).lerp(Color(0.45, 0.78, 1.0, 0.92), smoothstep(0.5, 0.92, burn))
 	var heart := Color(1.0, 0.9, 0.62, 0.92).lerp(Color(0.78, 0.92, 1.0, 0.96), smoothstep(0.5, 0.92, burn))
 	var gimbal := -float(holder.get_meta("bank", 0.0)) * 5.5
+	var cant := gimbal + _slip_cant(ship)
 	var exhaust := holder.get_node_or_null("Exhaust") as MeshInstance3D
 	if exhaust != null:
 		exhaust.visible = lit
-		exhaust.position.z = gimbal
+		exhaust.position.z = cant
 		exhaust.scale = Vector3(length, girth, girth)
 		var sheath_mat := exhaust.material_override as ShaderMaterial
 		if sheath_mat != null:
@@ -3807,7 +6262,7 @@ func _place_plumes(holder: Node3D, ship: Dictionary) -> void:
 	var core := holder.get_node_or_null("ExhaustCore") as MeshInstance3D
 	if core != null:
 		core.visible = lit
-		core.position.z = gimbal
+		core.position.z = cant
 		core.scale = Vector3(length * 0.92, girth * 0.72, girth * 0.72)
 		var white := core.material_override as ShaderMaterial
 		if white != null:
@@ -3827,15 +6282,16 @@ func _place_plumes(holder: Node3D, ship: Dictionary) -> void:
 		holder.add_child(bloom)
 	if bloom != null:
 		bloom.visible = burn > 0.62
-		bloom.position.z = gimbal
+		bloom.position.z = cant
 		if bloom.visible:
 			bloom.scale = Vector3(length * 1.08, girth * 1.65, girth * 1.65)
 			var haze := bloom.material_override as ShaderMaterial
 			if haze != null:
 				haze.set_shader_parameter("albedo", Color(0.35, 0.7, 1.0, 0.28 + 0.22 * burn))
 	var flank := maxf(crown * 0.16, 2.4)
-	_side_plume(holder, "JetPort", Vector3(tail + 0.4, crown * 0.3, flank), lit, strafe > 0.15, boosting, t)
-	_side_plume(holder, "JetStbd", Vector3(tail + 0.4, crown * 0.3, -flank), lit, strafe < -0.15, boosting, t + 0.4)
+	var yaw := float(ship.get("yaw_hold", 0.0))
+	_side_plume(holder, "JetPort", Vector3(tail + 0.4, crown * 0.3, flank), lit, strafe > 0.15 or yaw < -0.15, boosting, t)
+	_side_plume(holder, "JetStbd", Vector3(tail + 0.4, crown * 0.3, -flank), lit, strafe < -0.15 or yaw > 0.15, boosting, t + 0.4)
 	var nose := float(holder.get_meta("nose", 24.0))
 	var brake := _side_plume(holder, "RetroJet", Vector3(nose * 0.9, crown * 0.34, 0.0), retro, retro, false, t + 0.8)
 	if brake != null:
@@ -3902,6 +6358,23 @@ func _side_plume(holder: Node3D, plume_name: String, at: Vector3, idle: bool, ha
 	return jet
 
 
+func _light_turn_jets(holder: Node3D, ship: Dictionary) -> void:
+	var gear := holder.get_node_or_null("Gearjets0")
+	if gear == null:
+		return
+	var hot := clampf(absf(float(ship.get("yaw_hold", 0.0))), 0.0, 1.0)
+	_light_throats(gear, hot)
+
+
+func _light_throats(node: Node, hot: float) -> void:
+	if str(node.name) == "Throat" and node is MeshInstance3D:
+		var mat: Material = (node as MeshInstance3D).material_override
+		if mat is StandardMaterial3D:
+			(mat as StandardMaterial3D).emission_energy_multiplier = lerpf(0.35, 2.6, hot)
+	for child in node.get_children():
+		_light_throats(child, hot)
+
+
 func _place_jet_light(holder: Node3D, ship: Dictionary) -> void:
 	var thrusting := bool(ship.get("thrusting", false))
 	var boosting := bool(ship.get("boosting", false))
@@ -3957,16 +6430,65 @@ func _flat_xform(pos: Vector2, rot: float, height: float) -> Transform3D:
 	return Transform3D(Basis(x_axis, Vector3.UP, z_axis), chart(pos, height))
 
 
+func _skin_tone(part: String, body: Color, accent: Color) -> Color:
+	if part == "Deck":
+		return Color("8a9088").lerp(body.lightened(0.18), 0.72)
+	if part.begins_with("Trim"):
+		return accent
+	if part.begins_with("Armor") or part.begins_with("CombatPlate") or part.begins_with("CheekArmor") or part.begins_with("ArmorBrick"):
+		return body.darkened(0.08).lerp(Color("4a545c"), 0.42)
+	if part.begins_with("Tank") or part.begins_with("CargoMod") or part.begins_with("CargoTank") or part.begins_with("BayPlate"):
+		return body.lerp(Color("7a868c"), 0.28).lightened(0.04)
+	if part.begins_with("Beam") or part.begins_with("Rib") or part == "Gantry" or part.begins_with("RibFrame"):
+		return Color("2e363c").lerp(body, 0.3)
+	if part.begins_with("Panel") or part.begins_with("Vane") or part.begins_with("Cheek"):
+		return body.lightened(0.1)
+	if part == "Keel" or part.begins_with("Chine") or part.begins_with("Skid"):
+		return body.darkened(0.12).lerp(Color("3a444c"), 0.28)
+	return body.lightened(0.14)
+
+
 func _hull_part(part: String) -> bool:
 	if part == "Plate" or part == "Deck" or part == "Keel" or part.begins_with("TrimC"):
 		return true
 	if part.begins_with("Panel") or part.begins_with("Vane") or part.begins_with("Rib") or part.begins_with("Cheek"):
+		return true
+	if part.begins_with("Armor") or part.begins_with("CombatPlate") or part.begins_with("CargoMod") or part.begins_with("Tank"):
+		return true
+	if part.begins_with("Beam") or part.begins_with("Hardpoint") or part.begins_with("CheekArmor") or part.begins_with("ArmorBrick"):
+		return true
+	if part.begins_with("BayPlate") or part.begins_with("RibFrame") or part.begins_with("CargoTank") or part == "Gantry":
 		return true
 	if part == "Collar" or part == "Frame" or part.begins_with("Skid") or part.begins_with("Chine"):
 		return true
 	if part.begins_with("Trim") and part.trim_prefix("Trim").is_valid_int():
 		return true
 	return false
+
+
+func _slip_cant(ship: Dictionary) -> float:
+	var vel: Vector2 = ship.get("vel", Vector2.ZERO)
+	if vel.length() < 20.0:
+		return 0.0
+	var forward := Vector2.from_angle(float(ship.get("rot", 0.0)))
+	var right := Vector2(-forward.y, forward.x)
+	return clampf(vel.dot(right) / 160.0, -1.0, 1.0) * 1.8
+
+
+func _plate_heat(ship: Dictionary) -> float:
+	var therm := clampf(float(ship.get("therm", 0.0)) / 100.0, 0.0, 1.0)
+	if bool(ship.get("overheat", false)):
+		therm = maxf(therm, 0.85)
+	return therm
+
+
+func _set_plate_heat(node: Node, heat: float) -> void:
+	if node is MeshInstance3D:
+		var mat: Material = (node as MeshInstance3D).material_override
+		if mat is ShaderMaterial and (mat as ShaderMaterial).shader == _hull_shader:
+			(mat as ShaderMaterial).set_shader_parameter("plate_heat", heat)
+	for child in node.get_children():
+		_set_plate_heat(child, heat)
 
 
 func _paint_hull(node: Node, color: Color, accent: Color = Color(0, 0, 0, 0)) -> void:
@@ -4073,11 +6595,67 @@ func _canopy_quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector
 	st.add_vertex(d)
 
 
-func _hull_mat(color: Color) -> ShaderMaterial:
+func _hull_mat(color: Color, accent: Color = Color(0, 0, 0, 0)) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = _hull_shader
 	mat.set_shader_parameter("albedo", color)
+	mat.set_shader_parameter("tile", 3.0)
+	mat.set_shader_parameter("aft_x", -28.0)
+	if accent.a > 0.0:
+		mat.set_shader_parameter("accent", accent)
 	return mat
+
+
+func _hull_palette(class_id: String) -> Dictionary:
+	var paint := Color("9aa2a8")
+	var deck := Color("aab2b8")
+	var trim := Color(0, 0, 0, 0)
+	if class_id == "vesper" or class_id == "lumen":
+		paint = Color("6e9698")
+		deck = Color("8aaeb0")
+		trim = Color("9fd0c8")
+		trim.a = 0.72
+	elif class_id == "anvil":
+		paint = Color("7e6e5c")
+		deck = Color("9a8a76")
+		trim = Color("c4a06a")
+		trim.a = 0.42
+	elif class_id == "kestrel" or class_id == "casque":
+		paint = Color("6e6258")
+		deck = Color("8a7a72")
+		trim = Color("c4512c")
+		trim.a = 0.55
+	elif class_id == "alidade":
+		paint = Color("6a7880")
+		deck = Color("8a98a0")
+		trim = Color("8ec8ff")
+		trim.a = 0.48
+	elif class_id == "brig":
+		paint = Color("5c2a22")
+		deck = Color("6a4038")
+		trim = Color("e0a24a")
+		trim.a = 0.55
+	elif class_id == "yawl":
+		paint = Color("4c2c30")
+		deck = Color("6e4044")
+		trim = Color("d4c4a8")
+		trim.a = 0.55
+	elif class_id == "lugger":
+		paint = Color("241816")
+		deck = Color("3a302c")
+		trim = Color("a84838")
+		trim.a = 0.5
+	elif class_id == "pinnace":
+		paint = Color("3d2a1c")
+		deck = Color("5a4030")
+		trim = Color("e4c27a")
+		trim.a = 0.55
+	elif class_id == "ketch":
+		paint = Color("243028")
+		deck = Color("3a4a3c")
+		trim = Color("c4a15a")
+		trim.a = 0.55
+	return {"paint": paint, "deck": deck, "trim": trim}
 
 
 func _pulse_lamps(holder: Node3D) -> void:
@@ -4085,6 +6663,8 @@ func _pulse_lamps(holder: Node3D) -> void:
 	_pulse_lamp(holder, "LampPort", 0.45 + 0.55 * maxf(sin(t * 3.2), 0.0))
 	_pulse_lamp(holder, "LampStbd", 0.45 + 0.55 * maxf(sin(t * 3.2 + 2.2), 0.0))
 	_pulse_lamp(holder, "LampNose", 0.7 + 0.3 * sin(t * 1.6))
+	_pulse_lamp(holder, "LampHeart", 0.62 + 0.38 * sin(t * 2.1))
+	_pulse_lamp(holder, "RamLamp", 0.5 + 0.5 * maxf(sin(t * 1.5), 0.0))
 
 
 func _pulse_lamp(holder: Node3D, lamp_name: String, energy: float) -> void:
@@ -4127,10 +6707,10 @@ func _port_slit(holder: Node3D, part_name: String, size: Vector3, at: Vector3) -
 	node.position = at
 	var glow := StandardMaterial3D.new()
 	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	glow.albedo_color = Color(0.16, 0.24, 0.28)
+	glow.albedo_color = Color(0.42, 0.78, 0.82)
 	glow.emission_enabled = true
-	glow.emission = Color(0.55, 0.82, 0.76)
-	glow.emission_energy_multiplier = 0.7
+	glow.emission = Color(0.82, 0.98, 0.92)
+	glow.emission_energy_multiplier = 2.4
 	node.material_override = glow
 	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	holder.add_child(node)
@@ -4292,9 +6872,208 @@ func _sync_band() -> void:
 func _metal(color: Color) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
-	mat.metallic = 0.62
-	mat.roughness = 0.38
+	mat.metallic = 0.72
+	mat.roughness = 0.32
+	mat.specular_mode = BaseMaterial3D.SPECULAR_SCHLICK_GGX
 	return mat
+
+
+func ensure_stock_shaders() -> void:
+	if _rock_shader == null:
+		_rock_shader = _compile(ROCK_SHADER)
+	if _ice_shader == null:
+		_ice_shader = _compile(ICE_SHADER)
+	if _rubble_shader == null:
+		_rubble_shader = _compile(RUBBLE_SHADER)
+	if _plate_shader == null:
+		_plate_shader = _compile(PLATE_SHADER)
+
+
+func dress_stock(chunk: MeshInstance3D, id: String, tint: Color, vein: Color, seed: int) -> void:
+	ensure_stock_shaders()
+	var radius := 18.0
+	var mix := float(absi(seed) % 97) * 0.1
+	if id == "ice_spall":
+		chunk.mesh = _ice_mesh(seed + 3, radius)
+		var ice := ShaderMaterial.new()
+		ice.shader = _ice_shader
+		ice.set_shader_parameter("seed", mix)
+		chunk.material_override = ice
+	elif id == "copper_slag":
+		chunk.mesh = _crystal_mesh(seed + 7, radius)
+		var slag := ShaderMaterial.new()
+		slag.shader = _rock_shader
+		slag.set_shader_parameter("albedo", tint)
+		slag.set_shader_parameter("vein_color", vein)
+		slag.set_shader_parameter("seed", mix)
+		chunk.material_override = slag
+	elif id == "hull_plate":
+		chunk.mesh = _wreck_mesh(seed + 40, radius)
+		chunk.material_override = _plate_mat(tint, float(seed) * 0.37)
+	elif id == "salvage_parts":
+		chunk.mesh = _wreck_mesh(seed + 11, radius * 0.72)
+		chunk.material_override = _plate_mat(tint, float(seed) * 0.21)
+	elif id == "raw_mass":
+		chunk.mesh = _rubble_mesh(seed + 5, radius)
+		chunk.material_override = _rubble_mat(tint, float(seed) * 0.13)
+	elif id == "claim_core":
+		chunk.mesh = _crystal_mesh(seed + 19, radius * 0.72)
+		var core := StandardMaterial3D.new()
+		core.albedo_color = Color("4ec8d8")
+		core.metallic = 0.42
+		core.roughness = 0.16
+		core.emission_enabled = true
+		core.emission = Color("3cf0ff")
+		core.emission_energy_multiplier = 1.7
+		chunk.material_override = core
+	elif id == "dock_crate" or id == "food_mass":
+		chunk.mesh = _crate_mesh(seed + 4, radius)
+		var crate_tone := Color("6a8a48") if id == "food_mass" else Color("8a6a3c")
+		chunk.material_override = _plate_mat(crate_tone, float(seed) * 0.19)
+	elif id == "glasswheat" or id == "voidbean" or id == "ember_kale" or id == "ghost_gourd" or id == "fodder":
+		chunk.mesh = _sheaf_mesh(seed + 8, radius)
+		var crop := Color("c4a24a")
+		if id == "voidbean":
+			crop = Color("5a7a48")
+		elif id == "ember_kale":
+			crop = Color("c45a32")
+		elif id == "ghost_gourd":
+			crop = Color("c8c4b0")
+		elif id == "fodder":
+			crop = Color("9a7a3c")
+		var crop_mat := StandardMaterial3D.new()
+		crop_mat.albedo_color = crop
+		crop_mat.roughness = 0.62
+		crop_mat.metallic = 0.04
+		chunk.material_override = crop_mat
+	elif id == "milk_analogue":
+		chunk.mesh = _can_mesh(seed + 2, radius)
+		chunk.material_override = _plate_mat(Color("d8d4c8"), float(seed) * 0.08)
+	elif id == "scrap":
+		chunk.mesh = _wreck_mesh(seed + 22, radius * 0.82)
+		chunk.material_override = _plate_mat(Color("6a6460"), float(seed) * 0.27)
+	elif id == "aluminum_bar" or id == "steel_bar":
+		chunk.mesh = _ingot_mesh(seed + 13, radius)
+		var bar := StandardMaterial3D.new()
+		bar.albedo_color = tint
+		var light := id == "aluminum_bar"
+		bar.metallic = 0.88 if light else 0.76
+		bar.roughness = 0.18 if light else 0.32
+		bar.emission_enabled = true
+		bar.emission = vein
+		bar.emission_energy_multiplier = 0.28 if light else 0.12
+		chunk.material_override = bar
+	else:
+		chunk.mesh = _rock_mesh(seed + 3, radius)
+		var stone := ShaderMaterial.new()
+		stone.shader = _rock_shader
+		stone.set_shader_parameter("albedo", tint)
+		stone.set_shader_parameter("vein_color", vein)
+		stone.set_shader_parameter("seed", mix)
+		chunk.material_override = stone
+	chunk.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+func _plate_mat(color: Color, seed: float) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = _plate_shader
+	mat.set_shader_parameter("albedo", color)
+	mat.set_shader_parameter("seed", seed)
+	return mat
+
+
+func _crate_mesh(seed: int, radius: float) -> ArrayMesh:
+	var key := "crate|%d|%d" % [posmod(seed, 7), int(round(radius))]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_add_box(st, Transform3D.IDENTITY, Vector3(radius * 1.18, radius * 0.74, radius * 0.94))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, radius * 0.42, 0.0)), Vector3(radius * 1.24, radius * 0.12, radius * 1.0))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, 0.0, 0.0)), Vector3(radius * 1.22, radius * 0.1, radius * 0.98))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(-radius * 0.38, 0.0, 0.0)), Vector3(radius * 0.1, radius * 0.78, radius * 0.98))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(radius * 0.38, 0.0, 0.0)), Vector3(radius * 0.1, radius * 0.78, radius * 0.98))
+	st.generate_normals()
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _sheaf_mesh(seed: int, radius: float) -> ArrayMesh:
+	var key := "sheaf|%d|%d" % [posmod(seed, 9), int(round(radius))]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = absi(seed) + 17
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, -radius * 0.38, 0.0)), Vector3(radius * 0.86, radius * 0.22, radius * 0.86))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, radius * 0.02, 0.0)), Vector3(radius * 0.48, radius * 0.9, radius * 0.48))
+	for i in 11:
+		var lean := rng.randf_range(-0.28, 0.28)
+		var tilt := rng.randf_range(-0.22, 0.22)
+		var basis := Basis.from_euler(Vector3(lean, float(i) * 0.52, tilt))
+		var at := Vector3(rng.randf_range(-0.2, 0.2), radius * 0.12, rng.randf_range(-0.2, 0.2)) * radius
+		_add_box(st, Transform3D(basis, at), Vector3(radius * 0.18, radius * 1.12, radius * 0.18))
+	st.generate_normals()
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _ingot_mesh(seed: int, radius: float) -> ArrayMesh:
+	var key := "ingot|%d|%d" % [posmod(seed, 5), int(round(radius))]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, -radius * 0.3, 0.0)), Vector3(radius * 1.28, radius * 0.18, radius * 0.42))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(radius * 0.06, 0.0, radius * 0.04)), Vector3(radius * 1.2, radius * 0.16, radius * 0.38))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(-radius * 0.05, radius * 0.28, -radius * 0.03)), Vector3(radius * 1.14, radius * 0.16, radius * 0.36))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(-radius * 1.18, -radius * 0.3, 0.0)), Vector3(radius * 0.1, radius * 0.22, radius * 0.46))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(radius * 1.18, -radius * 0.3, 0.0)), Vector3(radius * 0.1, radius * 0.22, radius * 0.46))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, -radius * 0.18, 0.0)), Vector3(radius * 0.22, radius * 0.06, radius * 0.48))
+	st.generate_normals()
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _can_mesh(seed: int, radius: float) -> ArrayMesh:
+	var key := "can|%d|%d" % [posmod(seed, 5), int(round(radius))]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_add_box(st, Transform3D.IDENTITY, Vector3(radius * 0.62, radius * 1.05, radius * 0.62))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, radius * 0.56, 0.0)), Vector3(radius * 0.7, radius * 0.08, radius * 0.7))
+	_add_box(st, Transform3D(Basis.IDENTITY, Vector3(0.0, -radius * 0.54, 0.0)), Vector3(radius * 0.7, radius * 0.08, radius * 0.7))
+	st.generate_normals()
+	var mesh := st.commit()
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _ice_streak_mesh() -> ArrayMesh:
+	if _mesh_cache.has("ice_streak"):
+		return _mesh_cache["ice_streak"]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var sides := 8
+	for s in sides:
+		var a0 := float(s) / float(sides) * TAU
+		var a1 := float(s + 1) / float(sides) * TAU
+		var nose := Vector3(0.0, 0.0, 0.48)
+		var tail := Vector3(0.0, 0.0, -0.52)
+		var p0 := nose + Vector3(cos(a0) * 0.08, sin(a0) * 0.08, 0.0)
+		var p1 := nose + Vector3(cos(a1) * 0.08, sin(a1) * 0.08, 0.0)
+		var q0 := tail + Vector3(cos(a0) * 0.46, sin(a0) * 0.46, 0.0)
+		var q1 := tail + Vector3(cos(a1) * 0.46, sin(a1) * 0.46, 0.0)
+		_rock_tri(st, p0, q0, p1, Vector3.UP)
+		_rock_tri(st, p1, q0, q1, Vector3.UP)
+	var mesh := st.commit()
+	_mesh_cache["ice_streak"] = mesh
+	return mesh
 
 
 func _rubble_mat(color: Color, seed: float) -> ShaderMaterial:
@@ -4321,20 +7100,20 @@ func _rock_shader_mat(color: Color, seed: float) -> ShaderMaterial:
 	return mat
 
 
-func _rubble_mesh(seed: int, radius: float) -> ArrayMesh:
-	var bucket := int(round(radius))
-	var key := "rubble|%d|%d" % [posmod(seed, 13), bucket]
+func _wreck_mesh(seed: int, radius: float) -> ArrayMesh:
+	var key := "wreck|%d|%d" % [posmod(seed, 9), int(round(radius))]
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = absi(seed) + 91
-	_add_crumple(st, rng, radius, Vector3.ZERO)
-	_add_crumple(st, rng, radius * 0.7, Vector3(radius * 0.98, radius * 0.12, radius * 0.18))
-	_add_crumple(st, rng, radius * 0.62, Vector3(-radius * 0.72, radius * 0.38, radius * 0.58))
-	_add_crumple(st, rng, radius * 0.48, Vector3(radius * 0.12, radius * 0.78, -radius * 0.66))
-	var mesh := st.commit()
+	var mesh: ArrayMesh = EnvForge.wreck(posmod(seed, 64) * 3 + int(round(radius)) % 5, radius)
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _rubble_mesh(seed: int, radius: float) -> ArrayMesh:
+	var key := "rubble|%d|%d" % [posmod(seed, 7), int(round(radius))]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var mesh: ArrayMesh = EnvForge.rubble(posmod(seed, 64) * 3 + int(round(radius)) % 5, radius)
 	_mesh_cache[key] = mesh
 	return mesh
 
@@ -4373,62 +7152,41 @@ func _add_crumple(st: SurfaceTool, rng: RandomNumberGenerator, radius: float, ce
 
 
 func _rock_mesh(seed: int, radius: float) -> ArrayMesh:
-	var bucket := int(round(radius))
-	var key := "rockvol|%d|%d" % [posmod(seed, 11), bucket]
+	var key := "rock|%d|%d" % [posmod(seed, 11), int(round(radius))]
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var lat := 9
-	var lon := 14
-	var rng := RandomNumberGenerator.new()
-	rng.seed = absi(seed) + 17
-	var rads := PackedFloat32Array()
-	rads.resize((lat + 1) * lon)
-	var wobble := 0.0
-	for yi in lat + 1:
-		for xi in lon:
-			wobble = 0.36 + rng.randf() * 1.05
-			if (yi + xi) % 3 == 0:
-				wobble *= 0.55
-			if yi == 0 or yi == lat:
-				wobble = 0.72 + rng.randf() * 0.2
-			rads[yi * lon + xi] = wobble
-	var a := Vector3.ZERO
-	var b := Vector3.ZERO
-	var c := Vector3.ZERO
-	var d := Vector3.ZERO
-	var nrm := Vector3.UP
-	for y0 in lat:
-		for x0 in lon:
-			a = _rock_vert(y0, x0, lat, lon, rads, radius)
-			b = _rock_vert(y0, x0 + 1, lat, lon, rads, radius)
-			c = _rock_vert(y0 + 1, x0 + 1, lat, lon, rads, radius)
-			d = _rock_vert(y0 + 1, x0, lat, lon, rads, radius)
-			nrm = (b - a).cross(d - a)
-			if nrm.length_squared() < 0.0001:
-				nrm = a.normalized()
-			_rock_tri(st, a, b, d, nrm.normalized())
-			nrm = (c - b).cross(d - b)
-			if nrm.length_squared() < 0.0001:
-				nrm = d.normalized()
-			_rock_tri(st, b, c, d, nrm.normalized())
-	_add_rock_lobe(st, rng, radius * 0.62, Vector3(radius * 0.58, radius * 0.1, radius * 0.16))
-	_add_rock_lobe(st, rng, radius * 0.5, Vector3(-radius * 0.34, radius * 0.2, radius * 0.52))
-	var mesh := st.commit()
+	var mesh: ArrayMesh = EnvForge.rock(posmod(seed, 64) * 3 + int(round(radius)) % 5, radius)
 	_mesh_cache[key] = mesh
 	return mesh
 
 
-func _add_rock_lobe(st: SurfaceTool, rng: RandomNumberGenerator, radius: float, center: Vector3) -> void:
-	var lat := 5
-	var lon := 7
+func _crystal_mesh(seed: int, radius: float) -> ArrayMesh:
+	var key := "crystal|%d|%d" % [posmod(seed, 9), int(round(radius))]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var mesh: ArrayMesh = EnvForge.crystal(posmod(seed, 64) * 3 + int(round(radius)) % 5, radius)
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _ice_mesh(seed: int, radius: float) -> ArrayMesh:
+	var key := "ice|%d|%d" % [posmod(seed, 11), int(round(radius))]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var mesh: ArrayMesh = EnvForge.ice(posmod(seed, 64) * 3 + int(round(radius)) % 5, radius)
+	_mesh_cache[key] = mesh
+	return mesh
+
+
+func _add_rock_lobe(st: SurfaceTool, rng: RandomNumberGenerator, radius: float, center: Vector3, calm: bool = false) -> void:
+	var lat := 8 if calm else 5
+	var lon := 10 if calm else 7
 	var rads := PackedFloat32Array()
 	rads.resize((lat + 1) * lon)
 	var wobble := 0.0
 	for yi in lat + 1:
 		for xi in lon:
-			wobble = 0.4 + rng.randf() * 0.95
+			wobble = 0.86 + rng.randf() * 0.16 if calm else 0.4 + rng.randf() * 0.95
 			rads[yi * lon + xi] = wobble
 	var a := Vector3.ZERO
 	var b := Vector3.ZERO
@@ -4470,6 +7228,40 @@ func _rock_tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, nrm: Vector3
 	st.add_vertex(c)
 
 
+func _add_box(st: SurfaceTool, xf: Transform3D, size: Vector3) -> void:
+	var h := size * 0.5
+	var p := PackedVector3Array([
+		xf * Vector3(-h.x, -h.y, -h.z),
+		xf * Vector3(h.x, -h.y, -h.z),
+		xf * Vector3(h.x, h.y, -h.z),
+		xf * Vector3(-h.x, h.y, -h.z),
+		xf * Vector3(-h.x, -h.y, h.z),
+		xf * Vector3(h.x, -h.y, h.z),
+		xf * Vector3(h.x, h.y, h.z),
+		xf * Vector3(-h.x, h.y, h.z),
+	])
+	var faces := [
+		[0, 1, 2, 3],
+		[5, 4, 7, 6],
+		[4, 0, 3, 7],
+		[1, 5, 6, 2],
+		[3, 2, 6, 7],
+		[4, 5, 1, 0],
+	]
+	for face in faces:
+		var a: Vector3 = p[int(face[0])]
+		var b: Vector3 = p[int(face[1])]
+		var c: Vector3 = p[int(face[2])]
+		var d: Vector3 = p[int(face[3])]
+		var nrm := (b - a).cross(d - a)
+		if nrm.length_squared() < 0.0001:
+			nrm = Vector3.UP
+		else:
+			nrm = nrm.normalized()
+		_rock_tri(st, a, b, c, nrm)
+		_rock_tri(st, a, c, d, nrm)
+
+
 func _ice_sparks(ring: MeshInstance3D, mid: float, band: float) -> void:
 	if ring.get_node_or_null("Floe") != null:
 		return
@@ -4497,76 +7289,92 @@ func _ice_sparks(ring: MeshInstance3D, mid: float, band: float) -> void:
 		floe.add_child(chip)
 
 
+func _dress_post(holder: Node3D, class_id: String, post: String, height: float) -> void:
+	if post == "":
+		return
+	var nose := float(holder.get_meta("nose", 20.0))
+	var tail := float(holder.get_meta("tail", -12.0))
+	if class_id == "skiff" or class_id == "brig" or class_id == "yawl" or class_id == "lugger" or class_id == "pinnace" or class_id == "ketch":
+		_kit(holder, "BountyPlate", Vector3(2.4, 1.6, 0.18), Vector3(nose * 0.15, height * 1.15, 0.0), Color("e0a24a"))
+		_nav_lamp(holder, "BountyLamp", Vector3(nose * 0.15, height * 1.45, 0.0), Color("e0a24a"), 0.7)
+		if class_id == "brig":
+			_cyl(holder, "BrigSpine", 0.48, maxf(nose * 0.9, 12.0), Vector3(0.0, height * 0.62, 0.0), "x", Color("2a2420"))
+		elif class_id == "yawl":
+			_cyl(holder, "YawlSpar", 0.22, maxf(nose * 1.15, 16.0), Vector3(nose * 0.35, height * 0.7, 0.0), "x", Color("d4c4a8"))
+			_nav_lamp(holder, "YawlLens", Vector3(nose + 2.0, height * 0.7, 0.0), Color("f2e6c8"), 0.85)
+		elif class_id == "lugger":
+			_kit(holder, "LuggerCowl", Vector3(14.0, 1.1, 10.0), Vector3(0.0, height * 0.85, 0.0), Color("121418"))
+			_cyl(holder, "LuggerMaw", 0.7, 6.0, Vector3(nose * 0.55, height * 0.5, 0.0), "x", Color("1a1614"))
+		elif class_id == "pinnace":
+			_cyl(holder, "PinnaceRam", 0.36, 11.0, Vector3(nose * 0.72, height * 0.28, 0.0), "x", Color("e4c27a"))
+		elif class_id == "ketch":
+			_cyl(holder, "KetchBin", 1.15, 5.2, Vector3(-2.0, height * 0.72, 3.6), "x", Color("6a5a40"))
+			_cyl(holder, "KetchBinS", 1.15, 5.2, Vector3(-2.0, height * 0.72, -3.6), "x", Color("6a5a40"))
+		if post == "interceptor":
+			_cyl(holder, "PostSpike", 0.55, 14.0, Vector3(nose + 4.0, height * 0.45, 0.0), "x", Color("d8e4ea"))
+			_cyl(holder, "PostGun", 0.28, 6.0, Vector3(nose * 0.4, height * 0.7, 1.4), "x", Color("16181a"))
+		elif post == "kite":
+			_kit(holder, "PostFinP", Vector3(10.0, 0.35, 8.0), Vector3(tail * 0.2, height * 0.4, 6.5), Color("8a3030"))
+			_kit(holder, "PostFinS", Vector3(10.0, 0.35, 8.0), Vector3(tail * 0.2, height * 0.4, -6.5), Color("8a3030"))
+		elif post == "raider":
+			_kit(holder, "PostClawP", Vector3(6.5, 0.7, 0.35), Vector3(nose * 0.55, height * 0.35, 4.2), Color("e4d8c4"))
+			_kit(holder, "PostClawS", Vector3(6.5, 0.7, 0.35), Vector3(nose * 0.55, height * 0.35, -4.2), Color("e4d8c4"))
+		elif post == "ambush":
+			_kit(holder, "PostBaffle", Vector3(8.0, 1.4, 6.0), Vector3(0.0, height * 0.2, 0.0), Color("121418"))
+		elif post == "claim_jumper":
+			_cyl(holder, "PostStake", 0.35, 9.0, Vector3(nose * 0.2, height * 0.9, 0.0), "y", Color("c8b48a"))
+			_nav_lamp(holder, "PostBeacon", Vector3(nose * 0.2, height * 1.35, 0.0), Color("e0a24a"), 1.1)
+	elif class_id == "cutter":
+		if post == "range":
+			_cyl(holder, "RangeRail", 0.42, maxf(nose * 0.9, 8.0), Vector3(nose * 0.35, height * 0.95, 0.0), "x", Color("d8dde4"))
+			_kit(holder, "RangeRest", Vector3(3.2, 0.8, 1.6), Vector3(nose * 0.2, height * 0.85, 0.0), Color("3a4248"))
+		elif post == "bailiff":
+			_kit(holder, "WritBoard", Vector3(0.4, 3.2, 4.4), Vector3(nose * 0.15, height * 1.15, 2.8), Color("e6dcc4"))
+			_nav_lamp(holder, "WritLamp", Vector3(nose * 0.45, height * 0.8, 0.0), Color("f0e2a0"), 0.9)
+		elif post == "escort":
+			_nav_lamp(holder, "EscortLamp", Vector3(nose * 0.3, height * 0.7, 3.2), Color("9fd0ff"), 0.85)
+			_kit(holder, "EscortWing", Vector3(6.0, 0.3, 3.2), Vector3(0.0, height * 0.35, 5.0), Color("3e5348"))
+		elif post == "factor" or post == "clerk":
+			_kit(holder, "ScalePan", Vector3(3.4, 0.28, 3.4), Vector3(nose * 0.25, height * 1.05, 0.0), Color("d8c48a"))
+			_cyl(holder, "ScalePost", 0.22, 2.4, Vector3(nose * 0.25, height * 0.85, 0.0), "y", Color("3a4248"))
+		elif post == "flee":
+			_craft_bell(holder, "FleeBellP", Vector3(tail, height * 0.35, 2.2), 0.7, 1.6)
+			_craft_bell(holder, "FleeBellS", Vector3(tail, height * 0.35, -2.2), 0.7, 1.6)
+		elif post == "patrol":
+			_cyl(holder, "WatchMast", 0.2, 6.5, Vector3(0.0, height * 1.3, 0.0), "y", Color("c8d0d4"))
+		elif post == "trader" or post == "orbit":
+			_cyl(holder, "CargoCan", 1.35, 4.2, Vector3(nose * 0.15, height * 1.15, 2.4), "x", Color("c4b48a"))
+			_cyl(holder, "CargoCanS", 1.35, 4.2, Vector3(nose * 0.15, height * 1.15, -2.4), "x", Color("c4b48a"))
+		elif post == "tug" or post == "tow":
+			_cyl(holder, "TowBoom", 0.28, maxf(nose * 0.7, 8.0), Vector3(nose * 0.55, height * 0.7, 0.0), "x", Color("8a5a32"))
+			_kit(holder, "TowCollar", Vector3(1.6, 1.2, 1.6), Vector3(nose * 0.85, height * 0.55, 0.0), Color("3a4248"))
+		elif post == "herd" or post == "herdsman":
+			_kit(holder, "PenRail", Vector3(6.2, 0.22, 0.22), Vector3(0.0, height * 1.05, 3.2), Color("e8e0d0"))
+			_kit(holder, "PenRailS", Vector3(6.2, 0.22, 0.22), Vector3(0.0, height * 1.05, -3.2), Color("e8e0d0"))
+	elif class_id == "anvil":
+		if post == "trader" or post == "orbit":
+			_cyl(holder, "CargoCan", 1.6, 5.4, Vector3(nose * 0.2, height * 1.2, 3.2), "x", Color("c4b48a"))
+			_cyl(holder, "CargoCanS", 1.6, 5.4, Vector3(nose * 0.2, height * 1.2, -3.2), "x", Color("c4b48a"))
+		elif post == "tug" or post == "tow":
+			_cyl(holder, "TowBoom", 0.34, maxf(nose * 0.8, 10.0), Vector3(nose * 0.45, height * 0.85, 0.0), "x", Color("8a5a32"))
+			_kit(holder, "TowCollar", Vector3(2.2, 1.4, 2.2), Vector3(nose * 0.82, height * 0.6, 0.0), Color("3a4248"))
+		elif post == "herd" or post == "herdsman":
+			_kit(holder, "PenRail", Vector3(8.4, 0.28, 0.28), Vector3(0.0, height * 1.12, 4.2), Color("e8e0d0"))
+			_kit(holder, "PenRailS", Vector3(8.4, 0.28, 0.28), Vector3(0.0, height * 1.12, -4.2), Color("e8e0d0"))
+		elif post == "flee":
+			_craft_bell(holder, "FleeBellP", Vector3(tail, height * 0.4, 3.2), 0.9, 1.8)
+			_craft_bell(holder, "FleeBellS", Vector3(tail, height * 0.4, -3.2), 0.9, 1.8)
+
+
 func _dress_volume(holder: Node3D, class_id: String, height: float) -> void:
-	var nose := float(holder.get_meta("nose", 40.0))
-	var tail := float(holder.get_meta("tail", -16.0))
-	var span := maxf(nose - tail, 12.0)
-	var belly := MeshInstance3D.new()
-	belly.name = "Keel"
-	var ball := SphereMesh.new()
-	ball.radius = height * 0.22
-	ball.height = height * 0.36
-	ball.radial_segments = 14
-	ball.rings = 8
-	belly.mesh = ball
-	belly.position = Vector3(tail + span * 0.42, height * 0.16, 0.0)
-	belly.scale = Vector3(span / maxf(ball.radius, 1.0) * 0.15, 0.48, 0.58)
-	belly.material_override = _hull_mat(Color("7a8084"))
-	holder.add_child(belly)
-	var x := 0.0
-	var z := 0.0
-	for i in 5:
-		var plate := MeshInstance3D.new()
-		plate.name = "Panel%d" % i
-		plate.mesh = _bevel_box(Vector3(span * 0.13, 0.85, maxf(height * 0.22, 3.2)), 0.12)
-		x = tail + span * (0.16 + float(i) * 0.15)
-		z = height * 0.2 if i % 2 == 0 else -height * 0.2
-		plate.position = Vector3(x, height * 0.72, z)
-		plate.material_override = _hull_mat(Color("8e9498"))
-		holder.add_child(plate)
-	if class_id == "anvil":
-		_fairing(holder, "RibP", Vector3(span * 0.16, 1.1, 3.2), Vector3(tail + span * 0.4, height * 0.55, 8.0))
-		_fairing(holder, "RibS", Vector3(span * 0.16, 1.1, 3.2), Vector3(tail + span * 0.4, height * 0.55, -8.0))
-	elif class_id == "kestrel":
-		var port := _fairing(holder, "CheekP", Vector3(span * 0.2, 0.7, 2.4), Vector3(tail + span * 0.55, height * 0.34, 6.5))
-		port.rotation.y = -0.45
-		var starboard := _fairing(holder, "CheekS", Vector3(span * 0.2, 0.7, 2.4), Vector3(tail + span * 0.55, height * 0.34, -6.5))
-		starboard.rotation.y = 0.45
-	else:
-		_fairing(holder, "VaneP", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 0.78, 1.4))
-		_fairing(holder, "VaneS", Vector3(span * 0.22, 0.35, 0.7), Vector3(tail + span * 0.72, height * 0.78, -1.4))
-	_tube(holder, "Collar", maxf(height * 0.11, 1.5), 2.1, Vector3(tail + 1.6, height * 0.4, 0.0), "x", Color("5c6468"))
-	var mid := (nose + tail) * 0.42
-	var chine_z := maxf(height * 0.2, 2.8)
-	_hardware(holder, "ChineP", Vector3(span * 0.62, 0.7, 1.15), Vector3(mid, height * 0.22, chine_z), Color("6a7278"))
-	_hardware(holder, "ChineS", Vector3(span * 0.62, 0.7, 1.15), Vector3(mid, height * 0.22, -chine_z), Color("6a7278"))
-	_hardware(holder, "SkidP", Vector3(span * 0.42, 0.55, 0.9), Vector3(mid, -0.35, maxf(height * 0.16, 2.2)), Color("4a5256"))
-	_hardware(holder, "SkidS", Vector3(span * 0.42, 0.55, 0.9), Vector3(mid, -0.35, -maxf(height * 0.16, 2.2)), Color("4a5256"))
-	for i in 3:
-		var fin := _hardware(holder, "Rad%d" % i, Vector3(span * 0.07, 0.22, maxf(height * 0.28, 3.2)), Vector3(tail + span * (0.22 + float(i) * 0.16), height * 0.95, 0.0), Color("3a3330"))
-		fin.rotation.x = 0.15 if i == 1 else -0.08
-	var hatch_z := maxf(height * 0.22, 3.8)
-	for i in 4:
-		var at_x := tail + span * (0.24 + float(i) * 0.15)
-		var side := 1.0 if i % 2 == 0 else -1.0
-		_hardware(holder, "Hatch%d" % i, Vector3(span * 0.1, 0.7, hatch_z), Vector3(at_x, height * 0.96, side * hatch_z * 0.85), Color("24282c"))
-		_hardware(holder, "HatchLip%d" % i, Vector3(span * 0.12, 0.28, hatch_z + 0.8), Vector3(at_x, height * 0.72, side * hatch_z * 0.85), Color("c4bfb4"))
-		_port_slit(holder, "Slit%d" % i, Vector3(span * 0.045, 0.35, 1.5), Vector3(at_x, height * 1.02, side * hatch_z * 0.35))
-	_hardware(holder, "ScoopP", Vector3(span * 0.14, maxf(height * 0.16, 2.4), 2.2), Vector3(mid, height * 0.34, chine_z + 1.8), Color("2a3034"))
-	_hardware(holder, "ScoopS", Vector3(span * 0.14, maxf(height * 0.16, 2.4), 2.2), Vector3(mid, height * 0.34, -chine_z - 1.8), Color("2a3034"))
-	_tube(holder, "Loom", 0.28, span * 0.55, Vector3(tail + span * 0.42, height * 0.55, chine_z * 0.55), "x", Color("17191c"))
-	_tube(holder, "LoomS", 0.28, span * 0.55, Vector3(tail + span * 0.42, height * 0.55, -chine_z * 0.55), "x", Color("17191c"))
-	for i in 3:
-		var ax := tail + span * (0.36 + float(i) * 0.12)
-		_tube(holder, "Antenna%d" % i, 0.16, 3.6 + float(i) * 1.6, Vector3(ax, height * 1.2 + 1.8, 0.0), "y", Color("1a1e22"))
-	_nav_lamp(holder, "RunP", Vector3(mid + span * 0.12, height * 0.42, chine_z + 1.1), Color("d4553a"), 0.72)
-	_nav_lamp(holder, "RunS", Vector3(mid + span * 0.12, height * 0.42, -chine_z - 1.1), Color("7dcea0"), 0.72)
+	var palette := _hull_palette(class_id)
+	_hulls.dress(holder, class_id, holder.get_meta("hull_poly"), height, palette.paint, palette.trim)
 
 
 func _fairing(holder: Node3D, part_name: String, size: Vector3, at: Vector3) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
 	node.name = part_name
-	node.mesh = _bevel_box(size, 0.16)
+	node.mesh = _bevel_box(size, 0.06)
 	node.position = at
 	node.material_override = _hull_mat(Color("9aa0a6"))
 	holder.add_child(node)
@@ -4690,44 +7498,286 @@ func _round_poly(poly: PackedVector2Array) -> PackedVector2Array:
 	return out
 
 
-func _prism(poly: PackedVector2Array, height: float, top_scale: float = 0.86) -> ArrayMesh:
+func _hull_loft(poly: PackedVector2Array, height: float) -> ArrayMesh:
+	if poly.size() < 3 or height < 0.4:
+		return null
+	var x0 := poly[0].x
+	var x1 := poly[0].x
+	for i in poly.size():
+		var point: Vector2 = poly[i]
+		x0 = minf(x0, point.x)
+		x1 = maxf(x1, point.x)
+	if x1 - x0 < 1.0:
+		return null
+	var stations := 26
+	var ring := 16
+	var cols := stations + 1
+	var verts := PackedVector3Array()
+	verts.resize(cols * ring)
+	var crowns := PackedFloat32Array()
+	crowns.resize(cols)
+	for s in cols:
+		var u := float(s) / float(stations)
+		var x := lerpf(x0, x1, u)
+		var beam := _beam_at(poly, x)
+		var tip := clampf(minf(u, 1.0 - u) / 0.14, 0.0, 1.0)
+		var crown := height * lerpf(0.46, 1.0, tip)
+		crowns[s] = crown
+		if beam < 0.12:
+			beam = 0.12
+		for n in ring:
+			var ang := TAU * float(n) / float(ring)
+			var cy := sin(ang)
+			var cz := cos(ang)
+			var t := cy * 0.5 + 0.5
+			var y := crown * (0.05 + pow(t, 0.66) * 0.95)
+			var flank := 0.74 + 0.26 * sin(t * PI)
+			verts[s * ring + n] = Vector3(x, y, beam * cz * flank)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for s in stations:
+		var axle_y := crowns[s] * 0.42
+		for n in ring:
+			var n1 := (n + 1) % ring
+			var a: Vector3 = verts[s * ring + n]
+			var b: Vector3 = verts[s * ring + n1]
+			var c: Vector3 = verts[(s + 1) * ring + n1]
+			var d: Vector3 = verts[(s + 1) * ring + n]
+			var mid := (a + b + c + d) * 0.25
+			var outward := mid - Vector3(mid.x, axle_y, 0.0)
+			if outward.length_squared() < 0.0001:
+				outward = Vector3.UP
+			_out_quad(st, a, b, c, d, outward)
+	var nose := Vector3(x1 + maxf((x1 - x0) * 0.018, 0.35), crowns[stations] * 0.4, 0.0)
+	var tail := Vector3(x0 - maxf((x1 - x0) * 0.012, 0.25), crowns[0] * 0.36, 0.0)
+	for n in ring:
+		var n1 := (n + 1) % ring
+		var na: Vector3 = verts[stations * ring + n]
+		var nb: Vector3 = verts[stations * ring + n1]
+		_out_tri(st, nose, na, nb, Vector3.RIGHT)
+		var ta: Vector3 = verts[n]
+		var tb: Vector3 = verts[n1]
+		_out_tri(st, tail, tb, ta, Vector3.LEFT)
+	st.index()
+	st.generate_normals()
+	return st.commit()
+
+
+func _beam_at(poly: PackedVector2Array, x: float) -> float:
+	var best := 0.0
+	var count := poly.size()
+	for i in count:
+		var a: Vector2 = poly[i]
+		var b: Vector2 = poly[(i + 1) % count]
+		var span := b.x - a.x
+		if absf(span) < 0.0001:
+			if absf(x - a.x) < 0.05:
+				best = maxf(best, maxf(absf(a.y), absf(b.y)))
+			continue
+		var t := (x - a.x) / span
+		if t < -0.0001 or t > 1.0001:
+			continue
+		var z := a.y + (b.y - a.y) * clampf(t, 0.0, 1.0)
+		best = maxf(best, absf(z))
+	return best
+
+
+func _dress_gate(hoop: MeshInstance3D, radius: float, tone: Color) -> void:
+	var f = _forge
+	var steel := Color("5a6268")
+	var count := 28
+	var arc := TAU * radius / float(count)
+	for i in count:
+		var ang := float(i) * TAU / float(count)
+		var yaw := -ang - PI * 0.5
+		var plate := steel.lerp(tone, 0.12 + 0.1 * float(i % 3))
+		f.add(hoop, "GateArmor%d" % i, f.slab(Vector3(arc * 0.94, radius * 0.085, radius * 0.1), 0.88), f.hull_fresh(plate, {"tile": maxf(radius * 0.05, 2.0)}), Vector3(cos(ang) * radius, 0.0, sin(ang) * radius), Vector3(0.0, yaw, 0.0))
+		if i % 2 == 0:
+			var strip_at := Vector3(cos(ang) * (radius - radius * 0.07), radius * 0.0, sin(ang) * (radius - radius * 0.07))
+			f.add(hoop, "GateStrip%d" % i, f.slab(Vector3(arc * 1.1, radius * 0.018, radius * 0.018), 1.0), f.glow(tone.lightened(0.3), 2.2), strip_at, Vector3(0.0, yaw, 0.0))
+	for i in 4:
+		var ang := float(i) * TAU / 4.0 + PI * 0.25
+		var yaw := -ang - PI * 0.5
+		var out := Vector3(cos(ang), 0.0, sin(ang))
+		var pylon_at := out * (radius + radius * 0.14)
+		f.add(hoop, "Pylon%d" % i, f.slab(Vector3(radius * 0.2, radius * 0.18, radius * 0.1), 0.84), f.hull_fresh(steel.darkened(0.15), {"tile": maxf(radius * 0.06, 2.0)}), pylon_at, Vector3(0.0, yaw + PI * 0.5, 0.0))
+		f.add(hoop, "PylonCoil%d" % i, f.tube(radius * 0.035, radius * 0.035, radius * 0.24, 12), f.metal(Color("2a3238"), 0.4), out * (radius + radius * 0.26) + Vector3(0.0, radius * 0.12, 0.0), Vector3(0.0, -ang, 0.0))
+		f.add(hoop, "PylonLamp%d" % i, f.tube(radius * 0.02, radius * 0.02, radius * 0.08, 8), f.glow(tone.lightened(0.45), 2.6), out * (radius + radius * 0.4) + Vector3(0.0, radius * 0.12, 0.0), Vector3(0.0, -ang, 0.0))
+		var prong_at := out * (radius - radius * 0.2)
+		f.add(hoop, "Prong%d" % i, f.tube(radius * 0.025, radius * 0.012, radius * 0.26, 10), f.metal(Color("3a444a"), 0.35), prong_at, Vector3(0.0, -ang + PI, 0.0))
+		f.add(hoop, "ProngTip%d" % i, f.disc(radius * 0.022), f.glow(tone.lightened(0.5), 3.0), out * (radius - radius * 0.33) + Vector3(0.0, radius * 0.003, 0.0))
+	for i in 12:
+		var lamp := MeshInstance3D.new()
+		lamp.name = "GateLamp%d" % i
+		var bulb := SphereMesh.new()
+		var lit := maxf(radius * 0.016, 0.7)
+		bulb.radius = lit
+		bulb.height = lit * 2.0
+		bulb.radial_segments = 8
+		bulb.rings = 6
+		lamp.mesh = bulb
+		var ang2 := float(i) * TAU / 12.0
+		lamp.position = Vector3(cos(ang2) * radius, radius * 0.052, sin(ang2) * radius)
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.albedo_color = tone.lightened(0.4)
+		glow.emission_enabled = true
+		glow.emission = tone.lightened(0.25)
+		glow.emission_energy_multiplier = 2.1
+		lamp.material_override = glow
+		lamp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		hoop.add_child(lamp)
+
+
+func _dress_pad_yard(pad: Node3D) -> void:
+	var f = _forge
+	var deck := 0.9
+	var steel := Color("6a7076")
+	var rust := Color("8a5a3e")
+	f.add(pad, "TowerBase", f.tube(5.0, 3.6, 10.0, 12), f.hull_fresh(steel.darkened(0.2), {"tile": 3.0}), Vector3(-29.0, deck + 5.0, -16.0), Vector3(0.0, 0.0, PI * 0.5))
+	f.add(pad, "TowerShaft", f.tube(2.4, 1.8, 14.0, 12), f.hull_fresh(steel, {"tile": 3.0}), Vector3(-29.0, deck + 17.0, -16.0), Vector3(0.0, 0.0, PI * 0.5))
+	f.add(pad, "TowerCab", f.slab(Vector3(9.0, 3.6, 9.0), 0.78), f.hull_fresh(steel.darkened(0.1), {"tile": 3.0}), Vector3(-29.0, deck + 25.0, -16.0))
+	f.add(pad, "TowerGlass", f.slab(Vector3(9.5, 2.0, 9.5), 0.9), f.glass(Color(0.14, 0.5, 0.6, 0.9), 0.9), Vector3(-29.0, deck + 25.4, -16.0))
+	f.add(pad, "TowerRoof", f.slab(Vector3(10.0, 0.7, 10.0), 0.8), f.hull_fresh(steel.darkened(0.25), {"tile": 3.0}), Vector3(-29.0, deck + 27.2, -16.0))
+	f.dish(pad, "TowerDish", 2.6, Vector3(-27.0, deck + 28.4, -14.0), Vector3(-0.6, 0.0, 0.0))
+	f.add(pad, "TowerMast", f.tube(0.18, 0.1, 6.0, 8), f.metal(Color("2a3036")), Vector3(-31.0, deck + 31.0, -18.0), Vector3(0.0, 0.0, PI * 0.5))
+	f.lamp(pad, "TowerBeacon", Vector3(-31.0, deck + 34.2, -18.0), Color("ff6a48"), 0.55)
+	for i in 3:
+		f.add(pad, "TowerBand%d" % i, f.slab(Vector3(9.2, 0.4, 9.2), 0.95), f.glow(Color("f0c27a"), 1.2), Vector3(-29.0, deck + 24.0 + float(i) * 0.0 - 0.0, -16.0) + Vector3(0.0, -1.2 + float(i) * 0.0, 0.0))
+		break
+	for i in 2:
+		f.add(pad, "FuelTank%d" % i, f.tube(2.2, 2.2, 9.0, 14), f.hull_fresh(Color("c9c4b4").darkened(0.15 * float(i)), {"tile": 3.0}), Vector3(-29.0 + float(i) * 0.0, deck + 2.4, 13.0 + float(i) * 5.2), Vector3(0.0, 0.0, 0.0))
+		f.add(pad, "FuelBand%d" % i, f.tube(2.3, 2.3, 0.8, 14), f.glow(Color("e0a040"), 1.0), Vector3(-29.0 + 2.0, deck + 2.4, 13.0 + float(i) * 5.2))
+		f.add(pad, "FuelDome%d" % i, f.slab(Vector3(1.4, 1.4, 1.4), 0.7), f.metal(Color("40464c")), Vector3(-29.0 - 4.9, deck + 2.4, 13.0 + float(i) * 5.2))
+	var palette := [Color("a85a3a"), Color("3f6a82"), Color("c49a42"), Color("5a7a52"), Color("8a4a46"), Color("4a5a78")]
+	for row in 3:
+		for col in 3 - mini(row, 1):
+			var box_color: Color = palette[(row * 3 + col) % palette.size()]
+			var at := Vector3(14.0 + float(col) * 7.2, deck + 1.5 + float(row) * 3.1, -18.5)
+			f.add(pad, "Container%d_%d" % [row, col], f.slab(Vector3(6.8, 3.0, 3.2), 0.97), f.hull_fresh(box_color, {"tile": 1.6}), at)
+			f.add(pad, "ContainerRib%d_%d" % [row, col], f.slab(Vector3(6.9, 0.2, 3.3), 1.0), f.metal(Color("23282c")), at + Vector3(0.0, 1.3, 0.0))
+	for i in 3:
+		var crate_at := Vector3(8.0 + float(i) * 6.0, deck + 1.0, 18.8)
+		f.add(pad, "Crate%d" % i, f.slab(Vector3(4.6, 2.0, 3.4), 0.9), f.hull_fresh(rust.lerp(steel, 0.3 * float(i)), {"tile": 1.2}), crate_at, Vector3(0.0, 0.1 * float(i), 0.0))
+	for sx in 2:
+		for sz in 2:
+			var mx := 32.5 if sx == 0 else -32.5
+			var mz := 20.0 if sz == 0 else -20.0
+			var pylon_at := Vector3(mx, deck + 4.5, mz)
+			f.add(pad, "FloodPole%d%d" % [sx, sz], f.tube(0.5, 0.3, 9.0, 8), f.metal(Color("2c3238")), pylon_at, Vector3(0.0, 0.0, PI * 0.5))
+			f.add(pad, "FloodBank%d%d" % [sx, sz], f.slab(Vector3(2.6, 1.3, 0.6), 0.9), f.glow(Color("e8f4ff"), 2.8), Vector3(mx - signf(mx) * 0.5, deck + 9.2, mz))
+	for z_edge in [-21.0, 21.0]:
+		f.add(pad, "EdgeLight%d" % int(z_edge), f.slab(Vector3(66.0, 0.18, 0.35), 1.0), f.glow(Color("9ee7c8"), 1.6), Vector3(0.0, deck + 0.05, z_edge))
+	for x_edge in [-34.0, 34.0]:
+		f.add(pad, "EndLight%d" % int(x_edge), f.slab(Vector3(0.35, 0.18, 40.0), 1.0), f.glow(Color("f0c27a"), 1.6), Vector3(x_edge, deck + 0.05, 0.0))
+	for i in 3:
+		var hx := 18.0 + float(i) * 8.0
+		f.add(pad, "HoseReel%d" % i, f.tube(0.9, 0.9, 1.6, 10), f.metal(Color("3a2c22"), 0.6, 0.2), Vector3(hx, deck + 0.9, 12.5), Vector3(0.0, 0.0, PI * 0.5) + Vector3(0.0, 0.0, 0.0))
+
+
+func _dress_berth(pad: Node3D) -> void:
+	var span := 18.5
+	for side_i in 2:
+		var side := 1.0 if side_i == 0 else -1.0
+		var tag := "P" if side > 0.0 else "S"
+		var post := MeshInstance3D.new()
+		post.name = "Gantry%s" % tag
+		var col := CylinderMesh.new()
+		col.top_radius = 0.85
+		col.bottom_radius = 1.35
+		col.height = 34.0
+		col.radial_segments = 12
+		post.mesh = col
+		post.position = Vector3(8.0, 18.0, side * span)
+		post.material_override = _hull_mat(Color("3a4248"))
+		pad.add_child(post)
+		var lamp := MeshInstance3D.new()
+		lamp.name = "GantryLamp%s" % tag
+		var bulb := SphereMesh.new()
+		bulb.radius = 1.15
+		bulb.height = 2.3
+		bulb.radial_segments = 12
+		bulb.rings = 8
+		lamp.mesh = bulb
+		lamp.position = Vector3(8.0, 36.2, side * span)
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.albedo_color = Color("9eecf5")
+		glow.emission_enabled = true
+		glow.emission = Color("7ee7f2")
+		glow.emission_energy_multiplier = 1.8
+		lamp.material_override = glow
+		lamp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pad.add_child(lamp)
+	var arch := MeshInstance3D.new()
+	arch.name = "GantryBeam"
+	arch.mesh = _bevel_box(Vector3(2.4, 1.6, span * 2.0 + 2.4), 0.18)
+	arch.position = Vector3(8.0, 33.4, 0.0)
+	arch.material_override = _hull_mat(Color("2c3438"))
+	pad.add_child(arch)
+	for i in 4:
+		var light := MeshInstance3D.new()
+		light.name = "Approach%d" % i
+		var dot := SphereMesh.new()
+		dot.radius = 0.55
+		dot.height = 1.1
+		dot.radial_segments = 8
+		dot.rings = 6
+		light.mesh = dot
+		light.position = Vector3(-24.0 + float(i) * 16.0, 2.4, 0.0)
+		var amber := StandardMaterial3D.new()
+		amber.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		amber.albedo_color = Color("f0c27a")
+		amber.emission_enabled = true
+		amber.emission = Color("f0c27a")
+		amber.emission_energy_multiplier = 1.4
+		light.material_override = amber
+		light.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pad.add_child(light)
+
+
+func _prism(poly: PackedVector2Array, height: float, top_scale: float = 0.86, hard: bool = false) -> ArrayMesh:
 	if poly.size() < 3:
 		return null
-	poly = _round_poly(poly)
-	if poly.size() <= 20:
+	if not hard:
 		poly = _round_poly(poly)
+		if poly.size() <= 20:
+			poly = _round_poly(poly)
+		if poly.size() <= 40:
+			poly = _round_poly(poly)
 	var edge := 0.0
 	for i in poly.size():
 		edge += poly[i].distance_to(poly[(i + 1) % poly.size()])
 	edge /= float(poly.size())
 	var raw := poly
-	poly = _chamfer_poly(poly, clampf(edge * 0.22, 0.35, 7.0))
+	var bite := clampf(edge * 0.04, 0.06, 1.1) if hard else clampf(edge * 0.22, 0.35, 7.0)
+	poly = _chamfer_poly(poly, bite)
 	var indices := Geometry2D.triangulate_polygon(poly)
 	if indices.size() < 3:
 		poly = raw
 		indices = Geometry2D.triangulate_polygon(poly)
 	if indices.size() < 3:
 		return null
-	var bilge := _inset_poly(poly, 0.58)
-	var lower := _inset_poly(poly, 0.86)
-	var shoulder := _inset_poly(poly, 0.93)
+	var bilge := _inset_poly(poly, 0.94 if hard else 0.58)
+	var lower := _inset_poly(poly, 0.97 if hard else 0.86)
+	var shoulder := _inset_poly(poly, 0.985 if hard else 0.93)
 	var crown := _inset_poly(poly, top_scale)
-	var y_low := height * 0.16
-	var y_chine := height * 0.4
-	var y_shoulder := height * 0.7
+	var y_low := height * (0.05 if hard else 0.16)
+	var y_chine := height * (0.1 if hard else 0.4)
+	var y_shoulder := height * (0.9 if hard else 0.7)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for t in range(0, indices.size(), 3):
 		_tri(st, crown[indices[t]], crown[indices[t + 1]], crown[indices[t + 2]], height, Vector3.UP)
 		_tri(st, bilge[indices[t]], bilge[indices[t + 2]], bilge[indices[t + 1]], 0.0, Vector3.DOWN)
-	_girdle(st, bilge, lower, 0.0, y_low, height)
-	_girdle(st, lower, poly, y_low, y_chine, height)
-	_girdle(st, poly, shoulder, y_chine, y_shoulder, height)
-	_girdle(st, shoulder, crown, y_shoulder, height, height)
+	_girdle(st, bilge, lower, 0.0, y_low, height, hard)
+	_girdle(st, lower, poly, y_low, y_chine, height, hard)
+	_girdle(st, poly, shoulder, y_chine, y_shoulder, height, hard)
+	_girdle(st, shoulder, crown, y_shoulder, height, height, hard)
 	return st.commit()
 
 
-func _girdle(st: SurfaceTool, lower: PackedVector2Array, upper: PackedVector2Array, y0: float, y1: float, span: float) -> void:
+func _girdle(st: SurfaceTool, lower: PackedVector2Array, upper: PackedVector2Array, y0: float, y1: float, span: float, hard: bool = false) -> void:
 	var count := lower.size()
 	if upper.size() != count or count < 2:
 		return
@@ -4744,7 +7794,7 @@ func _girdle(st: SurfaceTool, lower: PackedVector2Array, upper: PackedVector2Arr
 			outward = -outward
 		if outward.length_squared() < 0.0001:
 			continue
-		_slope(st, a, b, upper[i], upper[(i + 1) % count], y0, y1, centroid, span)
+		_slope(st, a, b, upper[i], upper[(i + 1) % count], y0, y1, centroid, span, hard)
 
 
 func _skin_normal(point: Vector2, y: float, span: float, centroid: Vector2) -> Vector3:
@@ -4762,7 +7812,35 @@ func _skin_normal(point: Vector2, y: float, span: float, centroid: Vector2) -> V
 	return n.normalized()
 
 
-func _slope(st: SurfaceTool, a: Vector2, b: Vector2, ta: Vector2, tb: Vector2, y0: float, y1: float, centroid: Vector2, span: float) -> void:
+func _slope(st: SurfaceTool, a: Vector2, b: Vector2, ta: Vector2, tb: Vector2, y0: float, y1: float, centroid: Vector2, span: float, hard: bool = false) -> void:
+	if hard:
+		var pa := Vector3(a.x, y0, a.y)
+		var pb := Vector3(b.x, y0, b.y)
+		var pta := Vector3(ta.x, y1, ta.y)
+		var ptb := Vector3(tb.x, y1, tb.y)
+		var n := (pb - pa).cross(pta - pa)
+		var mid := (pa + pb + pta + ptb) * 0.25
+		var out := mid - Vector3(centroid.x, (y0 + y1) * 0.5, centroid.y)
+		if n.length_squared() < 0.000001:
+			n = (ptb - pa).cross(pta - pa)
+		if n.length_squared() < 0.000001:
+			n = out
+		if n.dot(out) < 0.0:
+			n = -n
+		n = n.normalized()
+		st.set_normal(n)
+		st.add_vertex(pa)
+		st.set_normal(n)
+		st.add_vertex(pb)
+		st.set_normal(n)
+		st.add_vertex(ptb)
+		st.set_normal(n)
+		st.add_vertex(pa)
+		st.set_normal(n)
+		st.add_vertex(ptb)
+		st.set_normal(n)
+		st.add_vertex(pta)
+		return
 	st.set_normal(_skin_normal(a, y0, span, centroid))
 	st.add_vertex(Vector3(a.x, y0, a.y))
 	st.set_normal(_skin_normal(b, y0, span, centroid))
@@ -4851,9 +7929,10 @@ func pose_portrait(class_id: String, module_ids: Array) -> Node3D:
 	var shapes: Array = Silhouette.shapes_of(Game.defs, module_ids)
 	var layers: Array = Silhouette.layers_of(Game.defs, module_ids)
 	var holder := _ship_holder("portrait")
-	var mesh_key := class_id + "|" + str(shapes) + "|" + str(layers.size())
+	var sockets: Array = _weapon_sockets(module_ids)
+	var mesh_key := class_id + "|" + str(shapes) + "|" + str(layers.size()) + "|" + "|".join(sockets)
 	if str(holder.get_meta("mesh_key", "")) != mesh_key:
-		_fill_ship(holder, class_id, shapes, layers)
+		_fill_ship(holder, class_id, shapes, layers, sockets)
 		holder.set_meta("mesh_key", mesh_key)
 	holder.set_meta("portrait_modules", module_ids.duplicate())
 	if Game.defs.ships.has(class_id):
@@ -4863,12 +7942,7 @@ func pose_portrait(class_id: String, module_ids: Array) -> Node3D:
 		for child in holder.get_children():
 			var part := str(child.name)
 			if _hull_part(part):
-				var tone := body
-				if part == "Deck":
-					tone = body.lightened(0.16)
-				elif part.begins_with("Trim"):
-					tone = accent
-				_paint_hull(child, tone, accent)
+				_paint_hull(child, _skin_tone(part, body, accent), accent)
 	holder.position = Vector3.ZERO
 	holder.rotation = Vector3(0.42, -0.62, 0.08)
 	holder.scale = Vector3.ONE
@@ -5162,9 +8236,10 @@ func _dress_yard() -> void:
 	var worn: Array = _signature_mount(menu_class)
 	var shapes: Array = Silhouette.shapes_of(Game.defs, worn)
 	var layers: Array = Silhouette.layers_of(Game.defs, worn)
-	var mesh_key := menu_class + "|" + str(shapes)
+	var sockets: Array = _weapon_sockets(worn)
+	var mesh_key := menu_class + "|" + str(shapes) + "|" + str(sockets)
 	if str(holder.get_meta("mesh_key", "")) != mesh_key:
-		_fill_ship(holder, menu_class, shapes, layers)
+		_fill_ship(holder, menu_class, shapes, layers, sockets)
 		holder.set_meta("mesh_key", mesh_key)
 	var hull: Dictionary = Game.defs.ships[menu_class]
 	var body := Color(str(hull.color))

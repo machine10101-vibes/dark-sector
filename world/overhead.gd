@@ -2,6 +2,8 @@ extends Node
 
 ## Looks down on a 3D sector from above, a little off vertical.
 
+const EnvForge := preload("res://world/env_forge.gd")
+
 var sector: Node2D
 var world_vp: SubViewport
 var cam3: Camera3D
@@ -44,8 +46,15 @@ func _ready() -> void:
 	var world := WorldEnvironment.new()
 	world.name = "Sky"
 	env = Environment.new()
-	env.background_mode = Environment.BG_COLOR
+	env.background_mode = Environment.BG_SKY
 	env.background_color = Color("07080c")
+	var sky_shader := Shader.new()
+	sky_shader.code = EnvForge.SKY_SHADER
+	var sky_mat := ShaderMaterial.new()
+	sky_mat.shader = sky_shader
+	var sky_dome := Sky.new()
+	sky_dome.sky_material = sky_mat
+	env.sky = sky_dome
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.62, 0.66, 0.74)
 	env.ambient_light_energy = 0.42
@@ -61,6 +70,7 @@ func _ready() -> void:
 	# chart-height camera faded the whole sector to the clear color.
 	env.fog_density = 0.000012
 	env.fog_aerial_perspective = 0.22
+	env.fog_sky_affect = 0.0
 	world.environment = env
 	rig.add_child(world)
 	board = MeshInstance3D.new()
@@ -427,10 +437,10 @@ class ScaleReadout extends Control:
 			return
 		if int(sim.layer) != ScaleFrame.BAND:
 			return
-		var beam: Vector2 = DockBoard.cue_aim(sim)
+		var beam: Vector2 = QuestBoard.cue_aim(sim)
 		if beam.length() < 8.0:
 			return
-		var caption := DockBoard.slip_line(sim)
+		var caption := QuestBoard.cue_line(sim)
 		if caption == "":
 			return
 		# The fly cue leaves the keel along keel→target. A far inward drop

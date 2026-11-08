@@ -1,0 +1,22 @@
+{
+  "id": "authored_pulpit",
+  "title": "Cinder Parish",
+  "kind": "authored",
+  "giver": "Orbital Municipal Navy",
+  "summary": "Start: enter Cinder Parish. The log opens the job and the helm marks the Parish Tender. Do: come within 320 meters of the Parish Tender. The tender orbits the trash moon and the sermon is scrap. The navy escort stays with the tender. An ambush holds the home buoy until 520 meters. Finish: after the tender is met, come inside Pulpit's shell. The navy writes standing. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "pulpit",
+  "system_id": "HC-V1-R3-S5",
+  "prelude": [
+    {
+      "id": "meet_tender",
+      "kind": "alongside",
+      "action": "orbit",
+      "range": 320,
+      "label": "Parish Tender"
+    }
+  ],
+  "mutations": [
+    "rumor_pulpit",
+    "municipal_standing_up"
+  ]
+}

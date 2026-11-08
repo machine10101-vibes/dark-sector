@@ -1,0 +1,22 @@
+{
+  "id": "authored_choir_anvil",
+  "title": "Ore Choir",
+  "kind": "authored",
+  "giver": "Rimward Charter",
+  "summary": "Start: enter Ore Choir. The log opens the job and the helm marks the rim pocket. Do: enter the claim jumper's sight, 400 meters of the rim pocket. The jumper sits that pocket and chases a keel that enters it. A kite holds the belt flank. The Choir Hauler orbits the anvil. Finish: after the pocket is seen, come inside Choir Anvil's shell. The Charter writes standing. The belt is a lease, not a gift. Fail: there is no timer. Leave and the job stays open until you close. The shell alone does not file it.",
+  "body": "choir_anvil",
+  "system_id": "HC-V1-R2-S3",
+  "prelude": [
+    {
+      "id": "see_pocket",
+      "kind": "sight",
+      "role": "claim_jumper",
+      "range": 400,
+      "label": "the rim pocket"
+    }
+  ],
+  "mutations": [
+    "rumor_choir_anvil",
+    "charter_standing_up"
+  ]
+}

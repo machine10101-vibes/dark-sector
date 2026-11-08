@@ -138,3 +138,65 @@ Headless host, same sim as Host the dock. It listens on 24565 and keeps `user://
 ```bash
 godot --headless --path . --script res://scripts/headless_host.gd
 ```
+
+## Ready — meet, then the shell
+
+Lane the chart. One keel. Quests, then Track.
+
+1. **Second Copy.** Arrive. Enter Print Yard. The job stays open. Come within 320 m of the Print Factor. The helm says the factor is met. Enter Print Yard again. The log files Second Copy and the Charter writes standing.
+2. **Tow the Yard.** Arrive at Towline. Enter Tug Yard. The job stays open. Come within 480 m of the Tug Factor. The helm says the tug is met. Enter Tug Yard again. The log files Tow the Yard.
+3. **Ore Choir.** Arrive. Enter Choir Anvil. The job stays open. Come within 400 m of the claim jumper's rim pocket. The helm says the pocket is seen. Enter Choir Anvil again. The log files Ore Choir. Water Lease still finishes at Towline only when ice spall is in the hold.
+4. **Bonded Loft.** Arrive at Ledger. Enter Bonded Loft. The job stays open. Come within 320 m of the Bond Factor. The helm says the factor is met. Enter Bonded Loft again. The Compact writes standing. The Ledger scan contract is still its own job.
+5. **Broken Charter.** Arrive. Enter First Stamp. The job stays open. Come within 320 m of the Stamp Clerk. Enter First Stamp again. The Charter writes standing.
+6. **Guest Lamp.** Arrive. Enter Guest Station. The job stays open. Come within 320 m of the Lamp Host. Enter Guest Station again. The navy writes standing.
+7. **Two Weathers.** Arrive. Enter Hot Face. The job stays open. Come within 320 m of the Weather Shepherd. Enter Hot Face again. The Charter writes standing. The terminator pocket is still the claim slot.
+8. **Lower Stack.** Enter Algae Stack. The job stays open. Come within 320 m of the Shift Boss. Enter Algae Stack again. The navy writes standing.
+9. **Clean Hands.** Enter Feedstock. The job stays open. Come within 320 m of the Fine Clerk at Fine Office. Enter Feedstock again. The Choir writes standing.
+10. **Not Ours.** Enter Garden Moon. The job stays open. Come within 320 m of the Orbit Clerk. Enter Garden Moon again. The navy writes standing. The jurisdiction route is still its own run.
+11. **After Hours.** Enter Night Market. The job stays open. Come within 320 m of the Night Broker. Enter Night Market again. The navy writes standing.
+12. **The Exception.** Enter Research Shard. The job stays open. Come within 320 m of the License Warden. Enter Research Shard again. The Choir writes standing.
+13. **Last Beacon.** Enter Working Buoy. The job stays open. Come within 320 m of the Buoy Keeper. Enter Working Buoy again. A drift rumor files.
+14. **Empty Tithe.** Enter Tithe Outpost. The job stays open. Come within 320 m of the Tithe Broker. Enter Tithe Outpost again. Red Keel heat rises. The food route is still its own run.
+15. **Deep Hold.** Enter Hollow Rock. The job stays open. Come within 320 m of the Den Keeper. Enter Hollow Rock again. Black Sail heat rises.
+16. **Drift buoys.** At Clockstream, Nameless Chart, Hullweather, and Iron Rain, enter the named body. The job stays open. Come within 520 m of the ambush home buoy. Enter the body again. A drift rumor files.
+17. **Perimeter.** Enter Last Stake. The job stays open. Come within 520 m of the home buoy. Enter Last Stake again. The Charter writes standing. The pocket is still a garden.
+18. **Cinder Parish.** Enter Pulpit. The job stays open. Come within 320 m of the Parish Tender. Enter Pulpit again. The navy writes standing.
+19. **Quiet Sun.** Enter the center of Suburb Lamp. The job stays open. Come within 320 m of the Porch Hauler, who flies inside that shell. The Compact writes standing.
+20. **Seedcut.** Enter Night Orchard. The job stays open. Come within 320 m of the Orchard Cutter. Enter Night Orchard again. Black Sail heat rises.
+21. **Cadet Watch.** Enter Cadet Yard. The job stays open. Come within 320 m of Helion Compact Cutter 1. Enter Cadet Yard again. The Compact writes standing.
+22. **Sporefall.** Enter Blight Moon. The job stays open. Come within 320 m of Glass Choir Cutter 1. Enter Blight Moon again. The Choir writes standing.
+23. **Sealed Orchard.** Enter Dead Dome. The job stays open. Come within 320 m of Glass Choir Cutter 1. Enter Dead Dome again. The Choir writes standing.
+24. **No Witness.** Enter Classroom. The job stays open. Come within 520 m of the interceptor home buoy. Enter Classroom again. Red Keel heat rises.
+25. **Crossed Flags.** Enter False Green. The job stays open. Come within 520 m of the interceptor home buoy. Enter False Green again. Red Keel heat rises. The green paint is still a costume.
+26. **Letter.** Enter Marque Rock. The job stays open. Come within 520 m of the interceptor home buoy. Enter Marque Rock again. Red Keel heat rises.
+27. **The Joke.** Enter Plywood Fort. The job stays open. Come within 520 m of the interceptor home buoy. Enter Plywood Fort again. Black Sail heat rises.
+28. **Twin Wake.** Enter Red Sail. The job stays open. Come within 520 m of the interceptor home buoy. Enter Red Sail again. Black Sail heat rises.
+29. **Claimwake.** Enter Dead Hollow. The job stays open. Come within 520 m of the interceptor home buoy. Enter Dead Hollow again. Red Keel heat rises. The pocket still takes a core.
+30. **War Hulk.** Enter the hulk. The job stays open. Come within 520 m of the ambush home buoy. Enter the hulk again. The slate grants one keel salvage. The Swallow recovery is still its own short.
+31. **Wreck plate.** Kill a ship. The hulk tumbles as plated steel, and the shard orbiting it is torn plate, not a stone.
+32. **Heat chip.** With a quiet patrol slate, raise Red Keel heat to 8. The chip still reads clean, and it names Red Keel noted beside that word. F still opens the full heat slate.
+33. **Green Wound.** Enter the shard. The job stays open. Come within 320 m of the Soil Clerk. Enter Green Wound again. A homestead rumor files. Quiet Hollow still takes a core. A dead crop still files the blight slate on its own.
+34. **Ash Vent.** Bolt it from the yard. The flank gains a plated fin. The top-down outline changes. Gun heat falls faster. A shot still lands the way it did.
+35. **Star light.** Fly a blue star, then an amber one. The key light on the plate shifts with the star. The hull paint stays the ship's own color.
+36. **Clause Pocket.** Lane to Fine Print with a Claim Core. Stand in Clause Pocket. Plant. A dome sits on the hollow. Fine Print still wants the home buoy before the charter job files. The Unlet still refuses a core.
+37. **Torn log.** Write the log twice with F5. If the live file is torn, Continue still lights and opens the earlier slate. The helm says the previous slate opened.
+38. **Gun heat.** Fire until the vitals bar climbs. It reads GUNS, and HOT when the plates hold the guns. F still opens faction heat, and the first line names gun heat and plate cooling. The patrol chip stays HEAT.
+39. **Plate gutters.** Look along a flank in a blue star and an amber star. The seams read as dark gutters. The hull paint stays that keel's color.
+40. **Empty Tithe.** Lane there with a Claim Core. Stand in Empty Tithe Pocket. Plant. A dome sits on the hollow. The Tithe Broker still files the job, and Red Keel heat still rises from that meet.
+41. **Vent on the slate.** Bolt an Ash Vent. Open Heat with F. The first line names a higher plate cooling. The patrol chip stays HEAT. A shot still lands the way it did.
+42. **Torn world log.** Host a sky, let it write twice, then tear the live world file. The next Host opens the earlier world and says the previous world is open.
+43. **Held guns.** Fire until the plates hold the guns. Open Heat with F. The first line names the plate the guns must fall to. The patrol chip stays HEAT. A shot still lands the way it did once the plates cool.
+44. **Deep Hold.** Lane there with a Claim Core. Stand in Deep Hold Pocket. Plant. A dome sits on the hollow. The helm says the den wrote the core down. The Den Keeper still files the job, and Black Sail heat still rises from that meet. Quiet Hollow still plants and does not say that line.
+45. **Closing speed.** Lock a hull that is flying at you. The contacts distance warms, the bracket signs a negative radial, and the lock draws a short vector along its way. Sweep names how many are closing. A still shot in optimal still lands. The hull tag stays Skiff 24.
+46. **Overview filter.** Click the contacts header. It steps through every contact, hostiles, wrecks, and neutrals, and the helm says which list is open. Brackets in the sky stay up. The hull tag stays Skiff 24.
+47. **Capacitor.** Watch the vitals bar. It names the capacitor as a percent beside the segments. Fire until it is empty. The gun holds, and a shot still lands once the capacitor is back.
+48. **System law.** Lane to Stamped Ice. The helm name reads STAMPED ICE · AMBER. A green sky reads green, a red sky reads red. Helion Dock stays Helion Dock. The patrol chip stays HEAT. On a short glass the name is only the system.
+49. **Hull in motion.** Fire until the plates warm. The hull picks up an orange glow, stronger at the stern, and the paint stays the keel's own color. Yaw. The jet on that side lights. Slide sideways and the plume cants off the centerline. Pour on speed along the nose and the flame lengthens. A still shot in optimal still lands.
+50. **Mothership and the wing.** On Fleet, Call mothership. A large base holds station behind the keel, with bays and a tower. A welder is on the keel. Fly alongside and Berth. The keel is stored, and the combat wing moves into the bay. Probes and the miner stay on the keel. Cast off. The base stays. Launch a fighter: it leaves the base, not the keel. Focus with no lock says to lock a ship first. Lock a hostile and Focus: the wing takes that ship. Screen holds station and fires the lock. Mend sends the welder to a hurt fighter. A still shot in optimal still lands.
+51. **Ships look built.** Open ship select, then fly each keel. Needle, Barn, Beak, Wick, Ram, and Kite each show a lofted body, swept wings, a glass bridge, lit engine bells, and armor plates flush with the hull. Fleet craft, probes, the miner, the welder, and the lighter show their solar wings, dishes, drill, crane, and thrusters. The mothership shows hangars, six landing pads, a tower, five engine bells, and flak turrets. A berthing keel settles on a pad.
+52. **Scenery looks built.** Fly the belt, the ice field, a wreck, a gate, and Helion Dock. Asteroids are cratered rock with ore veins and strata. Ice is a faceted blue crystal cluster. Wrecks are torn hull sections with ribs and plate fragments. The sky is a layered starfield with a galactic band. The star has granulation, spots, and soft rays. A gate is an armored ring with pylons, emitter prongs, and a swirling veil. The dock pad has a control tower, containers, fuel tanks, flood poles, and edge lights.
+53. **Hardware sits on the hull.** Open ship select and fit every weapon, the mast, the pods, the battery, the belt, and the farm and claim gear on each keel. Turrets, racks, and the laser bank sit on the skin with a riser where the deck slopes. The mast stands on a collar bolted to the deck. Flank guns sit on the shoulders with their barrels pointing forward and a heat band near the muzzle. The armor belt lies flush on the wall. Nothing hangs in the air past the nose or off the wing tip.
+
+```bash
+godot --headless --path . --script res://tests/ecosystem_sim.gd
+```

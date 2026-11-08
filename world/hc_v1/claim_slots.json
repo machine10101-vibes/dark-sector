@@ -26,6 +26,23 @@
       "system_id": "HC-V1-R7-S5",
       "pocket_id": "dead_hollow_pocket",
       "name": "Dead Hollow"
+    },
+    {
+      "system_id": "HC-V1-R2-S6",
+      "pocket_id": "clause_pocket",
+      "name": "Clause Pocket"
+    },
+    {
+      "system_id": "HC-V1-R7-S3",
+      "pocket_id": "tithe_outpost_pocket",
+      "name": "Empty Tithe Pocket"
+    },
+    {
+      "system_id": "HC-V1-R8-S5",
+      "pocket_id": "hollow_rock_pocket",
+      "name": "Deep Hold Pocket",
+      "note": "den_pantry",
+      "note_line": "The den writes the core down. Deep Hold still wants the keeper."
     }
   ]
 }

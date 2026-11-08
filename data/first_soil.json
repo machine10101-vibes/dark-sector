@@ -184,7 +184,18 @@
     "angle": 0.0,
     "standoff": 0
   },
-  "haulers": [],
+  "haulers": [
+    {
+      "id": "soil_clerk",
+      "name": "Soil Clerk",
+      "class_id": "anvil",
+      "home": "green_wound",
+      "radius": 1200,
+      "role": "factor",
+      "action": "factor",
+      "duty": "Soil Clerk at Green Wound. The shard is the witness. Come alongside and the homestead is read in the open. Quiet Hollow still takes the core."
+    }
+  ],
   "gates": [
     {
       "id": "soil_lane",
@@ -249,6 +260,28 @@
       "anchor": "green_wound",
       "angle": 4.3,
       "distance": 1420,
+      "radius": 110,
+      "color": "amber"
+    },
+    {
+      "id": "soil_to_moth",
+      "name": "Pollinator Road",
+      "to": "HC-V1-R5-S3",
+      "arrive": "moth_from_soil",
+      "anchor": "green_wound",
+      "angle": 5.1,
+      "distance": 1340,
+      "radius": 110,
+      "color": "amber"
+    },
+    {
+      "id": "soil_to_silo",
+      "name": "Silo Road",
+      "to": "HC-V1-R5-S5",
+      "arrive": "silo_from_soil",
+      "anchor": "green_wound",
+      "angle": 5.8,
+      "distance": 1500,
       "radius": 110,
       "color": "amber"
     },
