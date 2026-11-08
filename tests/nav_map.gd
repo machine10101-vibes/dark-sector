@@ -148,6 +148,15 @@ func _check_volume() -> void:
 	else:
 		_bad("the 3D chart stage is missing")
 	check(str(chart.get("selected")) != "", "the chart marks the system you are in")
+	if chart.has_method("_show_chart"):
+		chart._show_chart()
+		chart.selected = "HC-V1-R8-S6"
+		chart._fill_card()
+		var jump = chart.get("jump_button")
+		check(jump is Button and (jump as Button).visible, "the chart offers a jump to The Joke")
+		chart.selected = str(chart.call("_here"))
+		chart._fill_card()
+		check(jump is Button and (jump as Button).visible == false, "the chart hides Jump on the sky you are in")
 
 
 func _quiet_helm() -> void:

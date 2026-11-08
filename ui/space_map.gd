@@ -2,7 +2,7 @@ extends Control
 
 ## The whole Haven chart as a massive 3D reach. Drag turns the eye. A tap
 ## names a system and lists the places in it. In the live sky a tap files
-## that place as the helm mark. The chart does not move the ship.
+## that place as the helm mark. Chart lists every sector, and Jump takes the portal.
 
 const Atlas = preload("res://ui/chart_atlas.gd")
 const Stage = preload("res://ui/space_map_stage.gd")
@@ -35,6 +35,9 @@ var close_button: Button
 var zoom_in: Button
 var zoom_out: Button
 var fit_button: Button
+var chart_button: Button
+var jump_button: Button
+var jump_id := ""
 var title: Label
 var hint: Label
 var _hit_id := ""
@@ -75,7 +78,7 @@ func _ready() -> void:
 	title = ThemeKit.label("SPACE MAP", 18, Color("f0c27a"))
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(title)
-	hint = ThemeKit.label("Drag to turn. Wheel to zoom. Tap a world. The card lists every place. F10, Esc, or Close.", 12, Color("8aa8b0"))
+	hint = ThemeKit.label("Drag to turn. Wheel to zoom. Tap a world. Chart, then Jump. F10, Esc, or Close.", 12, Color("8aa8b0"))
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hint)
 	close_button = ThemeKit.button("Close", true)
@@ -96,6 +99,10 @@ func _ready() -> void:
 	fit_button.custom_minimum_size = Vector2(72, 40)
 	fit_button.pressed.connect(_fit_all)
 	add_child(fit_button)
+	chart_button = ThemeKit.button("Chart")
+	chart_button.custom_minimum_size = Vector2(92, 40)
+	chart_button.pressed.connect(_toggle_chart)
+	add_child(chart_button)
 	card = PanelContainer.new()
 	card.mouse_filter = Control.MOUSE_FILTER_STOP
 	card.add_theme_stylebox_override("panel", ThemeKit.glass(true))
@@ -113,6 +120,11 @@ func _ready() -> void:
 	box.add_child(card_title)
 	box.add_child(card_scroll)
 	card_scroll.add_child(card_body)
+	jump_button = ThemeKit.button("Jump", true)
+	jump_button.custom_minimum_size = Vector2(0, 40)
+	jump_button.visible = false
+	jump_button.pressed.connect(_jump)
+	box.add_child(jump_button)
 
 
 func _process(delta: float) -> void:
@@ -134,6 +146,8 @@ func _process(delta: float) -> void:
 				stage.mark_visited(_visited_book(), _here())
 			_fit_all()
 			selected = _here()
+			if chart_button != null:
+				chart_button.text = "Chart" if live else "Sky"
 			_fill_card()
 			_layout()
 			_aim_cam()
@@ -172,6 +186,9 @@ func _layout() -> void:
 	zoom_out.size = Vector2(44, 40)
 	fit_button.position = Vector2(size.x - 108.0, 112)
 	fit_button.size = Vector2(92, 40)
+	if chart_button != null:
+		chart_button.position = Vector2(size.x - 108.0, 160)
+		chart_button.size = Vector2(92, 40)
 	var card_w := 340.0 if size.x >= 720.0 else size.x - 24.0
 	var card_h := 280.0 if size.y >= 560.0 else 168.0
 	card.position = Vector2(12, size.y - card_h - 12)
@@ -461,6 +478,7 @@ func _fill_local_card() -> void:
 	if Game.sim == null:
 		card_title.text = "The reach"
 		card_body.text = "The whole sky of this system."
+		_set_jump("", "")
 		return
 	if selected == "beacon":
 		var home = Game.sim.planet(str(Game.sim.defs.system.get("pdo", {}).get("home", "")))
@@ -470,6 +488,7 @@ func _fill_local_card() -> void:
 		card_title.text = pad_name
 		var gap := int(Game.sim.player.pos.distance_to(Game.sim.beacon_pos))
 		card_body.text = "The berth in this sky.\n%d m\nFly in and Dock." % gap
+		_set_jump("", "")
 		return
 	var place = Game.sim.survey_node(selected)
 	if place != null:
@@ -485,6 +504,7 @@ func _fill_local_card() -> void:
 			lines += " · %s" % stock
 		lines += "\n%d m\n%s\n%s" % [gap, legal, ready]
 		card_body.text = lines
+		_set_jump("", "")
 		return
 	for gate in Game.sim.gates:
 		var row: Dictionary = gate
@@ -493,10 +513,12 @@ func _fill_local_card() -> void:
 			var other: Dictionary = by_id.get(dest, {})
 			var dest_name := str(other.get("name", dest))
 			card_title.text = str(row.get("name", "Lane"))
-			card_body.text = "Lane to %s.\nFly into the ring, then take the lane." % dest_name
+			card_body.text = "Lane to %s.\nJump takes the portal. Or fly into the ring and press Lane." % dest_name
+			_set_jump(dest, "Jump")
 			return
 	card_title.text = str(Game.sim.defs.system.get("name", "The reach"))
 	card_body.text = "The whole sky of this system. Drag to turn. Wheel to zoom.\n" + _live_places(Game.sim)
+	_set_jump("", "")
 
 
 func _fill_card() -> void:
@@ -506,7 +528,8 @@ func _fill_card() -> void:
 	var row: Dictionary = by_id.get(selected, {})
 	if row.is_empty():
 		card_title.text = "The reach"
-		card_body.text = "The whole sky of this system. Drag to turn. Wheel to zoom. Tap a world. The chart does not move the ship."
+		card_body.text = "The whole sky of this system. Drag to turn. Wheel to zoom. Tap a world. Chart, then Jump."
+		_set_jump("", "")
 		return
 	card_title.text = str(row.get("name", ""))
 	var lines := str(row.get("region_name", ""))
@@ -542,6 +565,69 @@ func _fill_card() -> void:
 			else:
 				lines += "\n%s · %s" % [hop_name, rule]
 	card_body.text = lines
+	var sid := str(row.get("id", ""))
+	if sid == _here():
+		_set_jump("", "")
+	else:
+		_set_jump(sid, "Jump")
+
+
+func _set_jump(system_id: String, label: String) -> void:
+	jump_id = system_id
+	if jump_button == null:
+		return
+	var show := system_id != "" and system_id != _here()
+	jump_button.visible = show
+	if show and label != "":
+		jump_button.text = label
+
+
+func _jump() -> void:
+	if Game.sim == null or jump_id == "":
+		return
+	var message := Game.sim.portal_to(jump_id)
+	if message != "":
+		Game.sim.say(message)
+		return
+	Game.set_map_open(false)
+
+
+func _toggle_chart() -> void:
+	if live:
+		_show_chart()
+	else:
+		_show_sky()
+
+
+func _show_chart() -> void:
+	if vp == null:
+		return
+	live = false
+	vp.own_world_3d = true
+	vp.world_3d = World3D.new()
+	if stage != null:
+		if stage.get_parent() != vp:
+			vp.add_child(stage)
+		if stage.has_method("rebuild"):
+			stage.rebuild(atlas)
+		if stage.has_method("mark_visited"):
+			stage.mark_visited(_visited_book(), _here())
+	if chart_button != null:
+		chart_button.text = "Sky"
+	selected = _here()
+	_fit_all()
+	_fill_card()
+	_aim_cam()
+
+
+func _show_sky() -> void:
+	_bind_eye()
+	if chart_button != null:
+		chart_button.text = "Chart"
+	selected = _here()
+	_fit_all()
+	_fill_card()
+	_aim_cam()
 
 
 func _live_places(sim) -> String:

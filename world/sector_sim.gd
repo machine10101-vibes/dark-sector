@@ -2446,10 +2446,9 @@ func try_lane() -> String:
 	var gate := nearby_gate()
 	if gate.is_empty():
 		return "No lane buoy in reach."
-	for item in craft:
-		var state := str(item.state)
-		if state != "docked" and state != "lost":
-			return "Recall %s. The lane does not carry craft home." % str(item.name)
+	var held := _craft_holding_lane()
+	if held != "":
+		return held
 	var dest := str(gate.get("to", ""))
 	var chart: Dictionary = defs.get("systems", {})
 	if not chart.has(dest):
@@ -2458,7 +2457,42 @@ func try_lane() -> String:
 	return ""
 
 
-func _arrive(system_id: String, gate_id: String) -> void:
+func portal_to(system_id: String) -> String:
+	var here := str(defs.system.get("id", ""))
+	if system_id == "" or system_id == here:
+		return "You are already in this sky."
+	var chart: Dictionary = defs.get("systems", {})
+	if not chart.has(system_id):
+		return "That lane is charted and not on this keel's board."
+	var held := _craft_holding_lane()
+	if held != "":
+		return held
+	var dest: Dictionary = chart[system_id]
+	var gate_id := ""
+	var gates: Array = dest.get("gates", [])
+	for raw in gates:
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var row: Dictionary = raw
+		if str(row.get("to", "")) == here:
+			gate_id = str(row.get("id", ""))
+			break
+	if gate_id == "" and not gates.is_empty() and typeof(gates[0]) == TYPE_DICTIONARY:
+		gate_id = str((gates[0] as Dictionary).get("id", ""))
+	player.moored = false
+	_arrive(system_id, gate_id, true)
+	return ""
+
+
+func _craft_holding_lane() -> String:
+	for item in craft:
+		var state := str(item.state)
+		if state != "docked" and state != "lost":
+			return "Recall %s. The lane does not carry craft home." % str(item.name)
+	return ""
+
+
+func _arrive(system_id: String, gate_id: String, portal: bool = false) -> void:
 	if bool(defs.get("live_catalog", false)):
 		Catalog.refresh(defs)
 	if not defs.systems.has(system_id):
@@ -2506,7 +2540,10 @@ func _arrive(system_id: String, gate_id: String) -> void:
 	if not visited.has(system_id):
 		visited.append(system_id)
 	_bind_band()
-	say("The lane opens on %s." % str(defs.system.name))
+	if portal:
+		say("The portal opens on %s." % str(defs.system.name))
+	else:
+		say("The lane opens on %s." % str(defs.system.name))
 	sfx("launch")
 	Catalog.confiscate(self)
 	QuestBoard.on_arrive(self)
